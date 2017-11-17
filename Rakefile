@@ -16,3 +16,9 @@ Rake::ExtensionTask.new("cumo") do |ext|
 end
 
 task :default => [:clobber, :compile, :test]
+
+desc 'Open an irb session preloaded with the gem library'
+task :console do
+    sh 'irb -rubygems -I lib'
+end
+task :c => :console
