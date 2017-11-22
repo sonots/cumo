@@ -1,0 +1,34 @@
+TAGSRC = \
+ ../../ruby/include/ruby/*.h \
+ ../../ruby/*.c \
+ *.h \
+ types/*.h \
+ *.c \
+ types/*.c
+
+tags : TAGS
+TAGS : $(TAGSRC)
+	etags $(TAGSRC)
+
+doc :
+	yard doc *.c types/*.c
+
+C_TMPL = <%=Dir.glob("gen/tmpl*/*.c").join(" ")%>
+
+COGEN = gen/cogen.rb
+DEPENDS = $(C_TMPL) gen/*.rb
+
+<%
+   type_c = []
+   type_rb = Dir.glob("gen/def/*.rb")
+   type_rb.each do |s|
+     type_c << c = "types/"+File.basename(s,".rb")+".c"
+%>
+<%=c%>: <%=s%> $(DEPENDS)
+	$(MAKEDIRS) $(@D) types
+	ruby $(COGEN) -l -o $@ <%=s%>
+<% end %>
+
+src : <%= type_c.join(" ") %>
+
+CLEANOBJS = *.o */*.o *.bak types/*.c
