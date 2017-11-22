@@ -12,3 +12,10 @@
 *.o
 *.a
 mkmf.log
+test.rb
+ext/numo/narray/types/*.c
+ext/numo/narray/numo/extconf.h
+ext/numo/narray/Makefile
+ext/numo/narray/depend
+TAGS
+t.rb

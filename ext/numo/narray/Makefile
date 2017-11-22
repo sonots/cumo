@@ -84,7 +84,7 @@ CCDLFLAGS = -fPIC
 CFLAGS   = $(CCDLFLAGS) -I /home/sonots/nccl/build/include -I /home/sonots/.cudnn/active/cuda/include  $(ARCH_FLAG)
 INCFLAGS = -I. -Itypes -I$(arch_hdrdir) -I$(hdrdir)/ruby/backward -I$(hdrdir) -I$(srcdir)
 DEFS     = 
-CPPFLAGS = -DRUBY_EXTCONF_H=\"$(RUBY_EXTCONF_H)\" -I/home/sonots/.rbenv/versions/2.4.1/include  $(DEFS) $(cppflags)
+CPPFLAGS = -DRUBY_EXTCONF_H=\"$(RUBY_EXTCONF_H)\" -I/home/sonots/.cudnn/active/cuda/include -I/usr/local/cuda/include -I/home/sonots/.cudnn/active/cuda/include -I/home/sonots/.rbenv/versions/2.4.1/include  $(DEFS) $(cppflags)
 CXXFLAGS = $(CCDLFLAGS) $(cxxflags) $(ARCH_FLAG)
 ldflags  = -L. -L/home/sonots/.rbenv/versions/2.4.1/lib -L /home/sonots/nccl/build/lib -I /home/sonots/.cudnn/active/cuda/include -fstack-protector -rdynamic -Wl,-export-dynamic
 dldflags = -L/home/sonots/.rbenv/versions/2.4.1/lib -L /home/sonots/nccl/build/lib -I /home/sonots/.cudnn/active/cuda/include -Wl,--compress-debug-sections=zlib 
@@ -122,8 +122,8 @@ TOUCH = exit >
 #### End of system configuration section. ####
 
 preload = 
-libpath = . $(libdir)
-LIBPATH =  -L. -L$(libdir) -Wl,-R$(libdir)
+libpath = . $(libdir) /home/sonots/.cudnn/active/cuda/lib64 /usr/lib/x86_64-linux-gnu /usr/local/cuda/lib64 /usr/local/cuda/lib
+LIBPATH =  -L. -L$(libdir) -Wl,-R$(libdir) -L/home/sonots/.cudnn/active/cuda/lib64 -Wl,-R/home/sonots/.cudnn/active/cuda/lib64 -L/usr/lib/x86_64-linux-gnu -Wl,-R/usr/lib/x86_64-linux-gnu -L/usr/local/cuda/lib64 -Wl,-R/usr/local/cuda/lib64 -L/usr/local/cuda/lib -Wl,-R/usr/local/cuda/lib
 DEFFILE = 
 
 CLEANFILES = mkmf.log
@@ -134,10 +134,10 @@ extout =
 extout_prefix = 
 target_prefix = /numo
 LOCAL_LIBS = 
-LIBS =   -lpthread -ldl -lcrypt -lm   -lc
+LIBS =  -lcudart -lcuda  -lpthread -ldl -lcrypt -lm   -lc
 ORIG_SRCS = SFMT.c array.c data.c index.c kwargs.c math.c narray.c ndloop.c rand.c step.c struct.c
-SRCS = $(ORIG_SRCS) narray.c array.c step.c index.c ndloop.c data.c bit.c int8.c int16.c int32.c int64.c uint8.c uint16.c uint32.c uint64.c sfloat.c dfloat.c scomplex.c dcomplex.c robject.c math.c SFMT.c struct.c rand.c
-OBJS = narray.o array.o step.o index.o ndloop.o data.o types/bit.o types/int8.o types/int16.o types/int32.o types/int64.o types/uint8.o types/uint16.o types/uint32.o types/uint64.o types/sfloat.o types/dfloat.o types/scomplex.o types/dcomplex.o types/robject.o math.o SFMT.o struct.o rand.o
+SRCS = $(ORIG_SRCS) narray.c array.c step.c index.c ndloop.c data.c bit.c int8.c int16.c int32.c int64.c uint8.c uint16.c uint32.c uint64.c sfloat.c dfloat.c scomplex.c dcomplex.c robject.c math.c SFMT.c struct.c rand.c runtime.c
+OBJS = narray.o array.o step.o index.o ndloop.o data.o types/bit.o types/int8.o types/int16.o types/int32.o types/int64.o types/uint8.o types/uint16.o types/uint32.o types/uint64.o types/sfloat.o types/dfloat.o types/scomplex.o types/dcomplex.o types/robject.o math.o SFMT.o struct.o rand.o cuda/runtime.o
 HDRS = $(srcdir)/SFMT.h $(srcdir)/SFMT-params19937.h $(srcdir)/SFMT-params.h
 LOCAL_HDRS = 
 TARGET = narray
@@ -374,6 +374,15 @@ TAGS : $(TAGSRC)
 
 doc :
 	yard doc *.c types/*.c
+
+build :
+	ruby extconf.rb && make
+
+run :
+	ruby -I. ./test.rb
+
+gdb :
+	gdb -x run.gdb --quiet --args $(shell ruby -e 'puts RbConfig::CONFIG["bindir"]')/ruby -I. ./test.rb
 
 C_TMPL = gen/tmpl/lib.c gen/tmpl/seq.c gen/tmpl/fill.c gen/tmpl/powint.c gen/tmpl/new_dim0.c gen/tmpl/coerce_cast.c gen/tmpl/eye.c gen/tmpl/format_to_a.c gen/tmpl/set2.c gen/tmpl/poly.c gen/tmpl/rand_norm.c gen/tmpl/store_numeric.c gen/tmpl/extract.c gen/tmpl/class.c gen/tmpl/map_with_index.c gen/tmpl/unary.c gen/tmpl/binary_s.c gen/tmpl/cond_unary.c gen/tmpl/unary_ret2.c gen/tmpl/minmax.c gen/tmpl/store_array.c gen/tmpl/qsort.c gen/tmpl/module.c gen/tmpl/format.c gen/tmpl/aset.c gen/tmpl/alloc_func.c gen/tmpl/unary2.c gen/tmpl/each.c gen/tmpl/accum_index.c gen/tmpl/pow.c gen/tmpl/accum.c gen/tmpl/store.c gen/tmpl/cast_array.c gen/tmpl/store_bit.c gen/tmpl/binary2.c gen/tmpl/cum.c gen/tmpl/rand.c gen/tmpl/inspect.c gen/tmpl/unary_s.c gen/tmpl/to_a.c gen/tmpl/sort_index.c gen/tmpl/logseq.c gen/tmpl/init_module.c gen/tmpl/binary.c gen/tmpl/sort.c gen/tmpl/frexp.c gen/tmpl/clip.c gen/tmpl/median.c gen/tmpl/extract_data.c gen/tmpl/each_with_index.c gen/tmpl/allocate.c gen/tmpl/aref.c gen/tmpl/store_from.c gen/tmpl/cond_binary.c gen/tmpl/accum_binary.c gen/tmpl/init_class.c gen/tmpl/cast.c gen/tmpl/bincount.c gen/tmpl_bit/where.c gen/tmpl_bit/fill.c gen/tmpl_bit/format_to_a.c gen/tmpl_bit/extract.c gen/tmpl_bit/unary.c gen/tmpl_bit/where2.c gen/tmpl_bit/store_array.c gen/tmpl_bit/format.c gen/tmpl_bit/aset.c gen/tmpl_bit/each.c gen/tmpl_bit/bit_count.c gen/tmpl_bit/store_bit.c gen/tmpl_bit/none_p.c gen/tmpl_bit/mask.c gen/tmpl_bit/inspect.c gen/tmpl_bit/to_a.c gen/tmpl_bit/binary.c gen/tmpl_bit/bit_reduce.c gen/tmpl_bit/each_with_index.c gen/tmpl_bit/allocate.c gen/tmpl_bit/aref.c gen/tmpl_bit/store_from.c
 
