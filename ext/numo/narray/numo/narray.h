@@ -16,6 +16,8 @@ extern "C" {
 #define NARRAY_VERSION "0.9.0.9"
 #define NARRAY_VERSION_CODE 909
 
+void ruby_debug_breakpoint();
+
 #include <math.h>
 #include "numo/compat.h"
 #include "numo/template.h"

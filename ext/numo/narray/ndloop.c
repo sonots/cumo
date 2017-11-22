@@ -6,6 +6,7 @@
 
 #include <ruby.h>
 #include "numo/narray.h"
+#include "numo/cuda/runtime.h"
 
 #if 0
 #define DBG(x) x
@@ -337,7 +338,7 @@ ndloop_alloc(na_md_loop_t *lp, ndfunc_t *nf, VALUE args,
     int narg;
     int max_nd;
 
-    char *buf;
+    void *buf;
     size_t n1, n2, n3, n4, n5;
 
     long args_len;

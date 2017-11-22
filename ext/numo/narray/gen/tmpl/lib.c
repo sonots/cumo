@@ -11,6 +11,7 @@
 #include "numo/narray.h"
 #include "numo/template.h"
 #include "SFMT.h"
+#include "numo/cuda/runtime.h"
 
 #define m_map(x) m_num_to_data(rb_yield(m_data_to_num(x)))
 

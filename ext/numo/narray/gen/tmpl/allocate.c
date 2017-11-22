@@ -2,7 +2,7 @@ static VALUE
 <%=c_func(0)%>(VALUE self)
 {
     narray_t *na;
-    char *ptr;
+    void *ptr;
 
     GetNArray(self,na);
 
@@ -10,7 +10,8 @@ static VALUE
     case NARRAY_DATA_T:
         ptr = NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
-            ptr = xmalloc(sizeof(dtype) * na->size);
+            cudaError_t status = cudaMallocManaged(&ptr, sizeof(dtype) * na->size, cudaMemAttachGlobal);
+            cumo_cuda_runtime_check_status(status);
             <% if is_object %>
             {   size_t i;
                 VALUE *a = (VALUE*)ptr;

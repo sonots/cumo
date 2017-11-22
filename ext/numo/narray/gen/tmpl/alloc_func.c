@@ -29,7 +29,8 @@ static void
     assert(na->base.type == NARRAY_DATA_T);
 
     if (na->ptr != NULL) {
-        xfree(na->ptr);
+        cudaError_t status = cudaFree((void*)na->ptr);
+        cumo_cuda_runtime_check_status(status);
         na->ptr = NULL;
     }
     if (na->base.size > 0) {
