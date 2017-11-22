@@ -6,6 +6,7 @@
 #include <ruby.h>
 #include "numo/narray.h"
 #include "numo/template.h"
+#include "numo/cuda/runtime.h"
 
 #define cT numo_cStruct
 VALUE cT;
@@ -14,7 +15,7 @@ static VALUE
 nst_allocate(VALUE self)
 {
     narray_t *na;
-    char *ptr;
+    void *ptr;
     VALUE velmsz;
 
     GetNArray(self,na);
@@ -24,7 +25,8 @@ nst_allocate(VALUE self)
         ptr = NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             velmsz = rb_const_get(CLASS_OF(self), rb_intern("element_byte_size"));
-            ptr = xmalloc(NUM2SIZET(velmsz) * na->size);
+            cudaError_t status = cudaMallocManaged(&ptr, NUM2SIZET(velmsz) * na->size, cudaMemAttachGlobal);
+            cumo_cuda_runtime_check_status(status);
             NA_DATA_PTR(na) = ptr;
         }
         break;

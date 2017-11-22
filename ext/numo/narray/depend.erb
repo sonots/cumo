@@ -13,6 +13,12 @@ TAGS : $(TAGSRC)
 doc :
 	yard doc *.c types/*.c
 
+run :
+	ruby -I. ./test.rb
+
+gdb :
+	gdb -x run.gdb --quiet --args $(shell ruby -e 'puts RbConfig::CONFIG["bindir"]')/ruby -I. ./test.rb
+
 C_TMPL = <%=Dir.glob("gen/tmpl*/*.c").join(" ")%>
 
 COGEN = gen/cogen.rb

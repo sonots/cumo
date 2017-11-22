@@ -79,6 +79,11 @@ const rb_data_type_t na_data_type = {
 };
 #include "numo/narray.h"
 
+void
+nary_debug_breakpoint(void)
+{
+    /* */
+}
 
 static void
 nary_debug_info_nadata(VALUE self)

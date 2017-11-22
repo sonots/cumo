@@ -14,7 +14,7 @@ rm_f 'numo/extconf.h'
 #$CFLAGS=" $(cflags) -O3"
 $INCFLAGS = "-Itypes #$INCFLAGS"
 
-$INSTALLFILES = Dir.glob(%w[numo/*.h numo/types/*.h]).map{|x| [x,'$(archdir)'] }
+$INSTALLFILES = Dir.glob(%w[numo/*.h numo/types/*.h cuda/*.h]).map{|x| [x,'$(archdir)'] }
 $INSTALLFILES << ['numo/extconf.h','$(archdir)']
 if /cygwin|mingw/ =~ RUBY_PLATFORM
   $INSTALLFILES << ['libnarray.a', '$(archdir)']
@@ -45,6 +45,7 @@ math
 SFMT
 struct
 rand
+cuda/runtime
 )
 
 if RUBY_VERSION[0..3] == "2.1."
@@ -98,5 +99,15 @@ File.open(depend_path, "w") do |depend|
     depend.print(erb.result)
   end
 end
+
+HEADER_DIRS = (ENV['CPATH'] || '').split(':')
+LIB_DIRS = (ENV['LIBRARY_PATH'] || '').split(':')
+dir_config('numo/narray', HEADER_DIRS, LIB_DIRS)
+
+have_library('cuda')
+have_library('cudart')
+# have_library('cublas')
+# have_library('cusolver')
+# have_library('curand')
 
 create_makefile('numo/narray')
