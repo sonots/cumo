@@ -7,18 +7,15 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
-require "rake/extensiontask"
-
-task :build => :compile
-
-Rake::ExtensionTask.new("cumo") do |ext|
-  ext.lib_dir = "lib/cumo"
+# require "rake/extensiontask"
+task :compile do
+  sh 'cd ext/numo/narray && ruby extconf.rb && make'
 end
 
 task :default => [:clobber, :compile, :test]
 
 desc 'Open an irb session preloaded with the gem library'
 task :console do
-    sh 'irb -rubygems -I lib'
+  sh 'irb -rubygems -I lib'
 end
 task :c => :console
