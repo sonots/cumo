@@ -7,20 +7,21 @@ if RUBY_VERSION < "2.0.0"
   exit(1)
 end
 
-rm_f 'numo/extconf.h'
+rm_f 'include/numo/extconf.h'
 
 #$CFLAGS="-g3 -O0 -Wall"
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
-$INCFLAGS = "-Inarray -Inarray/types #$INCFLAGS"
+$INCFLAGS = "-Iinclude -Inarray #$INCFLAGS"
 
-$INSTALLFILES = Dir.glob(%w[narray/numo/*.h narray/numo/types/*.h cuda/*.h]).map{|x| [x,'$(archdir)'] }
-$INSTALLFILES << ['narray/numo/extconf.h','$(archdir)']
+$INSTALLFILES = Dir.glob(%w[include/numo/*.h include/numo/types/*.h include/numo/cuda/*.h]).map{|x| [x,'$(archdir)'] }
+$INSTALLFILES << ['include/numo/extconf.h','$(archdir)']
 if /cygwin|mingw/ =~ RUBY_PLATFORM
   $INSTALLFILES << ['libnumo.a', '$(archdir)']
 end
 
 srcs = %w(
+numo
 narray/narray
 narray/array
 narray/step
@@ -89,7 +90,7 @@ have_var("rb_cComplex")
 
 $objs = srcs.collect{|i| i+".o"}
 
-create_header('numo/extconf.h')
+create_header('include/numo/extconf.h')
 
 depend_path = File.join(__dir__, "depend")
 File.open(depend_path, "w") do |depend|
