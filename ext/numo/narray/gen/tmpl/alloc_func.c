@@ -30,7 +30,7 @@ static void
 
     if (na->ptr != NULL) {
         cudaError_t status = cudaFree((void*)na->ptr);
-        cumo_cuda_runtime_check_status(status);
+        numo_cuda_runtime_check_status(status);
         na->ptr = NULL;
     }
     if (na->base.size > 0) {

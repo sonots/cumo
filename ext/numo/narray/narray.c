@@ -72,6 +72,8 @@ void Init_nary_math();
 void Init_nary_rand();
 void Init_nary_array();
 void Init_nary_struct();
+void Init_numo_cuda_runtime();
+void Init_numo_cuda_nvrtc();
 
 const rb_data_type_t na_data_type = {
     "Numo::NArray",
@@ -1979,4 +1981,7 @@ Init_narray()
     Init_nary_rand();
     Init_nary_array();
     Init_nary_struct();
+
+    Init_numo_cuda_runtime();
+    Init_numo_cuda_nvrtc();
 }

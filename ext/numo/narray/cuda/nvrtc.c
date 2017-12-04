@@ -2,16 +2,16 @@
 #include <assert.h>
 #include "numo/cuda/nvrtc.h"
 
-VALUE cumo_cuda_eNVRTCError;
-VALUE cumo_cuda_mNVRTC;
-#define eNVRTCError cumo_cuda_eNVRTCError
-#define mNVRTC cumo_cuda_mNVRTC
+VALUE numo_cuda_eNVRTCError;
+VALUE numo_cuda_mNVRTC;
+#define eNVRTCError numo_cuda_eNVRTCError
+#define mNVRTC numo_cuda_mNVRTC
 
 static void
 check_status(nvrtcResult status)
 {
     if (status != 0) {
-        rb_raise(cumo_cuda_eNVRTCError, "NVRTC error: %d %s", status, nvrtcGetErrorString(status));
+        rb_raise(numo_cuda_eNVRTCError, "NVRTC error: %d %s", status, nvrtcGetErrorString(status));
     }
 }
 
@@ -69,10 +69,10 @@ compile_program(VALUE self, VALUE prog, VALUE options)
 }
 
 void
-Init_numo_cumo_narray_cuda_nvrtc()
+Init_numo_cuda_nvrtc()
 {
-    VALUE mCumo = rb_define_module("Cumo");
-    VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
+    VALUE mNumo = rb_define_module("Numo");
+    VALUE mCUDA = rb_define_module_under(mNumo, "CUDA");
     mNVRTC = rb_define_module_under(mCUDA, "NVRTC");
     eNVRTCError = rb_define_class_under(mCUDA, "NVRTCError", rb_eStandardError);
 

@@ -1,5 +1,5 @@
-#ifndef CUMO_CUDA_NVRTC_H
-#define CUMO_CUDA_NVRTC_H
+#ifndef NUMO_CUDA_NVRTC_H
+#define NUMO_CUDA_NVRTC_H
 #include "numo/narray.h"
 #include <nvrtc.h>
 
@@ -10,7 +10,7 @@ extern "C" {
 #endif
 #endif
 
-extern VALUE cumo_cuda_eNVRTCError;
-extern VALUE cumo_cuda_mNVRTC;
+extern VALUE numo_cuda_eNVRTCError;
+extern VALUE numo_cuda_mNVRTC;
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef CUMO_CUDA_RUNTIME_H
-#define CUMO_CUDA_RUNTIME_H
+#ifndef NUMO_CUDA_RUNTIME_H
+#define NUMO_CUDA_RUNTIME_H
 #include "numo/narray.h"
 #include <cuda_runtime.h>
 
@@ -10,8 +10,8 @@ extern "C" {
 #endif
 #endif
 
-extern VALUE cumo_cuda_runtime_eCUDARuntimeError;
+extern VALUE numo_cuda_runtime_eCUDARuntimeError;
 
-void cumo_cuda_runtime_check_status(cudaError_t status);
+void numo_cuda_runtime_check_status(cudaError_t status);
 
 #endif
