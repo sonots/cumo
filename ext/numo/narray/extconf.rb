@@ -46,6 +46,7 @@ SFMT
 struct
 rand
 cuda/runtime
+cuda/nvrtc
 )
 
 if RUBY_VERSION[0..3] == "2.1."

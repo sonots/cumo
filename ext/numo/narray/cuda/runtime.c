@@ -18,7 +18,7 @@ cumo_cuda_runtime_check_status(cudaError_t status)
 }
 
 void
-Init_cuda_runtime()
+Init_cumo_cuda_runtime()
 {
     cumo_cuda_runtime_eCUDARuntimeError = rb_define_class_under(numo_cNArray, "CUDARuntimeError", rb_eStandardError);
 }
