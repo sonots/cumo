@@ -16,6 +16,16 @@ check_status(nvrtcResult status)
 }
 
 static VALUE
+version(VALUE self)
+{
+    int _major, _minor;
+    int status = nvrtcVersion(&_major, &_minor);
+    VALUE major = INT2NUM(_major);
+    VALUE minor = INT2NUM(_minor);
+    return rb_ary_new3(2, major, minor);
+}
+
+static VALUE
 create_program(
         VALUE self,
         VALUE src,
@@ -49,6 +59,18 @@ create_program(
 }
 
 static VALUE
+destroy_program(VALUE self, VALUE prog)
+{
+    nvrtcResult status;
+    nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
+
+    status = nvrtcDestroyProgram(&_prog);
+
+    check_status(status);
+    return Qnil;
+}
+
+static VALUE
 compile_program(VALUE self, VALUE prog, VALUE options)
 {
     nvrtcResult status;
@@ -68,6 +90,46 @@ compile_program(VALUE self, VALUE prog, VALUE options)
     return Qnil;
 }
 
+static VALUE
+get_ptx(VALUE self, VALUE prog)
+{
+    nvrtcResult status;
+    nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
+    size_t _ptxSizeRet;
+    char *_ptx;
+    VALUE ptx;
+
+    status = nvrtcGetPTXSize(_prog, &_ptxSizeRet);
+    check_status(status);
+
+    ptx = rb_str_new(NULL, _ptxSizeRet);
+    _ptx = RSTRING_PTR(ptx);
+    status = nvrtcGetPTX(_prog, _ptx);
+    check_status(status);
+
+    return ptx;
+}
+
+static VALUE
+get_program_log(VALUE self, VALUE prog)
+{
+    nvrtcResult status;
+    nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
+    size_t _logSizeRet;
+    char *_log;
+    VALUE log;
+
+    status = nvrtcGetProgramLogSize(_prog, &_logSizeRet);
+    check_status(status);
+
+    log = rb_str_new(NULL, _logSizeRet);
+    _log = RSTRING_PTR(log);
+    status = nvrtcGetProgramLog(_prog, _log);
+    check_status(status);
+
+    return log;
+}
+
 void
 Init_numo_cuda_nvrtc()
 {
@@ -76,9 +138,10 @@ Init_numo_cuda_nvrtc()
     mNVRTC = rb_define_module_under(mCUDA, "NVRTC");
     eNVRTCError = rb_define_class_under(mCUDA, "NVRTCError", rb_eStandardError);
 
+    rb_define_singleton_method(mNVRTC, "version", version, 0);
     rb_define_singleton_method(mNVRTC, "create_program", create_program, 4);
-    //rb_define_singleton_method(mNVRTC, "destroy_program", destroy_program, -1);
+    rb_define_singleton_method(mNVRTC, "destroy_program", destroy_program, 1);
     rb_define_singleton_method(mNVRTC, "compile_program", compile_program, 2);
-    //rb_define_singleton_method(mNVRTC, "get_ptx", get_ptx, -1);
-    //rb_define_singleton_method(mNVRTC, "get_program_log", get_program_log, -1);
+    rb_define_singleton_method(mNVRTC, "get_ptx", get_ptx, 1);
+    rb_define_singleton_method(mNVRTC, "get_program_log", get_program_log, 1);
 }
