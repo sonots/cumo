@@ -12,39 +12,39 @@ rm_f 'numo/extconf.h'
 #$CFLAGS="-g3 -O0 -Wall"
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
-$INCFLAGS = "-Itypes #$INCFLAGS"
+$INCFLAGS = "-Inarray -Inarray/types #$INCFLAGS"
 
-$INSTALLFILES = Dir.glob(%w[numo/*.h numo/types/*.h cuda/*.h]).map{|x| [x,'$(archdir)'] }
-$INSTALLFILES << ['numo/extconf.h','$(archdir)']
+$INSTALLFILES = Dir.glob(%w[narray/numo/*.h narray/numo/types/*.h cuda/*.h]).map{|x| [x,'$(archdir)'] }
+$INSTALLFILES << ['narray/numo/extconf.h','$(archdir)']
 if /cygwin|mingw/ =~ RUBY_PLATFORM
-  $INSTALLFILES << ['libnarray.a', '$(archdir)']
+  $INSTALLFILES << ['libnumo.a', '$(archdir)']
 end
 
 srcs = %w(
-narray
-array
-step
-index
-ndloop
-data
-types/bit
-types/int8
-types/int16
-types/int32
-types/int64
-types/uint8
-types/uint16
-types/uint32
-types/uint64
-types/sfloat
-types/dfloat
-types/scomplex
-types/dcomplex
-types/robject
-math
-SFMT
-struct
-rand
+narray/narray
+narray/array
+narray/step
+narray/index
+narray/ndloop
+narray/data
+narray/types/bit
+narray/types/int8
+narray/types/int16
+narray/types/int32
+narray/types/int64
+narray/types/uint8
+narray/types/uint16
+narray/types/uint32
+narray/types/uint64
+narray/types/sfloat
+narray/types/dfloat
+narray/types/scomplex
+narray/types/dcomplex
+narray/types/robject
+narray/math
+narray/SFMT
+narray/struct
+narray/rand
 cuda/runtime
 cuda/nvrtc
 )
@@ -103,7 +103,7 @@ end
 
 HEADER_DIRS = (ENV['CPATH'] || '').split(':')
 LIB_DIRS = (ENV['LIBRARY_PATH'] || '').split(':')
-dir_config('numo/narray', HEADER_DIRS, LIB_DIRS)
+dir_config('numo', HEADER_DIRS, LIB_DIRS)
 
 have_library('cuda')
 have_library('cudart')
@@ -112,4 +112,4 @@ have_library('nvrtc')
 # have_library('cusolver')
 # have_library('curand')
 
-create_makefile('numo/narray')
+create_makefile('numo')
