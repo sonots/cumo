@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include <ruby/thread.h>
 #include <assert.h>
 #include "numo/cuda/nvrtc.h"
 
@@ -23,6 +24,24 @@ version(VALUE self)
     VALUE major = INT2NUM(_major);
     VALUE minor = INT2NUM(_minor);
     return rb_ary_new3(2, major, minor);
+}
+
+struct create_program_args {
+    nvrtcProgram *prog;
+    const char* src;
+    const char *name;
+    int num_headers;
+    const char** headers;
+    const char** include_names;
+};
+
+static void*
+create_program_without_gvl(void *ptr)
+{
+    struct create_program_args *a = ptr;
+    nvrtcResult status;
+    status = nvrtcCreateProgram(a->prog, a->src, a->name, a->num_headers, a->headers, a->include_names);
+    return (void *)status;
 }
 
 static VALUE
@@ -50,12 +69,26 @@ create_program(
         ary_include_names[i] = StringValueCStr(include_name);
     }
 
-    status = nvrtcCreateProgram(&_prog, _src, _name, num_headers, ary_headers, ary_include_names);
+    struct create_program_args args = {&_prog, _src, _name, num_headers, ary_headers, ary_include_names};
+    status = (nvrtcResult)rb_thread_call_without_gvl(create_program_without_gvl, &args, NULL, NULL);
 
     free(ary_headers);
     free(ary_include_names);
     check_status(status);
     return SIZET2NUM((size_t)_prog);
+}
+
+struct destroy_program_args {
+    nvrtcProgram *prog;
+};
+
+static void*
+destroy_program_without_gvl(void *ptr)
+{
+    struct destroy_program_args *a = ptr;
+    nvrtcResult status;
+    status = nvrtcDestroyProgram(a->prog);
+    return (void *)status;
 }
 
 static VALUE
@@ -64,10 +97,26 @@ destroy_program(VALUE self, VALUE prog)
     nvrtcResult status;
     nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
 
-    status = nvrtcDestroyProgram(&_prog);
+    struct destroy_program_args args = {&_prog};
+    status = (nvrtcResult)rb_thread_call_without_gvl(destroy_program_without_gvl, &args, NULL, NULL);
 
     check_status(status);
     return Qnil;
+}
+
+struct compile_program_args {
+    nvrtcProgram prog;
+    int num_options;
+    const char** options;
+};
+
+static void*
+compile_program_without_gvl(void *ptr)
+{
+    struct compile_program_args *a = ptr;
+    nvrtcResult status;
+    status = nvrtcCompileProgram(a->prog, a->num_options, a->options);
+    return (void *)status;
 }
 
 static VALUE
@@ -83,7 +132,8 @@ compile_program(VALUE self, VALUE prog, VALUE options)
         ary_options[i] = StringValueCStr(option);
     }
 
-    status = nvrtcCompileProgram(_prog, num_options, ary_options);
+    struct compile_program_args args = {_prog, num_options, ary_options};
+    status = (nvrtcResult)rb_thread_call_without_gvl(compile_program_without_gvl, &args, NULL, NULL);
 
     free(ary_options);
     check_status(status);

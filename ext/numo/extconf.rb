@@ -87,6 +87,7 @@ end
 have_func("exp10")
 
 have_var("rb_cComplex")
+have_func("rb_thread_call_without_gvl")
 
 $objs = srcs.collect{|i| i+".o"}
 
