@@ -1,6 +1,7 @@
 require 'tmpdir'
 require 'tempfile'
 require 'fileutils'
+require 'digest/md5'
 require_relative '../cuda'
 require_relative 'compile_error'
 require_relative 'nvrtc_program'
@@ -8,7 +9,7 @@ require_relative 'nvrtc_program'
 module Numo::CUDA
   class Compiler
     VALID_KERNEL_NAME = /^[a-zA-Z_][a-zA-Z_0-9]*$/
-    DEFAULT_CACHE_DIR = File.expand_path('~/.cupy/kernel_cache')
+    DEFAULT_CACHE_DIR = File.expand_path('~/.cumo/kernel_cache')
   
     @@empty_file_preprocess_cache ||= {}
     
@@ -59,13 +60,15 @@ module Numo::CUDA
       end
       key_src = "#{env} #{base} #{source} #{extra_source}"
     
-      key_src = key_src.encode('utf-8')
-      # name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
+      key_src.encode!('utf-8')
+      digest = Digest::MD5.hexdigest(key_src)
+      name = "#{digest}_2.cubin"
     
       unless Dir.exist?(cache_dir)
         FileUtils.mkdir_p(cache_dir)
       end
-    
+   
+      # @todo
       # mod = function.Module()
       # To handle conflicts in concurrent situation, we adopt lock-free method
       # to avoid performance degradation.
@@ -76,20 +79,22 @@ module Numo::CUDA
           if data.size >= 32
             hash = data[0...32]
             cubin = data[32..-1]
-            # cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
+            cubin_hash = Digest::MD5.hexdigest(cubin)
             if hash == cubin_hash
+              # @todo
               # mod.load(cubin)
-              return mod
+              # return mod
             end
           end
         end
       end
     
       ptx = compile_using_nvrtc(source, options, arch)
+      # @todo
       # ls = function.LinkState()
       # ls.add_ptr_data(ptx, six.u('cupy.ptx'))
       # cubin = ls.complete()
-      # cubin_hash = six.b(hashlib.md5(cubin).hexdigest())
+      # cubin_hash = Digest::MD5.hexdigest(cubin)
     
       tf = Tempfile.create
       tf.write(cubin_hash)
