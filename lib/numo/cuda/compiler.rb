@@ -3,12 +3,10 @@ require 'tempfile'
 require 'fileutils'
 require 'digest/md5'
 require_relative '../cuda'
-require_relative 'compile_error'
-require_relative 'nvrtc_program'
 
 module Numo::CUDA
   class Compiler
-    VALID_KERNEL_NAME = /^[a-zA-Z_][a-zA-Z_0-9]*$/
+    VALID_KERNEL_NAME = /\A[a-zA-Z_][a-zA-Z_0-9]*\z/
     DEFAULT_CACHE_DIR = File.expand_path('~/.cumo/kernel_cache')
   
     @@empty_file_preprocess_cache ||= {}
@@ -29,9 +27,9 @@ module Numo::CUDA
           cu_file.write(source)
         end
    
-        prog = NVRTCProgram.new(source, cu_path)
+        prog = NVRTCProgram.new(source, name: cu_path)
         begin
-          ptx = prog.compile(options)
+          ptx = prog.compile(options: options)
         rescue CompileError => e
           if get_bool_env_variable('CUMO_DUMP_CUDA_SOURCE_ON_ERROR', false)
             e.dump($stderr)
@@ -50,6 +48,8 @@ module Numo::CUDA
       arch ||= get_arch()
     
       options += ['-ftz=true']
+
+      Driver.cuCtxGetCurrent
     
       env = [arch, options, get_nvrtc_version]
       base = @@empty_file_preprocess_cache[env]
@@ -69,24 +69,15 @@ module Numo::CUDA
       end
    
       # TODO(sonots): thread-safe?
-      mod = Module.new
       path = File.join(cache_dir, name)
-      if File.exist?(path)
-        File.open(path, 'rb') do |file|
-          data = file.read
-          if data.size >= 32
-            hash = data[0...32]
-            cubin = data[32..-1]
-            cubin_hash = Digest::MD5.hexdigest(cubin)
-            if hash == cubin_hash
-              mod.load(cubin)
-              return mod
-            end
-          end
-        end
+      cubin = load_cache(path)
+      if cubin
+        mod = Module.new
+        mod.load(cubin)
+        return mod
       end
     
-      ptx = compile_using_nvrtc(source, options, arch)
+      ptx = compile_using_nvrtc(source, options: options, arch: arch)
       cubin = nil
       cubin_hash = nil
       LinkState.new do |ls|
@@ -94,12 +85,8 @@ module Numo::CUDA
         cubin = ls.complete()
         cubin_hash = Digest::MD5.hexdigest(cubin)
       end
-    
-      tf = Tempfile.create
-      tf.write(cubin_hash)
-      tf.write(cubin)
-      temp_path = tf.name
-      File.mv(temp_path, path)
+
+      save_cache(path, cubin_hash, cubin)
     
       # Save .cu source file along with .cubin
       if get_bool_env_variable('CUMO_CACHE_SAVE_CUDA_SOURCE', false)
@@ -107,12 +94,35 @@ module Numo::CUDA
           f.write(source)
         end
       end
-    
+
+      mod = Module.new
       mod.load(cubin)
       return mod
     end
   
     private
+
+    def save_cache(path, cubin_hash, cubin)
+      tf = Tempfile.create
+      tf.write(cubin_hash)
+      tf.write(cubin)
+      temp_path = tf.path
+      File.rename(temp_path, path)
+    end
+
+    def load_cache(path)
+      return nil unless File.exist?(path)
+      File.open(path, 'rb') do |file|
+        data = file.read
+        return nil unless data.size >= 32
+        hash = data[0...32]
+        cubin = data[32..-1]
+        cubin_hash = Digest::MD5.hexdigest(cubin)
+        return nil unless hash == cubin_hash
+        return cubin
+      end
+      nil
+    end
   
     def get_cache_dir
       ENV.fetch('CUMO_CACHE_DIR', DEFAULT_CACHE_DIR)
@@ -135,12 +145,12 @@ module Numo::CUDA
       Integer(val) == 1 rescue false
     end
   
-    def preprocess(source, options, arch):
+    def preprocess(source, options, arch)
       options += ["-arch=#{arch}"]
     
-      prog = NVRTCProgram.new(source, '')
+      prog = NVRTCProgram.new(source, name: '')
       begin
-        result = prog.compile(options)
+        result = prog.compile(options: options)
         return result
       rescue CompileError => e
         if get_bool_env_variable('CUMO_DUMP_CUDA_SOURCE_ON_ERROR', false)

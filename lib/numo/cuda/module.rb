@@ -24,7 +24,7 @@ module Numo::CUDA
     end
 
     def load(cubin)
-      @ptr = Driver.cuModuleDataLoad(cubin)
+      @ptr = Driver.cuModuleLoadData(cubin)
     end
 
     def get_global_var(name)

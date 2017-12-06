@@ -14,9 +14,9 @@ check_status(CUresult status)
     if (status != 0) {
         const char *errname = NULL;
         const char *errstring = NULL;
-        cuGetErrorString(status, &errname);
+        cuGetErrorName(status, &errname);
         cuGetErrorString(status, &errstring);
-        rb_raise(numo_cuda_eDriverError, "%s %s", errname, errstring);
+        rb_raise(numo_cuda_eDriverError, "%s %s (error=%d)", errname, errstring, status);
     }
 }
 
@@ -71,8 +71,11 @@ rb_cuLinkAddData(VALUE self, VALUE state, VALUE type, VALUE data, VALUE name)
     const char* _name = RSTRING_PTR(data);
     CUresult status;
 
-    struct cuLinkAddDataParam param = {_state, _type, _data, _size, _name, 0, (CUjit_option*)0, (void**)0};
-    status = (CUresult)rb_thread_call_without_gvl(cuLinkAddData_without_gvl_cb, &param, NULL, NULL);
+    // TODO(sonots): How to run without GVL?
+    // rb_thread_call_without_gvl will run codes in another native thread, which requires new CUDA context :sigh:
+    //struct cuLinkAddDataParam param = {_state, _type, _data, _size, _name, 0, (CUjit_option*)0, (void**)0};
+    //status = (CUresult)rb_thread_call_without_gvl(cuLinkAddData_without_gvl_cb, &param, NULL, NULL);
+    status = cuLinkAddData(_state, _type, _data, _size, _name, 0, (CUjit_option*)0, (void**)0);
 
     check_status(status);
     return Qnil;
@@ -105,8 +108,9 @@ rb_cuLinkAddFile(VALUE self, VALUE state, VALUE type, VALUE path)
     const char* _path = RSTRING_PTR(path);
     CUresult status;
 
-    struct cuLinkAddFileParam param = {_state, _type, _path, 0, (CUjit_option*)0, (void **)0};
-    status = (CUresult)rb_thread_call_without_gvl(cuLinkAddFile_without_gvl_cb, &param, NULL, NULL);
+    //struct cuLinkAddFileParam param = {_state, _type, _path, 0, (CUjit_option*)0, (void **)0};
+    //status = (CUresult)rb_thread_call_without_gvl(cuLinkAddFile_without_gvl_cb, &param, NULL, NULL);
+    status = cuLinkAddFile(_state, _type, _path, 0, (CUjit_option*)0, (void **)0);
 
     check_status(status);
     return Qnil;
@@ -135,8 +139,9 @@ rb_cuLinkComplete(VALUE self, VALUE state)
     size_t _sizeOut;
     CUresult status;
 
-    struct cuLinkCompleteParam param = {_state, &_cubinOut, &_sizeOut};
-    status = (CUresult)rb_thread_call_without_gvl(cuLinkComplete_without_gvl_cb, &param, NULL, NULL);
+    //struct cuLinkCompleteParam param = {_state, &_cubinOut, &_sizeOut};
+    //status = (CUresult)rb_thread_call_without_gvl(cuLinkComplete_without_gvl_cb, &param, NULL, NULL);
+    status = cuLinkComplete(_state, &_cubinOut, &_sizeOut);
 
     check_status(status);
     return rb_str_new((char *)_cubinOut, _sizeOut);
@@ -165,8 +170,9 @@ rb_cuLinkCreate(VALUE self)
     CUlinkState state;
     CUresult status;
 
-    struct cuLinkCreateParam param = {0, (CUjit_option*)0, (void**)0, &state};
-    status = (CUresult)rb_thread_call_without_gvl(cuLinkCreate_without_gvl_cb, &param, NULL, NULL);
+    //struct cuLinkCreateParam param = {0, (CUjit_option*)0, (void**)0, &state};
+    //status = (CUresult)rb_thread_call_without_gvl(cuLinkCreate_without_gvl_cb, &param, NULL, NULL);
+    status = cuLinkCreate(0, (CUjit_option*)0, (void**)0, &state);
 
     check_status(status);
     return SIZET2NUM((size_t)state);
@@ -191,8 +197,9 @@ rb_cuLinkDestroy(VALUE self, VALUE state)
     CUlinkState _state = (CUlinkState)NUM2SIZET(state);
     CUresult status;
 
-    struct cuLinkDestroyParam param = {_state};
-    status = (CUresult)rb_thread_call_without_gvl(cuLinkDestroy_without_gvl_cb, &param, NULL, NULL);
+    //struct cuLinkDestroyParam param = {_state};
+    //status = (CUresult)rb_thread_call_without_gvl(cuLinkDestroy_without_gvl_cb, &param, NULL, NULL);
+    status = cuLinkDestroy(_state);
 
     check_status(status);
     return Qnil;
@@ -221,8 +228,9 @@ rb_cuModuleGetFunction(VALUE self, VALUE hmod, VALUE name)
     const char* _name = RSTRING_PTR(name);
     CUresult status;
 
-    struct cuModuleGetFunctionParam param = {&_hfunc, _hmod, _name};
-    status = (CUresult)rb_thread_call_without_gvl(cuModuleGetFunction_without_gvl_cb, &param, NULL, NULL);
+    //struct cuModuleGetFunctionParam param = {&_hfunc, _hmod, _name};
+    //status = (CUresult)rb_thread_call_without_gvl(cuModuleGetFunction_without_gvl_cb, &param, NULL, NULL);
+    status = cuModuleGetFunction(&_hfunc, _hmod, _name);
 
     check_status(status);
     return SIZET2NUM((size_t)_hfunc);
@@ -253,8 +261,9 @@ rb_cuModuleGetGlobal(VALUE self, VALUE hmod, VALUE name)
     const char* _name = RSTRING_PTR(name);
     CUresult status;
 
-    struct cuModuleGetGlobalParam param = {&_dptr, &_bytes, _hmod, _name};
-    status = (CUresult)rb_thread_call_without_gvl(cuModuleGetGlobal_without_gvl_cb, &param, NULL, NULL);
+    //struct cuModuleGetGlobalParam param = {&_dptr, &_bytes, _hmod, _name};
+    //status = (CUresult)rb_thread_call_without_gvl(cuModuleGetGlobal_without_gvl_cb, &param, NULL, NULL);
+    status = cuModuleGetGlobal(&_dptr, &_bytes, _hmod, _name);
 
     check_status(status);
     return rb_str_new((char *)_dptr, _bytes);
@@ -281,8 +290,9 @@ rb_cuModuleLoad(VALUE self, VALUE fname)
     const char* _fname = RSTRING_PTR(fname);
     CUresult status;
 
-    struct cuModuleLoadParam param = {&_module, _fname};
-    status = (CUresult)rb_thread_call_without_gvl(cuModuleLoad_without_gvl_cb, &param, NULL, NULL);
+    //struct cuModuleLoadParam param = {&_module, _fname};
+    //status = (CUresult)rb_thread_call_without_gvl(cuModuleLoad_without_gvl_cb, &param, NULL, NULL);
+    status = cuModuleLoad(&_module, _fname);
 
     check_status(status);
     return SIZET2NUM((size_t)_module);
@@ -306,11 +316,12 @@ static VALUE
 rb_cuModuleLoadData(VALUE self, VALUE image)
 {
     CUmodule _module;
-    const void* _image = (void*)NUM2SIZET(image);
+    const void* _image = (void*)RSTRING_PTR(image);
     CUresult status;
 
-    struct cuModuleLoadDataParam param = {&_module, _image};
-    status = (CUresult)rb_thread_call_without_gvl(cuModuleLoadData_without_gvl_cb, &param, NULL, NULL);
+    //struct cuModuleLoadDataParam param = {&_module, _image};
+    //status = (CUresult)rb_thread_call_without_gvl(cuModuleLoadData_without_gvl_cb, &param, NULL, NULL);
+    status = cuModuleLoadData(&_module, _image);
 
     check_status(status);
     return SIZET2NUM((size_t)_module);
@@ -335,8 +346,9 @@ rb_cuModuleUnload(VALUE self, VALUE hmod)
     CUmodule _hmod = (CUmodule)NUM2SIZET(hmod);
     CUresult status;
 
-    struct cuModuleUnloadParam param = {_hmod};
-    status = (CUresult)rb_thread_call_without_gvl(cuModuleUnload_without_gvl_cb, &param, NULL, NULL);
+    //struct cuModuleUnloadParam param = {_hmod};
+    //status = (CUresult)rb_thread_call_without_gvl(cuModuleUnload_without_gvl_cb, &param, NULL, NULL);
+    status = cuModuleUnload(_hmod);
 
     check_status(status);
     return Qnil;

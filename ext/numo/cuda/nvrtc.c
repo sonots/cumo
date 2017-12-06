@@ -13,7 +13,7 @@ static void
 check_status(nvrtcResult status)
 {
     if (status != 0) {
-        rb_raise(numo_cuda_eNVRTCError, "%s", nvrtcGetErrorString(status));
+        rb_raise(numo_cuda_eNVRTCError, "%s (error=%d)", nvrtcGetErrorString(status), status);
     }
 }
 

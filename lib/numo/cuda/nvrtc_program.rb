@@ -11,7 +11,7 @@ module Numo::CUDA
     end
 
     def destroy
-      NVRTC.destroyProgram(@ptr) if @ptr
+      NVRTC.destroy_program(@ptr) if @ptr
     end
 
     def compile(options: [])
@@ -19,8 +19,8 @@ module Numo::CUDA
         NVRTC.compile_program(@ptr, options)
         return NVRTC.get_ptx(@ptr)
       rescue NVRTCError => e
-        log = NVRTC.get_program_log(self.ptr)
-        raise CompileError.new(log, self.src, self.name, options)
+        log = NVRTC.get_program_log(@ptr)
+        raise CompileError.new(log, @src, @name, options)
       end
     end
   end
