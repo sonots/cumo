@@ -1,6 +1,7 @@
 require_relative '../cuda'
 
 module Numo::CUDA
+  # CUDA link state.
   class LinkState
     def initialize
       @ptr = Driver.cuLinkCreate

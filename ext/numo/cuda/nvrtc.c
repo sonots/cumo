@@ -58,8 +58,8 @@ create_program(
     const char* _src = StringValueCStr(src);
     const char* _name = StringValueCStr(name);
     int num_headers = RARRAY_LEN(headers);
-    const char** ary_headers = (const char **)malloc(num_headers);
-    const char** ary_include_names = (const char **)malloc(num_headers);
+    const char** ary_headers = (const char **)malloc(num_headers * sizeof(char *));
+    const char** ary_include_names = (const char **)malloc(num_headers * sizeof(char *));
     int i;
     for (i = 0; i < num_headers; i++) {
         VALUE header = RARRAY_PTR(headers)[i];
@@ -126,7 +126,7 @@ compile_program(VALUE self, VALUE prog, VALUE options)
     nvrtcResult status;
     nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
     int num_options = RARRAY_LEN(options);
-    const char** ary_options = (const char **)malloc(num_options);
+    const char** ary_options = (const char **)malloc(num_options * sizeof(char *));
     int i;
     for (i = 0; i < num_options; i++) {
         VALUE option = RARRAY_PTR(options)[i];

@@ -1,6 +1,7 @@
 require_relative '../cuda'
 
 module Numo::CUDA
+  # CUDA kernel module.
   class Module
     def initialize
       @ptr = nil
