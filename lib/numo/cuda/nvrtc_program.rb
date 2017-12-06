@@ -7,19 +7,19 @@ module Numo::CUDA
       @ptr = nil
       @src = src # should be UTF-8
       @name = name # should be UTF-8
-      @ptr = NVRTC.create_program(src, name, headers, include_names)
+      @ptr = NVRTC.nvrtcCreateProgram(src, name, headers, include_names)
     end
 
     def destroy
-      NVRTC.destroy_program(@ptr) if @ptr
+      NVRTC.nvrtcDestroyProgram(@ptr) if @ptr
     end
 
     def compile(options: [])
       begin
-        NVRTC.compile_program(@ptr, options)
-        return NVRTC.get_ptx(@ptr)
+        NVRTC.nvrtcCompileProgram(@ptr, options)
+        return NVRTC.nvrtcGetPTX(@ptr)
       rescue NVRTCError => e
-        log = NVRTC.get_program_log(@ptr)
+        log = NVRTC.nvrtcGetProgramLog(@ptr)
         raise CompileError.new(log, @src, @name, options)
       end
     end

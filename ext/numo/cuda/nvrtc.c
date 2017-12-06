@@ -18,131 +18,135 @@ check_status(nvrtcResult status)
 }
 
 static VALUE
-version(VALUE self)
+rb_nvrtcVersion(VALUE self)
 {
     int _major, _minor;
-    int status = nvrtcVersion(&_major, &_minor);
+    nvrtcResult status;
+
+    status = nvrtcVersion(&_major, &_minor);
+
+    check_status(status);
     VALUE major = INT2NUM(_major);
     VALUE minor = INT2NUM(_minor);
     return rb_ary_new3(2, major, minor);
 }
 
-struct create_program_args {
+struct nvrtcCreateProgramParam {
     nvrtcProgram *prog;
     const char* src;
     const char *name;
-    int num_headers;
+    int numHeaders;
     const char** headers;
-    const char** include_names;
+    const char** includeNames;
 };
 
 static void*
-create_program_without_gvl(void *ptr)
+nvrtcCreateProgram_without_gvl_cb(void *param)
 {
-    struct create_program_args *a = ptr;
+    struct nvrtcCreateProgramParam *p = param;
     nvrtcResult status;
-    status = nvrtcCreateProgram(a->prog, a->src, a->name, a->num_headers, a->headers, a->include_names);
+    status = nvrtcCreateProgram(p->prog, p->src, p->name, p->numHeaders, p->headers, p->includeNames);
     return (void *)status;
 }
 
 static VALUE
-create_program(
+rb_nvrtcCreateProgram(
         VALUE self,
         VALUE src,
         VALUE name,
         VALUE headers,
-        VALUE include_names)
+        VALUE includeNames)
 {
     nvrtcResult status;
     nvrtcProgram _prog;
     const char* _src = StringValueCStr(src);
     const char* _name = StringValueCStr(name);
-    int num_headers = RARRAY_LEN(headers);
-    const char** ary_headers = (const char **)malloc(num_headers * sizeof(char *));
-    const char** ary_include_names = (const char **)malloc(num_headers * sizeof(char *));
+    int _numHeaders = RARRAY_LEN(headers);
+    const char** _headers = (const char **)malloc(_numHeaders * sizeof(char *));
+    const char** _includeNames = (const char **)malloc(_numHeaders * sizeof(char *));
     int i;
-    for (i = 0; i < num_headers; i++) {
+    for (i = 0; i < _numHeaders; i++) {
         VALUE header = RARRAY_PTR(headers)[i];
-        ary_headers[i] = StringValueCStr(header);
+        _headers[i] = StringValueCStr(header);
     }
-    for (i = 0; i < num_headers; i++) {
-        VALUE include_name = RARRAY_PTR(include_names)[i];
-        ary_include_names[i] = StringValueCStr(include_name);
+    for (i = 0; i < _numHeaders; i++) {
+        VALUE include_name = RARRAY_PTR(includeNames)[i];
+        _includeNames[i] = StringValueCStr(include_name);
     }
 
-    struct create_program_args args = {&_prog, _src, _name, num_headers, ary_headers, ary_include_names};
-    status = (nvrtcResult)rb_thread_call_without_gvl(create_program_without_gvl, &args, NULL, NULL);
+    struct nvrtcCreateProgramParam param = {&_prog, _src, _name, _numHeaders, _headers, _includeNames};
+    status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcCreateProgram_without_gvl_cb, &param, NULL, NULL);
 
-    free(ary_headers);
-    free(ary_include_names);
+    free(_headers);
+    free(_includeNames);
     check_status(status);
     return SIZET2NUM((size_t)_prog);
 }
 
-struct destroy_program_args {
+struct nvrtcDestroyProgramParam {
     nvrtcProgram *prog;
 };
 
 static void*
-destroy_program_without_gvl(void *ptr)
+nvrtcDestroyProgram_without_gvl_cb(void *param)
 {
-    struct destroy_program_args *a = ptr;
+    struct nvrtcDestroyProgramParam *p = param;
     nvrtcResult status;
-    status = nvrtcDestroyProgram(a->prog);
+    status = nvrtcDestroyProgram(p->prog);
     return (void *)status;
 }
 
 static VALUE
-destroy_program(VALUE self, VALUE prog)
+rb_nvrtcDestroyProgram(VALUE self, VALUE prog)
 {
     nvrtcResult status;
     nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
 
-    struct destroy_program_args args = {&_prog};
-    status = (nvrtcResult)rb_thread_call_without_gvl(destroy_program_without_gvl, &args, NULL, NULL);
+    struct nvrtcDestroyProgramParam param = {&_prog};
+    status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcDestroyProgram_without_gvl_cb, &param, NULL, NULL);
 
     check_status(status);
     return Qnil;
 }
 
-struct compile_program_args {
+struct nvrtcCompileProgramParam {
     nvrtcProgram prog;
-    int num_options;
+    int numOptions;
     const char** options;
 };
 
 static void*
-compile_program_without_gvl(void *ptr)
+nvrtcCompileProgram_without_gvl_cb(void *param)
 {
-    struct compile_program_args *a = ptr;
+    struct nvrtcCompileProgramParam *p = param;
     nvrtcResult status;
-    status = nvrtcCompileProgram(a->prog, a->num_options, a->options);
+    status = nvrtcCompileProgram(p->prog, p->numOptions, p->options);
     return (void *)status;
 }
 
 static VALUE
-compile_program(VALUE self, VALUE prog, VALUE options)
+rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
 {
     nvrtcResult status;
     nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
-    int num_options = RARRAY_LEN(options);
-    const char** ary_options = (const char **)malloc(num_options * sizeof(char *));
+    int _numOptions = RARRAY_LEN(options);
+    const char** _options = (const char **)malloc(_numOptions * sizeof(char *));
     int i;
-    for (i = 0; i < num_options; i++) {
+    for (i = 0; i < _numOptions; i++) {
         VALUE option = RARRAY_PTR(options)[i];
-        ary_options[i] = StringValueCStr(option);
+        _options[i] = StringValueCStr(option);
     }
 
-    struct compile_program_args args = {_prog, num_options, ary_options};
-    status = (nvrtcResult)rb_thread_call_without_gvl(compile_program_without_gvl, &args, NULL, NULL);
+    struct nvrtcCompileProgramParam param = {_prog, _numOptions, _options};
+    status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcCompileProgram_without_gvl_cb, &param, NULL, NULL);
 
-    free(ary_options);
+    free(_options);
     check_status(status);
     return Qnil;
 }
 
 static VALUE
-get_ptx(VALUE self, VALUE prog)
+rb_nvrtcGetPTX(VALUE self, VALUE prog)
 {
     nvrtcResult status;
     nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
@@ -162,7 +166,7 @@ get_ptx(VALUE self, VALUE prog)
 }
 
 static VALUE
-get_program_log(VALUE self, VALUE prog)
+rb_nvrtcGetProgramLog(VALUE self, VALUE prog)
 {
     nvrtcResult status;
     nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
@@ -189,10 +193,10 @@ Init_numo_cuda_nvrtc()
     mNVRTC = rb_define_module_under(mCUDA, "NVRTC");
     eNVRTCError = rb_define_class_under(mCUDA, "NVRTCError", rb_eStandardError);
 
-    rb_define_singleton_method(mNVRTC, "version", version, 0);
-    rb_define_singleton_method(mNVRTC, "create_program", create_program, 4);
-    rb_define_singleton_method(mNVRTC, "destroy_program", destroy_program, 1);
-    rb_define_singleton_method(mNVRTC, "compile_program", compile_program, 2);
-    rb_define_singleton_method(mNVRTC, "get_ptx", get_ptx, 1);
-    rb_define_singleton_method(mNVRTC, "get_program_log", get_program_log, 1);
+    rb_define_singleton_method(mNVRTC, "nvrtcVersion", rb_nvrtcVersion, 0);
+    rb_define_singleton_method(mNVRTC, "nvrtcCreateProgram", rb_nvrtcCreateProgram, 4);
+    rb_define_singleton_method(mNVRTC, "nvrtcDestroyProgram", rb_nvrtcDestroyProgram, 1);
+    rb_define_singleton_method(mNVRTC, "nvrtcCompileProgram", rb_nvrtcCompileProgram, 2);
+    rb_define_singleton_method(mNVRTC, "nvrtcGetPTX", rb_nvrtcGetPTX, 1);
+    rb_define_singleton_method(mNVRTC, "nvrtcGetProgramLog", rb_nvrtcGetProgramLog, 1);
 }

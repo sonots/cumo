@@ -127,7 +127,7 @@ module Numo::CUDA
     end
   
     def get_nvrtc_version
-      @@nvrtc_version ||= NVRTC.version
+      @@nvrtc_version ||= NVRTC.nvrtcVersion
     end
     
     def get_arch

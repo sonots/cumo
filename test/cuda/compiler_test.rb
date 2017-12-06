@@ -48,7 +48,7 @@ module Numo::CUDA
 
       class << self
         def startup
-          FileUtils.rm_r(CACHE_DIR)
+          FileUtils.rm_rf(CACHE_DIR)
         end
       end
 
