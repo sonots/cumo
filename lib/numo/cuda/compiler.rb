@@ -68,10 +68,8 @@ module Numo::CUDA
         FileUtils.mkdir_p(cache_dir)
       end
    
-      # @todo
-      # mod = function.Module()
-      # To handle conflicts in concurrent situation, we adopt lock-free method
-      # to avoid performance degradation.
+      # TODO(sonots): thread-safe?
+      mod = Module.new
       path = File.join(cache_dir, name)
       if File.exist?(path)
         File.open(path, 'rb') do |file|
@@ -81,20 +79,21 @@ module Numo::CUDA
             cubin = data[32..-1]
             cubin_hash = Digest::MD5.hexdigest(cubin)
             if hash == cubin_hash
-              # @todo
-              # mod.load(cubin)
-              # return mod
+              mod.load(cubin)
+              return mod
             end
           end
         end
       end
     
       ptx = compile_using_nvrtc(source, options, arch)
-      # @todo
-      # ls = function.LinkState()
-      # ls.add_ptr_data(ptx, six.u('cupy.ptx'))
-      # cubin = ls.complete()
-      # cubin_hash = Digest::MD5.hexdigest(cubin)
+      cubin = nil
+      cubin_hash = nil
+      LinkState.new do |ls|
+        ls.add_ptr_data(ptx, 'cumo.ptx')
+        cubin = ls.complete()
+        cubin_hash = Digest::MD5.hexdigest(cubin)
+      end
     
       tf = Tempfile.create
       tf.write(cubin_hash)
@@ -109,7 +108,7 @@ module Numo::CUDA
         end
       end
     
-      # mod.load(cubin)
+      mod.load(cubin)
       return mod
     end
   
@@ -124,7 +123,7 @@ module Numo::CUDA
     end
     
     def get_arch
-      # @todo
+      # TODO
       # cc = device.Device().compute_capability
       # return 'compute_%s' % cc
       'compute_30'
