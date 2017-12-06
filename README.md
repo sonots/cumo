@@ -1,12 +1,16 @@
 # Cumo
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/cumo`. To experiment with that code, run `bin/console` for an interactive prompt.
+Cumo is CUDA-aware numerical library whose interface is highly compatible with [Ruby Numo](https://github.com/ruby-numo).
+This library provides the benefit of speedup using GPU by replacing Numo with only a small piece of codes.
 
-TODO: Delete this and the text above, and describe your gem
+
+## Requirements
+
+* Ruby 2.4 or later
+* NVIDIA GPU Compute Capability 6.0 (Pascal) or later
+* CUDA 9.0 or later
 
 ## Installation
-
-Add this line to your application's Gemfile:
 
 ```ruby
 gem 'cumo'
@@ -20,20 +24,52 @@ Or install it yourself as:
 
     $ gem install cumo
 
-## Usage
+## Quick start
 
-TODO: Write usage instructions here
+An example:
+
+```ruby
+[1] pry(main)> require "cumo/narray"
+=> true
+[2] pry(main)> a = Cumo::DFloat.new(3,5).seq
+=> Cumo::DFloat#shape=[3,5]
+[[0, 1, 2, 3, 4],
+ [5, 6, 7, 8, 9],
+ [10, 11, 12, 13, 14]]
+[3] pry(main)> a.shape
+=> [3, 5]
+[4] pry(main)> a.ndim
+=> 2
+[5] pry(main)> a.class
+=> Cumo::DFloat
+[6] pry(main)> a.size
+=> 15
+```
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+Install ruby dependencies:
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+```
+bundle install --path vendor/bundle
+```
+
+Compile:
+
+```
+bundle exec rake compile
+```
+
+Run tests:
+
+```
+bundle exec rake test
+```
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/cumo.
+Bug reports and pull requests are welcome on GitHub at https://github.com/sonots/cumo.
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
+[LICENSE.txt](./LICENSE.txt)
