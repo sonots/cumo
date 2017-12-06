@@ -14,4 +14,11 @@ extern VALUE numo_cuda_runtime_eCUDARuntimeError;
 
 void numo_cuda_runtime_check_status(cudaError_t status);
 
+#if defined(__cplusplus)
+#if 0
+{ /* satisfy cc-mode */
+#endif
+}  /* extern "C" { */
+#endif
+
 #endif

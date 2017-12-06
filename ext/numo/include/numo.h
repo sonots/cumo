@@ -8,4 +8,11 @@ extern "C" {
 #endif
 #endif
 
+#if defined(__cplusplus)
+#if 0
+{ /* satisfy cc-mode */
+#endif
+}  /* extern "C" { */
+#endif
+
 #endif

@@ -1,6 +1,7 @@
 #include <ruby.h>
 #include <ruby/thread.h>
 #include <assert.h>
+#include <nvrtc.h>
 #include "numo/cuda/nvrtc.h"
 
 VALUE numo_cuda_eNVRTCError;
@@ -12,7 +13,7 @@ static void
 check_status(nvrtcResult status)
 {
     if (status != 0) {
-        rb_raise(numo_cuda_eNVRTCError, "NVRTC error: %d %s", status, nvrtcGetErrorString(status));
+        rb_raise(numo_cuda_eNVRTCError, "%s", nvrtcGetErrorString(status));
     }
 }
 

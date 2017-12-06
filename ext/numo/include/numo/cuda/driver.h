@@ -1,6 +1,6 @@
-#ifndef NUMO_CUDA_NVRTC_H
-#define NUMO_CUDA_NVRTC_H
-#include <nvrtc.h>
+#ifndef NUMO_CUDA_DRIVER_H
+#define NUMO_CUDA_DRIVER_H
+#include <cuda.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -9,8 +9,8 @@ extern "C" {
 #endif
 #endif
 
-extern VALUE numo_cuda_eNVRTCError;
-extern VALUE numo_cuda_mNVRTC;
+extern VALUE numo_cuda_eDriverError;
+extern VALUE numo_cuda_mDriver;
 
 #if defined(__cplusplus)
 #if 0
