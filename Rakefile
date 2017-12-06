@@ -9,7 +9,7 @@ end
 
 # require "rake/extensiontask"
 task :compile do
-  sh 'cd ext/numo && ruby extconf.rb && make'
+  sh 'cd ext/cumo && ruby extconf.rb && make'
 end
 
 task :default => [:clobber, :compile, :test]

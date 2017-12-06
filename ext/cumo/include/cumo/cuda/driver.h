@@ -1,5 +1,5 @@
-#ifndef NUMO_CUDA_DRIVER_H
-#define NUMO_CUDA_DRIVER_H
+#ifndef CUMO_CUDA_DRIVER_H
+#define CUMO_CUDA_DRIVER_H
 #include <cuda.h>
 
 #if defined(__cplusplus)
@@ -9,8 +9,8 @@ extern "C" {
 #endif
 #endif
 
-extern VALUE numo_cuda_eDriverError;
-extern VALUE numo_cuda_mDriver;
+extern VALUE cumo_cuda_eDriverError;
+extern VALUE cumo_cuda_mDriver;
 
 #if defined(__cplusplus)
 #if 0

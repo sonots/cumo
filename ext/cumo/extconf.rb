@@ -3,25 +3,25 @@ require 'mkmf'
 require "erb"
 
 if RUBY_VERSION < "2.0.0"
-  puts "Numo::NArray requires Ruby version 2.0 or later."
+  puts "Cumo::NArray requires Ruby version 2.0 or later."
   exit(1)
 end
 
-rm_f 'include/numo/extconf.h'
+rm_f 'include/cumo/extconf.h'
 
 #$CFLAGS="-g3 -O0 -Wall"
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
 $INCFLAGS = "-Iinclude -Inarray #$INCFLAGS"
 
-$INSTALLFILES = Dir.glob(%w[include/numo/*.h include/numo/types/*.h include/numo/cuda/*.h]).map{|x| [x,'$(archdir)'] }
-$INSTALLFILES << ['include/numo/extconf.h','$(archdir)']
+$INSTALLFILES = Dir.glob(%w[include/cumo/*.h include/cumo/types/*.h include/cumo/cuda/*.h]).map{|x| [x,'$(archdir)'] }
+$INSTALLFILES << ['include/cumo/extconf.h','$(archdir)']
 if /cygwin|mingw/ =~ RUBY_PLATFORM
-  $INSTALLFILES << ['libnumo.a', '$(archdir)']
+  $INSTALLFILES << ['libcumo.a', '$(archdir)']
 end
 
 srcs = %w(
-numo
+cumo
 narray/narray
 narray/array
 narray/step
@@ -92,7 +92,7 @@ have_func("rb_thread_call_without_gvl")
 
 $objs = srcs.collect{|i| i+".o"}
 
-create_header('include/numo/extconf.h')
+create_header('include/cumo/extconf.h')
 
 depend_path = File.join(__dir__, "depend")
 File.open(depend_path, "w") do |depend|
@@ -106,7 +106,7 @@ end
 
 HEADER_DIRS = (ENV['CPATH'] || '').split(':')
 LIB_DIRS = (ENV['LIBRARY_PATH'] || '').split(':')
-dir_config('numo', HEADER_DIRS, LIB_DIRS)
+dir_config('cumo', HEADER_DIRS, LIB_DIRS)
 
 have_library('cuda')
 have_library('cudart')
@@ -115,4 +115,4 @@ have_library('nvrtc')
 # have_library('cusolver')
 # have_library('curand')
 
-create_makefile('numo')
+create_makefile('cumo')

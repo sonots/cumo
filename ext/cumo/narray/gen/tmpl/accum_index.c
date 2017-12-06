@@ -29,9 +29,9 @@ static void
   @overload <%=name%>(axis:nil)
 <% end %>
   @param [Numeric,Array,Range] axis  Affected dimensions.
-  @return [Integer,Numo::Int] returns result index of <%=name%>.
+  @return [Integer,Cumo::Int] returns result index of <%=name%>.
   @example
-      Numo::NArray[3,4,1,2].min_index => 3
+      Cumo::NArray[3,4,1,2].min_index => 3
  */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
@@ -47,8 +47,8 @@ static VALUE
         return INT2FIX(0);
     }
     if (na->size > (~(u_int32_t)0)) {
-        aout[0].type = numo_cInt64;
-        idx = nary_new(numo_cInt64, na->ndim, na->shape);
+        aout[0].type = cumo_cInt64;
+        idx = nary_new(cumo_cInt64, na->ndim, na->shape);
         ndf.func = <%=c_iter%>_index64;
       <% if is_float %>
         reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index64_nan);
@@ -56,8 +56,8 @@ static VALUE
         reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
       <% end %>
     } else {
-        aout[0].type = numo_cInt32;
-        idx = nary_new(numo_cInt32, na->ndim, na->shape);
+        aout[0].type = cumo_cInt32;
+        idx = nary_new(cumo_cInt32, na->ndim, na->shape);
         ndf.func = <%=c_iter%>_index32;
       <% if is_float %>
         reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index32_nan);

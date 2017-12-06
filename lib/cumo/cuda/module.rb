@@ -1,6 +1,6 @@
 require_relative '../cuda'
 
-module Numo::CUDA
+module Cumo::CUDA
   # CUDA kernel module.
   class Module
     def initialize

@@ -1,6 +1,6 @@
 set name:                "dfloat"
 set type_name:           "dfloat"
-set full_class_name:     "Numo::DFloat"
+set full_class_name:     "Cumo::DFloat"
 set class_name:          "DFloat"
 set class_alias:         "Float64"
 set class_var:           "cT"

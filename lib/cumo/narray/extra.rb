@@ -1,4 +1,4 @@
-module Numo
+module Cumo
   class NArray
 
     # Return an unallocated array with the same shape and type as self.
@@ -47,10 +47,10 @@ module Numo
     # Same as [] for one-dimensional NArray.
     # Similar to numpy's tuple indexing, i.e., `a[[1,2,..],[3,4,..]]`
     # (This method will be rewritten in C)
-    # @return [Numo::NArray] one-dimensional view of self.
+    # @return [Cumo::NArray] one-dimensional view of self.
     # @example
-    #   p x = Numo::DFloat.new(3,3,3).seq
-    #   # Numo::DFloat#shape=[3,3,3]
+    #   p x = Cumo::DFloat.new(3,3,3).seq
+    #   # Cumo::DFloat#shape=[3,3,3]
     #   # [[[0, 1, 2],
     #   #   [3, 4, 5],
     #   #   [6, 7, 8]],
@@ -62,7 +62,7 @@ module Numo
     #   #   [24, 25, 26]]]
     #
     #   p x.at([0,1,2],[0,1,2],[-1,-2,-3])
-    #   # Numo::DFloat(view)#shape=[3]
+    #   # Cumo::DFloat(view)#shape=[3]
     #   # [2, 13, 24]
     def at(*indices)
       if indices.size != ndim
@@ -95,23 +95,23 @@ module Numo
 
     # Rotate in the plane specified by axes.
     # @example
-    #   p a = Numo::Int32.new(2,2).seq
-    #   # Numo::Int32#shape=[2,2]
+    #   p a = Cumo::Int32.new(2,2).seq
+    #   # Cumo::Int32#shape=[2,2]
     #   # [[0, 1],
     #   #  [2, 3]]
     #
     #   p a.rot90
-    #   # Numo::Int32(view)#shape=[2,2]
+    #   # Cumo::Int32(view)#shape=[2,2]
     #   # [[1, 3],
     #   #  [0, 2]]
     #
     #   p a.rot90(2)
-    #   # Numo::Int32(view)#shape=[2,2]
+    #   # Cumo::Int32(view)#shape=[2,2]
     #   # [[3, 2],
     #   #  [1, 0]]
     #
     #   p a.rot90(3)
-    #   # Numo::Int32(view)#shape=[2,2]
+    #   # Cumo::Int32(view)#shape=[2,2]
     #   # [[2, 0],
     #   #  [3, 1]]
     def rot90(k=1,axes=[0,1])
@@ -172,12 +172,12 @@ module Numo
 
     # parse matrix like matlab, octave
     # @example
-    #   a = Numo::DFloat.parse %[
+    #   a = Cumo::DFloat.parse %[
     #    2 -3 5
     #    4 9 7
     #    2 -1 6
     #   ]
-    #   => Numo::DFloat#shape=[3,3]
+    #   => Cumo::DFloat#shape=[3,3]
     #   [[2, -3, 5],
     #    [4, 9, 7],
     #    [2, -1, 6]]
@@ -210,21 +210,21 @@ module Numo
 
     # Append values to the end of an narray.
     # @example
-    #   a = Numo::DFloat[1, 2, 3]
+    #   a = Cumo::DFloat[1, 2, 3]
     #   p a.append([[4, 5, 6], [7, 8, 9]])
-    #   # Numo::DFloat#shape=[9]
+    #   # Cumo::DFloat#shape=[9]
     #   # [1, 2, 3, 4, 5, 6, 7, 8, 9]
     #
-    #   a = Numo::DFloat[[1, 2, 3]]
+    #   a = Cumo::DFloat[[1, 2, 3]]
     #   p a.append([[4, 5, 6], [7, 8, 9]],axis:0)
-    #   # Numo::DFloat#shape=[3,3]
+    #   # Cumo::DFloat#shape=[3,3]
     #   # [[1, 2, 3],
     #   #  [4, 5, 6],
     #   #  [7, 8, 9]]
     #
-    #   a = Numo::DFloat[[1, 2, 3], [4, 5, 6]]
+    #   a = Cumo::DFloat[[1, 2, 3], [4, 5, 6]]
     #   p a.append([7, 8, 9], axis:0)
-    #   # in `append': dimension mismatch (Numo::NArray::DimensionError)
+    #   # in `append': dimension mismatch (Cumo::NArray::DimensionError)
 
     def append(other,axis:nil)
       other = self.class.cast(other)
@@ -245,20 +245,20 @@ module Numo
     # If axis is not given, obj is applied to the flattened array.
 
     # @example
-    #   a = Numo::DFloat[[1,2,3,4], [5,6,7,8], [9,10,11,12]]
+    #   a = Cumo::DFloat[[1,2,3,4], [5,6,7,8], [9,10,11,12]]
     #   p a.delete(1,0)
-    #   # Numo::DFloat(view)#shape=[2,4]
+    #   # Cumo::DFloat(view)#shape=[2,4]
     #   # [[1, 2, 3, 4],
     #   #  [9, 10, 11, 12]]
     #
     #   p a.delete((0..-1).step(2),1)
-    #   # Numo::DFloat(view)#shape=[3,2]
+    #   # Cumo::DFloat(view)#shape=[3,2]
     #   # [[2, 4],
     #   #  [6, 8],
     #   #  [10, 12]]
     #
     #   p a.delete([1,3,5])
-    #   # Numo::DFloat(view)#shape=[9]
+    #   # Cumo::DFloat(view)#shape=[9]
     #   # [1, 3, 5, 7, 8, 9, 10, 11, 12]
 
     def delete(indice,axis=nil)
@@ -277,72 +277,72 @@ module Numo
 
     # Insert values along the axis before the indices.
     # @example
-    #   p a = Numo::DFloat[[1, 2], [3, 4]]
-    #   a = Numo::Int32[[1, 1], [2, 2], [3, 3]]
+    #   p a = Cumo::DFloat[[1, 2], [3, 4]]
+    #   a = Cumo::Int32[[1, 1], [2, 2], [3, 3]]
     #
     #   p a.insert(1,5)
-    #   # Numo::Int32#shape=[7]
+    #   # Cumo::Int32#shape=[7]
     #   # [1, 5, 1, 2, 2, 3, 3]
     #
     #   p a.insert(1, 5, axis:1)
-    #   # Numo::Int32#shape=[3,3]
+    #   # Cumo::Int32#shape=[3,3]
     #   # [[1, 5, 1],
     #   #  [2, 5, 2],
     #   #  [3, 5, 3]]
     #
     #   p a.insert([1], [[11],[12],[13]], axis:1)
-    #   # Numo::Int32#shape=[3,3]
+    #   # Cumo::Int32#shape=[3,3]
     #   # [[1, 11, 1],
     #   #  [2, 12, 2],
     #   #  [3, 13, 3]]
     #
     #   p a.insert(1, [11, 12, 13], axis:1)
-    #   # Numo::Int32#shape=[3,3]
+    #   # Cumo::Int32#shape=[3,3]
     #   # [[1, 11, 1],
     #   #  [2, 12, 2],
     #   #  [3, 13, 3]]
     #
     #   p a.insert([1], [11, 12, 13], axis:1)
-    #   # Numo::Int32#shape=[3,5]
+    #   # Cumo::Int32#shape=[3,5]
     #   # [[1, 11, 12, 13, 1],
     #   #  [2, 11, 12, 13, 2],
     #   #  [3, 11, 12, 13, 3]]
     #
     #   p b = a.flatten
-    #   # Numo::Int32(view)#shape=[6]
+    #   # Cumo::Int32(view)#shape=[6]
     #   # [1, 1, 2, 2, 3, 3]
     #
     #   p b.insert(2,[15,16])
-    #   # Numo::Int32#shape=[8]
+    #   # Cumo::Int32#shape=[8]
     #   # [1, 1, 15, 16, 2, 2, 3, 3]
     #
     #   p b.insert([2,2],[15,16])
-    #   # Numo::Int32#shape=[8]
+    #   # Cumo::Int32#shape=[8]
     #   # [1, 1, 15, 16, 2, 2, 3, 3]
     #
     #   p b.insert([2,1],[15,16])
-    #   # Numo::Int32#shape=[8]
+    #   # Cumo::Int32#shape=[8]
     #   # [1, 16, 1, 15, 2, 2, 3, 3]
     #
     #   p b.insert([2,0,1],[15,16,17])
-    #   # Numo::Int32#shape=[9]
+    #   # Cumo::Int32#shape=[9]
     #   # [16, 1, 17, 1, 15, 2, 2, 3, 3]
     #
     #   p b.insert(2..3, [15, 16])
-    #   # Numo::Int32#shape=[8]
+    #   # Cumo::Int32#shape=[8]
     #   # [1, 1, 15, 2, 16, 2, 3, 3]
     #
     #   p b.insert(2, [7.13, 0.5])
-    #   # Numo::Int32#shape=[8]
+    #   # Cumo::Int32#shape=[8]
     #   # [1, 1, 7, 0, 2, 2, 3, 3]
     #
-    #   p x = Numo::DFloat.new(2,4).seq
-    #   # Numo::DFloat#shape=[2,4]
+    #   p x = Cumo::DFloat.new(2,4).seq
+    #   # Cumo::DFloat#shape=[2,4]
     #   # [[0, 1, 2, 3],
     #   #  [4, 5, 6, 7]]
     #
     #   p x.insert([1,3],999,axis:1)
-    #   # Numo::DFloat#shape=[2,6]
+    #   # Cumo::DFloat#shape=[2,6]
     #   # [[0, 999, 1, 2, 999, 3],
     #   #  [4, 999, 5, 6, 999, 7]]
 
@@ -392,23 +392,23 @@ module Numo
 
     class << self
     # @example
-    #   p a = Numo::DFloat[[1, 2], [3, 4]]
-    #   # Numo::DFloat#shape=[2,2]
+    #   p a = Cumo::DFloat[[1, 2], [3, 4]]
+    #   # Cumo::DFloat#shape=[2,2]
     #   # [[1, 2],
     #   #  [3, 4]]
     #
-    #   p b = Numo::DFloat[[5, 6]]
-    #   # Numo::DFloat#shape=[1,2]
+    #   p b = Cumo::DFloat[[5, 6]]
+    #   # Cumo::DFloat#shape=[1,2]
     #   # [[5, 6]]
     #
-    #   p Numo::NArray.concatenate([a,b],axis:0)
-    #   # Numo::DFloat#shape=[3,2]
+    #   p Cumo::NArray.concatenate([a,b],axis:0)
+    #   # Cumo::DFloat#shape=[3,2]
     #   # [[1, 2],
     #   #  [3, 4],
     #   #  [5, 6]]
     #
-    #   p Numo::NArray.concatenate([a,b.transpose], axis:1)
-    #   # Numo::DFloat#shape=[2,3]
+    #   p Cumo::NArray.concatenate([a,b.transpose], axis:1)
+    #   # Cumo::DFloat#shape=[2,3]
     #   # [[1, 2, 5],
     #   #  [3, 4, 6]]
 
@@ -424,7 +424,7 @@ module Numo
         when Array
           a = klass.cast(a)
         else
-          raise TypeError,"not Numo::NArray: #{a.inspect[0..48]}"
+          raise TypeError,"not Cumo::NArray: #{a.inspect[0..48]}"
         end
         if a.ndim > nd
           nd = a.ndim
@@ -468,17 +468,17 @@ module Numo
 
     # Stack arrays vertically (row wise).
     # @example
-    #   a = Numo::Int32[1,2,3]
-    #   b = Numo::Int32[2,3,4]
-    #   p Numo::NArray.vstack([a,b])
-    #   # Numo::Int32#shape=[2,3]
+    #   a = Cumo::Int32[1,2,3]
+    #   b = Cumo::Int32[2,3,4]
+    #   p Cumo::NArray.vstack([a,b])
+    #   # Cumo::Int32#shape=[2,3]
     #   # [[1, 2, 3],
     #   #  [2, 3, 4]]
     #
-    #   a = Numo::Int32[[1],[2],[3]]
-    #   b = Numo::Int32[[2],[3],[4]]
-    #   p Numo::NArray.vstack([a,b])
-    #   # Numo::Int32#shape=[6,1]
+    #   a = Cumo::Int32[[1],[2],[3]]
+    #   b = Cumo::Int32[[2],[3],[4]]
+    #   p Cumo::NArray.vstack([a,b])
+    #   # Cumo::Int32#shape=[6,1]
     #   # [[1],
     #   #  [2],
     #   #  [3],
@@ -495,16 +495,16 @@ module Numo
 
     # Stack arrays horizontally (column wise).
     # @example
-    #   a = Numo::Int32[1,2,3]
-    #   b = Numo::Int32[2,3,4]
-    #   p Numo::NArray.hstack([a,b])
-    #   # Numo::Int32#shape=[6]
+    #   a = Cumo::Int32[1,2,3]
+    #   b = Cumo::Int32[2,3,4]
+    #   p Cumo::NArray.hstack([a,b])
+    #   # Cumo::Int32#shape=[6]
     #   # [1, 2, 3, 2, 3, 4]
     #
-    #   a = Numo::Int32[[1],[2],[3]]
-    #   b = Numo::Int32[[2],[3],[4]]
-    #   p Numo::NArray.hstack([a,b])
-    #   # Numo::Int32#shape=[3,2]
+    #   a = Cumo::Int32[[1],[2],[3]]
+    #   b = Cumo::Int32[[2],[3],[4]]
+    #   p Cumo::NArray.hstack([a,b])
+    #   # Cumo::Int32#shape=[3,2]
     #   # [[1, 2],
     #   #  [2, 3],
     #   #  [3, 4]]
@@ -523,18 +523,18 @@ module Numo
 
     # Stack arrays in depth wise (along third axis).
     # @example
-    #   a = Numo::Int32[1,2,3]
-    #   b = Numo::Int32[2,3,4]
-    #   p Numo::NArray.dstack([a,b])
-    #   # Numo::Int32#shape=[1,3,2]
+    #   a = Cumo::Int32[1,2,3]
+    #   b = Cumo::Int32[2,3,4]
+    #   p Cumo::NArray.dstack([a,b])
+    #   # Cumo::Int32#shape=[1,3,2]
     #   # [[[1, 2],
     #   #   [2, 3],
     #   #   [3, 4]]]
     #
-    #   a = Numo::Int32[[1],[2],[3]]
-    #   b = Numo::Int32[[2],[3],[4]]
-    #   p Numo::NArray.dstack([a,b])
-    #   # Numo::Int32#shape=[3,1,2]
+    #   a = Cumo::Int32[[1],[2],[3]]
+    #   b = Cumo::Int32[[2],[3],[4]]
+    #   p Cumo::NArray.dstack([a,b])
+    #   # Cumo::Int32#shape=[3,1,2]
     #   # [[[1, 2]],
     #   #  [[2, 3]],
     #   #  [[3, 4]]]
@@ -548,10 +548,10 @@ module Numo
 
     # Stack 1-d arrays into columns of a 2-d array.
     # @example
-    #   x = Numo::Int32[1,2,3]
-    #   y = Numo::Int32[2,3,4]
-    #   p Numo::NArray.column_stack([x,y])
-    #   # Numo::Int32#shape=[3,2]
+    #   x = Cumo::Int32[1,2,3]
+    #   y = Cumo::Int32[2,3,4]
+    #   p Cumo::NArray.column_stack([x,y])
+    #   # Cumo::Int32#shape=[3,2]
     #   # [[1, 2],
     #   #  [2, 3],
     #   #  [3, 4]]
@@ -591,23 +591,23 @@ module Numo
     end # class << self
 
     # @example
-    #   p a = Numo::DFloat[[1, 2], [3, 4]]
-    #   # Numo::DFloat#shape=[2,2]
+    #   p a = Cumo::DFloat[[1, 2], [3, 4]]
+    #   # Cumo::DFloat#shape=[2,2]
     #   # [[1, 2],
     #   #  [3, 4]]
     #
-    #   p b = Numo::DFloat[[5, 6]]
-    #   # Numo::DFloat#shape=[1,2]
+    #   p b = Cumo::DFloat[[5, 6]]
+    #   # Cumo::DFloat#shape=[1,2]
     #   # [[5, 6]]
     #
     #   p a.concatenate(b,axis:0)
-    #   # Numo::DFloat#shape=[3,2]
+    #   # Cumo::DFloat#shape=[3,2]
     #   # [[1, 2],
     #   #  [3, 4],
     #   #  [5, 6]]
     #
     #   p a.concatenate(b.transpose, axis:1)
-    #   # Numo::DFloat#shape=[2,3]
+    #   # Cumo::DFloat#shape=[2,3]
     #   # [[1, 2, 5],
     #   #  [3, 4, 6]]
 
@@ -625,7 +625,7 @@ module Numo
         when Array
           a = self.class.cast(a)
         else
-          raise TypeError,"not Numo::NArray: #{a.inspect[0..48]}"
+          raise TypeError,"not Cumo::NArray: #{a.inspect[0..48]}"
         end
         if a.ndim > ndim
           raise ShapeError,"dimension mismatch"
@@ -653,32 +653,32 @@ module Numo
     end
 
     # @example
-    #   p x = Numo::DFloat.new(9).seq
-    #   # Numo::DFloat#shape=[9]
+    #   p x = Cumo::DFloat.new(9).seq
+    #   # Cumo::DFloat#shape=[9]
     #   # [0, 1, 2, 3, 4, 5, 6, 7, 8]
     #
     #   pp x.split(3)
-    #   # [Numo::DFloat(view)#shape=[3]
+    #   # [Cumo::DFloat(view)#shape=[3]
     #   # [0, 1, 2],
-    #   #  Numo::DFloat(view)#shape=[3]
+    #   #  Cumo::DFloat(view)#shape=[3]
     #   # [3, 4, 5],
-    #   #  Numo::DFloat(view)#shape=[3]
+    #   #  Cumo::DFloat(view)#shape=[3]
     #   # [6, 7, 8]]
     #
-    #   p x = Numo::DFloat.new(8).seq
-    #   # Numo::DFloat#shape=[8]
+    #   p x = Cumo::DFloat.new(8).seq
+    #   # Cumo::DFloat#shape=[8]
     #   # [0, 1, 2, 3, 4, 5, 6, 7]
     #
     #   pp x.split([3, 5, 6, 10])
-    #   # [Numo::DFloat(view)#shape=[3]
+    #   # [Cumo::DFloat(view)#shape=[3]
     #   # [0, 1, 2],
-    #   #  Numo::DFloat(view)#shape=[2]
+    #   #  Cumo::DFloat(view)#shape=[2]
     #   # [3, 4],
-    #   #  Numo::DFloat(view)#shape=[1]
+    #   #  Cumo::DFloat(view)#shape=[1]
     #   # [5],
-    #   #  Numo::DFloat(view)#shape=[2]
+    #   #  Cumo::DFloat(view)#shape=[2]
     #   # [6, 7],
-    #   #  Numo::DFloat(view)#shape=[0][]]
+    #   #  Cumo::DFloat(view)#shape=[0][]]
 
     def split(indices_or_sections, axis:0)
       axis = check_axis(axis)
@@ -717,37 +717,37 @@ module Numo
     end
 
     # @example
-    #   p x = Numo::DFloat.new(4,4).seq
-    #   # Numo::DFloat#shape=[4,4]
+    #   p x = Cumo::DFloat.new(4,4).seq
+    #   # Cumo::DFloat#shape=[4,4]
     #   # [[0, 1, 2, 3],
     #   #  [4, 5, 6, 7],
     #   #  [8, 9, 10, 11],
     #   #  [12, 13, 14, 15]]
     #
     #   pp x.hsplit(2)
-    #   # [Numo::DFloat(view)#shape=[4,2]
+    #   # [Cumo::DFloat(view)#shape=[4,2]
     #   # [[0, 1],
     #   #  [4, 5],
     #   #  [8, 9],
     #   #  [12, 13]],
-    #   #  Numo::DFloat(view)#shape=[4,2]
+    #   #  Cumo::DFloat(view)#shape=[4,2]
     #   # [[2, 3],
     #   #  [6, 7],
     #   #  [10, 11],
     #   #  [14, 15]]]
     #
     #   pp x.hsplit([3, 6])
-    #   # [Numo::DFloat(view)#shape=[4,3]
+    #   # [Cumo::DFloat(view)#shape=[4,3]
     #   # [[0, 1, 2],
     #   #  [4, 5, 6],
     #   #  [8, 9, 10],
     #   #  [12, 13, 14]],
-    #   #  Numo::DFloat(view)#shape=[4,1]
+    #   #  Cumo::DFloat(view)#shape=[4,1]
     #   # [[3],
     #   #  [7],
     #   #  [11],
     #   #  [15]],
-    #   #  Numo::DFloat(view)#shape=[4,0][]]
+    #   #  Cumo::DFloat(view)#shape=[4,0][]]
 
     def vsplit(indices_or_sections)
       split(indices_or_sections, axis:0)
@@ -762,47 +762,47 @@ module Numo
     end
 
     # @example
-    #   p a = Numo::NArray[0,1,2]
-    #   # Numo::Int32#shape=[3]
+    #   p a = Cumo::NArray[0,1,2]
+    #   # Cumo::Int32#shape=[3]
     #   # [0, 1, 2]
     #
     #   p a.tile(2)
-    #   # Numo::Int32#shape=[6]
+    #   # Cumo::Int32#shape=[6]
     #   # [0, 1, 2, 0, 1, 2]
     #
     #   p a.tile(2,2)
-    #   # Numo::Int32#shape=[2,6]
+    #   # Cumo::Int32#shape=[2,6]
     #   # [[0, 1, 2, 0, 1, 2],
     #   #  [0, 1, 2, 0, 1, 2]]
     #
     #   p a.tile(2,1,2)
-    #   # Numo::Int32#shape=[2,1,6]
+    #   # Cumo::Int32#shape=[2,1,6]
     #   # [[[0, 1, 2, 0, 1, 2]],
     #   #  [[0, 1, 2, 0, 1, 2]]]
     #
-    #   p b = Numo::NArray[[1, 2], [3, 4]]
-    #   # Numo::Int32#shape=[2,2]
+    #   p b = Cumo::NArray[[1, 2], [3, 4]]
+    #   # Cumo::Int32#shape=[2,2]
     #   # [[1, 2],
     #   #  [3, 4]]
     #
     #   p b.tile(2)
-    #   # Numo::Int32#shape=[2,4]
+    #   # Cumo::Int32#shape=[2,4]
     #   # [[1, 2, 1, 2],
     #   #  [3, 4, 3, 4]]
     #
     #   p b.tile(2,1)
-    #   # Numo::Int32#shape=[4,2]
+    #   # Cumo::Int32#shape=[4,2]
     #   # [[1, 2],
     #   #  [3, 4],
     #   #  [1, 2],
     #   #  [3, 4]]
     #
-    #   p c = Numo::NArray[1,2,3,4]
-    #   # Numo::Int32#shape=[4]
+    #   p c = Cumo::NArray[1,2,3,4]
+    #   # Cumo::Int32#shape=[4]
     #   # [1, 2, 3, 4]
     #
     #   p c.tile(4,1)
-    #   # Numo::Int32#shape=[4,4]
+    #   # Cumo::Int32#shape=[4,4]
     #   # [[1, 2, 3, 4],
     #   #  [1, 2, 3, 4],
     #   #  [1, 2, 3, 4],
@@ -845,26 +845,26 @@ module Numo
     end
 
     # @example
-    #   p Numo::NArray[3].repeat(4)
-    #   # Numo::Int32#shape=[4]
+    #   p Cumo::NArray[3].repeat(4)
+    #   # Cumo::Int32#shape=[4]
     #   # [3, 3, 3, 3]
     #
-    #   p x = Numo::NArray[[1,2],[3,4]]
-    #   # Numo::Int32#shape=[2,2]
+    #   p x = Cumo::NArray[[1,2],[3,4]]
+    #   # Cumo::Int32#shape=[2,2]
     #   # [[1, 2],
     #   #  [3, 4]]
     #
     #   p x.repeat(2)
-    #   # Numo::Int32#shape=[8]
+    #   # Cumo::Int32#shape=[8]
     #   # [1, 1, 2, 2, 3, 3, 4, 4]
     #
     #   p x.repeat(3,axis:1)
-    #   # Numo::Int32#shape=[2,6]
+    #   # Cumo::Int32#shape=[2,6]
     #   # [[1, 1, 1, 2, 2, 2],
     #   #  [3, 3, 3, 4, 4, 4]]
     #
     #   p x.repeat([1,2],axis:0)
-    #   # Numo::Int32#shape=[3,2]
+    #   # Cumo::Int32#shape=[3,2]
     #   # [[1, 2],
     #   #  [3, 4],
     #   #  [3, 4]]
@@ -905,30 +905,30 @@ module Numo
 
     # Calculate the n-th discrete difference along given axis.
     # @example
-    #   p x = Numo::DFloat[1, 2, 4, 7, 0]
-    #   # Numo::DFloat#shape=[5]
+    #   p x = Cumo::DFloat[1, 2, 4, 7, 0]
+    #   # Cumo::DFloat#shape=[5]
     #   # [1, 2, 4, 7, 0]
     #
     #   p x.diff
-    #   # Numo::DFloat#shape=[4]
+    #   # Cumo::DFloat#shape=[4]
     #   # [1, 2, 3, -7]
     #
     #   p x.diff(2)
-    #   # Numo::DFloat#shape=[3]
+    #   # Cumo::DFloat#shape=[3]
     #   # [1, 1, -10]
     #
-    #   p x = Numo::DFloat[[1, 3, 6, 10], [0, 5, 6, 8]]
-    #   # Numo::DFloat#shape=[2,4]
+    #   p x = Cumo::DFloat[[1, 3, 6, 10], [0, 5, 6, 8]]
+    #   # Cumo::DFloat#shape=[2,4]
     #   # [[1, 3, 6, 10],
     #   #  [0, 5, 6, 8]]
     #
     #   p x.diff
-    #   # Numo::DFloat#shape=[2,3]
+    #   # Cumo::DFloat#shape=[2,3]
     #   # [[2, 3, 4],
     #   #  [5, 1, 2]]
     #
     #   p x.diff(axis:0)
-    #   # Numo::DFloat#shape=[1,4]
+    #   # Cumo::DFloat#shape=[1,4]
     #   # [[-1, 2, 0, -2]]
 
     def diff(n=1,axis:-1)
@@ -992,8 +992,8 @@ module Numo
 
     # Return the indices for the uppler-triangle on and above the k-th diagonal.
     def self.triu_indices(m,n,k=0)
-      x = Numo::Int64.new(m,1).seq + k
-      y = Numo::Int64.new(1,n).seq
+      x = Cumo::Int64.new(m,1).seq + k
+      y = Cumo::Int64.new(1,n).seq
       (x<=y).where
     end
 
@@ -1031,8 +1031,8 @@ module Numo
 
     # Return the indices for the lower-triangle on and below the k-th diagonal.
     def self.tril_indices(m,n,k=0)
-      x = Numo::Int64.new(m,1).seq + k
-      y = Numo::Int64.new(1,n).seq
+      x = Cumo::Int64.new(m,1).seq + k
+      y = Cumo::Int64.new(1,n).seq
       (x>=y).where
     end
 
@@ -1047,8 +1047,8 @@ module Numo
 
     # Return the k-th diagonal indices.
     def self.diag_indices(m,n,k=0)
-      x = Numo::Int64.new(m,1).seq + k
-      y = Numo::Int64.new(1,n).seq
+      x = Cumo::Int64.new(m,1).seq + k
+      y = Cumo::Int64.new(1,n).seq
       (x.eq y).where
     end
 
@@ -1079,8 +1079,8 @@ module Numo
     @@warn_slow_dot = false
 
     # Dot product of two arrays.
-    # @param b [Numo::NArray]
-    # @return [Numo::NArray]  return dot product
+    # @param b [Cumo::NArray]
+    # @return [Cumo::NArray]  return dot product
 
     def dot(b)
       t = self.class::UPCAST[b.class]
@@ -1106,7 +1106,7 @@ module Numo
               if am > nx && an > nx && bm > nx && bn > nx &&
                   size > ns && b.size > ns
                 @@warn_slow_dot = true
-                warn "\nwarning: Built-in matrix dot is slow. Consider installing Numo::Linalg.\n\n"
+                warn "\nwarning: Built-in matrix dot is slow. Consider installing Cumo::Linalg.\n\n"
               end
             end
             self[false,:new].mulsum(b[false,:new,true,true], axis:-2)
@@ -1117,9 +1117,9 @@ module Numo
 
     # Inner product of two arrays.
     # Same as `(a*b).sum(axis:-1)`.
-    # @param b [Numo::NArray]
+    # @param b [Cumo::NArray]
     # @param axis [Integer] applied axis
-    # @return [Numo::NArray]  return (a*b).sum(axis:axis)
+    # @return [Cumo::NArray]  return (a*b).sum(axis:axis)
 
     def inner(b, axis:-1)
       mulsum(b, axis:axis)
@@ -1128,18 +1128,18 @@ module Numo
     # Outer product of two arrays.
     # Same as `self[false,:new] * b[false,:new,true]`.
     #
-    # @param b [Numo::NArray]
+    # @param b [Cumo::NArray]
     # @param axis [Integer] applied axis (default=-1)
-    # @return [Numo::NArray]  return outer product
+    # @return [Cumo::NArray]  return outer product
     # @example
-    #   a = Numo::DFloat.ones(5)
-    #   => Numo::DFloat#shape=[5]
+    #   a = Cumo::DFloat.ones(5)
+    #   => Cumo::DFloat#shape=[5]
     #   [1, 1, 1, 1, 1]
-    #   b = Numo::DFloat.linspace(-2,2,5)
-    #   => Numo::DFloat#shape=[5]
+    #   b = Cumo::DFloat.linspace(-2,2,5)
+    #   => Cumo::DFloat#shape=[5]
     #   [-2, -1, 0, 1, 2]
     #   a.outer(b)
-    #   => Numo::DFloat#shape=[5,5]
+    #   => Cumo::DFloat#shape=[5,5]
     #   [[-2, -1, 0, 1, 2],
     #    [-2, -1, 0, 1, 2],
     #    [-2, -1, 0, 1, 2],
@@ -1169,17 +1169,17 @@ module Numo
     #     kron(a,b)[k_0, k_1, ...] = a[i_0, i_1, ...] * b[j_0, j_1, ...]
     #        where:  k_n = i_n * b.shape[n] + j_n
     #
-    # @param b [Numo::NArray]
-    # @return [Numo::NArray]  return Kronecker product
+    # @param b [Cumo::NArray]
+    # @return [Cumo::NArray]  return Kronecker product
     # @example
-    #   Numo::DFloat[1,10,100].kron([5,6,7])
-    #   => Numo::DFloat#shape=[9]
+    #   Cumo::DFloat[1,10,100].kron([5,6,7])
+    #   => Cumo::DFloat#shape=[9]
     #   [5, 6, 7, 50, 60, 70, 500, 600, 700]
-    #   Numo::DFloat[5,6,7].kron([1,10,100])
-    #   => Numo::DFloat#shape=[9]
+    #   Cumo::DFloat[5,6,7].kron([1,10,100])
+    #   => Cumo::DFloat#shape=[9]
     #   [5, 50, 500, 6, 60, 600, 7, 70, 700]
-    #   Numo::DFloat.eye(2).kron(Numo::DFloat.ones(2,2))
-    #   => Numo::DFloat#shape=[4,4]
+    #   Cumo::DFloat.eye(2).kron(Cumo::DFloat.ones(2,2))
+    #   => Cumo::DFloat#shape=[4,4]
     #   [[1, 1, 0, 0],
     #    [1, 1, 0, 0],
     #    [0, 0, 1, 1],

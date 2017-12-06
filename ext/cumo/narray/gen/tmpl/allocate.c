@@ -11,7 +11,7 @@ static VALUE
         ptr = NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             cudaError_t status = cudaMallocManaged(&ptr, sizeof(dtype) * na->size, cudaMemAttachGlobal);
-            numo_cuda_runtime_check_status(status);
+            cumo_cuda_runtime_check_status(status);
             <% if is_object %>
             {   size_t i;
                 VALUE *a = (VALUE*)ptr;

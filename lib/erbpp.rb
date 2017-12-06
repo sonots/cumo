@@ -196,7 +196,7 @@ class Function < ErbPP
     rescue
       t = ""
     end
-    "numo#{t}#{s}_#{method}"
+    "cumo#{t}#{s}_#{method}"
   end
   alias c_function c_func
   alias c_instance_method c_func

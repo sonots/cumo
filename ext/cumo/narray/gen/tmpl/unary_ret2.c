@@ -20,7 +20,7 @@ static void
 /*
   <%=name%> of self.
   @overload <%=name%>
-  @return [Numo::<%=real_class_name%>] <%=name%> of self.
+  @return [Cumo::<%=real_class_name%>] <%=name%> of self.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

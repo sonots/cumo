@@ -1,7 +1,7 @@
 // ------- Integer count without weights -------
 <%
 [32,64].each do |bits|
-   cnt_cT = "numo_cUInt#{bits}"
+   cnt_cT = "cumo_cUInt#{bits}"
    cnt_type = "u_int#{bits}_t"
 %>
 static void
@@ -53,7 +53,7 @@ static VALUE
 <%
 [["SF","float"],
  ["DF","double"]].each do |fn,cnt_type|
-  cnt_cT = "numo_c#{fn}loat"
+  cnt_cT = "cumo_c#{fn}loat"
   fn = fn.downcase
 %>
 static void
@@ -114,22 +114,22 @@ static VALUE
     Returns Float NArray if weight array is supplied,
     otherwise returns UInt32 or UInt64 depending on the size along last axis.
   @example
-    Numo::Int32[0..4].bincount
-    => Numo::UInt32#shape=[5]
+    Cumo::Int32[0..4].bincount
+    => Cumo::UInt32#shape=[5]
        [1, 1, 1, 1, 1]
 
-    Numo::Int32[0, 1, 1, 3, 2, 1, 7].bincount
-    => Numo::UInt32#shape=[8]
+    Cumo::Int32[0, 1, 1, 3, 2, 1, 7].bincount
+    => Cumo::UInt32#shape=[8]
        [1, 3, 1, 1, 0, 0, 0, 1]
 
-    x = Numo::Int32[0, 1, 1, 3, 2, 1, 7, 23]
+    x = Cumo::Int32[0, 1, 1, 3, 2, 1, 7, 23]
     x.bincount.size == x.max+1
     => true
 
-    w = Numo::DFloat[0.3, 0.5, 0.2, 0.7, 1.0, -0.6]
-    x = Numo::Int32[0, 1, 1, 2, 2, 2]
+    w = Cumo::DFloat[0.3, 0.5, 0.2, 0.7, 1.0, -0.6]
+    x = Cumo::Int32[0, 1, 1, 2, 2, 2]
     x.bincount(w)
-    => Numo::DFloat#shape=[3]
+    => Cumo::DFloat#shape=[3]
        [0.3, 0.7, 1.1]
 
 */
@@ -171,7 +171,7 @@ static VALUE
         }
     } else {
         wclass = CLASS_OF(weight);
-        if (wclass == numo_cSFloat) {
+        if (wclass == cumo_cSFloat) {
             return <%=c_func%>_sf(self, weight, length);
         } else {
             return <%=c_func%>_df(self, weight, length);

@@ -4,7 +4,7 @@
     (C) Copyright 1999-2017 by Masahiro TANAKA
 */
 #include <ruby.h>
-#include "numo/narray.h"
+#include "cumo/narray.h"
 
 // mdai: Multi-Dimensional Array Investigation
 typedef struct {
@@ -274,22 +274,22 @@ na_mdai_dtype_numeric(int type)
     // DataType
     switch(type) {
     case NA_BIT:
-        tp = numo_cBit;
+        tp = cumo_cBit;
         break;
     case NA_INT32:
-        tp = numo_cInt32;
+        tp = cumo_cInt32;
         break;
     case NA_INT64:
-        tp = numo_cInt64;
+        tp = cumo_cInt64;
         break;
     case NA_DFLOAT:
-        tp = numo_cDFloat;
+        tp = cumo_cDFloat;
         break;
     case NA_DCOMPLEX:
-        tp = numo_cDComplex;
+        tp = cumo_cDComplex;
         break;
     case NA_ROBJ:
-        tp = numo_cRObject;
+        tp = cumo_cRObject;
         break;
     default:
         tp = Qnil;
@@ -349,7 +349,7 @@ na_mdai_memsize(const void *ptr)
 }
 
 static const rb_data_type_t mdai_data_type = {
-    "Numo::NArray/mdai",
+    "Cumo::NArray/mdai",
     {NULL, na_mdai_free, na_mdai_memsize,},
     0, 0, RUBY_TYPED_FREE_IMMEDIATELY|RUBY_TYPED_WB_PROTECTED
 };
@@ -368,7 +368,7 @@ na_composition3_ary(VALUE ary, VALUE *ptype, VALUE *pshape, VALUE *pnary)
     vmdai = TypedData_Wrap_Struct(rb_cData, &mdai_data_type, (void*)mdai);
     if ( na_mdai_investigate(mdai, 1) ) {
         // empty
-        dtype = update_type(ptype, numo_cInt32);
+        dtype = update_type(ptype, cumo_cInt32);
         if (pshape) {
             *pshape = rb_ary_new3(1, INT2FIX(0));
         }
@@ -456,19 +456,19 @@ na_s_array_shape(VALUE mod, VALUE ary)
 
 /*
   Generate new unallocated NArray instance with shape and type defined from obj.
-  Numo::NArray.new_like(obj) returns instance whose type is defined from obj.
-  Numo::DFloat.new_like(obj) returns DFloat instance.
+  Cumo::NArray.new_like(obj) returns instance whose type is defined from obj.
+  Cumo::DFloat.new_like(obj) returns DFloat instance.
 
   @overload new_like(obj)
-  @param [Numeric,Array,Numo::NArray] obj
-  @return [Numo::NArray]
+  @param [Numeric,Array,Cumo::NArray] obj
+  @return [Cumo::NArray]
   @example
-    Numo::NArray.new_like([[1,2,3],[4,5,6]])
-    => Numo::Int32#shape=[2,3](empty)
-    Numo::DFloat.new_like([[1,2],[3,4]])
-    => Numo::DFloat#shape=[2,2](empty)
-    Numo::NArray.new_like([1,2i,3])
-    => Numo::DComplex#shape=[3](empty)
+    Cumo::NArray.new_like([[1,2,3],[4,5,6]])
+    => Cumo::Int32#shape=[2,3](empty)
+    Cumo::DFloat.new_like([[1,2],[3,4]])
+    => Cumo::DFloat#shape=[2,2](empty)
+    Cumo::NArray.new_like([1,2i,3])
+    => Cumo::DComplex#shape=[3](empty)
 */
 VALUE
 na_s_new_like(VALUE type, VALUE obj)

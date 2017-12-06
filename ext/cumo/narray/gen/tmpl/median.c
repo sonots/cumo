@@ -41,7 +41,7 @@ static void
 <% end %>
   @param [Numeric,Array,Range] axis (keyword) Affected dimensions.
   @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-  @return [Numo::<%=class_name%>] returns <%=name%> of self.
+  @return [Cumo::<%=class_name%>] returns <%=name%> of self.
 */
 
 static VALUE

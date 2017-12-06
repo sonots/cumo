@@ -70,16 +70,16 @@ static void
 }
 
 #if   SIZEOF_VOIDP == 8
-#define cIndex numo_cInt64
+#define cIndex cumo_cInt64
 #elif SIZEOF_VOIDP == 4
-#define cIndex numo_cInt32
+#define cIndex cumo_cInt32
 #endif
 
 /*
   Return subarray of argument masked with self bit array.
   @overload <%=op_map%>(array)
-  @param [Numo::NArray] array  narray to be masked.
-  @return [Numo::NArray]  view of masked array.
+  @param [Cumo::NArray] array  narray to be masked.
+  @return [Cumo::NArray]  view of masked array.
 */
 static VALUE
 <%=c_func(1)%>(VALUE mask, VALUE val)

@@ -4,11 +4,11 @@
     (C) Copyright 1999-2017 by Masahiro TANAKA
 */
 #include <ruby.h>
-#include "numo/narray.h"
-#include "numo/template.h"
-#include "numo/cuda/runtime.h"
+#include "cumo/narray.h"
+#include "cumo/template.h"
+#include "cumo/cuda/runtime.h"
 
-#define cT numo_cStruct
+#define cT cumo_cStruct
 VALUE cT;
 
 static VALUE
@@ -26,7 +26,7 @@ nst_allocate(VALUE self)
         if (na->size > 0 && ptr == NULL) {
             velmsz = rb_const_get(CLASS_OF(self), rb_intern("element_byte_size"));
             cudaError_t status = cudaMallocManaged(&ptr, NUM2SIZET(velmsz) * na->size, cudaMemAttachGlobal);
-            numo_cuda_runtime_check_status(status);
+            cumo_cuda_runtime_check_status(status);
             NA_DATA_PTR(na) = ptr;
         }
         break;
@@ -94,7 +94,7 @@ na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
 
     GetNArray(self,na);
 
-    // build from Numo::Struct
+    // build from Cumo::Struct
     if (rb_obj_is_kind_of(dtype,cNArray)) {
 	GetNArray(dtype,nt);
         ndim = na->ndim + nt->ndim;
@@ -243,7 +243,7 @@ nst_method_missing(int argc, VALUE *argv, VALUE self)
 
 
 /*
-  Foo = Numo::Struct.new {
+  Foo = Cumo::Struct.new {
     int8     :byte
     float64  :float, [2,2]
     dcomplex :compl
@@ -721,10 +721,10 @@ nary_struct_store_array(VALUE self, VALUE obj)
 }
 
 /*
-  Store elements to Numo::Struct from other.
+  Store elements to Cumo::Struct from other.
   @overload store(other)
   @param [Object] other
-  @return [Numo::Struct] self
+  @return [Cumo::Struct] self
 */
 static VALUE
 nary_struct_store(VALUE self, VALUE obj)
@@ -816,18 +816,18 @@ nst_s_##tpname(VALUE argc, VALUE *argv, VALUE mod)  \
     return Qnil;                                    \
 }
 
-NST_TYPEDEF(int8,numo_cInt8)
-NST_TYPEDEF(int16,numo_cInt16)
-NST_TYPEDEF(int32,numo_cInt32)
-NST_TYPEDEF(int64,numo_cInt64)
-NST_TYPEDEF(uint8,numo_cUInt8)
-NST_TYPEDEF(uint16,numo_cUInt16)
-NST_TYPEDEF(uint32,numo_cUInt32)
-NST_TYPEDEF(uint64,numo_cUInt64)
-NST_TYPEDEF(dfloat,numo_cDFloat)
-NST_TYPEDEF(dcomplex,numo_cDComplex)
-NST_TYPEDEF(sfloat,numo_cSFloat)
-NST_TYPEDEF(scomplex,numo_cSComplex)
+NST_TYPEDEF(int8,cumo_cInt8)
+NST_TYPEDEF(int16,cumo_cInt16)
+NST_TYPEDEF(int32,cumo_cInt32)
+NST_TYPEDEF(int64,cumo_cInt64)
+NST_TYPEDEF(uint8,cumo_cUInt8)
+NST_TYPEDEF(uint16,cumo_cUInt16)
+NST_TYPEDEF(uint32,cumo_cUInt32)
+NST_TYPEDEF(uint64,cumo_cUInt64)
+NST_TYPEDEF(dfloat,cumo_cDFloat)
+NST_TYPEDEF(dcomplex,cumo_cDComplex)
+NST_TYPEDEF(sfloat,cumo_cSFloat)
+NST_TYPEDEF(scomplex,cumo_cSComplex)
 
 
 #define rb_define_singleton_alias(klass,name1,name2) \
@@ -836,7 +836,7 @@ NST_TYPEDEF(scomplex,numo_cSComplex)
 void
 Init_nary_struct()
 {
-    cT = rb_define_class_under(mNumo, "Struct", numo_cNArray);
+    cT = rb_define_class_under(mCumo, "Struct", cumo_cNArray);
     //cNStMember = rb_define_class_under(cT, "Member", rb_cObject);
 
     //rb_define_alloc_func(cNStMember, nst_member_s_allocate);

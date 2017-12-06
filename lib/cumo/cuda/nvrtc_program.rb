@@ -1,7 +1,7 @@
 require_relative '../cuda'
 require_relative 'compile_error'
 
-module Numo::CUDA
+module Cumo::CUDA
   class NVRTCProgram
     def initialize(src, name: "default_program", headers: [], include_names: [])
       @ptr = nil

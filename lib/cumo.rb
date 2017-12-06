@@ -1,3 +1,3 @@
-require_relative File.join(__dir__, '../ext/numo/numo')
-require_relative 'numo/cuda'
-require_relative 'numo/narray/extra'
+require_relative File.join(__dir__, '../ext/cumo/cumo')
+require_relative 'cumo/cuda'
+require_relative 'cumo/narray/extra'

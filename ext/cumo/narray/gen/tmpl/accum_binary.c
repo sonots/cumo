@@ -69,13 +69,13 @@ static VALUE
 <% else %>
   @overload <%=op_map%>(other, axis:nil, keepdims:false)
 <% end %>
-  @param [Numo::NArray,Numeric] other
+  @param [Cumo::NArray,Numeric] other
   @param [Numeric,Array,Range] axis (keyword) Affected dimensions.
   @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
 <% if is_float %>
   @param [TrueClass] nan (keyword) If true, apply NaN-aware algorithm (avoid NaN if exists).
 <% end %>
-  @return [Numo::NArray] <%=name%> of self and other.
+  @return [Cumo::NArray] <%=name%> of self and other.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

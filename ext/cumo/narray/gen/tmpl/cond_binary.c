@@ -25,7 +25,7 @@ static VALUE
 <%=c_func%>_self(VALUE self, VALUE other)
 {
     ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
-    ndfunc_arg_out_t aout[1] = {{numo_cBit,0}};
+    ndfunc_arg_out_t aout[1] = {{cumo_cBit,0}};
     ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 2, 1, ain, aout };
 
     return na_ndloop(&ndf, 2, self, other);
@@ -34,8 +34,8 @@ static VALUE
 /*
   Comparison <%=name%> other.
   @overload <%=op_map%> other
-  @param [Numo::NArray,Numeric] other
-  @return [Numo::Bit] result of self <%=name%> other.
+  @param [Cumo::NArray,Numeric] other
+  @return [Cumo::Bit] result of self <%=name%> other.
 */
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE other)

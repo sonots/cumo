@@ -4,7 +4,7 @@ require 'fileutils'
 require 'digest/md5'
 require_relative '../cuda'
 
-module Numo::CUDA
+module Cumo::CUDA
   class Compiler
     VALID_KERNEL_NAME = /\A[a-zA-Z_][a-zA-Z_0-9]*\z/
     DEFAULT_CACHE_DIR = File.expand_path('~/.cumo/kernel_cache')

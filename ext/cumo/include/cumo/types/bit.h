@@ -1,6 +1,6 @@
 typedef BIT_DIGIT dtype;
 typedef BIT_DIGIT rtype;
-#define cT  numo_cBit
+#define cT  cumo_cBit
 #define cRT cT
 
 #define m_zero 0

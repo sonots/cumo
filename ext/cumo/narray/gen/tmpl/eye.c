@@ -36,7 +36,7 @@ static void
   @param [Integer] offset Diagonal offset from the main diagonal.  The
       default is 0. k>0 for diagonals above the main diagonal, and k<0
       for diagonals below the main diagonal.
-  @return [Numo::<%=class_name%>] <%=name%> of self.
+  @return [Cumo::<%=class_name%>] <%=name%> of self.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

@@ -1,6 +1,6 @@
 set name:                "sfloat"
 set type_name:           "sfloat"
-set full_class_name:     "Numo::SFloat"
+set full_class_name:     "Cumo::SFloat"
 set class_name:          "SFloat"
 set class_alias:         "Float32"
 set class_var:           "cT"

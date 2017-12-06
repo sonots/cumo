@@ -1,6 +1,6 @@
 set name:                "int64"
 set type_name:           "int64"
-set full_class_name:     "Numo::Int64"
+set full_class_name:     "Cumo::Int64"
 set class_name:          "Int64"
 set class_var:           "cT"
 set ctype:               "int64_t"

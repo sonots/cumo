@@ -10,8 +10,8 @@
   or Array or true.
 
   @example
-      a = Numo::DFloat.new(4,5).seq
-      => Numo::DFloat#shape=[4,5]
+      a = Cumo::DFloat.new(4,5).seq
+      => Cumo::DFloat#shape=[4,5]
       [[0, 1, 2, 3, 4],
        [5, 6, 7, 8, 9],
        [10, 11, 12, 13, 14],
@@ -21,16 +21,16 @@
       => 6.0
 
       a[1..3,1]
-      => Numo::DFloat#shape=[3]
+      => Cumo::DFloat#shape=[3]
       [6, 11, 16]
 
       a[1,[1,3,4]]
-      => Numo::DFloat#shape=[3]
+      => Cumo::DFloat#shape=[3]
       [6, 8, 9]
 
       a[true,2].fill(99)
       a
-      => Numo::DFloat#shape=[4,5]
+      => Cumo::DFloat#shape=[4,5]
       [[0, 1, 99, 3, 4],
        [5, 6, 99, 8, 9],
        [10, 11, 99, 13, 14],

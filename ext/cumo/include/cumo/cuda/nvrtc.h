@@ -1,5 +1,5 @@
-#ifndef NUMO_CUDA_NVRTC_H
-#define NUMO_CUDA_NVRTC_H
+#ifndef CUMO_CUDA_NVRTC_H
+#define CUMO_CUDA_NVRTC_H
 #include <nvrtc.h>
 
 #if defined(__cplusplus)
@@ -9,8 +9,8 @@ extern "C" {
 #endif
 #endif
 
-extern VALUE numo_cuda_eNVRTCError;
-extern VALUE numo_cuda_mNVRTC;
+extern VALUE cumo_cuda_eNVRTCError;
+extern VALUE cumo_cuda_mNVRTC;
 
 #if defined(__cplusplus)
 #if 0

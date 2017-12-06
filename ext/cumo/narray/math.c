@@ -4,11 +4,11 @@
     (C) Copyright 1999-2017 by Masahiro TANAKA
 */
 #include <ruby.h>
-#include "numo/narray.h"
+#include "cumo/narray.h"
 
-VALUE numo_mNMath;
-EXTERN VALUE numo_mDFloatMath, numo_mDComplexMath;
-EXTERN VALUE numo_mSFloatMath, numo_mSComplexMath;
+VALUE cumo_mNMath;
+EXTERN VALUE cumo_mDFloatMath, cumo_mDComplexMath;
+EXTERN VALUE cumo_mSFloatMath, cumo_mSComplexMath;
 static ID id_send;
 static ID id_UPCAST;
 static ID id_DISPATCH;
@@ -76,7 +76,7 @@ VALUE nary_mathcast(int argc, VALUE *argv)
 
 /*
   Dispatches method to Math module of upcasted type,
-  eg, Numo::DFloat::Math.
+  eg, Cumo::DFloat::Math.
   @overload method_missing(name,x,...)
   @param [Symbol] name  method name.
   @param [NArray,Numeric] x  input array.
@@ -91,7 +91,7 @@ VALUE nary_math_method_missing(int argc, VALUE *argv, VALUE mod)
 	hash = rb_const_get(mod, id_DISPATCH);
 	typemod = rb_hash_aref( hash, type );
 	if (NIL_P(typemod)) {
-	    rb_raise(rb_eTypeError,"%s is unknown for Numo::NMath",
+	    rb_raise(rb_eTypeError,"%s is unknown for Cumo::NMath",
 		     rb_class2name(type));
 	}
 
@@ -113,24 +113,24 @@ Init_nary_math()
 {
     VALUE hCast;
 
-    numo_mNMath = rb_define_module_under(mNumo, "NMath");
-    rb_define_singleton_method(numo_mNMath, "method_missing", nary_math_method_missing, -1);
+    cumo_mNMath = rb_define_module_under(mCumo, "NMath");
+    rb_define_singleton_method(cumo_mNMath, "method_missing", nary_math_method_missing, -1);
 
     hCast = rb_hash_new();
-    rb_define_const(numo_mNMath, "DISPATCH", hCast);
-    rb_hash_aset(hCast, numo_cInt64,    numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cInt32,    numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cInt16,    numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cInt8,     numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cUInt64,   numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cUInt32,   numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cUInt16,   numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cUInt8,    numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cDFloat,   numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cDFloat,   numo_mDFloatMath);
-    rb_hash_aset(hCast, numo_cDComplex, numo_mDComplexMath);
-    rb_hash_aset(hCast, numo_cSFloat,   numo_mSFloatMath);
-    rb_hash_aset(hCast, numo_cSComplex, numo_mSComplexMath);
+    rb_define_const(cumo_mNMath, "DISPATCH", hCast);
+    rb_hash_aset(hCast, cumo_cInt64,    cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cInt32,    cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cInt16,    cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cInt8,     cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cUInt64,   cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cUInt32,   cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cUInt16,   cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cUInt8,    cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cDFloat,   cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cDFloat,   cumo_mDFloatMath);
+    rb_hash_aset(hCast, cumo_cDComplex, cumo_mDComplexMath);
+    rb_hash_aset(hCast, cumo_cSFloat,   cumo_mSFloatMath);
+    rb_hash_aset(hCast, cumo_cSComplex, cumo_mSComplexMath);
 #ifdef RUBY_INTEGER_UNIFICATION
     rb_hash_aset(hCast, rb_cInteger, rb_mMath);
 #else
@@ -138,7 +138,7 @@ Init_nary_math()
     rb_hash_aset(hCast, rb_cBignum,  rb_mMath);
 #endif
     rb_hash_aset(hCast, rb_cFloat,   rb_mMath);
-    rb_hash_aset(hCast, rb_cComplex, numo_mDComplexMath);
+    rb_hash_aset(hCast, rb_cComplex, cumo_mDComplexMath);
 
     id_send     = rb_intern("send");
     id_UPCAST   = rb_intern("UPCAST");

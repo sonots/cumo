@@ -80,7 +80,7 @@ void
   For a block {|x,i,j,...| ... }
   @yield [x,i,j,...]  x is an element, i,j,... are multidimensional indices.
 
-  @return [Numo::NArray] mapped array
+  @return [Cumo::NArray] mapped array
 
 */
 static VALUE

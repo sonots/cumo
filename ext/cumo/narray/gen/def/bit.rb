@@ -1,6 +1,6 @@
 set name:                "bit"
 set type_name:           "bit"
-set full_class_name:     "Numo::Bit"
+set full_class_name:     "Cumo::Bit"
 set class_name:          "Bit"
 set class_alias:         nil
 set class_var:           "cT"

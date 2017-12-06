@@ -63,34 +63,34 @@ static void
   Clip array elements by [min,max].
   If either of min or max is nil, one side is clipped.
   @overload <%=name%>(min,max)
-  @param [Numo::NArray,Numeric] min
-  @param [Numo::NArray,Numeric] max
-  @return [Numo::NArray] result of clip.
+  @param [Cumo::NArray,Numeric] min
+  @param [Cumo::NArray,Numeric] max
+  @return [Cumo::NArray] result of clip.
 
   @example
-      a = Numo::Int32.new(10).seq
+      a = Cumo::Int32.new(10).seq
       p a.clip(1,8)
-      # Numo::Int32#shape=[10]
+      # Cumo::Int32#shape=[10]
       # [1, 1, 2, 3, 4, 5, 6, 7, 8, 8]
 
       p a
-      # Numo::Int32#shape=[10]
+      # Cumo::Int32#shape=[10]
       # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
       p a.inplace.clip(3,6)
-      # Numo::Int32(view)#shape=[10]
+      # Cumo::Int32(view)#shape=[10]
       # [3, 3, 3, 3, 4, 5, 6, 6, 6, 6]
 
       p a
-      # Numo::Int32#shape=[10]
+      # Cumo::Int32#shape=[10]
       # [3, 3, 3, 3, 4, 5, 6, 6, 6, 6]
 
-      p a = Numo::Int32.new(10).seq
-      # Numo::Int32#shape=[10]
+      p a = Cumo::Int32.new(10).seq
+      # Cumo::Int32#shape=[10]
       # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
       p a.clip([3,4,1,1,1,4,4,4,4,4], 8)
-      # Numo::Int32#shape=[10]
+      # Cumo::Int32#shape=[10]
       # [3, 4, 2, 3, 4, 5, 6, 7, 8, 8]
 */
 static VALUE

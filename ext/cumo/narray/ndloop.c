@@ -5,8 +5,8 @@
 */
 
 #include <ruby.h>
-#include "numo/narray.h"
-#include "numo/cuda/runtime.h"
+#include "cumo/narray.h"
+#include "cumo/cuda/runtime.h"
 
 #if 0
 #define DBG(x) x
@@ -1513,8 +1513,8 @@ na_info_str(VALUE ary)
 
 //----------------------------------------------------------------------
 
-#define ncol numo_na_inspect_cols
-#define nrow numo_na_inspect_rows
+#define ncol cumo_na_inspect_cols
+#define nrow cumo_na_inspect_rows
 extern int ncol, nrow;
 
 static void

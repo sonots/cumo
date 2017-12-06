@@ -69,14 +69,14 @@ static void
   @overload <%=op_map%>(axis:nil, keepdims:false)
   @param [Integer,Array,Range] axis (keyword) axes to be counted.
   @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-  @return [Numo::Int64]
+  @return [Cumo::Int64]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     VALUE v, reduce;
     ndfunc_arg_in_t ain[3] = {{cT,0},{sym_reduce,0},{sym_init,0}};
-    ndfunc_arg_out_t aout[1] = {{numo_cInt64,0}};
+    ndfunc_arg_out_t aout[1] = {{cumo_cInt64,0}};
     ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 3, 1, ain, aout };
 
     reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);

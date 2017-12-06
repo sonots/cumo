@@ -1,4 +1,4 @@
-module Numo
+module Cumo
   module CUDA
   end
 end

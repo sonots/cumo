@@ -17,9 +17,9 @@ extern "C" {
 #define NARRAY_VERSION_CODE 909
 
 #include <math.h>
-#include "numo/compat.h"
-#include "numo/template.h"
-#include "numo/extconf.h"
+#include "cumo/compat.h"
+#include "cumo/template.h"
+#include "cumo/extconf.h"
 
 #ifdef HAVE_STDBOOL_H
 # include <stdbool.h>
@@ -127,8 +127,8 @@ typedef int fortran_integer;
 extern int na_debug_flag;
 
 #ifndef NARRAY_C
-extern VALUE numo_cNArray;
-extern VALUE rb_mNumo;
+extern VALUE cumo_cNArray;
+extern VALUE rb_mCumo;
 extern VALUE nary_eCastError;
 extern VALUE nary_eShapeError;
 extern VALUE nary_eOperationError;
@@ -139,25 +139,25 @@ extern const rb_data_type_t na_data_type;
 //EXTERN const int na_sizeof[NA_NTYPES+1];
 #endif
 
-#define cNArray numo_cNArray
-#define mNumo rb_mNumo
-//#define na_upcast(x,y) numo_na_upcast(x,y)
+#define cNArray cumo_cNArray
+#define mCumo rb_mCumo
+//#define na_upcast(x,y) cumo_na_upcast(x,y)
 
 /* global variables within this module */
-extern VALUE numo_cBit;
-extern VALUE numo_cDFloat;
-extern VALUE numo_cSFloat;
-extern VALUE numo_cDComplex;
-extern VALUE numo_cSComplex;
-extern VALUE numo_cInt64;
-extern VALUE numo_cInt32;
-extern VALUE numo_cInt16;
-extern VALUE numo_cInt8;
-extern VALUE numo_cUInt64;
-extern VALUE numo_cUInt32;
-extern VALUE numo_cUInt16;
-extern VALUE numo_cUInt8;
-extern VALUE numo_cRObject;
+extern VALUE cumo_cBit;
+extern VALUE cumo_cDFloat;
+extern VALUE cumo_cSFloat;
+extern VALUE cumo_cDComplex;
+extern VALUE cumo_cSComplex;
+extern VALUE cumo_cInt64;
+extern VALUE cumo_cInt32;
+extern VALUE cumo_cInt16;
+extern VALUE cumo_cInt8;
+extern VALUE cumo_cUInt64;
+extern VALUE cumo_cUInt32;
+extern VALUE cumo_cUInt16;
+extern VALUE cumo_cUInt8;
+extern VALUE cumo_cRObject;
 extern VALUE na_cStep;
 #ifndef HAVE_RB_CCOMPLEX
 extern VALUE rb_cComplex;
@@ -417,8 +417,8 @@ typedef unsigned int BIT_DIGIT;
 #define IS_INTEGER_CLASS(c) ((c)==rb_cFixnum||(c)==rb_cBignum)
 #endif
 
-#include "numo/ndloop.h"
-#include "numo/intern.h"
+#include "cumo/ndloop.h"
+#include "cumo/intern.h"
 
 #if defined(__cplusplus)
 #if 0

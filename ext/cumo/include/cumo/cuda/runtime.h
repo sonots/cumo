@@ -1,6 +1,6 @@
-#ifndef NUMO_CUDA_RUNTIME_H
-#define NUMO_CUDA_RUNTIME_H
-#include "numo/narray.h"
+#ifndef CUMO_CUDA_RUNTIME_H
+#define CUMO_CUDA_RUNTIME_H
+#include "cumo/narray.h"
 #include <cuda_runtime.h>
 
 #if defined(__cplusplus)
@@ -10,9 +10,9 @@ extern "C" {
 #endif
 #endif
 
-extern VALUE numo_cuda_runtime_eCUDARuntimeError;
+extern VALUE cumo_cuda_runtime_eCUDARuntimeError;
 
-void numo_cuda_runtime_check_status(cudaError_t status);
+void cumo_cuda_runtime_check_status(cudaError_t status);
 
 #if defined(__cplusplus)
 #if 0

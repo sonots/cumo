@@ -2,12 +2,12 @@
 #include <ruby/thread.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include "numo/cuda/driver.h"
+#include "cumo/cuda/driver.h"
 
-VALUE numo_cuda_eDriverError;
-VALUE numo_cuda_mDriver;
-#define eDriverError numo_cuda_eDriverError
-#define mDriver numo_cuda_mDriver
+VALUE cumo_cuda_eDriverError;
+VALUE cumo_cuda_mDriver;
+#define eDriverError cumo_cuda_eDriverError
+#define mDriver cumo_cuda_mDriver
 
 static void
 check_status(CUresult status)
@@ -17,7 +17,7 @@ check_status(CUresult status)
         const char *errstring = NULL;
         cuGetErrorName(status, &errname);
         cuGetErrorString(status, &errstring);
-        rb_raise(numo_cuda_eDriverError, "%s %s (error=%d)", errname, errstring, status);
+        rb_raise(cumo_cuda_eDriverError, "%s %s (error=%d)", errname, errstring, status);
     }
 }
 
@@ -385,10 +385,10 @@ rb_cuModuleUnload(VALUE self, VALUE hmod)
 }
 
 void
-Init_numo_cuda_driver()
+Init_cumo_cuda_driver()
 {
-    VALUE mNumo = rb_define_module("Numo");
-    VALUE mCUDA = rb_define_module_under(mNumo, "CUDA");
+    VALUE mCumo = rb_define_module("Cumo");
+    VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     mDriver = rb_define_module_under(mCUDA, "Driver");
     eDriverError = rb_define_class_under(mCUDA, "DriverError", rb_eStandardError);
 

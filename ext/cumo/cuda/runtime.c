@@ -1,21 +1,21 @@
 #include <ruby.h>
 #include <assert.h>
 #include <cuda_runtime.h>
-#include "numo/cuda/runtime.h"
+#include "cumo/cuda/runtime.h"
 
-VALUE numo_cuda_eRuntimeError;
-VALUE numo_cuda_mRuntime;
-#define eRuntimeError numo_cuda_eRuntimeError
-#define mRuntime numo_cuda_mRuntime
+VALUE cumo_cuda_eRuntimeError;
+VALUE cumo_cuda_mRuntime;
+#define eRuntimeError cumo_cuda_eRuntimeError
+#define mRuntime cumo_cuda_mRuntime
 
 void
-numo_cuda_runtime_check_status(cudaError_t status)
+cumo_cuda_runtime_check_status(cudaError_t status)
 {
     if (status != 0) {
         rb_raise(eRuntimeError, "%s (error=%d)", cudaGetErrorString(status), status);
     }
 }
-#define check_status(status) (numo_cuda_runtime_check_status((status)))
+#define check_status(status) (cumo_cuda_runtime_check_status((status)))
 
 ///////////////////////////////////////////
 // Initialization
@@ -109,10 +109,10 @@ rb_cudaDeviceSynchronize(VALUE self)
 }
 
 void
-Init_numo_cuda_runtime()
+Init_cumo_cuda_runtime()
 {
-    VALUE mNumo = rb_define_module("Numo");
-    VALUE mCUDA = rb_define_module_under(mNumo, "CUDA");
+    VALUE mCumo = rb_define_module("Cumo");
+    VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     mRuntime = rb_define_module_under(mCUDA, "Runtime");
     eRuntimeError = rb_define_class_under(mCUDA, "RuntimeError", rb_eStandardError);
 

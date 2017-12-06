@@ -5,8 +5,8 @@
 */
 
 #include <ruby.h>
-#include "numo/narray.h"
-#include "numo/template.h"
+#include "cumo/narray.h"
+#include "cumo/template.h"
 
 static VALUE sym_mulsum;
 static ID id_mulsum;
@@ -182,25 +182,25 @@ check_axis(int axis, int ndim)
   @overload  swapaxes(axis1,axis2)
   @param [Integer] axis1
   @param [Integer] axis2
-  @return [Numo::NArray]  view of NArray.
+  @return [Cumo::NArray]  view of NArray.
   @example
-    x = Numo::Int32[[1,2,3]]
+    x = Cumo::Int32[[1,2,3]]
 
     p x.swapaxes(0,1)
-    # Numo::Int32(view)#shape=[3,1]
+    # Cumo::Int32(view)#shape=[3,1]
     # [[1],
     #  [2],
     #  [3]]
 
-    p x = Numo::Int32[[[0,1],[2,3]],[[4,5],[6,7]]]
-    # Numo::Int32#shape=[2,2,2]
+    p x = Cumo::Int32[[[0,1],[2,3]],[[4,5],[6,7]]]
+    # Cumo::Int32#shape=[2,2,2]
     # [[[0, 1],
     #   [2, 3]],
     #  [[4, 5],
     #   [6, 7]]]
 
     p x.swapaxes(0,2)
-    # Numo::Int32(view)#shape=[2,2,2]
+    # Cumo::Int32(view)#shape=[2,2,2]
     # [[[0, 4],
     #   [2, 6]],
     #  [[1, 5],
@@ -385,7 +385,7 @@ na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
 
   @overload  reshape!(size0,size1,...)
   @param sizeN [Integer] new shape
-  @return [Numo::NArray] return self.
+  @return [Cumo::NArray] return self.
   @example
 */
 static VALUE
@@ -411,7 +411,7 @@ na_reshape_bang(int argc, VALUE *argv, VALUE self)
 
   @overload  reshape(size0,size1,...)
   @param sizeN [Integer] new shape
-  @return [Numo::NArray] return self.
+  @return [Cumo::NArray] return self.
   @example
 */
 static VALUE
@@ -565,27 +565,27 @@ na_flatten(VALUE self)
   @param [Array] axes  Array of axes to be used as the 2-d sub-arrays
     from which the diagonals should be taken. Defaults to last-two
     axes ([-2,-1]).
-  @return [Numo::NArray]  diagonal view of NArray.
+  @return [Cumo::NArray]  diagonal view of NArray.
   @example
-    a = Numo::DFloat.new(4,5).seq
-    => Numo::DFloat#shape=[4,5]
+    a = Cumo::DFloat.new(4,5).seq
+    => Cumo::DFloat#shape=[4,5]
     [[0, 1, 2, 3, 4],
      [5, 6, 7, 8, 9],
      [10, 11, 12, 13, 14],
      [15, 16, 17, 18, 19]]
     b = a.diagonal(1)
-    => Numo::DFloat(view)#shape=[4]
+    => Cumo::DFloat(view)#shape=[4]
     [1, 7, 13, 19]
     b.store(0)
     a
-    => Numo::DFloat#shape=[4,5]
+    => Cumo::DFloat#shape=[4,5]
     [[0, 0, 2, 3, 4],
      [5, 6, 0, 8, 9],
      [10, 11, 12, 0, 14],
      [15, 16, 17, 18, 0]]
     b.store([1,2,3,4])
     a
-    => Numo::DFloat#shape=[4,5]
+    => Cumo::DFloat#shape=[4,5]
     [[0, 1, 2, 3, 4],
      [5, 6, 2, 8, 9],
      [10, 11, 12, 3, 14],
@@ -895,7 +895,7 @@ na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
  */
 
 static VALUE
-numo_na_dot(VALUE self, VALUE other)
+cumo_na_dot(VALUE self, VALUE other)
 {
     VALUE test;
     volatile VALUE a1=self, a2=other;
@@ -956,7 +956,7 @@ Init_nary_data()
     rb_define_method(cNArray, "to_host", nary_to_host, 0);
     rb_define_method(cNArray, "to_swapped", nary_to_swapped, 0);
 
-    //rb_define_method(cNArray, "dot", numo_na_dot, 1);
+    //rb_define_method(cNArray, "dot", cumo_na_dot, 1);
 
     id_mulsum       = rb_intern("mulsum");
     sym_mulsum      = ID2SYM(id_mulsum);

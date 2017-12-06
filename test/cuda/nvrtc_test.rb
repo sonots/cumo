@@ -1,6 +1,6 @@
 require_relative "../test_helper"
 
-module Numo::CUDA
+module Cumo::CUDA
   class NVRTCTest < Test::Unit::TestCase
     def test_nvrtcVersion
       major, minor = NVRTC.nvrtcVersion

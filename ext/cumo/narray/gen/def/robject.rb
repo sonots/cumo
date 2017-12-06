@@ -1,6 +1,6 @@
 set name:                "robject"
 set type_name:           "robject"
-set full_class_name:     "Numo::RObject"
+set full_class_name:     "Cumo::RObject"
 set class_name:          "RObject"
 set class_var:           "cT"
 set ctype:               "VALUE"

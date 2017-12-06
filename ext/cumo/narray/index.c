@@ -7,13 +7,13 @@
 
 #include <string.h>
 #include <ruby.h>
-#include "numo/narray.h"
-#include "numo/template.h"
+#include "cumo/narray.h"
+#include "cumo/template.h"
 
 #if   SIZEOF_VOIDP == 8
-#define cIndex numo_cInt64
+#define cIndex cumo_cInt64
 #elif SIZEOF_VOIDP == 4
-#define cIndex numo_cInt32
+#define cIndex cumo_cInt32
 #endif
 
 // from ruby/enumerator.c
@@ -627,9 +627,9 @@ na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd)
     if (argc == 1 && result_nd == 1) {
         idx = argv[0];
         if (rb_obj_is_kind_of(idx, rb_cArray)) {
-            idx = rb_apply(numo_cNArray,id_bracket,idx);
+            idx = rb_apply(cumo_cNArray,id_bracket,idx);
         }
-        if (rb_obj_is_kind_of(idx, numo_cNArray)) {
+        if (rb_obj_is_kind_of(idx, cumo_cNArray)) {
             GetNArray(idx,nidx);
             if (NA_NDIM(nidx)>1) {
                 store = nary_new(CLASS_OF(self),NA_NDIM(nidx),NA_SHAPE(nidx));
@@ -666,7 +666,7 @@ na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int nd)
         return rb_funcall(self,id_dup,0);
     }
     if (nidx==1) {
-        if (CLASS_OF(*idx)==numo_cBit) {
+        if (CLASS_OF(*idx)==cumo_cBit) {
             return rb_funcall(*idx,id_mask,1,self);
         }
     }

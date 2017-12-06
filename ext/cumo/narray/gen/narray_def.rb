@@ -101,11 +101,11 @@ module NArrayType
   alias tp type_name
 
   def type_var
-    @opts[:type_var] ||= "numo_c"+class_name
+    @opts[:type_var] ||= "cumo_c"+class_name
   end
 
   def math_var
-    @opts[:math_var] ||= "numo_m"+class_name+"Math"
+    @opts[:math_var] ||= "cumo_m"+class_name+"Math"
   end
 
   def real_class_name(arg=nil)
@@ -125,7 +125,7 @@ module NArrayType
   end
 
   def real_type_var
-    @opts[:real_type_var] ||= "numo_c"+real_class_name
+    @opts[:real_type_var] ||= "cumo_c"+real_class_name
   end
 
   def real_type_name
@@ -147,11 +147,11 @@ module NArrayType
     @opts[:upcast] ||= []
     if c
       if t
-        t = "numo_c#{t}"
+        t = "cumo_c#{t}"
       else
         t = "cT"
       end
-      @opts[:upcast] << "rb_hash_aset(hCast, numo_c#{c}, #{t});"
+      @opts[:upcast] << "rb_hash_aset(hCast, cumo_c#{c}, #{t});"
     else
       @opts[:upcast]
     end
@@ -160,7 +160,7 @@ module NArrayType
   def upcast_rb(c,t=nil)
     @opts[:upcast] ||= []
     if t
-      t = "numo_c#{t}"
+      t = "cumo_c#{t}"
     else
       t = "cT"
     end
@@ -185,7 +185,7 @@ module StoreFrom
     tmpl = (cname=="Bit") ? "store_bit" : "store_from"
     h = { name:cname.downcase,
           type_name:cname,
-          type_var:"numo_c"+cname,
+          type_var:"cumo_c"+cname,
           dtype:dtype,
           macro:macro }
     Store.new(self, tmpl, **h)

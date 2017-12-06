@@ -35,11 +35,11 @@ erb_dir.map!{|d| File.join(thisdir,d)}
 code = DefLib.new do
   set erb_dir: erb_dir
   set erb_suffix: ".c"
-  set ns_var: "mNumo"
+  set ns_var: "mCumo"
 
   set file_name: $output||""
-  set include_files: ["numo/types/#{type_name}.h"]
-  set lib_name: "numo_"+type_name
+  set include_files: ["cumo/types/#{type_name}.h"]
+  set lib_name: "cumo_"+type_name
 
   def_class do
     extend NArrayMethod

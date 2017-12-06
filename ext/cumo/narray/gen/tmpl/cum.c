@@ -29,7 +29,7 @@ static void
   @overload <%=name%>(axis:nil, nan:false)
   @param [Numeric,Array,Range] axis  Affected dimensions.
   @param [TrueClass] nan  If true, apply NaN-aware algorithm (avoid NaN if exists).
-  @return [Numo::<%=class_name%>] <%=name%> of self.
+  @return [Cumo::<%=class_name%>] <%=name%> of self.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

@@ -1,6 +1,6 @@
 set name:                "uint32"
 set type_name:           "uint32"
-set full_class_name:     "Numo::UInt32"
+set full_class_name:     "Cumo::UInt32"
 set class_name:          "UInt32"
 set class_var:           "cT"
 set ctype:               "u_int32_t"

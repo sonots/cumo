@@ -1,8 +1,8 @@
 typedef float dtype;
 typedef float rtype;
-#define cT  numo_cSFloat
-#define cRT numo_cSFloat
-#define mTM numo_mSFloatMath
+#define cT  cumo_cSFloat
+#define cRT cumo_cSFloat
+#define mTM cumo_mSFloatMath
 
 #include "float_macro.h"
 
@@ -32,8 +32,8 @@ inline static void m_rand_norm(dtype mu, dtype sigma, dtype *a0, dtype *a1)
 }
 #endif
 
-#define m_min_init numo_sfloat_new_dim0(0.0/0.0)
-#define m_max_init numo_sfloat_new_dim0(0.0/0.0)
+#define m_min_init cumo_sfloat_new_dim0(0.0/0.0)
+#define m_max_init cumo_sfloat_new_dim0(0.0/0.0)
 
 #define m_extract(x) rb_float_new(*(float*)x)
 #define m_nearly_eq(x,y) (fabs(x-y)<=(fabs(x)+fabs(y))*FLT_EPSILON*2)

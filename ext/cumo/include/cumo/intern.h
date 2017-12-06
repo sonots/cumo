@@ -66,8 +66,8 @@ VALUE nary_dup(VALUE);
 #define na_store nary_store
 VALUE nary_store(VALUE self, VALUE src);
 
-#define na_upcast numo_na_upcast
-VALUE numo_na_upcast(VALUE type1, VALUE type2);
+#define na_upcast cumo_na_upcast
+VALUE cumo_na_upcast(VALUE type1, VALUE type2);
 
 void na_release_lock(VALUE); // currently do nothing
 

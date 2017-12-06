@@ -132,11 +132,11 @@ module DefMethod
   end
 
   def store_from(cname,dtype,macro)
-    Store.new(self,"store_from",cname.downcase,dtype,"numo_c"+cname,macro)
+    Store.new(self,"store_from",cname.downcase,dtype,"cumo_c"+cname,macro)
   end
 
   def store_bit(cname)
-    Store.new(self,"store_bit",cname.downcase,nil,"numo_c"+cname,nil)
+    Store.new(self,"store_bit",cname.downcase,nil,"cumo_c"+cname,nil)
   end
 
   def store
@@ -152,7 +152,7 @@ module DefMethod
   end
 
   def cast_func
-    "numo_#{tp}_s_cast"
+    "cumo_#{tp}_s_cast"
   end
 end
 
@@ -206,11 +206,11 @@ class DataType < ErbPP
   alias tp type_name
 
   def type_var
-    @type_var ||= "numo_c"+class_name
+    @type_var ||= "cumo_c"+class_name
   end
 
   def math_var
-    @math_var ||= "numo_m"+class_name+"Math"
+    @math_var ||= "cumo_m"+class_name+"Math"
   end
 
   def real_class_name(arg=nil)
@@ -230,7 +230,7 @@ class DataType < ErbPP
   end
 
   def real_type_var
-    @real_type_var ||= "numo_c"+real_class_name
+    @real_type_var ||= "cumo_c"+real_class_name
   end
 
   def real_type_name
@@ -244,11 +244,11 @@ class DataType < ErbPP
   def upcast(c=nil,t=nil)
     if c
       if t
-        t = "numo_c#{t}"
+        t = "cumo_c#{t}"
       else
         t = "cT"
       end
-      @upcast << "rb_hash_aset(hCast, numo_c#{c}, #{t});"
+      @upcast << "rb_hash_aset(hCast, cumo_c#{c}, #{t});"
     else
       @upcast
     end
@@ -256,7 +256,7 @@ class DataType < ErbPP
 
   def upcast_rb(c,t=nil)
     if t
-      t = "numo_c#{t}"
+      t = "cumo_c#{t}"
     else
       t = "cT"
     end
@@ -299,7 +299,7 @@ class Store < Function
   attr_reader :tmpl, :tpname, :dtype, :tpclass, :macro
 
   def c_func
-    "numo_#{tp}_store_#{tpname}"
+    "cumo_#{tp}_store_#{tpname}"
   end
 
   def c_iter
@@ -358,7 +358,7 @@ class StoreArray < Store
   end
 
   def c_func
-    "numo_#{tp}_#{tmpl}"
+    "cumo_#{tp}_#{tmpl}"
   end
 
   def condition(klass)
@@ -372,7 +372,7 @@ class CastArray < StoreArray
   end
 
   def c_func
-    "numo_#{tp}_cast_#{tpname}"
+    "cumo_#{tp}_cast_#{tpname}"
   end
 
   def c_iter

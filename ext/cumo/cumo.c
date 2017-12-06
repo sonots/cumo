@@ -1,47 +1,47 @@
-#define NUMO_C
+#define CUMO_C
 #include <ruby.h>
 #include <assert.h>
-#include "numo.h"
+#include "cumo.h"
 
-void Init_numo();
+void Init_cumo();
 void Init_narray();
 void Init_nary_data();
 void Init_nary_ndloop();
 void Init_nary_step();
 void Init_nary_index();
-void Init_numo_bit();
-void Init_numo_int8();
-void Init_numo_int16();
-void Init_numo_int32();
-void Init_numo_int64();
-void Init_numo_uint8();
-void Init_numo_uint16();
-void Init_numo_uint32();
-void Init_numo_uint64();
-void Init_numo_sfloat();
-void Init_numo_scomplex();
-void Init_numo_dfloat();
-void Init_numo_dcomplex();
-void Init_numo_robject();
+void Init_cumo_bit();
+void Init_cumo_int8();
+void Init_cumo_int16();
+void Init_cumo_int32();
+void Init_cumo_int64();
+void Init_cumo_uint8();
+void Init_cumo_uint16();
+void Init_cumo_uint32();
+void Init_cumo_uint64();
+void Init_cumo_sfloat();
+void Init_cumo_scomplex();
+void Init_cumo_dfloat();
+void Init_cumo_dcomplex();
+void Init_cumo_robject();
 void Init_nary_math();
 void Init_nary_rand();
 void Init_nary_array();
 void Init_nary_struct();
-void Init_numo_cuda_driver();
-void Init_numo_cuda_runtime();
-void Init_numo_cuda_nvrtc();
+void Init_cumo_cuda_driver();
+void Init_cumo_cuda_runtime();
+void Init_cumo_cuda_nvrtc();
 
 void
-numo_debug_breakpoint(void)
+cumo_debug_breakpoint(void)
 {
     /* */
 }
 
-/* initialization of Numo Module */
+/* initialization of Cumo Module */
 void
-Init_numo()
+Init_cumo()
 {
-    VALUE mNumo = rb_define_module("Numo");
+    VALUE mCumo = rb_define_module("Cumo");
 
     Init_narray();
 
@@ -51,22 +51,22 @@ Init_numo()
     Init_nary_data();
     Init_nary_ndloop();
 
-    Init_numo_dcomplex();
-    Init_numo_dfloat();
-    Init_numo_scomplex();
-    Init_numo_sfloat();
+    Init_cumo_dcomplex();
+    Init_cumo_dfloat();
+    Init_cumo_scomplex();
+    Init_cumo_sfloat();
 
-    Init_numo_int64();
-    Init_numo_uint64();
-    Init_numo_int32();
-    Init_numo_uint32();
-    Init_numo_int16();
-    Init_numo_uint16();
-    Init_numo_int8();
-    Init_numo_uint8();
+    Init_cumo_int64();
+    Init_cumo_uint64();
+    Init_cumo_int32();
+    Init_cumo_uint32();
+    Init_cumo_int16();
+    Init_cumo_uint16();
+    Init_cumo_int8();
+    Init_cumo_uint8();
 
-    Init_numo_bit();
-    Init_numo_robject();
+    Init_cumo_bit();
+    Init_cumo_robject();
 
     Init_nary_math();
 
@@ -74,7 +74,7 @@ Init_numo()
     Init_nary_array();
     Init_nary_struct();
 
-    Init_numo_cuda_driver();
-    Init_numo_cuda_runtime();
-    Init_numo_cuda_nvrtc();
+    Init_cumo_cuda_driver();
+    Init_cumo_cuda_runtime();
+    Init_cumo_cuda_nvrtc();
 }

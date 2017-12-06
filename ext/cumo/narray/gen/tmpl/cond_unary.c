@@ -32,13 +32,13 @@ static void
 /*
   Condition of <%=name%>.
   @overload <%=name%>
-  @return [Numo::Bit] Condition of <%=name%>.
+  @return [Cumo::Bit] Condition of <%=name%>.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {
     ndfunc_arg_in_t ain[1] = {{cT,0}};
-    ndfunc_arg_out_t aout[1] = {{numo_cBit,0}};
+    ndfunc_arg_out_t aout[1] = {{cumo_cBit,0}};
     ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP, 1, 1, ain, aout };
 
     return na_ndloop(&ndf, 1, self);

@@ -38,8 +38,8 @@ static VALUE
 /*
   Binary <%=name%>.
   @overload <%=op_map%> other
-  @param [Numo::NArray,Numeric] other
-  @return [Numo::NArray] <%=name%> of self and other.
+  @param [Cumo::NArray,Numeric] other
+  @return [Cumo::NArray] <%=name%> of self and other.
 */
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE other)

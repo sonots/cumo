@@ -1,6 +1,6 @@
 /*
   <%= file_name %>
-  Ruby/Numo::GSL - GSL wrapper for Ruby/Numo::NArray
+  Ruby/Cumo::GSL - GSL wrapper for Ruby/Cumo::NArray
 
   created on: 2017-03-11
   Copyright (C) 2017 Masahiro Tanaka
@@ -8,10 +8,10 @@
 
 #include <ruby.h>
 #include <assert.h>
-#include "numo/narray.h"
-#include "numo/template.h"
+#include "cumo/narray.h"
+#include "cumo/template.h"
 #include "SFMT.h"
-#include "numo/cuda/runtime.h"
+#include "cumo/cuda/runtime.h"
 
 #define m_map(x) m_num_to_data(rb_yield(m_data_to_num(x)))
 
@@ -35,7 +35,7 @@ Init_<%=lib_name%>(void)
 {
     VALUE hCast, <%=ns_var%>;
 
-    <%=ns_var%> = rb_define_module("Numo");
+    <%=ns_var%> = rb_define_module("Cumo");
 
     <% id_assign.each do |x| %>
     <%= x %><% end %>

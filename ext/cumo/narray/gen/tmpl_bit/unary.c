@@ -64,7 +64,7 @@ static void
 /*
   Unary <%=name%>.
   @overload <%=name%>
-  @return [Numo::<%=class_name%>] <%=name%> of self.
+  @return [Cumo::<%=class_name%>] <%=name%> of self.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

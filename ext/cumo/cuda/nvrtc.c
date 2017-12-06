@@ -2,18 +2,18 @@
 #include <ruby/thread.h>
 #include <assert.h>
 #include <nvrtc.h>
-#include "numo/cuda/nvrtc.h"
+#include "cumo/cuda/nvrtc.h"
 
-VALUE numo_cuda_eNVRTCError;
-VALUE numo_cuda_mNVRTC;
-#define eNVRTCError numo_cuda_eNVRTCError
-#define mNVRTC numo_cuda_mNVRTC
+VALUE cumo_cuda_eNVRTCError;
+VALUE cumo_cuda_mNVRTC;
+#define eNVRTCError cumo_cuda_eNVRTCError
+#define mNVRTC cumo_cuda_mNVRTC
 
 static void
 check_status(nvrtcResult status)
 {
     if (status != 0) {
-        rb_raise(numo_cuda_eNVRTCError, "%s (error=%d)", nvrtcGetErrorString(status), status);
+        rb_raise(cumo_cuda_eNVRTCError, "%s (error=%d)", nvrtcGetErrorString(status), status);
     }
 }
 
@@ -186,10 +186,10 @@ rb_nvrtcGetProgramLog(VALUE self, VALUE prog)
 }
 
 void
-Init_numo_cuda_nvrtc()
+Init_cumo_cuda_nvrtc()
 {
-    VALUE mNumo = rb_define_module("Numo");
-    VALUE mCUDA = rb_define_module_under(mNumo, "CUDA");
+    VALUE mCumo = rb_define_module("Cumo");
+    VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     mNVRTC = rb_define_module_under(mCUDA, "NVRTC");
     eNVRTCError = rb_define_class_under(mCUDA, "NVRTCError", rb_eStandardError);
 

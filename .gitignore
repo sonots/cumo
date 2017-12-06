@@ -13,9 +13,9 @@
 *.a
 mkmf.log
 test.rb
-ext/numo/narray/types/*.c
-ext/numo/include/numo/extconf.h
-ext/numo/Makefile
-ext/numo/depend
+ext/cumo/narray/types/*.c
+ext/cumo/include/cumo/extconf.h
+ext/cumo/Makefile
+ext/cumo/depend
 TAGS
 t.rb

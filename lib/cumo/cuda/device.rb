@@ -1,6 +1,6 @@
 require_relative '../cuda'
 
-module Numo::CUDA
+module Cumo::CUDA
   class Device
     attr_reader :id
 

@@ -1,6 +1,6 @@
 set name:                "int8"
 set type_name:           "int8"
-set full_class_name:     "Numo::Int8"
+set full_class_name:     "Cumo::Int8"
 set class_name:          "Int8"
 set class_var:           "cT"
 set ctype:               "int8_t"

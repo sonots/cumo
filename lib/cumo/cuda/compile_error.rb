@@ -1,6 +1,6 @@
 require_relative '../cuda'
 
-module Numo::CUDA
+module Cumo::CUDA
   class CompileError < StandardError
     def initialize(msg, source, name, options)
       @msg = msg

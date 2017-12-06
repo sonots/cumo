@@ -1,6 +1,6 @@
 set name:                "dcomplex"
 set type_name:           "dcomplex"
-set full_class_name:     "Numo::DComplex"
+set full_class_name:     "Cumo::DComplex"
 set class_name:          "DComplex"
 set class_alias:         "Complex64"
 set class_var:           "cT"

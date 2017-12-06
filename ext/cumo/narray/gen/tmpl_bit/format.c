@@ -45,7 +45,7 @@ static void
   Format elements into strings.
   @overload <%=name%> format
   @param [String] format
-  @return [Numo::RObject] array of formated strings.
+  @return [Cumo::RObject] array of formated strings.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
@@ -53,7 +53,7 @@ static VALUE
     VALUE fmt=Qnil;
 
     ndfunc_arg_in_t ain[2] = {{Qnil,0},{sym_option}};
-    ndfunc_arg_out_t aout[1] = {{numo_cRObject,0}};
+    ndfunc_arg_out_t aout[1] = {{cumo_cRObject,0}};
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 2,1, ain,aout};
 
     rb_scan_args(argc, argv, "01", &fmt);

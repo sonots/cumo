@@ -110,16 +110,16 @@ static void
   @overload rand([[low],high])
   @param [Numeric] low  lower inclusive boundary of random numbers. (default=0)
   @param [Numeric] high  upper exclusive boundary of random numbers. (default=1 or 1+1i for complex types)
-  @return [Numo::<%=class_name%>] self.
+  @return [Cumo::<%=class_name%>] self.
   @example
-    Numo::DFloat.new(6).rand
-    => Numo::DFloat#shape=[6]
+    Cumo::DFloat.new(6).rand
+    => Cumo::DFloat#shape=[6]
        [0.0617545, 0.373067, 0.794815, 0.201042, 0.116041, 0.344032]
-    Numo::DComplex.new(6).rand(5+5i)
-    => Numo::DComplex#shape=[6]
+    Cumo::DComplex.new(6).rand(5+5i)
+    => Cumo::DComplex#shape=[6]
        [2.69974+3.68908i, 0.825443+0.254414i, 0.540323+0.34354i, 4.52061+2.39322i, ...]
-    Numo::Int32.new(6).rand(2,5)
-    => Numo::Int32#shape=[6]
+    Cumo::Int32.new(6).rand(2,5)
+    => Cumo::Int32#shape=[6]
        [4, 3, 3, 2, 4, 2]
 */
 static VALUE

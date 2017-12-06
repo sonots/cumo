@@ -8,8 +8,8 @@
 #include <assert.h>
 
 /* global variables within this module */
-VALUE numo_cNArray;
-VALUE rb_mNumo;
+VALUE cumo_cNArray;
+VALUE rb_mCumo;
 VALUE nary_eCastError;
 VALUE nary_eShapeError;
 VALUE nary_eOperationError;
@@ -47,14 +47,14 @@ VALUE na_cStep;
 VALUE rb_cComplex;
 #endif
 
-int numo_na_inspect_rows=20;
-int numo_na_inspect_cols=80;
+int cumo_na_inspect_rows=20;
+int cumo_na_inspect_cols=80;
 
 const rb_data_type_t na_data_type = {
-    "Numo::NArray",
+    "Cumo::NArray",
     {0, 0, 0,}, 0, 0, 0,
 };
-#include "numo/narray.h"
+#include "cumo/narray.h"
 
 void
 nary_debug_breakpoint(void)
@@ -201,7 +201,7 @@ na_view_gc_mark(void* na)
 }
 
 const rb_data_type_t na_data_type_view = {
-    "Numo::NArrayView",
+    "Cumo::NArrayView",
     {na_view_gc_mark, na_view_free, na_view_memsize,},
     &na_data_type, 0, 0,
 };
@@ -318,7 +318,7 @@ na_setup(VALUE self, int ndim, size_t *shape)
   @overload initialize(size0, size1, ...)
   @param [Array] shape (array of sizes along each dimension)
   @param [Integer] sizeN (size along Nth-dimension)
-  @return [Numo::NArray] unallocated narray.
+  @return [Cumo::NArray] unallocated narray.
 
   Constructs an instance of NArray class using the given
   and <i>shape</i> or <i>sizes</i>.
@@ -329,20 +329,20 @@ na_setup(VALUE self, int ndim, size_t *shape)
   Memory is allocated on write method such as #fill, #store, #seq, etc.
 
   @example
-    i = Numo::Int64.new([2,4,3])
-    #=> Numo::Int64#shape=[2,4,3](empty)
+    i = Cumo::Int64.new([2,4,3])
+    #=> Cumo::Int64#shape=[2,4,3](empty)
 
-    f = Numo::DFloat.new(3,4)
-    #=> Numo::DFloat#shape=[3,4](empty)
+    f = Cumo::DFloat.new(3,4)
+    #=> Cumo::DFloat#shape=[3,4](empty)
 
     f.fill(2)
-    #=> Numo::DFloat#shape=[3,4]
+    #=> Cumo::DFloat#shape=[3,4]
     # [[2, 2, 2, 2],
     #  [2, 2, 2, 2],
     #  [2, 2, 2, 2]]
 
-    x = Numo::NArray.new(5)
-    #=> in `new': allocator undefined for Numo::NArray (TypeError)
+    x = Cumo::NArray.new(5)
+    #=> in `new': allocator undefined for Cumo::NArray (TypeError)
     #   	from t.rb:9:in `<main>'
 
 */
@@ -400,8 +400,8 @@ nary_view_new(VALUE klass, int ndim, size_t *shape)
   Replaces the contents of self with the contents of other narray.
   Used in dup and clone method.
   @overload initialize_copy(other)
-  @param [Numo::NArray] other
-  @return [Numo::NArray] self
+  @param [Cumo::NArray] other
+  @return [Cumo::NArray] self
  */
 static VALUE
 na_initialize_copy(VALUE self, VALUE orig)
@@ -425,8 +425,8 @@ na_initialize_copy(VALUE self, VALUE orig)
  *  This singleton method is valid not for NArray class itself
  *  but for typed NArray subclasses, e.g., DFloat, Int64.
  *  @example
- *    a = Numo::DFloat.zeros(3,5)
- *    => Numo::DFloat#shape=[3,5]
+ *    a = Cumo::DFloat.zeros(3,5)
+ *    => Cumo::DFloat#shape=[3,5]
  *    [[0, 0, 0, 0, 0],
  *     [0, 0, 0, 0, 0],
  *     [0, 0, 0, 0, 0]]
@@ -449,8 +449,8 @@ na_s_zeros(int argc, VALUE *argv, VALUE klass)
  *  This singleton method is valid not for NArray class itself
  *  but for typed NArray subclasses, e.g., DFloat, Int64.
  *  @example
- *    a = Numo::DFloat.ones(3,5)
- *    => Numo::DFloat#shape=[3,5]
+ *    a = Cumo::DFloat.ones(3,5)
+ *    => Cumo::DFloat#shape=[3,5]
  *    [[1, 1, 1, 1, 1],
  *     [1, 1, 1, 1, 1],
  *     [1, 1, 1, 1, 1]]
@@ -473,11 +473,11 @@ na_s_ones(int argc, VALUE *argv, VALUE klass)
   @param [Numeric] x1   The start value
   @param [Numeric] x2   The end value
   @param [Integer] n    The number of elements. (default is 100).
-  @return [Numo::NArray]  result array.
+  @return [Cumo::NArray]  result array.
 
   @example
-    a = Numo::DFloat.linspace(-5,5,7)
-    => Numo::DFloat#shape=[7]
+    a = Cumo::DFloat.linspace(-5,5,7)
+    => Cumo::DFloat#shape=[7]
     [-5, -3.33333, -1.66667, 0, 1.66667, 3.33333, 5]
  */
 static VALUE
@@ -512,14 +512,14 @@ na_s_linspace(int argc, VALUE *argv, VALUE klass)
   @param [Numeric] b  The end value
   @param [Integer] n  The number of elements. (default is 50)
   @param [Numeric] base  The base of log space. (default is 10)
-  @return [Numo::NArray]  result array.
+  @return [Cumo::NArray]  result array.
 
   @example
-    Numo::DFloat.logspace(4,0,5,2)
-    => Numo::DFloat#shape=[5]
+    Cumo::DFloat.logspace(4,0,5,2)
+    => Cumo::DFloat#shape=[5]
        [16, 8, 4, 2, 1]
-    Numo::DComplex.logspace(0,1i*Math::PI,5,Math::E)
-    => Numo::DComplex#shape=[5]
+    Cumo::DComplex.logspace(0,1i*Math::PI,5,Math::E)
+    => Cumo::DComplex#shape=[5]
        [1+4.44659e-323i, 0.707107+0.707107i, 6.12323e-17+1i, -0.707107+0.707107i, ...]
  */
 static VALUE
@@ -551,10 +551,10 @@ na_s_logspace(int argc, VALUE *argv, VALUE klass)
   Returns a NArray with shape=(n,n) whose diagonal elements are 1, otherwise 0.
   @overload  eye(n)
   @param [Integer] n  Size of NArray. Creates 2-D NArray with shape=(n,n)
-  @return [Numo::NArray]  created NArray.
+  @return [Cumo::NArray]  created NArray.
   @example
-    a = Numo::DFloat.eye(3)
-    => Numo::DFloat#shape=[3,3]
+    a = Cumo::DFloat.eye(3)
+    => Cumo::DFloat#shape=[3,3]
     [[1, 0, 0],
      [0, 1, 0],
      [0, 0, 1]]
@@ -951,7 +951,7 @@ na_make_view(VALUE self)
  *  Expand the shape of an array. Insert a new axis with size=1
  *  at a given dimension.
  *  @param [Integer] dim  dimension at which new axis is inserted.
- *  @return [Numo::NArray]  result narray view.
+ *  @return [Cumo::NArray]  result narray view.
  */
 VALUE
 na_expand_dims(VALUE self, VALUE vdim)
@@ -1096,7 +1096,7 @@ nary_reverse(int argc, VALUE *argv, VALUE self)
 //----------------------------------------------------------------------
 
 VALUE
-numo_na_upcast(VALUE type1, VALUE type2)
+cumo_na_upcast(VALUE type1, VALUE type2)
 {
     VALUE upcast_hash;
     VALUE result_type;
@@ -1131,7 +1131,7 @@ nary_coerce(VALUE x, VALUE y)
 {
     VALUE type;
 
-    type = numo_na_upcast(CLASS_OF(x), CLASS_OF(y));
+    type = cumo_na_upcast(CLASS_OF(x), CLASS_OF(y));
     y = rb_funcall(type,id_cast,1,y);
     return rb_assoc_new(y , x);
 }
@@ -1171,7 +1171,7 @@ nary_s_byte_size(VALUE type)
   @overload from_binary(string,[shape])
   @param [String] string  Binary raw data.
   @param [Array] shape  array of integers representing array shape.
-  @return [Numo::NArray] NArray containing binary data.
+  @return [Cumo::NArray] NArray containing binary data.
  */
 static VALUE
 nary_s_from_binary(int argc, VALUE *argv, VALUE type)
@@ -1329,7 +1329,7 @@ nary_marshal_dump(VALUE self)
     rb_ary_push(a, INT2FIX(1));     // version
     rb_ary_push(a, na_shape(self));
     rb_ary_push(a, INT2FIX(NA_FLAG0(self)));
-    if (CLASS_OF(self) == numo_cRObject) {
+    if (CLASS_OF(self) == cumo_cRObject) {
         narray_t *na;
         VALUE *ptr;
         size_t offset=0;
@@ -1375,7 +1375,7 @@ nary_marshal_load(VALUE self, VALUE a)
     na_initialize(self,RARRAY_AREF(a,1));
     NA_FL0_SET(self,FIX2INT(RARRAY_AREF(a,2)));
     v = RARRAY_AREF(a,3);
-    if (CLASS_OF(self) == numo_cRObject) {
+    if (CLASS_OF(self) == cumo_cRObject) {
         narray_t *na;
         char *ptr;
         if (TYPE(v) != T_ARRAY) {
@@ -1403,7 +1403,7 @@ nary_marshal_load(VALUE self, VALUE a)
   Cast self to another NArray datatype.
   @overload cast_to(datatype)
   @param [Class] datatype NArray datatype.
-  @return [Numo::NArray]
+  @return [Cumo::NArray]
  */
 static VALUE
 nary_cast_to(VALUE obj, VALUE type)
@@ -1640,7 +1640,7 @@ VALUE na_host_order_p( VALUE self )
 
 /*
   Returns view of narray with inplace flagged.
-  @return [Numo::NArray] view of narray with inplace flag.
+  @return [Cumo::NArray] view of narray with inplace flag.
 */
 VALUE na_inplace( VALUE self )
 {
@@ -1652,7 +1652,7 @@ VALUE na_inplace( VALUE self )
 
 /*
   Set inplace flag to self.
-  @return [Numo::NArray] self
+  @return [Cumo::NArray] self
 */
 VALUE na_inplace_bang( VALUE self )
 {
@@ -1681,7 +1681,7 @@ VALUE na_inplace_p( VALUE self )
 
 /*
   Unset inplace flag to self.
-  @return [Numo::NArray] self
+  @return [Cumo::NArray] self
 */
 VALUE na_out_of_place_bang( VALUE self )
 {
@@ -1718,8 +1718,8 @@ static VALUE na_profile_set(VALUE mod, VALUE val)
 */
 static VALUE na_inspect_rows(VALUE mod)
 {
-    if (numo_na_inspect_rows > 0) {
-        return INT2NUM(numo_na_inspect_rows);
+    if (cumo_na_inspect_rows > 0) {
+        return INT2NUM(cumo_na_inspect_rows);
     } else {
         return Qnil;
     }
@@ -1734,9 +1734,9 @@ static VALUE na_inspect_rows(VALUE mod)
 static VALUE na_inspect_rows_set(VALUE mod, VALUE num)
 {
     if (RTEST(num)) {
-        numo_na_inspect_rows = NUM2INT(num);
+        cumo_na_inspect_rows = NUM2INT(num);
     } else {
-        numo_na_inspect_rows = 0;
+        cumo_na_inspect_rows = 0;
     }
     return Qnil;
 }
@@ -1748,8 +1748,8 @@ static VALUE na_inspect_rows_set(VALUE mod, VALUE num)
 */
 static VALUE na_inspect_cols(VALUE mod)
 {
-    if (numo_na_inspect_cols > 0) {
-        return INT2NUM(numo_na_inspect_cols);
+    if (cumo_na_inspect_cols > 0) {
+        return INT2NUM(cumo_na_inspect_cols);
     } else {
         return Qnil;
     }
@@ -1764,9 +1764,9 @@ static VALUE na_inspect_cols(VALUE mod)
 static VALUE na_inspect_cols_set(VALUE mod, VALUE num)
 {
     if (RTEST(num)) {
-        numo_na_inspect_cols = NUM2INT(num);
+        cumo_na_inspect_cols = NUM2INT(num);
     } else {
-        numo_na_inspect_cols = 0;
+        cumo_na_inspect_cols = 0;
     }
     return Qnil;
 }
@@ -1811,17 +1811,17 @@ na_equal(VALUE self, volatile VALUE other)
 void
 Init_narray()
 {
-    mNumo = rb_define_module("Numo");
+    mCumo = rb_define_module("Cumo");
 
     /*
-      Document-class: Numo::NArray
+      Document-class: Cumo::NArray
 
-      Numo::NArray is the abstract super class for
-      Numerical N-dimensional Array in the Ruby/Numo module.
-      Use Typed Subclasses of NArray (Numo::DFloat, Int32, etc)
+      Cumo::NArray is the abstract super class for
+      Numerical N-dimensional Array in the Ruby/Cumo module.
+      Use Typed Subclasses of NArray (Cumo::DFloat, Int32, etc)
       to create data array instances.
     */
-    cNArray = rb_define_class_under(mNumo, "NArray", rb_cObject);
+    cNArray = rb_define_class_under(mCumo, "NArray", rb_cObject);
 
 #ifndef HAVE_RB_CCOMPLEX
     rb_require("complex");
@@ -1872,7 +1872,7 @@ Init_narray()
     rb_define_method(cNArray, "expand_dims", na_expand_dims, 1);
     rb_define_method(cNArray, "reverse", nary_reverse, -1);
 
-    rb_define_singleton_method(cNArray, "upcast", numo_na_upcast, 1);
+    rb_define_singleton_method(cNArray, "upcast", cumo_na_upcast, 1);
     rb_define_singleton_method(cNArray, "byte_size", nary_s_byte_size, 0);
 
     rb_define_singleton_method(cNArray, "from_binary", nary_s_from_binary, -1);

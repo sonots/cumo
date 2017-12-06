@@ -53,9 +53,9 @@ static void
   @overload <%=name%>(axis:nil)
 <% end %>
   @param [Numeric,Array,Range] axis  Affected dimensions.
-  @return [Integer,Numo::Int] returns result index of <%=name%>.
+  @return [Integer,Cumo::Int] returns result index of <%=name%>.
   @example
-      Numo::NArray[3,4,1,2].sort_index => Numo::Int32[2,3,0,1]
+      Cumo::NArray[3,4,1,2].sort_index => Cumo::Int32[2,3,0,1]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
@@ -74,8 +74,8 @@ static VALUE
     }
     if (na->size > (~(u_int32_t)0)) {
         ain[1].type =
-        aout[0].type = numo_cInt64;
-        idx = nary_new(numo_cInt64, na->ndim, na->shape);
+        aout[0].type = cumo_cInt64;
+        idx = nary_new(cumo_cInt64, na->ndim, na->shape);
        <% if is_float %>
          ndf.func = <%=type_name%>_index64_qsort_ignan;
          reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf,
@@ -86,8 +86,8 @@ static VALUE
        <% end %>
     } else {
         ain[1].type =
-        aout[0].type = numo_cInt32;
-        idx = nary_new(numo_cInt32, na->ndim, na->shape);
+        aout[0].type = cumo_cInt32;
+        idx = nary_new(cumo_cInt32, na->ndim, na->shape);
        <% if is_float %>
          ndf.func = <%=type_name%>_index32_qsort_ignan;
          reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf,

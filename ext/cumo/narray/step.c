@@ -6,7 +6,7 @@
 #include <ruby.h>
 #include <math.h>
 
-#include "numo/narray.h"
+#include "cumo/narray.h"
 
 #if defined(__FreeBSD__) && __FreeBSD__ < 4
 #include <floatingpoint.h>
