@@ -7,45 +7,48 @@ if RUBY_VERSION < "2.0.0"
   exit(1)
 end
 
-rm_f 'numo/extconf.h'
+rm_f 'include/numo/extconf.h'
 
 #$CFLAGS="-g3 -O0 -Wall"
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
-$INCFLAGS = "-Itypes #$INCFLAGS"
+$INCFLAGS = "-Iinclude -Inarray #$INCFLAGS"
 
-$INSTALLFILES = Dir.glob(%w[numo/*.h numo/types/*.h cuda/*.h]).map{|x| [x,'$(archdir)'] }
-$INSTALLFILES << ['numo/extconf.h','$(archdir)']
+$INSTALLFILES = Dir.glob(%w[include/numo/*.h include/numo/types/*.h include/numo/cuda/*.h]).map{|x| [x,'$(archdir)'] }
+$INSTALLFILES << ['include/numo/extconf.h','$(archdir)']
 if /cygwin|mingw/ =~ RUBY_PLATFORM
-  $INSTALLFILES << ['libnarray.a', '$(archdir)']
+  $INSTALLFILES << ['libnumo.a', '$(archdir)']
 end
 
 srcs = %w(
-narray
-array
-step
-index
-ndloop
-data
-types/bit
-types/int8
-types/int16
-types/int32
-types/int64
-types/uint8
-types/uint16
-types/uint32
-types/uint64
-types/sfloat
-types/dfloat
-types/scomplex
-types/dcomplex
-types/robject
-math
-SFMT
-struct
-rand
+numo
+narray/narray
+narray/array
+narray/step
+narray/index
+narray/ndloop
+narray/data
+narray/types/bit
+narray/types/int8
+narray/types/int16
+narray/types/int32
+narray/types/int64
+narray/types/uint8
+narray/types/uint16
+narray/types/uint32
+narray/types/uint64
+narray/types/sfloat
+narray/types/dfloat
+narray/types/scomplex
+narray/types/dcomplex
+narray/types/robject
+narray/math
+narray/SFMT
+narray/struct
+narray/rand
+cuda/driver
 cuda/runtime
+cuda/nvrtc
 )
 
 if RUBY_VERSION[0..3] == "2.1."
@@ -85,10 +88,11 @@ end
 have_func("exp10")
 
 have_var("rb_cComplex")
+have_func("rb_thread_call_without_gvl")
 
 $objs = srcs.collect{|i| i+".o"}
 
-create_header('numo/extconf.h')
+create_header('include/numo/extconf.h')
 
 depend_path = File.join(__dir__, "depend")
 File.open(depend_path, "w") do |depend|
@@ -102,12 +106,13 @@ end
 
 HEADER_DIRS = (ENV['CPATH'] || '').split(':')
 LIB_DIRS = (ENV['LIBRARY_PATH'] || '').split(':')
-dir_config('numo/narray', HEADER_DIRS, LIB_DIRS)
+dir_config('numo', HEADER_DIRS, LIB_DIRS)
 
 have_library('cuda')
 have_library('cudart')
+have_library('nvrtc')
 # have_library('cublas')
 # have_library('cusolver')
 # have_library('curand')
 
-create_makefile('numo/narray')
+create_makefile('numo')
