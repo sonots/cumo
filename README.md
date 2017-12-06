@@ -6,9 +6,21 @@ This library provides the benefit of speedup using GPU by replacing Numo with on
 
 ## Requirements
 
-* Ruby 2.4 or later
+* Ruby 2.0 or later
 * NVIDIA GPU Compute Capability 6.0 (Pascal) or later
 * CUDA 9.0 or later
+
+## Preparation
+
+Install CUDA and setup environment variables as follows:
+
+```bash
+export CUDA_PATH="/usr/local/cuda"
+export CPATH="$CUDA_PATH/include:$CPATH"
+export LD_LIBRARY_PATH="$CUDA_PATH/lib64:$CUDA_PATH/lib:$LD_LIBRARY_PATH"
+export PATH="$CUDA_PATH/bin:$PATH"
+export LIBRARY_PATH="$CUDA_PATH/lib64:$CUDA_PATH/lib:$LIBRARY_PATH"
+```
 
 ## Installation
 
@@ -64,6 +76,19 @@ Run tests:
 
 ```
 bundle exec rake test
+```
+
+### Advanced Tips
+
+[ccache](https://ccache.samba.org/) would be useful to speedup compilation time.
+Install ccache and setup as:
+
+
+```bash
+export PATH="$HOME/opt/ccache/bin:$PATH"
+ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/gcc"
+ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/g++"
+ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/nvcc"
 ```
 
 ## Contributing
