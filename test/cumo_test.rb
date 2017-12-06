@@ -2,27 +2,27 @@ require_relative "test_helper"
 
 class CumoTest < Test::Unit::TestCase
   types = [
-    Numo::DFloat,
-    Numo::SFloat,
-    Numo::DComplex,
-    Numo::SComplex,
-    Numo::Int64,
-    Numo::Int32,
-    Numo::Int16,
-    Numo::Int8,
-    Numo::UInt64,
-    Numo::UInt32,
-    Numo::UInt16,
-    Numo::UInt8,
+    Cumo::DFloat,
+    Cumo::SFloat,
+    Cumo::DComplex,
+    Cumo::SComplex,
+    Cumo::Int64,
+    Cumo::Int32,
+    Cumo::Int16,
+    Cumo::Int8,
+    Cumo::UInt64,
+    Cumo::UInt32,
+    Cumo::UInt16,
+    Cumo::UInt8,
   ]
   float_types = [
-    Numo::DFloat,
-    Numo::DComplex,
+    Cumo::DFloat,
+    Cumo::DComplex,
   ]
 
   types.each do |dtype|
     test dtype do
-      assert { dtype < Numo::NArray }
+      assert { dtype < Cumo::NArray }
     end
 
     procs = [
@@ -73,7 +73,7 @@ class CumoTest < Test::Unit::TestCase
         assert { (-a) == [-1,-2,-3,-5,-7,-11] }
         assert { (a ** 2) == [1,4,9,25,49,121] }
         assert { a.swap_byte.swap_byte == [1,2,3,5,7,11] }
-        if dtype == Numo::DComplex || dtype == Numo::SComplex
+        if dtype == Cumo::DComplex || dtype == Cumo::SComplex
           assert { a.real == src }
           assert { a.imag == [0]*6 }
           assert { a.conj == src }
@@ -148,7 +148,7 @@ class CumoTest < Test::Unit::TestCase
           assert { a.mean(0) == [3, 4.5, 7] }
           assert { a.mean(1) == [2, 23.0/3] }
         end
-        if dtype == Numo::DComplex || dtype == Numo::SComplex
+        if dtype == Cumo::DComplex || dtype == Cumo::SComplex
           assert { a.real == src }
           assert { a.imag == [[0]*3]*2 }
           assert { a.conj == src }
@@ -223,7 +223,7 @@ class CumoTest < Test::Unit::TestCase
       test "matrix.dot(matrix) with incorrect shape" do
         a = dtype[1..6].reshape(3,2)
         b = dtype[1..9].reshape(3,3)
-        assert_raise(Numo::NArray::ShapeError) { a.dot(b) }
+        assert_raise(Cumo::NArray::ShapeError) { a.dot(b) }
       end
     end
   end

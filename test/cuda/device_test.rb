@@ -1,6 +1,6 @@
 require_relative "../test_helper"
 
-module Numo::CUDA
+module Cumo::CUDA
   class DeviceTest < Test::Unit::TestCase
     def test_initialize
       assert { Device.new(0).id == 0 }

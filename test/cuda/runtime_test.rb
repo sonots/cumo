@@ -1,6 +1,6 @@
 require_relative "../test_helper"
 
-module Numo::CUDA
+module Cumo::CUDA
   class RuntimeTest < Test::Unit::TestCase
     def test_cudaDriverGetVersion
       assert { Runtime.cudaDriverGetVersion.is_a?(Integer) }

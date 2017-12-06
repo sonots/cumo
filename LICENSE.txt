@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ######################################################################
-# The Cumo is a fork of Ruby/Numo.
+# The Cumo is a fork of Numo NArray v0.9.0.9.
 # Cumo's source code and documents contain the original Ruby/Numo ones.
 ######################################################################
 BSD 3-Clause License

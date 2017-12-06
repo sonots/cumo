@@ -1,6 +1,6 @@
 require_relative "../test_helper"
 
-module Numo::CUDA
+module Cumo::CUDA
   class CompilerTest < Test::Unit::TestCase
     sub_test_case "valid_kernel_name?" do
       def test_valid
