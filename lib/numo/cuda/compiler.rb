@@ -44,13 +44,11 @@ module Numo::CUDA
     
     def compile_with_cache(source, options: [], arch: nil, cache_dir: nil, extra_source: nil)
       # NVRTC does not use extra_source. extra_source is used for cache key.
-      cache_dir ||= get_cache_dir()
-      arch ||= get_arch()
+      cache_dir ||= get_cache_dir
+      arch ||= get_arch
     
       options += ['-ftz=true']
 
-      Driver.cuCtxGetCurrent
-    
       env = [arch, options, get_nvrtc_version]
       base = @@empty_file_preprocess_cache[env]
       if base.nil?
@@ -133,10 +131,8 @@ module Numo::CUDA
     end
     
     def get_arch
-      # TODO
-      # cc = device.Device().compute_capability
-      # return 'compute_%s' % cc
-      'compute_30'
+      cc = Device.new.compute_capability
+      "compute_#{cc}"
     end
     
     def get_bool_env_variable(name, default)

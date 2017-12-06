@@ -44,10 +44,23 @@ module Numo::CUDA
     end
 
     sub_test_case "compile_with_cache" do
+      CACHE_DIR = File.join(__dir__, '.kernel_cache')
+
+      class << self
+        def startup
+          FileUtils.rm_r(CACHE_DIR)
+        end
+      end
+
       def test_valid
         compiler = Compiler.new
         source = "__global__ void k() {}\n"
-        mod = compiler.compile_with_cache(source)
+        assert_nothing_raised { compiler.compile_with_cache(source, cache_dir: CACHE_DIR) }
+      end
+
+      def test_valid_from_cache
+        test_valid
+        test_valid
       end
     end
   end

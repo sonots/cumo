@@ -1,6 +1,7 @@
 #include <ruby.h>
 #include <ruby/thread.h>
 #include <cuda.h>
+#include <cuda_runtime.h>
 #include "numo/cuda/driver.h"
 
 VALUE numo_cuda_eDriverError;
@@ -25,6 +26,20 @@ check_status(CUresult status)
 //////////////////////////////////////////////
 
 static VALUE
+rb_cuCtxCreate(VALUE self, VALUE flags, VALUE dev)
+{
+    unsigned int _flags = NUM2INT(flags);
+    CUdevice _dev = (CUdevice)NUM2INT(dev);
+    CUcontext _pctx;
+    CUresult status;
+
+    status = cuCtxCreate(&_pctx, _flags, _dev);
+
+    check_status(status);
+    return SIZET2NUM((size_t)_pctx);
+}
+
+static VALUE
 rb_cuCtxGetCurrent(VALUE self)
 {
     CUcontext ctx;
@@ -34,6 +49,23 @@ rb_cuCtxGetCurrent(VALUE self)
     check_status(status);
 
     return SIZET2NUM((size_t)ctx);
+}
+
+///////////////////////////////////////////////
+// Device Management
+//////////////////////////////////////////////
+
+static VALUE
+rb_cuDeviceGet(VALUE self, VALUE ordinal)
+{
+    int _ordinal = NUM2INT(ordinal);
+    CUdevice _device;
+    CUresult status;
+
+    status = cuDeviceGet(&_device, _ordinal);
+
+    check_status(status);
+    return INT2NUM(_device);
 }
 
 ///////////////////////////////////////////////
@@ -374,9 +406,18 @@ Init_numo_cuda_driver()
     rb_define_singleton_method(mDriver, "cuModuleLoadData", rb_cuModuleLoadData, 1);
     rb_define_singleton_method(mDriver, "cuModuleUnload", rb_cuModuleUnload, 1);
 
+    rb_define_singleton_method(mDriver, "cuDeviceGet", rb_cuDeviceGet, 1);
+    rb_define_singleton_method(mDriver, "cuCtxCreate", rb_cuCtxCreate, 2);
+
     rb_define_const(mDriver, "CU_JIT_INPUT_CUBIN", INT2NUM(CU_JIT_INPUT_CUBIN));
     rb_define_const(mDriver, "CU_JIT_INPUT_FATBINARY", INT2NUM(CU_JIT_INPUT_FATBINARY));
     rb_define_const(mDriver, "CU_JIT_INPUT_LIBRARY", INT2NUM(CU_JIT_INPUT_LIBRARY));
     rb_define_const(mDriver, "CU_JIT_INPUT_OBJECT", INT2NUM(CU_JIT_INPUT_OBJECT));
     rb_define_const(mDriver, "CU_JIT_INPUT_PTX", INT2NUM(CU_JIT_INPUT_PTX));
+
+    CUdevice cuDevice;
+    CUcontext context;
+    cuInit(0);
+    cuDeviceGet(&cuDevice, 0);
+    cuCtxCreate(&context, 0, cuDevice);
 }
