@@ -1,5 +1,5 @@
 require 'rbconfig.rb'
-require 'mkmf'
+require 'mkmf-cu'
 require "erb"
 
 if RUBY_VERSION < "2.0.0"
@@ -92,7 +92,7 @@ have_func("rb_thread_call_without_gvl")
 
 $objs = srcs.collect{|i| i+".o"}
 
-create_header('include/cumo/extconf.h')
+# create_header('include/cumo/extconf.h')
 
 depend_path = File.join(__dir__, "depend")
 File.open(depend_path, "w") do |depend|
