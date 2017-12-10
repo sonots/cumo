@@ -1,9 +1,5 @@
-__global__ void <%="#{c_iter}_kernel"%>(dtype *ptr, ssize_t step, dtype val, size_t N)
-{
-    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x * step; i < N; i += blockDim.x * gridDim.x) {
-        ptr[i] = val;
-    }
-}
+void
+<%="#{c_iter}_kernel_launch"%>(dtype *ptr, ssize_t step, dtype val, size_t N);
 
 static void
 <%=c_iter%>(na_loop_t *const lp)
@@ -25,12 +21,7 @@ static void
         //for (; i--;) {
         //    SET_DATA_STRIDE(p1,s1,dtype,y);
         //}
-        size_t maxBlockDim = 128;
-        size_t gridDim = (i / maxBlockDim) + 1;
-        size_t blockDim = (i > maxBlockDim) ? maxBlockDim : i;
-        // ref. http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
-        if (gridDim > 2147483647) gridDim = 2147483647;
-        <%="#{c_iter}_kernel"%><<<gridDim, blockDim>>>(p1,s1,y,i);
+        <%="#{c_iter}_kernel_launch"%>((dtype *)p1,s1,y,i);
     }
 }
 

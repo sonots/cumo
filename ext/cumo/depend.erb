@@ -4,7 +4,8 @@ TAGSRC = \
  narray/*.h \
  narray/types/*.h \
  narray/*.c \
- narray/types/*.c
+ narray/types/*.c \
+ narray/types/*.cu
 
 tags : TAGS
 TAGS : $(TAGSRC)
@@ -20,21 +21,34 @@ gdb :
 	gdb -x run.gdb --quiet --args $(shell ruby -e 'puts RbConfig::CONFIG["bindir"]')/ruby -I. ./test.rb
 
 C_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.c").join(" ")%>
+CU_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.cu").join(" ")%>
 
 COGEN = narray/gen/cogen.rb
-DEPENDS = $(C_TMPL) narray/gen/*.rb
+CUGEN = narray/gen/cugen.rb
+DEPENDS = $(CU_TMPL) $(C_TMPL) narray/gen/*.rb
 
 <%
-   type_c = []
-   type_rb = Dir.glob("narray/gen/def/*.rb")
-   type_rb.each do |s|
-     type_c << c = "narray/types/"+File.basename(s,".rb")+".c"
+type_c = []
+type_rb = Dir.glob("narray/gen/def/*.rb")
+type_rb.each do |s|
+  type_c << c = "narray/types/"+File.basename(s,".rb")+".c"
 %>
 <%=c%>: <%=s%> $(DEPENDS)
 	$(MAKEDIRS) $(@D) types
 	ruby $(COGEN) -l -o $@ <%=s%>
 <% end %>
 
-src : <%= type_c.join(" ") %>
+<%
+type_cu = []
+type_rb = Dir.glob("narray/gen/def/*.rb")
+type_rb.each do |s|
+  type_cu << cu = "narray/types/"+File.basename(s,".rb")+".cu"
+%>
+<%=cu%>: <%=s%> $(DEPENDS)
+	$(MAKEDIRS) $(@D) types
+	ruby $(CUGEN) -l -o $@ <%=s%>
+<% end %>
+
+src : <%= type_c.join(" ") %><%= type_cu.join(" ") %>
 
 CLEANOBJS = *.o */*.o *.bak narray/types/*.c
