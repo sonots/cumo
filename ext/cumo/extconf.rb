@@ -92,7 +92,8 @@ have_func("rb_thread_call_without_gvl")
 
 $objs = srcs.collect{|i| i+".o"}
 
-# create_header('include/cumo/extconf.h')
+create_header('include/cumo/extconf.h')
+$extconf_h = nil # nvcc does not support #include RUBY_EXTCONF_H
 
 depend_path = File.join(__dir__, "depend")
 File.open(depend_path, "w") do |depend|
