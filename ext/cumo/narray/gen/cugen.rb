@@ -38,7 +38,6 @@ code = DefLib.new do
   set ns_var: "mCumo"
 
   set file_name: $output||""
-  set include_files: ["cumo/types/#{type_name}.h"]
   set type_name: type_name
   set lib_name: "cumo_"+type_name
 

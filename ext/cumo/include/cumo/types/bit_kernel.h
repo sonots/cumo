@@ -1,2 +1,3 @@
-typedef BIT_DIGIT dtype;
-typedef BIT_DIGIT rtype;
+// TODO(sonots): BIT_DIGIT?
+typedef char dtype;
+typedef char rtype;
