@@ -25,7 +25,8 @@ CU_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.cu").join(" ")%>
 
 COGEN = narray/gen/cogen.rb
 CUGEN = narray/gen/cugen.rb
-DEPENDS = $(CU_TMPL) $(C_TMPL) narray/gen/*.rb
+C_DEPENDS = $(C_TMPL) narray/gen/*.rb
+CU_DEPENDS = $(CU_TMPL) narray/gen/*.rb
 
 <%
 type_c = []
@@ -33,7 +34,7 @@ type_rb = Dir.glob("narray/gen/def/*.rb")
 type_rb.each do |s|
   type_c << c = "narray/types/"+File.basename(s,".rb")+".c"
 %>
-<%=c%>: <%=s%> $(DEPENDS)
+<%=c%>: <%=s%> $(C_DEPENDS)
 	$(MAKEDIRS) $(@D) types
 	ruby $(COGEN) -l -o $@ <%=s%>
 <% end %>
@@ -42,13 +43,13 @@ type_rb.each do |s|
 type_cu = []
 type_rb = Dir.glob("narray/gen/def/*.rb")
 type_rb.each do |s|
-  type_cu << cu = "narray/types/"+File.basename(s,".rb")+".cu"
+  type_cu << cu = "narray/types/"+File.basename(s,".rb")+"_kernel.cu"
 %>
-<%=cu%>: <%=s%> $(DEPENDS)
+<%=cu%>: <%=s%> $(CU_DEPENDS)
 	$(MAKEDIRS) $(@D) types
 	ruby $(CUGEN) -l -o $@ <%=s%>
 <% end %>
 
-src : <%= type_c.join(" ") %><%= type_cu.join(" ") %>
+src : <%= type_cu.join(" ") %> <%= type_c.join(" ") %>
 
-CLEANOBJS = *.o */*.o *.bak narray/types/*.c
+CLEANOBJS = *.o */*.o *.bak narray/types/*.c narray/types/*.cu
