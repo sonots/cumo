@@ -52,4 +52,4 @@ type_rb.each do |s|
 
 src : <%= type_cu.join(" ") %> <%= type_c.join(" ") %>
 
-CLEANOBJS = *.o */*.o *.bak narray/types/*.c narray/types/*.cu
+CLEANOBJS = *.o */*.o */*/*.o *.bak narray/types/*.c narray/types/*.cu
