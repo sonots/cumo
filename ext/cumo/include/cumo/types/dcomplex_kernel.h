@@ -1,3 +1,2 @@
-// TODO(sonots): typedef dcomplex dtype;
-typedef double dtype;
+typedef dcomplex dtype;
 typedef double rtype;
