@@ -72,18 +72,25 @@ class ErbPP
         end
       end
     end
-    raise "file not found: #{file.inspect} in #{dirs.inspect}"
+    nil
+    # raise "file not found: #{file.inspect} in #{dirs.inspect}"
   end
 
   def run
     if base = @opts[:erb_base]
-      load_erb(base).run(binding)
+      # load_erb(base).run(binding)
+      if l = load_erb(base)
+        l.run(binding)
+      end
     end
   end
 
   def result
     if base = @opts[:erb_base]
-      load_erb(base).result(binding)
+      # load_erb(base).result(binding)
+      if l = load_erb(base)
+        l.result(binding)
+      end
     end
   end
 

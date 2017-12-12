@@ -14,8 +14,10 @@
 mkmf.log
 test.rb
 ext/cumo/narray/types/*.c
+ext/cumo/narray/types/*.cu
 ext/cumo/include/cumo/extconf.h
 ext/cumo/Makefile
 ext/cumo/depend
 TAGS
 t.rb
+.ruby-version

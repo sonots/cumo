@@ -1,5 +1,5 @@
 require 'rbconfig.rb'
-require 'mkmf'
+require 'mkmf-cu'
 require "erb"
 
 if RUBY_VERSION < "2.0.0"
@@ -42,6 +42,20 @@ narray/types/dfloat
 narray/types/scomplex
 narray/types/dcomplex
 narray/types/robject
+narray/types/bit_kernel
+narray/types/int8_kernel
+narray/types/int16_kernel
+narray/types/int32_kernel
+narray/types/int64_kernel
+narray/types/uint8_kernel
+narray/types/uint16_kernel
+narray/types/uint32_kernel
+narray/types/uint64_kernel
+narray/types/sfloat_kernel
+narray/types/dfloat_kernel
+narray/types/scomplex_kernel
+narray/types/dcomplex_kernel
+narray/types/robject_kernel
 narray/math
 narray/SFMT
 narray/struct
@@ -93,6 +107,7 @@ have_func("rb_thread_call_without_gvl")
 $objs = srcs.collect{|i| i+".o"}
 
 create_header('include/cumo/extconf.h')
+$extconf_h = nil # nvcc does not support #include RUBY_EXTCONF_H
 
 depend_path = File.join(__dir__, "depend")
 File.open(depend_path, "w") do |depend|

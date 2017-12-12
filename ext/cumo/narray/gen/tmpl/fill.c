@@ -1,3 +1,6 @@
+void
+<%="#{c_iter}_kernel_launch"%>(dtype *ptr, ssize_t step, dtype val, size_t N);
+
 static void
 <%=c_iter%>(na_loop_t *const lp)
 {
@@ -9,15 +12,18 @@ static void
     dtype    y;
     INIT_COUNTER(lp, i);
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    dtype *ptr = (dtype*)p1;
+    ssize_t step = s1 / sizeof(dtype);
     y = m_num_to_data(x);
     if (idx1) {
         for (; i--;) {
             SET_DATA_INDEX(p1,idx1,dtype,y);
         }
     } else {
-        for (; i--;) {
-            SET_DATA_STRIDE(p1,s1,dtype,y);
-        }
+        //for (; i--;) {
+        //    SET_DATA_STRIDE(p1,s1,dtype,y);
+        //}
+        <%="#{c_iter}_kernel_launch"%>(ptr,step,y,i);
     }
 }
 

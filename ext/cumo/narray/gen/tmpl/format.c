@@ -56,5 +56,6 @@ static VALUE
     ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 2, 1, ain, aout };
 
     rb_scan_args(argc, argv, "01", &fmt);
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     return na_ndloop(&ndf, 2, self, fmt);
 }
