@@ -12,6 +12,8 @@ static void
     dtype    y;
     INIT_COUNTER(lp, i);
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    dtype *ptr = (dtype*)p1;
+    ssize_t step = s1 / sizeof(dtype);
     y = m_num_to_data(x);
     if (idx1) {
         for (; i--;) {
@@ -21,7 +23,7 @@ static void
         //for (; i--;) {
         //    SET_DATA_STRIDE(p1,s1,dtype,y);
         //}
-        <%="#{c_iter}_kernel_launch"%>((dtype *)p1,s1,y,i);
+        <%="#{c_iter}_kernel_launch"%>(ptr,step,y,i);
     }
 }
 

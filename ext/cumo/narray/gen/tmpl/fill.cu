@@ -1,7 +1,7 @@
 __global__ void <%="#{c_iter}_kernel"%>(dtype *ptr, ssize_t step, dtype val, size_t N)
 {
-    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x * step; i < N; i += blockDim.x * gridDim.x) {
-        ptr[i] = val;
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
+        *(ptr + (i*step)) = val;
     }
 }
 
