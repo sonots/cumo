@@ -19,9 +19,7 @@
 <%= x %>
 <% end %>
 
-<% include_files.each do |f| %>
-#include <<%=f%>>
-<% end %>
+#include <<%="cumo/types/#{type_name}.h"%>>
 
 VALUE cT;
 extern VALUE cRT;
