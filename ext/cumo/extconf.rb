@@ -1,6 +1,6 @@
 require 'rbconfig.rb'
-require 'mkmf-cu'
 require "erb"
+require_relative '../../3rd_party/mkmf-cu/lib/mkmf-cu'
 
 if RUBY_VERSION < "2.0.0"
   puts "Cumo::NArray requires Ruby version 2.0 or later."
