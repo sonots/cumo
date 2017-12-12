@@ -34,7 +34,7 @@ erb_dir.map!{|d| File.join(thisdir,d)}
 
 code = DefLib.new do
   set erb_dir: erb_dir
-  set erb_suffix: ".cu"
+  set erb_suffix: "_kernel.cu"
   set ns_var: "mCumo"
 
   set file_name: $output||""
