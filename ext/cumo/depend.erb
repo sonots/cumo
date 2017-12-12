@@ -23,8 +23,8 @@ gdb :
 C_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.c").join(" ")%>
 CU_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.cu").join(" ")%>
 
-COGEN = narray/gen/cogen.rb
-CUGEN = narray/gen/cugen.rb
+C_COGEN = narray/gen/cogen.rb
+CU_COGEN = narray/gen/cogen_kernel.rb
 C_DEPENDS = $(C_TMPL) narray/gen/*.rb
 CU_DEPENDS = $(CU_TMPL) narray/gen/*.rb
 
@@ -36,7 +36,7 @@ type_rb.each do |s|
 %>
 <%=c%>: <%=s%> $(C_DEPENDS)
 	$(MAKEDIRS) $(@D) types
-	ruby $(COGEN) -l -o $@ <%=s%>
+	ruby $(C_COGEN) -l -o $@ <%=s%>
 <% end %>
 
 <%
@@ -47,9 +47,9 @@ type_rb.each do |s|
 %>
 <%=cu%>: <%=s%> $(CU_DEPENDS)
 	$(MAKEDIRS) $(@D) types
-	ruby $(CUGEN) -l -o $@ <%=s%>
+	ruby $(CU_COGEN) -l -o $@ <%=s%>
 <% end %>
 
 src : <%= type_cu.join(" ") %> <%= type_c.join(" ") %>
 
-CLEANOBJS = *.o */*.o */*/*.o *.bak narray/types/*.c narray/types/*.cu
+CLEANOBJS = *.o */*.o */*/*.o *.bak narray/types/*.c narray/types/*_kernel.cu
