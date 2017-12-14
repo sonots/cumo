@@ -13,7 +13,7 @@ extern "C" {
 
 #include <math.h>
 //#include "cumo/compat.h"
-//#include "cumo/template.h"
+#include "cumo/template_kernel.h"
 //#include "cumo/extconf.h"
 
 #ifdef HAVE_STDBOOL_H
