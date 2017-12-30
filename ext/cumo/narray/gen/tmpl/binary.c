@@ -1,12 +1,17 @@
-<% if is_int and %w[div mod divmod].include? name %>
-#define check_intdivzero(y)              \
-    if ((y)==0) {                        \
-        lp->err_type = rb_eZeroDivError; \
-        return;                          \
-    }
-<% else %>
-#define check_intdivzero(y) {}
-<% end %>
+// TODO(sonots): handle zero division error?
+// ref. https://devtalk.nvidia.com/default/topic/415951/divide-by-zero-handling/
+// <% if is_int and %w[div mod divmod].include? name %>
+// #define check_intdivzero(y)              \
+//     if ((y)==0) {                        \
+//         lp->err_type = rb_eZeroDivError; \
+//         return;                          \
+//     }
+// <% else %>
+// #define check_intdivzero(y) {}
+// <% end %>
+
+void <%="#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, char *p3, size_t n);
+void <%="#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, size_t n);
 
 static void
 <%=c_iter%>(na_loop_t *const lp)
@@ -29,34 +34,37 @@ static void
             s2 == sizeof(dtype) &&
             s3 == sizeof(dtype) ) {
 
-            for (i=0; i<n; i++) {
-                check_intdivzero(*(dtype*)p2);
-                ((dtype*)p3)[i] = m_<%=name%>(((dtype*)p1)[i],((dtype*)p2)[i]);
-            }
+            // for (i=0; i<n; i++) {
+            //     check_intdivzero(*(dtype*)p2);
+            //     ((dtype*)p3)[i] = m_<%=name%>(((dtype*)p1)[i],((dtype*)p2)[i]);
+            // }
+            <%="#{c_iter}_contiguous_kernel_launch"%>(p1,p2,p3,n);
             return;
         }
         if (is_aligned_step(s1,sizeof(dtype)) &&
             is_aligned_step(s2,sizeof(dtype)) &&
             is_aligned_step(s3,sizeof(dtype)) ) {
             //<% end %>
-            for (i=0; i<n; i++) {
-                check_intdivzero(*(dtype*)p2);
-                *(dtype*)p3 = m_<%=name%>(*(dtype*)p1,*(dtype*)p2);
-                p1 += s1;
-                p2 += s2;
-                p3 += s3;
-            }
+            // for (i=0; i<n; i++) {
+            //     check_intdivzero(*(dtype*)p2);
+            //     *(dtype*)p3 = m_<%=name%>(*(dtype*)p1,*(dtype*)p2);
+            //     p1 += s1;
+            //     p2 += s2;
+            //     p3 += s3;
+            // }
+            <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
             return;
             //<% if need_align %>
         }
     }
     for (i=0; i<n; i++) {
-        dtype x, y, z;
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,dtype,y);
-        check_intdivzero(y);
-        z = m_<%=name%>(x,y);
-        SET_DATA_STRIDE(p3,s3,dtype,z);
+        // dtype x, y, z;
+        // GET_DATA_STRIDE(p1,s1,dtype,x);
+        // GET_DATA_STRIDE(p2,s2,dtype,y);
+        // check_intdivzero(y);
+        // z = m_<%=name%>(x,y);
+        // SET_DATA_STRIDE(p3,s3,dtype,z);
+        <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
     }
     //<% end %>
 }
@@ -90,6 +98,7 @@ static VALUE
     if (klass==cT) {
         return <%=c_func%>_self(self, other);
     } else {
+        // TODO(sonots): CPU warning
         v = rb_funcall(klass, id_cast, 1, self);
         return rb_funcall(v, <%=id_op%>, 1, other);
     }
