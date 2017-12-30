@@ -1,5 +1,5 @@
-void <%="#{c_iter}_kernel_index_launch"%>(char *ptr, size_t *idx, dtype val, size_t N);
-void <%="#{c_iter}_kernel_stride_launch"%>(char *ptr, ssize_t step, dtype val, size_t N);
+void <%="#{c_iter}_index_kernel_launch"%>(char *ptr, size_t *idx, dtype val, size_t N);
+void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype val, size_t N);
 
 static void
 <%=c_iter%>(na_loop_t *const lp)
@@ -17,12 +17,12 @@ static void
         //for (; i--;) {
         //    SET_DATA_INDEX(p1,idx1,dtype,y);
         //}
-        <%="#{c_iter}_kernel_index_launch"%>(p1,idx1,y,i);
+        <%="#{c_iter}_index_kernel_launch"%>(p1,idx1,y,i);
     } else {
         //for (; i--;) {
         //    SET_DATA_STRIDE(p1,s1,dtype,y);
         //}
-        <%="#{c_iter}_kernel_stride_launch"%>(p1,s1,y,i);
+        <%="#{c_iter}_stride_kernel_launch"%>(p1,s1,y,i);
     }
 }
 
