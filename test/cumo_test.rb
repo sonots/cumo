@@ -236,8 +236,8 @@ class CumoTest < Test::Unit::TestCase
       assert { dtype.new(3, 1).eye(1) == [[1],[0],[0]] }
       assert { dtype.new(1, 3).eye(1) == [[1,0,0]] }
       assert { dtype.eye(3) == [[1,0,0],[0,1,0],[0,0,1]] }
-      # assert { dtype.eye(3, 1) == [[1],[0],[0]] }
-      # assert { dtype.eye(1, 3) == [[1,0,0]] }
+      assert { dtype.eye(3, 1) == [[1],[0],[0]] }
+      assert { dtype.eye(1, 3) == [[1,0,0]] }
     end
   end
 end

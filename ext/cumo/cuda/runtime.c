@@ -15,6 +15,32 @@ cumo_cuda_runtime_check_status(cudaError_t status)
         rb_raise(eRuntimeError, "%s (error=%d)", cudaGetErrorString(status), status);
     }
 }
+
+bool
+cumo_cuda_runtime_is_device_memory(void* ptr)
+{
+    struct cudaPointerAttributes attrs;
+    cudaError_t status = cudaPointerGetAttributes(&attrs, ptr);
+    return (status != cudaErrorInvalidValue);
+}
+
+char*
+cumo_cuda_runtime_malloc(size_t size)
+{
+    void *ptr;
+    cudaError_t status = cudaMallocManaged(&ptr, size, cudaMemAttachGlobal);
+    cumo_cuda_runtime_check_status(status);
+    return (char*)ptr;
+}
+
+void
+cumo_cuda_runtime_free(void *ptr)
+{
+    cudaError_t status = cudaFree(ptr);
+    cumo_cuda_runtime_check_status(status);
+    ptr = 0;
+}
+
 #define check_status(status) (cumo_cuda_runtime_check_status((status)))
 
 ///////////////////////////////////////////

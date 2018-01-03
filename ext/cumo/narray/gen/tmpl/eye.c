@@ -38,24 +38,7 @@ static void
         }
     }
     <% else %>
-    //{
-    //    ssize_t N = n0 * n1;
-    //    for (ssize_t i = 0; i< N; i++) {
-    //        size_t i0 = i / n1;
-    //        size_t i1 = i - (i0 * n1);
-    //        *(dtype*)(p0 + (i0*s0) + (i1*s1)) = (i0+kofs==i1) ? data : m_zero;
-    //    }
-    //}
-    {
-        size_t N = n0 * n1;
-        printf("p0:%p dtype:%d, s0:%d s1:%d kofs:%d n0:%d n1:%d N:%d\n", p0,sizeof(dtype),s0,s1,kofs,n0,n1,N);
-        struct cudaPointerAttributes attrs;
-        cudaError_t success = cudaPointerGetAttributes(&attrs, p0);
-        if (success == cudaErrorInvalidValue) {
-            printf("stupid\n");
-        }
-        <%="#{c_iter}_stride_kernel_launch"%>(p0,s0,s1,kofs,data,n0,n1);
-    }
+    <%="#{c_iter}_stride_kernel_launch"%>(p0,s0,s1,kofs,data,n0,n1);
     <% end %>
 }
 
