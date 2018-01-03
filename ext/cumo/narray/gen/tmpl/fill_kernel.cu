@@ -1,5 +1,4 @@
-<% if c_iter.include?('robject') %>
-<% else %>
+<% unless c_iter.include?('robject') %>
 __global__ void <%="#{c_iter}_index_kernel"%>(char *ptr, size_t *idx, dtype val, size_t N)
 {
     for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
