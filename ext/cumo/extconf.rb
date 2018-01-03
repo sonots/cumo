@@ -9,7 +9,9 @@ end
 
 rm_f 'include/cumo/extconf.h'
 
-#$CFLAGS="-g3 -O0 -Wall"
+if ENV['DEBUG']
+  $CFLAGS="-g -O0 -Wall"
+end
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
 $INCFLAGS = "-Iinclude -Inarray #$INCFLAGS"
