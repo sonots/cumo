@@ -9,7 +9,6 @@ static void
     size_t   i, n;
     char    *p1, *p2, *p3, *p4;
     ssize_t  s1, s2, s3, s4;
-    dtype    x, y, a, b;
     INIT_COUNTER(lp, n);
     INIT_PTR(lp, 0, p1, s1);
     INIT_PTR(lp, 1, p2, s2);
@@ -17,17 +16,20 @@ static void
     INIT_PTR(lp, 3, p4, s4);
     for (i=n; i--;) {
         <% if c_iter.include?('robject') %>
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,dtype,y);
+        {
+            dtype    x, y, a, b;
+            GET_DATA_STRIDE(p1,s1,dtype,x);
+            GET_DATA_STRIDE(p2,s2,dtype,y);
 <% if is_int and %w[divmod].include? name %>
-        if (y==0) {
-            lp->err_type = rb_eZeroDivError;
-            return;
-        }
+                if (y==0) {
+                    lp->err_type = rb_eZeroDivError;
+                    return;
+                }
 <% end %>
-        m_<%=name%>(x,y,a,b);
-        SET_DATA_STRIDE(p3,s3,dtype,a);
-        SET_DATA_STRIDE(p4,s4,dtype,b);
+            m_<%=name%>(x,y,a,b);
+            SET_DATA_STRIDE(p3,s3,dtype,a);
+            SET_DATA_STRIDE(p4,s4,dtype,b);
+        }
         <% else %>
         <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,p4,s1,s2,s3,s4,n);
         <% end %>

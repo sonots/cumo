@@ -41,7 +41,7 @@ cumo_debug_breakpoint(void)
 void
 Init_cumo()
 {
-    VALUE mCumo = rb_define_module("Cumo");
+    rb_define_module("Cumo");
 
     Init_narray();
 

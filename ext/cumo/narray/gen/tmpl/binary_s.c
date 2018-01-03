@@ -9,17 +9,19 @@ static void
     size_t  i;
     char    *p1, *p2, *p3;
     ssize_t s1, s2, s3;
-    dtype    x, y;
     INIT_COUNTER(lp, i);
     INIT_PTR(lp, 0, p1, s1);
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
     for (; i--;) {
         <% if c_iter.include?('robject') %>
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,dtype,y);
-        x = m_<%=name%>(x,y);
-        SET_DATA_STRIDE(p3,s3,dtype,x);
+        {
+            dtype    x, y;
+            GET_DATA_STRIDE(p1,s1,dtype,x);
+            GET_DATA_STRIDE(p2,s2,dtype,y);
+            x = m_<%=name%>(x,y);
+            SET_DATA_STRIDE(p3,s3,dtype,x);
+        }
         <% else %>
         <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,i);
         <% end %>
