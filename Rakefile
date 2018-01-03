@@ -12,6 +12,10 @@ task :compile do
   sh 'cd ext/cumo && ruby extconf.rb && make'
 end
 
+task :clean do
+  sh 'cd ext/cumo && make clean'
+end
+
 task :default => [:clobber, :compile, :test]
 
 desc 'Open an irb session preloaded with the gem library'
