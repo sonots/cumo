@@ -19,14 +19,14 @@ extern double exp10(double);
 
 #include "complex_kernel.h"
 
-static inline dtype c_from_scomplex(scomplex x) {
+__device__ static inline dtype c_from_scomplex(scomplex x) {
     dtype z;
     REAL(z) = REAL(x);
     IMAG(z) = IMAG(x);
     return z;
 }
 
-static inline dtype c_from_dcomplex(dcomplex x) {
+__device__ static inline dtype c_from_dcomplex(dcomplex x) {
     dtype z;
     REAL(z) = REAL(x);
     IMAG(z) = IMAG(x);

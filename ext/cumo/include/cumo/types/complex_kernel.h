@@ -1,16 +1,16 @@
-static inline dtype c_new(rtype r, rtype i) {
+__device__ static inline dtype c_new(rtype r, rtype i) {
     dtype z;
     REAL(z) = r;
     IMAG(z) = i;
     return z;
 }
 
-static inline dtype c_set_real(dtype x, rtype r) {
+__device__ static inline dtype c_set_real(dtype x, rtype r) {
     REAL(x)=r;
     return x;
 }
 
-static inline dtype c_set_imag(dtype x, rtype i) {
+__device__ static inline dtype c_set_imag(dtype x, rtype i) {
     IMAG(x)=i;
     return x;
 }
@@ -40,42 +40,42 @@ static inline dtype c_set_imag(dtype x, rtype i) {
                        (isinf(IMAG(x)) && signbit(IMAG(x))))
 #define c_isfinite(x) (isfinite(REAL(x)) && isfinite(IMAG(x)))
 
-static inline dtype c_zero() {
+__device__ static inline dtype c_zero() {
     dtype z;
     REAL(z) = 0;
     IMAG(z) = 0;
     return z;
 }
 
-static inline dtype c_one() {
+__device__ static inline dtype c_one() {
     dtype z;
     REAL(z) = 1;
     IMAG(z) = 0;
     return z;
 }
 
-static inline dtype c_minus(dtype x) {
+__device__ static inline dtype c_minus(dtype x) {
     dtype z;
     REAL(z) = -REAL(x);
     IMAG(z) = -IMAG(x);
     return z;
 }
 
-static inline dtype c_im(dtype x) {
+__device__ static inline dtype c_im(dtype x) {
     dtype z;
     REAL(z) = -IMAG(x);
     IMAG(z) = REAL(x);
     return z;
 }
 
-static inline dtype c_add(dtype x, dtype y) {
+__device__ static inline dtype c_add(dtype x, dtype y) {
     dtype z;
     REAL(z) = REAL(x)+REAL(y);
     IMAG(z) = IMAG(x)+IMAG(y);
     return z;
 }
 
-static inline dtype c_sub(dtype x, dtype y) {
+__device__ static inline dtype c_sub(dtype x, dtype y) {
     dtype z;
     REAL(z) = REAL(x)-REAL(y);
     IMAG(z) = IMAG(x)-IMAG(y);
@@ -83,21 +83,21 @@ static inline dtype c_sub(dtype x, dtype y) {
 }
 
 
-static inline dtype c_mul(dtype x, dtype y) {
+__device__ static inline dtype c_mul(dtype x, dtype y) {
     dtype z;
     REAL(z) = REAL(x)*REAL(y)-IMAG(x)*IMAG(y);
     IMAG(z) = REAL(x)*IMAG(y)+IMAG(x)*REAL(y);
     return z;
 }
 
-static inline dtype c_mul_r(dtype x, rtype y) {
+__device__ static inline dtype c_mul_r(dtype x, rtype y) {
     dtype z;
     REAL(z) = REAL(x)*y;
     IMAG(z) = IMAG(x)*y;
     return z;
 }
 
-static inline dtype c_div(dtype x, dtype y) {
+__device__ static inline dtype c_div(dtype x, dtype y) {
     dtype z;
     rtype s,yr,yi;
     s  = r_hypot(REAL(y),IMAG(y));
@@ -108,14 +108,14 @@ static inline dtype c_div(dtype x, dtype y) {
     return z;
 }
 
-static inline dtype c_div_r(dtype x, rtype y) {
+__device__ static inline dtype c_div_r(dtype x, rtype y) {
     dtype z;
     REAL(z) = REAL(x)/y;
     IMAG(z) = IMAG(x)/y;
     return z;
 }
 
-static inline dtype c_reciprocal(dtype x) {
+__device__ static inline dtype c_reciprocal(dtype x) {
     dtype z;
     if ( r_abs(REAL(x)) > r_abs(IMAG(x)) ) {
         IMAG(z) = IMAG(x)/REAL(x);
@@ -131,14 +131,14 @@ static inline dtype c_reciprocal(dtype x) {
     return z;
 }
 
-static inline dtype c_square(dtype x) {
+__device__ static inline dtype c_square(dtype x) {
     dtype z;
     REAL(z) = REAL(x)*REAL(x)-IMAG(x)*IMAG(x);
     IMAG(z) = 2*REAL(x)*IMAG(x);
     return z;
 }
 
-static inline dtype c_sqrt(dtype x) {
+__device__ static inline dtype c_sqrt(dtype x) {
     dtype z;
     rtype xr, xi, r;
     xr = REAL(x)/2;
@@ -156,28 +156,28 @@ static inline dtype c_sqrt(dtype x) {
     return z;
 }
 
-static inline dtype c_log(dtype x) {
+__device__ static inline dtype c_log(dtype x) {
     dtype z;
     REAL(z) = r_log(r_hypot(REAL(x),IMAG(x)));
     IMAG(z) = r_atan2(IMAG(x),REAL(x));
     return z;
 }
 
-static inline dtype c_log2(dtype x) {
+__device__ static inline dtype c_log2(dtype x) {
     dtype z;
     z = c_log(x);
     z = c_mul_r(x,M_LOG2E);
     return z;
 }
 
-static inline dtype c_log10(dtype x) {
+__device__ static inline dtype c_log10(dtype x) {
     dtype z;
     z = c_log(x);
     z = c_mul_r(x,M_LOG10E);
     return z;
 }
 
-static inline dtype c_exp(dtype x) {
+__device__ static inline dtype c_exp(dtype x) {
     dtype z;
     rtype a = r_exp(REAL(x));
     REAL(z) = a*r_cos(IMAG(x));
@@ -185,7 +185,7 @@ static inline dtype c_exp(dtype x) {
     return z;
 }
 
-static inline dtype c_exp2(dtype x) {
+__device__ static inline dtype c_exp2(dtype x) {
     dtype z;
     rtype a = r_exp(REAL(x)*M_LN2);
     REAL(z) = a*r_cos(IMAG(x));
@@ -193,7 +193,7 @@ static inline dtype c_exp2(dtype x) {
     return z;
 }
 
-static inline dtype c_exp10(dtype x) {
+__device__ static inline dtype c_exp10(dtype x) {
     dtype z;
     rtype a = r_exp(REAL(x)*M_LN10);
     REAL(z) = a*r_cos(IMAG(x));
@@ -201,35 +201,35 @@ static inline dtype c_exp10(dtype x) {
     return z;
 }
 
-static inline dtype c_sin(dtype x) {
+__device__ static inline dtype c_sin(dtype x) {
     dtype z;
     REAL(z) = r_sin(REAL(x))*r_cosh(IMAG(x));
     IMAG(z) = r_cos(REAL(x))*r_sinh(IMAG(x));
     return z;
 }
 
-static inline dtype c_sinh(dtype x) {
+__device__ static inline dtype c_sinh(dtype x) {
     dtype z;
     REAL(z) = r_sinh(REAL(x))*r_cos(IMAG(x));
     IMAG(z) = r_cosh(REAL(x))*r_sin(IMAG(x));
     return z;
 }
 
-static inline dtype c_cos(dtype x) {
+__device__ static inline dtype c_cos(dtype x) {
     dtype z;
     REAL(z) = r_cos(REAL(x))*r_cosh(IMAG(x));
     IMAG(z) = -r_sin(REAL(x))*r_sinh(IMAG(x));
     return z;
 }
 
-static inline dtype c_cosh(dtype x) {
+__device__ static inline dtype c_cosh(dtype x) {
     dtype z;
     REAL(z) = r_cosh(REAL(x))*r_cos(IMAG(x));
     IMAG(z) = r_sinh(REAL(x))*r_sin(IMAG(x));
     return z;
 }
 
-static inline dtype c_tan(dtype x) {
+__device__ static inline dtype c_tan(dtype x) {
     dtype z;
     rtype c, d;
     if (r_abs(IMAG(x))<1) {
@@ -250,7 +250,7 @@ static inline dtype c_tan(dtype x) {
     return z;
 }
 
-static inline dtype c_tanh(dtype x) {
+__device__ static inline dtype c_tanh(dtype x) {
     dtype z;
     rtype c, d, s;
     c = r_cos(IMAG(x));
@@ -268,7 +268,7 @@ static inline dtype c_tanh(dtype x) {
     return z;
 }
 
-static inline dtype c_asin(dtype x) {
+__device__ static inline dtype c_asin(dtype x) {
     dtype z, y;
     y = c_square(x);
     REAL(y) = 1-REAL(y);
@@ -282,7 +282,7 @@ static inline dtype c_asin(dtype x) {
     return z;
 }
 
-static inline dtype c_asinh(dtype x) {
+__device__ static inline dtype c_asinh(dtype x) {
     dtype z, y;
     y = c_square(x);
     REAL(y) += 1;
@@ -293,7 +293,7 @@ static inline dtype c_asinh(dtype x) {
     return z;
 }
 
-static inline dtype c_acos(dtype x) {
+__device__ static inline dtype c_acos(dtype x) {
     dtype z, y;
     y = c_square(x);
     REAL(y) = 1-REAL(y);
@@ -307,7 +307,7 @@ static inline dtype c_acos(dtype x) {
     return z;
 }
 
-static inline dtype c_acosh(dtype x) {
+__device__ static inline dtype c_acosh(dtype x) {
     dtype z, y;
     y = c_square(x);
     REAL(y) -= 1;
@@ -318,7 +318,7 @@ static inline dtype c_acosh(dtype x) {
     return z;
 }
 
-static inline dtype c_atan(dtype x) {
+__device__ static inline dtype c_atan(dtype x) {
     dtype z, y;
     REAL(y) = -REAL(x);
     IMAG(y) = 1-IMAG(x);
@@ -331,7 +331,7 @@ static inline dtype c_atan(dtype x) {
     return z;
 }
 
-static inline dtype c_atanh(dtype x) {
+__device__ static inline dtype c_atanh(dtype x) {
     dtype z, y;
     REAL(y) = 1-REAL(x);
     IMAG(y) = -IMAG(x);
@@ -344,7 +344,7 @@ static inline dtype c_atanh(dtype x) {
     return z;
 }
 
-static inline dtype c_pow(dtype x, dtype y)
+__device__ static inline dtype c_pow(dtype x, dtype y)
 {
     dtype z;
     if (c_is_zero(y)) {
@@ -359,7 +359,7 @@ static inline dtype c_pow(dtype x, dtype y)
     return z;
 }
 
-static inline dtype c_pow_int(dtype x, int p)
+__device__ static inline dtype c_pow_int(dtype x, int p)
 {
     dtype z = c_one();
     if (p<0) {
@@ -377,7 +377,7 @@ static inline dtype c_pow_int(dtype x, int p)
     return z;
 }
 
-static inline dtype c_cbrt(dtype x) {
+__device__ static inline dtype c_cbrt(dtype x) {
     dtype z;
     z = c_log(x);
     z = c_div_r(z,3);
@@ -385,11 +385,11 @@ static inline dtype c_cbrt(dtype x) {
     return z;
 }
 
-static inline rtype c_abs(dtype x) {
+__device__ static inline rtype c_abs(dtype x) {
     return r_hypot(REAL(x),IMAG(x));
 }
 
-static inline rtype c_abs_square(dtype x) {
+__device__ static inline rtype c_abs_square(dtype x) {
     return REAL(x)*REAL(x)+IMAG(x)*IMAG(x);
 }
 
