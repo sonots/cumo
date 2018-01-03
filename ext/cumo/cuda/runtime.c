@@ -34,11 +34,10 @@ cumo_cuda_runtime_malloc(size_t size)
 }
 
 void
-cumo_cuda_runtime_free(void *ptr)
+cumo_cuda_runtime_free(char *ptr)
 {
-    cudaError_t status = cudaFree(ptr);
+    cudaError_t status = cudaFree((void*)ptr);
     cumo_cuda_runtime_check_status(status);
-    ptr = 0;
 }
 
 #define check_status(status) (cumo_cuda_runtime_check_status((status)))

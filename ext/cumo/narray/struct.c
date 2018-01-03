@@ -25,8 +25,7 @@ nst_allocate(VALUE self)
         ptr = NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             velmsz = rb_const_get(CLASS_OF(self), rb_intern("element_byte_size"));
-            cudaError_t status = cudaMallocManaged(&ptr, NUM2SIZET(velmsz) * na->size, cudaMemAttachGlobal);
-            cumo_cuda_runtime_check_status(status);
+            ptr = cumo_cuda_runtime_malloc(NUM2SIZET(velmsz) * na->size);
             NA_DATA_PTR(na) = ptr;
         }
         break;
