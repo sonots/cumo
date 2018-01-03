@@ -8,38 +8,6 @@ VALUE cumo_cuda_mRuntime;
 #define eRuntimeError cumo_cuda_eRuntimeError
 #define mRuntime cumo_cuda_mRuntime
 
-void
-cumo_cuda_runtime_check_status(cudaError_t status)
-{
-    if (status != 0) {
-        rb_raise(eRuntimeError, "%s (error=%d)", cudaGetErrorString(status), status);
-    }
-}
-
-bool
-cumo_cuda_runtime_is_device_memory(void* ptr)
-{
-    struct cudaPointerAttributes attrs;
-    cudaError_t status = cudaPointerGetAttributes(&attrs, ptr);
-    return (status != cudaErrorInvalidValue);
-}
-
-char*
-cumo_cuda_runtime_malloc(size_t size)
-{
-    void *ptr;
-    cudaError_t status = cudaMallocManaged(&ptr, size, cudaMemAttachGlobal);
-    cumo_cuda_runtime_check_status(status);
-    return (char*)ptr;
-}
-
-void
-cumo_cuda_runtime_free(char *ptr)
-{
-    cudaError_t status = cudaFree((void*)ptr);
-    cumo_cuda_runtime_check_status(status);
-}
-
 #define check_status(status) (cumo_cuda_runtime_check_status((status)))
 
 ///////////////////////////////////////////
