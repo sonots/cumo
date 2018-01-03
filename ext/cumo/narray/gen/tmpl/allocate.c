@@ -10,15 +10,17 @@ static VALUE
     case NARRAY_DATA_T:
         ptr = NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
-            cudaError_t status = cudaMallocManaged(&ptr, sizeof(dtype) * na->size, cudaMemAttachGlobal);
-            cumo_cuda_runtime_check_status(status);
             <% if is_object %>
+            ptr = xmalloc(sizeof(dtype) * na->size);
             {   size_t i;
                 VALUE *a = (VALUE*)ptr;
                 for (i=na->size; i--;) {
                     *a++ = Qnil;
                 }
             }
+            <% else %>
+            cudaError_t status = cudaMallocManaged(&ptr, sizeof(dtype) * na->size, cudaMemAttachGlobal);
+            cumo_cuda_runtime_check_status(status);
             <% end %>
             NA_DATA_PTR(na) = ptr;
         }
