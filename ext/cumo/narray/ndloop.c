@@ -1166,9 +1166,11 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
         src = lp->src_ptr + LITER_SRC(lp,0).pos;
         buf = lp->buf_ptr;
         if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
+            DBG(printf("DtoD] ["));
             cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
         }
         else {
+            DBG(printf("HtoH] ["));
             memcpy(src,buf,elmsz);
         }
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(src))[j]);});
@@ -1190,9 +1192,11 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
         src = lp->src_ptr + LITER_SRC(lp,nd).pos;
         buf = lp->buf_ptr + buf_pos;
         if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
+            DBG(printf("DtoD] ["));
             cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
         }
         else {
+            DBG(printf("HtoH] ["));
             memcpy(src,buf,elmsz);
         }
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(src))[j]);});
