@@ -121,6 +121,23 @@ typedef int fortran_integer;
 
 extern int na_debug_flag;
 
+#define NARRAY_DATA_T     0x1
+#define NARRAY_VIEW_T     0x2
+#define NARRAY_FILEMAP_T  0x3
+
+#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+#define NA_MAX_ELMSZ     65535
+
+typedef unsigned int BIT_DIGIT;
+//#define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
+#define NB     (sizeof(BIT_DIGIT)*8)
+#define BALL   (~(BIT_DIGIT)0)
+#define SLB(n) (((n)==NB)?~(BIT_DIGIT)0:(~(~(BIT_DIGIT)0<<(n))))
+
+#define ELEMENT_BIT_SIZE  "ELEMENT_BIT_SIZE"
+#define ELEMENT_BYTE_SIZE "ELEMENT_BYTE_SIZE"
+#define CONTIGUOUS_STRIDE "CONTIGUOUS_STRIDE"
+
 #if defined(__cplusplus)
 #if 0
 { /* satisfy cc-mode */
