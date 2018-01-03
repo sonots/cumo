@@ -8,13 +8,6 @@ VALUE cumo_cuda_mRuntime;
 #define eRuntimeError cumo_cuda_eRuntimeError
 #define mRuntime cumo_cuda_mRuntime
 
-void
-cumo_cuda_runtime_check_status(cudaError_t status)
-{
-    if (status != 0) {
-        rb_raise(eRuntimeError, "%s (error=%d)", cudaGetErrorString(status), status);
-    }
-}
 #define check_status(status) (cumo_cuda_runtime_check_status((status)))
 
 ///////////////////////////////////////////

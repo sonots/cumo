@@ -226,5 +226,18 @@ class CumoTest < Test::Unit::TestCase
         assert_raise(Cumo::NArray::ShapeError) { a.dot(b) }
       end
     end
+
+    test "#{dtype},eye" do
+      assert { dtype.new(3, 3).eye(1) == [[1,0,0],[0,1,0],[0,0,1]] }
+      assert { dtype.new(3, 3).eye(2) == [[2,0,0],[0,2,0],[0,0,2]] }
+      assert { dtype.new(3, 3).eye(1, 1) == [[0,1,0],[0,0,1],[0,0,0]] }
+      assert { dtype.new(3, 3).eye(1, -1) == [[0,0,0],[1,0,0],[0,1,0]] }
+      assert { dtype.new(2, 2, 2).eye(1) == [[[1,0],[0,1]],[[1,0],[0,1]]] }
+      assert { dtype.new(3, 1).eye(1) == [[1],[0],[0]] }
+      assert { dtype.new(1, 3).eye(1) == [[1,0,0]] }
+      assert { dtype.eye(3) == [[1,0,0],[0,1,0],[0,0,1]] }
+      assert { dtype.eye(3, 1) == [[1],[0],[0]] }
+      assert { dtype.eye(1, 3) == [[1,0,0]] }
+    end
   end
 end

@@ -19,8 +19,7 @@ static VALUE
                 }
             }
             <% else %>
-            cudaError_t status = cudaMallocManaged(&ptr, sizeof(dtype) * na->size, cudaMemAttachGlobal);
-            cumo_cuda_runtime_check_status(status);
+            ptr = cumo_cuda_runtime_malloc(sizeof(dtype) * na->size);
             <% end %>
             NA_DATA_PTR(na) = ptr;
         }

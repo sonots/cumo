@@ -462,7 +462,12 @@ ndloop_release(VALUE vlp)
         //printf("lp->xargs[%d].bufcp=%lx\n",j,(size_t)(lp->xargs[j].bufcp));
         if (lp->xargs[j].bufcp) {
             xfree(lp->xargs[j].bufcp->buf_iter);
-            xfree(lp->xargs[j].bufcp->buf_ptr);
+            if (cumo_cuda_runtime_is_device_memory(lp->xargs[j].bufcp->buf_ptr)) {
+                cumo_cuda_runtime_free(lp->xargs[j].bufcp->buf_ptr);
+            }
+            else {
+                xfree(lp->xargs[j].bufcp->buf_ptr);
+            }
             xfree(lp->xargs[j].bufcp->n);
             xfree(lp->xargs[j].bufcp);
             if (lp->xargs[j].free_user_iter) {
@@ -1045,7 +1050,12 @@ ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
             LARG(lp,j).iter = buf_iter;
             //printf("in ndfunc_set_bufcp(1): lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
             LBUFCP(lp,j)->src_ptr = LARG(lp,j).ptr;
-            LARG(lp,j).ptr = LBUFCP(lp,j)->buf_ptr = xmalloc(sz);
+            if (cumo_cuda_runtime_is_device_memory(LARG(lp,j).ptr)) {
+                LARG(lp,j).ptr = LBUFCP(lp,j)->buf_ptr = cumo_cuda_runtime_malloc(sz);
+            }
+            else {
+                LARG(lp,j).ptr = LBUFCP(lp,j)->buf_ptr = xmalloc(sz);
+            }
             //printf("(LBUFCP(lp,%d)->buf_ptr=%lx)\n",j,(size_t)(LBUFCP(lp,j)->buf_ptr));
         }
     }
@@ -1155,7 +1165,12 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
     if (nd==0) {
         src = lp->src_ptr + LITER_SRC(lp,0).pos;
         buf = lp->buf_ptr;
-        memcpy(src,buf,elmsz);
+        if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
+            cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
+        }
+        else {
+            memcpy(src,buf,elmsz);
+        }
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(src))[j]);});
         goto loop_end;
     }
@@ -1174,7 +1189,12 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
         }
         src = lp->src_ptr + LITER_SRC(lp,nd).pos;
         buf = lp->buf_ptr + buf_pos;
-        memcpy(src,buf,elmsz);
+        if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
+            cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
+        }
+        else {
+            memcpy(src,buf,elmsz);
+        }
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(src))[j]);});
         buf_pos += elmsz;
         // count up

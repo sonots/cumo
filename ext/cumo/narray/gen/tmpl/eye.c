@@ -1,10 +1,15 @@
+<% unless c_iter.include?('robject') %>
+void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t s0, ssize_t s1, ssize_t kofs, dtype data, size_t n0, size_t n1);
+<% end %>
+
+#include <cuda_runtime.h>
+
 static void
 <%=c_iter%>(na_loop_t *const lp)
 {
     size_t   n0, n1;
-    size_t   i0, i1;
     ssize_t  s0, s1;
-    char    *p0, *p1;
+    char    *p0;
     char    *g;
     ssize_t kofs;
     dtype   data;
@@ -19,14 +24,22 @@ static void
     s1 = lp->args[0].iter[1].step;
     p0 = NDL_PTR(lp,0);
 
-    for (i0=0; i0 < n0; i0++) {
-        p1 = p0;
-        for (i1=0; i1 < n1; i1++) {
-            *(dtype*)p1 = (i0+kofs==i1) ? data : m_zero;
-            p1 += s1;
+    <% if c_iter.include?('robject') %>
+    {
+        size_t   i0, i1;
+        char    *p1;
+        for (i0=0; i0 < n0; i0++) {
+            p1 = p0;
+            for (i1=0; i1 < n1; i1++) {
+                *(dtype*)p1 = (i0+kofs==i1) ? data : m_zero;
+                p1 += s1;
+            }
+            p0 += s0;
         }
-        p0 += s0;
     }
+    <% else %>
+    <%="#{c_iter}_stride_kernel_launch"%>(p0,s0,s1,kofs,data,n0,n1);
+    <% end %>
 }
 
 /*
