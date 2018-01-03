@@ -1166,7 +1166,7 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
         src = lp->src_ptr + LITER_SRC(lp,0).pos;
         buf = lp->buf_ptr;
         if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
-            cumo_cuda_runtime_check_status(cudaMemcpy(src,buf,elmsz,cudaMemcpyDeviceToDevice));
+            cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
         }
         else {
             memcpy(src,buf,elmsz);
@@ -1190,7 +1190,7 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
         src = lp->src_ptr + LITER_SRC(lp,nd).pos;
         buf = lp->buf_ptr + buf_pos;
         if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
-            cumo_cuda_runtime_check_status(cudaMemcpy(src,buf,elmsz,cudaMemcpyDeviceToDevice));
+            cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
         }
         else {
             memcpy(src,buf,elmsz);
