@@ -21,3 +21,5 @@ ext/cumo/depend
 TAGS
 t.rb
 .ruby-version
+.yardoc/
+doc/
