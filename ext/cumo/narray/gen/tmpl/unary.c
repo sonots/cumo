@@ -23,9 +23,6 @@ static void
     {
         size_t i;
         dtype x;
-        <% unless c_iter.include?('robject') %>
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-        <% end %>
         if (idx1) {
             if (idx2) {
                 for (i=0; i<n; i++) {
@@ -127,5 +124,8 @@ static VALUE
     ndfunc_arg_out_t aout[1] = {{cT,0}};
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,1, ain,aout};
 
+    <% if name == 'map' %>
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    <% end %>
     return na_ndloop(&ndf, 1, self);
 }
