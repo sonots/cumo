@@ -1,4 +1,5 @@
-<% unless c_iter.include?('robject') %>
+<% if c_iter.include?('robject') || name == 'map' %>
+<% else %>
 __global__ void <%="#{c_iter}_index_index_kernel"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, size_t N)
 {
     for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
