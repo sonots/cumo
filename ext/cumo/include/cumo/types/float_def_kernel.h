@@ -1,3 +1,6 @@
+#ifndef CUMO_FLOAT_DEF_KERNEL_H
+#define CUMO_FLOAT_DEF_KERNEL_H
+
 #ifndef DBL_EPSILON
 #define DBL_EPSILON 2.2204460492503131e-16
 #endif
@@ -32,3 +35,5 @@
 #ifndef M_LN10
 #define M_LN10         2.30258509299404568402  /* log_e 10 */
 #endif
+
+#endif // CUMO_FLOAT_DEF_KERNEL_H

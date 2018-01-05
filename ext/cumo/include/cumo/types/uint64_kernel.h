@@ -1,3 +1,6 @@
+#ifndef CUMO_UINT64_KERNEL_H
+#define CUMO_UINT64_KERNEL_H
+
 typedef u_int64_t dtype;
 typedef u_int64_t rtype;
 
@@ -9,3 +12,5 @@ typedef u_int64_t rtype;
 #define DATA_MAX UINT64_MAX
 
 #include "uint_macro_kernel.h"
+
+#endif // CUMO_UINT64_KERNEL_H

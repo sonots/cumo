@@ -1,3 +1,6 @@
+#ifndef CUMO_COMPLEX_KERNEL_H
+#define CUMO_COMPLEX_KERNEL_H
+
 __device__ static inline dtype c_new(rtype r, rtype i) {
     dtype z;
     REAL(z) = r;
@@ -401,3 +404,4 @@ static inline rtype c_hypot(dtype x, dtype y) {
 }
 */
 
+#endif // CUMO_COMPLEX_KERNEL_H

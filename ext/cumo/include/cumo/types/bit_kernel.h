@@ -1,3 +1,6 @@
+#ifndef CUMO_BIT_KERNEL_H
+#define CUMO_BIT_KERNEL_H
+
 typedef BIT_DIGIT dtype;
 typedef BIT_DIGIT rtype;
 
@@ -20,3 +23,5 @@ typedef BIT_DIGIT rtype;
 #define m_eq(x,y)  (~((x)^(y)))
 #define m_count_true(x)  ((x)!=0)
 #define m_count_false(x) ((x)==0)
+
+#endif // CUMO_BIT_KERNEL_H

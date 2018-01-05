@@ -1,3 +1,6 @@
+#ifndef CUMO_COMPLEX_MACRO_KERNEL_H
+#define CUMO_COMPLEX_MACRO_KERNEL_H
+
 #include "float_def_kernel.h"
 
 extern double round(double);
@@ -376,4 +379,4 @@ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
 //    return c_add(x,c_mul_r(y,c));
 //}
 
-
+#endif // CUMO_COMPLEX_MACRO_KERNEL_H

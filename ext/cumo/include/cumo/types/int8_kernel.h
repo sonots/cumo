@@ -1,3 +1,6 @@
+#ifndef CUMO_INT8_KERNEL_H
+#define CUMO_INT8_KERNEL_H
+
 typedef int8_t dtype;
 typedef int8_t rtype;
 
@@ -13,3 +16,4 @@ typedef int8_t rtype;
 
 #include "int_macro_kernel.h"
 
+#endif // CUMO_INT8_KERNEL_H

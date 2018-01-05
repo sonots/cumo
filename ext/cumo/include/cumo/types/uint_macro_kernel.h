@@ -1,3 +1,6 @@
+#ifndef CUMO_UINT_MACRO_KERNEL_H
+#define CUMO_UINT_MACRO_KERNEL_H
+
 #include "xint_macro_kernel.h"
 
 #define m_abs(x)     (x)
@@ -14,3 +17,5 @@ __device__ static inline dtype int_reciprocal(dtype x) {
         return 0;
     }
 }
+
+#endif // CUMO_UINT_MACRO_KERNEL_H

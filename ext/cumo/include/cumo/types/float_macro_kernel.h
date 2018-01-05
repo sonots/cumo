@@ -1,3 +1,6 @@
+#ifndef CUMO_FLOAT_MACRO_KERNEL_H
+#define CUMO_FLOAT_MACRO_KERNEL_H
+
 #include "float_def_kernel.h"
 
 extern double round(double);
@@ -114,3 +117,6 @@ extern double pow(double, double);
 #define m_ldexp(x,y) ldexp(x,y)
 #define m_frexp(x,exp) frexp(x,exp)
 
+#include "real_accum_kernel.h"
+
+#endif // CUMO_FLOAT_MACRO_KERNEL_H

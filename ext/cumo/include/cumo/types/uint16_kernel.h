@@ -1,3 +1,6 @@
+#ifndef CUMO_UINT16_KERNEL_H
+#define CUMO_UINT16_KERNEL_H
+
 typedef u_int16_t dtype;
 typedef u_int16_t rtype;
 
@@ -10,3 +13,4 @@ typedef u_int16_t rtype;
 
 #include "uint_macro_kernel.h"
 
+#endif // CUMO_UINT16_KERNEL_H

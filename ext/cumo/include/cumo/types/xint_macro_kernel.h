@@ -1,3 +1,6 @@
+#ifndef CUMO_XINT_MACRO_KERNEL_H
+#define CUMO_XINT_MACRO_KERNEL_H
+
 #define m_zero 0
 #define m_one  1
 
@@ -38,3 +41,4 @@
 //#define m_cumsum(x,y) {x += y;}
 //#define m_cumprod(x,y) {x *= y;}
 
+#endif // CUMO_XINT_MACRO_KERNEL_H

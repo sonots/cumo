@@ -1,3 +1,6 @@
+#ifndef CUMO_INT64_KERNEL_H
+#define CUMO_INT64_KERNEL_H
+
 typedef int64_t dtype;
 typedef int64_t rtype;
 
@@ -13,3 +16,4 @@ typedef int64_t rtype;
 
 #include "int_macro_kernel.h"
 
+#endif // CUMO_INT64_KERNEL_H

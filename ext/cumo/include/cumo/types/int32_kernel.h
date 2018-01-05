@@ -1,3 +1,6 @@
+#ifndef CUMO_INT32_KERNEL_H
+#define CUMO_INT32_KERNEL_H
+
 typedef int32_t dtype;
 typedef int32_t rtype;
 
@@ -13,3 +16,4 @@ typedef int32_t rtype;
 
 #include "int_macro_kernel.h"
 
+#endif // CUMO_INT32_KERNEL_H
