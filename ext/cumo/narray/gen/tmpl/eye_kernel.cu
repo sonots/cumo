@@ -1,4 +1,4 @@
-<% unless c_iter.include?('robject') %>
+<% unless type_name == 'robject' %>
 __global__ void <%="#{c_iter}_stride_kernel"%>(char*ptr, ssize_t s0, ssize_t s1, ssize_t kofs, dtype data, size_t n0, size_t n1, size_t N)
 {
     for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {

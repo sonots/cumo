@@ -1,7 +1,7 @@
 // TODO(sonots): handle zero division error in CUDA kernel?
 // ref. https://devtalk.nvidia.com/default/topic/415951/divide-by-zero-handling/
 
-<% if c_iter.include?('robject') %>
+<% if type_name == 'robject' %>
 <% if is_int and %w[div mod divmod].include? name %>
 #define check_intdivzero(y)              \
     if ((y)==0) {                        \
@@ -13,7 +13,7 @@
 <% end %>
 <% end %>
 
-<% unless c_iter.include?('robject') %>
+<% unless type_name == 'robject' %>
 void <%="#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, char *p3, size_t n);
 void <%="#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, size_t n);
 <% end %>
@@ -40,7 +40,7 @@ static void
             s3 == sizeof(dtype) ) {
 
             // TODO(sonots): CPU warning
-            <% if c_iter.include?('robject') %>
+            <% if type_name == 'robject' %>
             {
                 size_t i;
                 for (i=0; i<n; i++) {
@@ -57,7 +57,7 @@ static void
             is_aligned_step(s2,sizeof(dtype)) &&
             is_aligned_step(s3,sizeof(dtype)) ) {
             //<% end %>
-            <% if c_iter.include?('robject') %>
+            <% if type_name == 'robject' %>
             {
                 size_t i;
                 for (i=0; i<n; i++) {
@@ -75,7 +75,7 @@ static void
             //<% if need_align %>
         }
     }
-    <% if c_iter.include?('robject') %>
+    <% if type_name == 'robject' %>
     {
         size_t i;
         for (i=0; i<n; i++) {

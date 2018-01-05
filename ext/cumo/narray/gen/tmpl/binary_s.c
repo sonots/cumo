@@ -1,4 +1,4 @@
-<% unless c_iter.include?('robject') %>
+<% unless type_name == 'robject' %>
 void <%="#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, size_t N);
 <% end %>
 
@@ -13,7 +13,7 @@ static void
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
     for (; i--;) {
-        <% if c_iter.include?('robject') %>
+        <% if type_name == 'robject' %>
         {
             dtype    x, y;
             GET_DATA_STRIDE(p1,s1,dtype,x);

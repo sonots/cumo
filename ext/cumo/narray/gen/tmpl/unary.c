@@ -1,4 +1,4 @@
-<% if c_iter.include?('robject') || name == 'map' %>
+<% if type_name == 'robject' || name == 'map' %>
 <% else %>
 void <%="#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, size_t N);
 void <%="#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, size_t N);
@@ -19,7 +19,7 @@ static void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR_IDX(lp, 1, p2, s2, idx2);
 
-    <% if c_iter.include?('robject') || name == 'map' %>
+    <% if type_name == 'robject' || name == 'map' %>
     {
         size_t i;
         dtype x;

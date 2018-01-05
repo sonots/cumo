@@ -1,4 +1,4 @@
-<% unless c_iter.include?('robject') %>
+<% unless type_name == 'robject' %>
 void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t s0, ssize_t s1, ssize_t kofs, dtype data, size_t n0, size_t n1);
 <% end %>
 
@@ -24,7 +24,7 @@ static void
     s1 = lp->args[0].iter[1].step;
     p0 = NDL_PTR(lp,0);
 
-    <% if c_iter.include?('robject') %>
+    <% if type_name == 'robject' %>
     {
         size_t   i0, i1;
         char    *p1;

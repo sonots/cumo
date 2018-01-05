@@ -1,4 +1,4 @@
-<% unless c_iter.include?('robject') %>
+<% unless type_name == 'robject' %>
 void <%="#{c_iter}_index_kernel_launch"%>(char *ptr, size_t *idx, dtype val, size_t N);
 void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype val, size_t N);
 <% end %>
@@ -16,7 +16,7 @@ static void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     y = m_num_to_data(x);
     if (idx1) {
-        <% if c_iter.include?('robject') %>
+        <% if type_name == 'robject' %>
         for (; i--;) {
             SET_DATA_INDEX(p1,idx1,dtype,y);
         }
@@ -24,7 +24,7 @@ static void
         <%="#{c_iter}_index_kernel_launch"%>(p1,idx1,y,i);
         <% end %>
     } else {
-        <% if c_iter.include?('robject') %>
+        <% if type_name == 'robject' %>
         for (; i--;) {
             SET_DATA_STRIDE(p1,s1,dtype,y);
         }
