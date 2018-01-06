@@ -11,15 +11,6 @@ tags : TAGS
 TAGS : $(TAGSRC)
 	etags $(TAGSRC)
 
-doc :
-	yard doc narray/*.c narray/types/*.c
-
-run :
-	ruby -I. ./test.rb
-
-gdb :
-	gdb -x run.gdb --quiet --args $(shell ruby -e 'puts RbConfig::CONFIG["bindir"]')/ruby -I. ./test.rb
-
 C_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.c").join(" ")%>
 CU_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.cu").join(" ")%>
 
