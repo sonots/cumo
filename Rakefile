@@ -24,6 +24,10 @@ task :doc do
   sh "rm -rf yard .yardoc; yard doc -o yard -m markdown -r README.md #{src.join(' ')}"
 end
 
+task :gdb do
+  sh "gdb -x run.gdb --args ruby -I. ./test.rb"
+end
+
 task :default => [:clobber, :compile, :test]
 
 desc 'Open an irb session preloaded with the gem library'
