@@ -7,7 +7,6 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
-# require "rake/extensiontask"
 task :compile do
   sh 'cd ext/cumo && ruby extconf.rb && make'
 end
@@ -17,7 +16,12 @@ task :clean do
 end
 
 task :doc do
-  sh 'cd ext/cumo && make doc'
+  dir = "ext/cumo/narray"
+  src = %w[array.c data.c index.c math.c narray.c rand.c struct.c].
+    map{|s| File.join(dir,s)} +
+    [File.join(dir,"types/*.c"), "lib/cumo/narray/extra.rb"]
+  sh "cd ext/cumo; ruby extconf.rb; make src"
+  sh "rm -rf yard .yardoc; yard doc -o yard -m markdown -r README.md #{src.join(' ')}"
 end
 
 task :default => [:clobber, :compile, :test]
