@@ -102,6 +102,10 @@ class NArrayTest < Test::Unit::TestCase
           assert { a.sort == src }
           assert { a.sort_index == (0..5).to_a }
           assert { a.median == 4 }
+          assert { dtype.maximum(a, 12 - a) == [11,10,9,7,7,11] }
+          assert { dtype.minimum(a, 12 - a) == [1,2,3,5,5,1] }
+          assert { dtype.maximum(a, 5) == [5,5,5,5,7,11] }
+          assert { dtype.minimum(a, 5) == [1,2,3,5,5,5] }
         end
       end
     end
