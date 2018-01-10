@@ -1,5 +1,6 @@
 #include "cumo/narray_kernel.h"
 #include <<%="cumo/types/#{type_name}_kernel.h"%>>
+#include "cumo/cuda/cumo_thrust.hpp"
 
 #if defined(__cplusplus)
 extern "C" {

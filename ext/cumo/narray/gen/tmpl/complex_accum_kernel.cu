@@ -1,0 +1,35 @@
+struct thrust_plus : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_add(x,y); }
+};
+dtype <%=type_name%>_sum_kernel_launch(size_t n, char *p, ssize_t stride)
+{
+    ssize_t stride_idx = stride / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
+    dtype init = m_zero;
+    if (stride_idx == 1) {
+        return thrust::reduce(data_begin, data_end, init, thrust_plus());
+    } else {
+        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
+        return thrust::reduce(range.begin(), range.end(), init, thrust_plus());
+    }
+}
+
+struct thrust_multiplies : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_mul(x,y); }
+};
+dtype <%=type_name%>_prod_kernel_launch(size_t n, char *p, ssize_t stride)
+{
+    ssize_t stride_idx = stride / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
+    dtype init = m_one;
+    if (stride_idx == 1) {
+        return thrust::reduce(data_begin, data_end, init, thrust_multiplies());
+    } else {
+        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
+        return thrust::reduce(range.begin(), range.end(), init, thrust_multiplies());
+    }
+}
