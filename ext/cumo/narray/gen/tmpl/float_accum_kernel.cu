@@ -8,6 +8,8 @@ dtype <%=type_name%>_mean_kernel_launch(size_t n, char *p, ssize_t stride)
 
 dtype <%=type_name%>_var_kernel_launch(size_t n, char *p, ssize_t stride)
 {
+    dtype mean = <%=type_name%>_mean_kernel_launch(n, p, stride);
+
     ssize_t stride_idx = stride / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
     thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
