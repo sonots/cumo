@@ -19,4 +19,4 @@ extern VALUE cumo_cuda_mNVRTC;
 }  /* extern "C" { */
 #endif
 
-#endif
+#endif /* ifndef CUMO_CUDA_NVRTC_H */

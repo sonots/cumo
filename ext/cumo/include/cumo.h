@@ -15,4 +15,4 @@ extern "C" {
 }  /* extern "C" { */
 #endif
 
-#endif
+#endif /* ifndef CUMO_H */

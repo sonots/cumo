@@ -75,4 +75,4 @@ struct thrust_complex_variance_binary_op
     }
 };
 
-#endif
+#endif /* ifndef CUMO_CUDA_THRUST_COMPLEX_H */

@@ -19,4 +19,4 @@ extern VALUE cumo_cuda_mDriver;
 }  /* extern "C" { */
 #endif
 
-#endif
+#endif /* ifndef CUMO_CUDA_DRIVER_H */

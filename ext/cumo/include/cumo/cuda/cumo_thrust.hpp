@@ -182,4 +182,4 @@ struct thrust_variance_binary_op
     }
 };
 
-#endif
+#endif /* ifndef CUMO_CUDA_THRUST_H */

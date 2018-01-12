@@ -1,5 +1,6 @@
 #ifndef CUMO_CUDA_RUNTIME_H
 #define CUMO_CUDA_RUNTIME_H
+
 #include "cumo/narray.h"
 #include <cuda_runtime.h>
 
@@ -51,4 +52,4 @@ cumo_cuda_runtime_free(char *ptr)
 }  /* extern "C" { */
 #endif
 
-#endif
+#endif /* ifndef CUMO_CUDA_RUNTIME_H */
