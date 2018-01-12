@@ -1,6 +1,11 @@
-<% (is_float ? ["","_nan"] : [""]).each do |j| %>
+<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
+
+<% unless type_name == 'robject' %>
+<%=dtype%> <%=type_name%>_<%=name%><%=nan%>_kernel_launch(size_t n, char *p, ssize_t stride);
+<% end %>
+
 static void
-<%=c_iter%><%=j%>(na_loop_t *const lp)
+<%=c_iter%><%=nan%>(na_loop_t *const lp)
 {
     size_t   n;
     char    *p1, *p2;
@@ -10,7 +15,13 @@ static void
     INIT_PTR(lp, 0, p1, s1);
     p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
 
-    *(<%=dtype%>*)p2 = f_<%=name%><%=j%>(n,p1,s1);
+    // TODO(sonots): How to compute Kahan summation algorithm in parallel?
+    // TODO(sonots): Implement nan CUDA version
+    <% if type_name == 'robject' || name == 'kahan_sum' || nan == '_nan' %>
+    *(<%=dtype%>*)p2 = f_<%=name%><%=nan%>(n,p1,s1);
+    <% else %>
+    *(<%=dtype%>*)p2 = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,p1,s1);
+    <% end %>
 }
 <% end %>
 
