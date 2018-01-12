@@ -1,4 +1,3 @@
-// TODO(sonots): Add _nan functions
 <% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>
@@ -17,7 +16,8 @@ static void
     p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
 
     // TODO(sonots): How to compute Kahan summation algorithm in parallel?
-    <% if type_name == 'robject' || name == 'kahan_sum' %>
+    // TODO(sonots): Implement nan CUDA version
+    <% if type_name == 'robject' || name == 'kahan_sum' || nan == '_nan' %>
     *(<%=dtype%>*)p2 = f_<%=name%><%=nan%>(n,p1,s1);
     <% else %>
     *(<%=dtype%>*)p2 = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,p1,s1);
