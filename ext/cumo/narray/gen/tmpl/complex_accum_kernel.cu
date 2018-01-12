@@ -126,3 +126,28 @@ rtype <%=type_name%>_var_kernel_launch(size_t n, char *p, ssize_t stride)
     }
     return result.variance();
 }
+
+rtype <%=type_name%>_stddev_kernel_launch(size_t n, char *p, ssize_t stride)
+{
+    return r_sqrt(<%=type_name%>_var_kernel_launch(n, p, stride));
+}
+
+struct thrust_square : public thrust::unary_function<dtype, dtype>
+{
+    __host__ __device__ rtype operator()(const dtype& x) const { return c_abs_square(x); }
+};
+rtype <%=type_name%>_rms_kernel_launch(size_t n, char *p, ssize_t stride)
+{
+    ssize_t stride_idx = stride / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
+    rtype init = 0;
+    rtype result;
+    if (stride_idx == 1) {
+        result = thrust::transform_reduce(data_begin, data_end, thrust_square(), init, thrust::plus<rtype>());
+    } else {
+        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
+        result = thrust::transform_reduce(range.begin(), range.end(), thrust_square(), init, thrust::plus<rtype>());
+    }
+    return r_sqrt(result/n);
+}
