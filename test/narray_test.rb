@@ -1,6 +1,6 @@
 require_relative "test_helper"
 
-class CumoTest < Test::Unit::TestCase
+class NArrayTest < Test::Unit::TestCase
   types = [
     Cumo::DFloat,
     Cumo::SFloat,
