@@ -16,7 +16,8 @@ static void
     INIT_PTR(lp, 0, p1, s1);
     p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
 
-    <% if type_name == 'robject' %>
+    // TODO(sonots): How to compute Kahan summation algorithm in parallel?
+    <% if type_name == 'robject' || name == 'kahan_sum' %>
     *(<%=dtype%>*)p2 = f_<%=name%><%=nan%>(n,p1,s1);
     <% else %>
     *(<%=dtype%>*)p2 = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,p1,s1);
