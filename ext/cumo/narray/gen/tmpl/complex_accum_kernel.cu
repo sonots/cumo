@@ -40,84 +40,15 @@ dtype <%=type_name%>_mean_kernel_launch(size_t n, char *p, ssize_t stride)
     return c_div_r(sum, n);
 }
 
-// ref. https://github.com/thrust/thrust/blob/master/examples/summary_statistics.cu
-
-// structure used to accumulate the moments and other
-// statistical properties encountered so far.
-struct thrust_complex_variance_data
-{
-    rtype n;
-    dtype mean;
-    rtype M2;
-
-    // initialize to the identity element
-    void initialize()
-    {
-        n = M2 = 0;
-        mean = c_zero();
-    }
-
-    rtype variance()   { return M2 / (n - 1); }
-    rtype variance_n() { return M2 / n; }
-};
-
-// stats_unary_op is a functor that takes in a value x and
-// returns a variace_data whose mean value is initialized to x.
-struct thrust_complex_variance_unary_op
-{
-    __host__ __device__
-    thrust_complex_variance_data operator()(const dtype& x) const
-    {
-         thrust_complex_variance_data result;
-         result.n    = 1;
-         result.mean = x;
-         result.M2   = 0;
-
-         return result;
-    }
-};
-
-// thrust_variance_binary_op is a functor that accepts two thrust_variance_data
-// structs and returns a new thrust_variance_data which are an
-// approximation to the thrust_variance for
-// all values that have been agregated so far
-struct thrust_complex_variance_binary_op
-    : public thrust::binary_function<const thrust_complex_variance_data&,
-                                     const thrust_complex_variance_data&,
-                                           thrust_complex_variance_data >
-{
-    __host__ __device__
-    thrust_complex_variance_data operator()(const thrust_complex_variance_data& x, const thrust_complex_variance_data& y) const
-    {
-        thrust_complex_variance_data result;
-
-        // precompute some common subexpressions
-        rtype n  = x.n + y.n;
-
-        dtype delta = c_sub(y.mean, x.mean);
-        rtype delta2 = c_abs_square(delta);
-
-        //Basic number of samples (n)
-        result.n = n;
-
-        result.mean = c_mul_r(c_add(x.mean, delta), y.n / n);
-
-        result.M2 = x.M2 + y.M2;
-        result.M2 += delta2 * x.n * y.n / n;
-
-        return result;
-    }
-};
-
 rtype <%=type_name%>_var_kernel_launch(size_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
     thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
-    thrust_complex_variance_unary_op  unary_op;
-    thrust_complex_variance_binary_op binary_op;
-    thrust_complex_variance_data init = {};
-    thrust_complex_variance_data result;
+    thrust_complex_variance_unary_op<dtype, rtype>  unary_op;
+    thrust_complex_variance_binary_op<dtype, rtype> binary_op;
+    thrust_complex_variance_data<dtype, rtype> init = {};
+    thrust_complex_variance_data<dtype, rtype> result;
     if (stride_idx == 1) {
         result = thrust::transform_reduce(data_begin, data_end, unary_op, init, binary_op);
     } else {
