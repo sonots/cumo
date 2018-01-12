@@ -1,8 +1,3 @@
-/*
-  narray.c
-  Numerical Array Extension for Ruby
-    (C) Copyright 1999-2017 by Masahiro TANAKA
-*/
 #define NARRAY_C
 #include <ruby.h>
 #include <assert.h>

@@ -1,10 +1,3 @@
-/*
-  index.c
-  Numerical Array Extension for Ruby
-    (C) Copyright 1999-2017 by Masahiro TANAKA
-*/
-//#define NARRAY_C
-
 #include <string.h>
 #include <ruby.h>
 #include "cumo/narray.h"

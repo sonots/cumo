@@ -1,10 +1,3 @@
-/*
-  complex.h
-  Numerical Array Extension for Ruby
-    (C) Copyright 1999-2017 by Masahiro TANAKA
-*/
-
-
 static inline dtype c_new(rtype r, rtype i) {
     dtype z;
     REAL(z) = r;

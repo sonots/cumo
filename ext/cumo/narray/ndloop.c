@@ -1,9 +1,3 @@
-/*
-  ndloop.c
-  Numerical Array Extension for Ruby
-    (C) Copyright 1999-2017 by Masahiro TANAKA
-*/
-
 #include <ruby.h>
 #include "cumo/narray.h"
 #include "cumo/cuda/runtime.h"

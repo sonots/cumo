@@ -1,8 +1,3 @@
-/*
-  narray.h
-  Numerical Array Extension for Ruby
-    (C) Copyright 1999-2017 by Masahiro TANAKA
-*/
 #ifndef NARRAY_H
 #define NARRAY_H
 

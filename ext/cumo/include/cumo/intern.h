@@ -1,8 +1,3 @@
-/*
-  intern.h
-  Numerical Array Extension for Ruby
-    (C) Copyright 1999-2017 by Masahiro TANAKA
-*/
 #ifndef INTERN_H
 #define INTERN_H
 
