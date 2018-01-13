@@ -1,6 +1,6 @@
 <% unless type_name == 'robject' %>
-void <%="#{c_iter}_index_kernel_launch"%>(char *ptr, size_t *idx, dtype val, size_t N);
-void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype val, size_t N);
+void <%="#{c_iter}_index_kernel_launch"%>(char *ptr, size_t *idx, dtype val, size_t n);
+void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype val, size_t n);
 <% end %>
 
 static void

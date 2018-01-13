@@ -1,10 +1,10 @@
 <% if type_name == 'robject' || name == 'map' %>
 <% else %>
-void <%="#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, size_t N);
-void <%="#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, size_t N);
-void <%="#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, size_t N);
-void <%="#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t N);
-void <%="#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, size_t N);
+void <%="#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, size_t n);
+void <%="#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, size_t n);
+void <%="#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, size_t n);
+void <%="#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t n);
+void <%="#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, size_t n);
 <% end %>
 
 static void
