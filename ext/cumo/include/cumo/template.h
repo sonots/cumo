@@ -150,6 +150,6 @@ is_aligned_step(const ssize_t step, const size_t alignment)
     }
 
 #define SHOW_CPU_WARNING_ONCE( func_name, type_name ) \
-    SHOW_WARNING_ONCE("CUDA version of \"" func_name "\" is not available for \"" type_name "\".\n")
+    SHOW_WARNING_ONCE("warning: \"" func_name "\" for \"" type_name "\" is running under CPU.\n")
 
 #endif /* ifndef TEMPLATE_H */

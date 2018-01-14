@@ -25,6 +25,7 @@ static void
     mu = g->mu;
     sigma = g->sigma;
 
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         <% if is_complex %>
         for (; i--;) {

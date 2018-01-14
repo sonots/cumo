@@ -11,6 +11,7 @@ static void
     INIT_COUNTER(lp, n);
     INIT_PTR(lp, 0, d_ptr, d_step);
 
+    SHOW_CPU_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     idx = f_<%=name%><%=j%>(n,d_ptr,d_step);
 
     INIT_PTR(lp, 1, i_ptr, i_step);

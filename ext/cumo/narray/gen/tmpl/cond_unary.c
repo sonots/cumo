@@ -12,6 +12,7 @@ static void
     INIT_COUNTER(lp, i);
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR_BIT(lp, 1, a2, p2, s2);
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             GET_DATA_INDEX(p1,idx1,dtype,x);

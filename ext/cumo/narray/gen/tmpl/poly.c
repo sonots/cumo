@@ -4,6 +4,7 @@ static void
     size_t  i;
     dtype  x, y, a;
 
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     x = *(dtype*)(lp->args[0].ptr + lp->args[0].iter[0].pos);
     i = lp->narg - 2;
     y = *(dtype*)(lp->args[i].ptr + lp->args[i].iter[0].pos);

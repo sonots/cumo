@@ -91,6 +91,7 @@ static void
     max = g->max;
     <%=shift_set%>
 
+    SHOW_CPU_WARNING_ONCE("<%=c_iter%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             x = m_add(<%=m_rand%>,low);

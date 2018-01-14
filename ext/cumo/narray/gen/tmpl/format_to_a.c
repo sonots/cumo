@@ -13,6 +13,7 @@ static void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     a = rb_ary_new2(i);
     rb_ary_push(lp->args[1].value, a);
+    //SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             x = (dtype*)(p1 + *idx1);  idx1++;

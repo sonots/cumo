@@ -25,6 +25,7 @@ static void
     INIT_COUNTER(lp, i);
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR(lp, 1, p2, s2);
+    //SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             x = (dtype*)(p1+*idx1); idx1++;

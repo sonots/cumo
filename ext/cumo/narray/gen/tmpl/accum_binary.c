@@ -11,6 +11,7 @@ static void
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
 
+    SHOW_CPU_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     if (s3==0) {
         dtype z;
         // Reduce loop

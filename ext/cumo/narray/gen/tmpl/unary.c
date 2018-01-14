@@ -23,6 +23,7 @@ static void
     {
         size_t i;
         dtype x;
+        SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         if (idx1) {
             if (idx2) {
                 for (i=0; i<n; i++) {
