@@ -50,6 +50,7 @@ const rb_data_type_t na_data_type = {
     {0, 0, 0,}, 0, 0, 0,
 };
 #include "cumo/narray.h"
+#include "cumo/cuda/runtime.h"
 
 static void
 nary_debug_info_nadata(VALUE self)
@@ -166,7 +167,12 @@ na_view_free(void* ptr)
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
             if (SDX_IS_INDEX(na->stridx[i])) {
-                xfree(SDX_GET_INDEX(na->stridx[i]));
+                void *p = SDX_GET_INDEX(na->stridx[i]);
+                if (cumo_cuda_runtime_is_device_memory(p)) {
+                    cumo_cuda_runtime_free(p);
+                } else {
+                    xfree(p);
+                }
             }
         }
         xfree(na->stridx);
