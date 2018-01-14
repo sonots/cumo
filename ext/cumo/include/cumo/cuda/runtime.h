@@ -26,6 +26,7 @@ cumo_cuda_runtime_is_device_memory(void* ptr)
 {
     struct cudaPointerAttributes attrs;
     cudaError_t status = cudaPointerGetAttributes(&attrs, ptr);
+    cudaGetLastError(); // reset last error to success
     return (status != cudaErrorInvalidValue);
 }
 
