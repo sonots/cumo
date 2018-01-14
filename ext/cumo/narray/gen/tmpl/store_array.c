@@ -17,6 +17,7 @@ static void
     v1 = lp->args[1].value;
     i = 0;
 
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (lp->args[1].ptr) {
         if (v1 == Qtrue) {
             iter_<%=type_name%>_store_<%=type_name%>(lp);

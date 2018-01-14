@@ -17,6 +17,7 @@ static void
         <% if type_name == 'robject' %>
         {
             dtype    x, y, a, b;
+            SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
             GET_DATA_STRIDE(p1,s1,dtype,x);
             GET_DATA_STRIDE(p2,s2,dtype,y);
 <% if is_int and %w[divmod].include? name %>

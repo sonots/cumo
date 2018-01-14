@@ -1,7 +1,6 @@
 // TODO(sonots): handle zero division error in CUDA kernel?
 // ref. https://devtalk.nvidia.com/default/topic/415951/divide-by-zero-handling/
 
-<% if type_name == 'robject' %>
 <% if is_int and %w[div mod divmod].include? name %>
 #define check_intdivzero(y)              \
     if ((y)==0) {                        \
@@ -10,7 +9,6 @@
     }
 <% else %>
 #define check_intdivzero(y) {}
-<% end %>
 <% end %>
 
 <% unless type_name == 'robject' %>
@@ -30,36 +28,29 @@ static void
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
 
-    //<% if need_align %>
-    if (is_aligned(p1,sizeof(dtype)) &&
-        is_aligned(p2,sizeof(dtype)) &&
-        is_aligned(p3,sizeof(dtype)) ) {
+    <% if type_name == 'robject' %>
+    {
+        size_t i;
+        SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        //<% if need_align %>
+        if (is_aligned(p1,sizeof(dtype)) &&
+            is_aligned(p2,sizeof(dtype)) &&
+            is_aligned(p3,sizeof(dtype)) ) {
 
-        if (s1 == sizeof(dtype) &&
-            s2 == sizeof(dtype) &&
-            s3 == sizeof(dtype) ) {
+            if (s1 == sizeof(dtype) &&
+                s2 == sizeof(dtype) &&
+                s3 == sizeof(dtype) ) {
 
-            // TODO(sonots): CPU warning
-            <% if type_name == 'robject' %>
-            {
-                size_t i;
                 for (i=0; i<n; i++) {
                     check_intdivzero(*(dtype*)p2);
                     ((dtype*)p3)[i] = m_<%=name%>(((dtype*)p1)[i],((dtype*)p2)[i]);
                 }
+                return;
             }
-            <% else %>
-            <%="#{c_iter}_contiguous_kernel_launch"%>(p1,p2,p3,n);
-            <% end %>
-            return;
-        }
-        if (is_aligned_step(s1,sizeof(dtype)) &&
-            is_aligned_step(s2,sizeof(dtype)) &&
-            is_aligned_step(s3,sizeof(dtype)) ) {
-            //<% end %>
-            <% if type_name == 'robject' %>
-            {
-                size_t i;
+            if (is_aligned_step(s1,sizeof(dtype)) &&
+                is_aligned_step(s2,sizeof(dtype)) &&
+                is_aligned_step(s3,sizeof(dtype)) ) {
+                //<% end %>
                 for (i=0; i<n; i++) {
                     check_intdivzero(*(dtype*)p2);
                     *(dtype*)p3 = m_<%=name%>(*(dtype*)p1,*(dtype*)p2);
@@ -67,17 +58,10 @@ static void
                     p2 += s2;
                     p3 += s3;
                 }
+                return;
+                //<% if need_align %>
             }
-            <% else %>
-            <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
-            <% end %>
-            return;
-            //<% if need_align %>
         }
-    }
-    <% if type_name == 'robject' %>
-    {
-        size_t i;
         for (i=0; i<n; i++) {
             dtype x, y, z;
             GET_DATA_STRIDE(p1,s1,dtype,x);
@@ -86,11 +70,35 @@ static void
             z = m_<%=name%>(x,y);
             SET_DATA_STRIDE(p3,s3,dtype,z);
         }
+        //<% end %>
     }
     <% else %>
-    <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
+    {
+        //<% if need_align %>
+        if (is_aligned(p1,sizeof(dtype)) &&
+            is_aligned(p2,sizeof(dtype)) &&
+            is_aligned(p3,sizeof(dtype)) ) {
+
+            if (s1 == sizeof(dtype) &&
+                s2 == sizeof(dtype) &&
+                s3 == sizeof(dtype) ) {
+
+                <%="#{c_iter}_contiguous_kernel_launch"%>(p1,p2,p3,n);
+                return;
+            }
+            if (is_aligned_step(s1,sizeof(dtype)) &&
+                is_aligned_step(s2,sizeof(dtype)) &&
+                is_aligned_step(s3,sizeof(dtype)) ) {
+                //<% end %>
+                <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
+                return;
+                //<% if need_align %>
+            }
+        }
+        <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
+        //<% end %>
+    }
     <% end %>
-    //<% end %>
 }
 #undef check_intdivzero
 

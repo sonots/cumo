@@ -15,23 +15,24 @@ static void
     INIT_COUNTER(lp, i);
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     y = m_num_to_data(x);
+    <% if type_name == 'robject' %>
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
-        <% if type_name == 'robject' %>
         for (; i--;) {
             SET_DATA_INDEX(p1,idx1,dtype,y);
         }
-        <% else %>
-        <%="#{c_iter}_index_kernel_launch"%>(p1,idx1,y,i);
-        <% end %>
     } else {
-        <% if type_name == 'robject' %>
         for (; i--;) {
             SET_DATA_STRIDE(p1,s1,dtype,y);
         }
-        <% else %>
-        <%="#{c_iter}_stride_kernel_launch"%>(p1,s1,y,i);
-        <% end %>
     }
+    <% else %>
+    if (idx1) {
+        <%="#{c_iter}_index_kernel_launch"%>(p1,idx1,y,i);
+    } else {
+        <%="#{c_iter}_stride_kernel_launch"%>(p1,s1,y,i);
+    }
+    <% end %>
 }
 
 /*

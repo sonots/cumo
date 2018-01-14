@@ -16,6 +16,7 @@ static void
     <% if type_name == 'robject' %>
     {
         dtype x, y;
+        SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         for (; i--;) {
             GET_DATA_STRIDE(p1,s1,dtype,x);
             GET_DATA_STRIDE(p2,s2,dtype,y);
@@ -42,6 +43,7 @@ static void
     {
         dtype   x;
         int32_t y;
+        SHOW_CPU_WARNING_ONCE("<%=name%>_int32", "<%=type_name%>");
         for (; i--;) {
             GET_DATA_STRIDE(p1,s1,dtype,x);
             GET_DATA_STRIDE(p2,s2,int32_t,y);

@@ -19,6 +19,7 @@ static void
     <% if type_name == 'robject' %>
     {
         dtype x;
+        SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         if (idx1) {
             if (idx2) {
                 for (; i--;) {
