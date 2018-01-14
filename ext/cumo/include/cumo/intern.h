@@ -1,13 +1,14 @@
 #ifndef INTERN_H
 #define INTERN_H
 
+void cumo_debug_breakpoint(void);
+
 #define rb_narray_new nary_new
 VALUE nary_new(VALUE elem, int ndim, size_t *shape);
 #define rb_narray_view_new nary_view_new
 VALUE nary_view_new(VALUE elem, int ndim, size_t *shape);
 #define rb_narray_debug_info nary_debug_info
 VALUE nary_debug_info(VALUE);
-void nary_debug_breakpoint(void);
 
 #define na_make_view nary_make_view
 VALUE nary_make_view(VALUE self);

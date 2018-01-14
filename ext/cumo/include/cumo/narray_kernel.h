@@ -138,6 +138,8 @@ typedef unsigned int BIT_DIGIT;
 #define ELEMENT_BYTE_SIZE "ELEMENT_BYTE_SIZE"
 #define CONTIGUOUS_STRIDE "CONTIGUOUS_STRIDE"
 
+#include "cumo/intern_kernel.h"
+
 #if defined(__cplusplus)
 #if 0
 { /* satisfy cc-mode */
