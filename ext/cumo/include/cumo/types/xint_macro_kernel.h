@@ -13,8 +13,8 @@
 #define m_div(x,y) ((x)/(y))
 #define m_mod(x,y) ((x)%(y))
 #define m_divmod(x,y,a,b) {a=(x)/(y); b=m_mod(x,y);}
-//#define m_pow(x,y) pow_int(x,y)
-//#define m_pow_int(x,y) pow_int(x,y)
+#define m_pow(x,y) pow_int(x,y)
+#define m_pow_int(x,y) pow_int(x,y)
 
 #define m_bit_and(x,y) ((x)&(y))
 #define m_bit_or(x,y)  ((x)|(y))

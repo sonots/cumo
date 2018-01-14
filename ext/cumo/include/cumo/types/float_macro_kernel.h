@@ -29,7 +29,7 @@ extern double pow(double, double);
 #define m_mod(x,y) fmod(x,y)
 #define m_divmod(x,y,a,b) {a=(x)/(y); b=m_mod(x,y);}
 #define m_pow(x,y) pow(x,y)
-//#define m_pow_int(x,y) pow_int(x,y)
+#define m_pow_int(x,y) pow_int(x,y)
 
 #define m_abs(x)     fabs(x)
 #define m_minus(x)   (-(x))
