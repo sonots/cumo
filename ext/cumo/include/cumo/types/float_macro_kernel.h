@@ -117,7 +117,8 @@ extern double pow(double, double);
 #define m_ldexp(x,y) ldexp(x,y)
 #define m_frexp(x,exp) frexp(x,exp)
 
-__host__ __device__ static inline dtype pow_int(dtype x, int p)
+/* only internal use (called by pow_int) */
+__host__ __device__ static inline dtype pow_positive_int(dtype x, int p)
 {
     dtype r=1;
     switch(p) {
@@ -127,7 +128,6 @@ __host__ __device__ static inline dtype pow_int(dtype x, int p)
     case 3: return x*x*x;
     case 4: x=x*x; return x*x;
     }
-    if (p<0)  return 1/pow_int(x,-p);
     if (p>64) return pow(x,p);
     while (p) {
         if (p&1) r *= x;
@@ -135,6 +135,12 @@ __host__ __device__ static inline dtype pow_int(dtype x, int p)
         p >>= 1;
     }
     return r;
+}
+
+__host__ __device__ static inline dtype pow_int(dtype x, int p)
+{
+    if (p<0) return 1/pow_positive_int(x, -p);
+    return pow_positive_int(x, p);
 }
 
 __host__ __device__ static inline dtype f_seq(dtype x, dtype y, double c)

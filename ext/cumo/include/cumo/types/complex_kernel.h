@@ -362,13 +362,10 @@ __host__ __device__ static inline dtype c_pow(dtype x, dtype y)
     return z;
 }
 
-__host__ __device__ static inline dtype c_pow_int(dtype x, int p)
+/* only internal use (called by c_pow_int) */
+__host__ __device__ static inline dtype c_pow_positive_int(dtype x, int p)
 {
     dtype z = c_one();
-    if (p<0) {
-	x = c_pow_int(x,-p);
-	return c_reciprocal(x);
-    }
     if (p==2) {return c_square(x);}
     if (p&1) {z = x;}
     p >>= 1;
@@ -378,6 +375,16 @@ __host__ __device__ static inline dtype c_pow_int(dtype x, int p)
 	p >>= 1;
     }
     return z;
+}
+
+__host__ __device__ static inline dtype c_pow_int(dtype x, int p)
+{
+    if (p<0) {
+        x = c_pow_positive_int(x,-p);
+        return c_reciprocal(x);
+    } else {
+        return c_pow_positive_int(x,p);
+    }
 }
 
 __host__ __device__ static inline dtype c_cbrt(dtype x) {
