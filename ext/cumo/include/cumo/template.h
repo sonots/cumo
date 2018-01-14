@@ -140,5 +140,16 @@ is_aligned_step(const ssize_t step, const size_t alignment)
     return ((step) & ((alignment)-1)) == 0;
 }
 
+#define SHOW_WARNING_ONCE( c_str ) \
+    { \
+        static bool show_warning = true; \
+        if (show_warning) { \
+            fprintf(stderr, (c_str)); \
+            show_warning = false; \
+        } \
+    }
+
+#define SHOW_CPU_WARNING_ONCE( func_name, type_name ) \
+    SHOW_WARNING_ONCE("CUDA version of \"" func_name "\" is not available for \"" type_name "\".\n")
 
 #endif /* ifndef TEMPLATE_H */
