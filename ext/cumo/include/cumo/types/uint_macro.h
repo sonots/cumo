@@ -14,6 +14,7 @@ static inline dtype int_reciprocal(dtype x) {
     }
 }
 
+/*
 static dtype pow_int(dtype x, int p)
 {
     dtype r = m_one;
@@ -30,3 +31,4 @@ static dtype pow_int(dtype x, int p)
     }
     return r;
 }
+*/

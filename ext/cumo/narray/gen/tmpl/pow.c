@@ -1,20 +1,31 @@
+<% unless type_name == 'robject' %>
+void <%="#{c_iter}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, size_t n);
+void <%="#{c_iter}_int32_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, size_t n);
+<% end %>
+
 static void
 <%=c_iter%>(na_loop_t *const lp)
 {
     size_t  i;
     char    *p1, *p2, *p3;
     ssize_t s1, s2, s3;
-    dtype    x, y;
     INIT_COUNTER(lp, i);
     INIT_PTR(lp, 0, p1, s1);
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
-    for (; i--;) {
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,dtype,y);
-        x = m_pow(x,y);
-        SET_DATA_STRIDE(p3,s3,dtype,x);
+    <% if type_name == 'robject' %>
+    {
+        dtype x, y;
+        for (; i--;) {
+            GET_DATA_STRIDE(p1,s1,dtype,x);
+            GET_DATA_STRIDE(p2,s2,dtype,y);
+            x = m_pow(x,y);
+            SET_DATA_STRIDE(p3,s3,dtype,x);
+        }
     }
+    <% else %>
+    <%="#{c_iter}_kernel_launch"%>(p1,p2,p3,s1,s2,s3,i);
+    <% end %>
 }
 
 static void
@@ -23,18 +34,24 @@ static void
     size_t  i;
     char   *p1, *p2, *p3;
     ssize_t s1, s2, s3;
-    dtype   x;
-    int32_t y;
     INIT_COUNTER(lp, i);
     INIT_PTR(lp, 0, p1, s1);
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
-    for (; i--;) {
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,int32_t,y);
-        x = m_pow_int(x,y);
-        SET_DATA_STRIDE(p3,s3,dtype,x);
+    <% if type_name == 'robject' %>
+    {
+        dtype   x;
+        int32_t y;
+        for (; i--;) {
+            GET_DATA_STRIDE(p1,s1,dtype,x);
+            GET_DATA_STRIDE(p2,s2,int32_t,y);
+            x = m_pow_int(x,y);
+            SET_DATA_STRIDE(p3,s3,dtype,x);
+        }
     }
+    <% else %>
+    <%="#{c_iter}_int32_kernel_launch"%>(p1,p2,p3,s1,s2,s3,i);
+    <% end %>
 }
 
 static VALUE
