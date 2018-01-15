@@ -117,8 +117,8 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
 #define m_hypot(x,y) c_hypot(x,y)
 #define m_sinc(x)    c_div(c_sin(x),x)
 
-//#define m_sum_init INT2FIX(0)
-//#define m_mulsum_init INT2FIX(0)
+#define m_sum_init 0
+#define m_mulsum_init 0
 
 #define not_nan(x) (REAL(x)==REAL(x) && IMAG(x)==IMAG(x))
 

@@ -36,8 +36,8 @@
 
 #define m_isnan(x) 0
 
-//#define m_mulsum(x,y,z) {z += x*y;}
-//#define m_mulsum_init INT2FIX(0)
+#define m_mulsum(x,y,z) {z += x*y;}
+#define m_mulsum_init 0
 //#define m_cumsum(x,y) {x += y;}
 //#define m_cumprod(x,y) {x *= y;}
 
