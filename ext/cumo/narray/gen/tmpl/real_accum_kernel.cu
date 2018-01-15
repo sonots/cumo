@@ -1,4 +1,4 @@
-dtype <%=type_name%>_sum_kernel_launch(size_t n, char *p, ssize_t stride)
+dtype <%=type_name%>_sum_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
@@ -12,7 +12,7 @@ dtype <%=type_name%>_sum_kernel_launch(size_t n, char *p, ssize_t stride)
     }
 }
 
-dtype <%=type_name%>_prod_kernel_launch(size_t n, char *p, ssize_t stride)
+dtype <%=type_name%>_prod_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
@@ -26,7 +26,7 @@ dtype <%=type_name%>_prod_kernel_launch(size_t n, char *p, ssize_t stride)
     }
 }
 
-dtype <%=type_name%>_min_kernel_launch(size_t n, char *p, ssize_t stride)
+dtype <%=type_name%>_min_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
@@ -40,7 +40,7 @@ dtype <%=type_name%>_min_kernel_launch(size_t n, char *p, ssize_t stride)
     }
 }
 
-dtype <%=type_name%>_max_kernel_launch(size_t n, char *p, ssize_t stride)
+dtype <%=type_name%>_max_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
@@ -54,8 +54,8 @@ dtype <%=type_name%>_max_kernel_launch(size_t n, char *p, ssize_t stride)
     }
 }
 
-void <%=type_name%>_minmax_kernel_launch(size_t n, char *p, ssize_t stride, dtype* amin, dtype* amax);
-dtype <%=type_name%>_ptp_kernel_launch(size_t n, char *p, ssize_t stride)
+void <%=type_name%>_minmax_kernel_launch(uint64_t n, char *p, ssize_t stride, dtype* amin, dtype* amax);
+dtype <%=type_name%>_ptp_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     dtype min,max;
     <%=type_name%>_minmax_kernel_launch(n,p,stride,&min,&max);

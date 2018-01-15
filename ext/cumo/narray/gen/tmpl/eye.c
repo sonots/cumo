@@ -1,5 +1,5 @@
 <% unless type_name == 'robject' %>
-void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t s0, ssize_t s1, ssize_t kofs, dtype data, size_t n0, size_t n1);
+void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t s0, ssize_t s1, ssize_t kofs, dtype data, uint64_t n0, uint64_t n1);
 <% end %>
 
 #include <cuda_runtime.h>
