@@ -1,6 +1,7 @@
 #ifndef CUMO_CUDA_THRUST_COMPLEX_H
 #define CUMO_CUDA_THRUST_COMPLEX_H
 
+#include "cumo/types/complex_kernel.h"
 #include "cumo/cuda/cumo_thrust.hpp"
 
 // ref. https://github.com/thrust/thrust/blob/master/examples/summary_statistics.cu

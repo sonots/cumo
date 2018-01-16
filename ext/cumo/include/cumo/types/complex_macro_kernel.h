@@ -144,4 +144,22 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
             (x) = m_mul(x,y);    \
         }}
 
+/* --------- thrust ----------------- */
+#include "cumo/cuda/cumo_thrust_complex.hpp"
+
+struct thrust_plus : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_add(x,y); }
+};
+
+struct thrust_multiplies : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_mul(x,y); }
+};
+
+struct thrust_square : public thrust::unary_function<dtype, dtype>
+{
+    __host__ __device__ rtype operator()(const dtype& x) const { return c_abs_square(x); }
+};
+
 #endif // CUMO_COMPLEX_MACRO_KERNEL_H

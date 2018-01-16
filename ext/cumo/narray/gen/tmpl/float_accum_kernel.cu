@@ -31,10 +31,6 @@ dtype <%=type_name%>_stddev_kernel_launch(uint64_t n, char *p, ssize_t stride)
     return m_sqrt(<%=type_name%>_var_kernel_launch(n, p, stride));
 }
 
-struct thrust_square : public thrust::unary_function<dtype, dtype>
-{
-    __host__ __device__ dtype operator()(const dtype& x) const { return x * x; }
-};
 dtype <%=type_name%>_rms_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);

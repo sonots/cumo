@@ -1,7 +1,3 @@
-struct thrust_plus : public thrust::binary_function<dtype, dtype, dtype>
-{
-    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_add(x,y); }
-};
 dtype <%=type_name%>_sum_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);
@@ -16,10 +12,6 @@ dtype <%=type_name%>_sum_kernel_launch(uint64_t n, char *p, ssize_t stride)
     }
 }
 
-struct thrust_multiplies : public thrust::binary_function<dtype, dtype, dtype>
-{
-    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_mul(x,y); }
-};
 dtype <%=type_name%>_prod_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);
@@ -63,10 +55,6 @@ rtype <%=type_name%>_stddev_kernel_launch(uint64_t n, char *p, ssize_t stride)
     return r_sqrt(<%=type_name%>_var_kernel_launch(n, p, stride));
 }
 
-struct thrust_square : public thrust::unary_function<dtype, dtype>
-{
-    __host__ __device__ rtype operator()(const dtype& x) const { return c_abs_square(x); }
-};
 rtype <%=type_name%>_rms_kernel_launch(uint64_t n, char *p, ssize_t stride)
 {
     ssize_t stride_idx = stride / sizeof(dtype);
