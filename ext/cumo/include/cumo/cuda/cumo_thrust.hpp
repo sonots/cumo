@@ -5,10 +5,12 @@
 #include <thrust/device_vector.h>
 #include <thrust/extrema.h>
 #include <thrust/functional.h>
+#include <thrust/inner_product.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/iterator/transform_iterator.h>
 #include <thrust/iterator/permutation_iterator.h>
 #include <thrust/reduce.h>
+#include <thrust/system/cuda/execution_policy.h>
 #include <thrust/transform_reduce.h>
 
 // this example illustrates how to make strided access to a range of values

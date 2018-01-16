@@ -17,7 +17,8 @@ static void
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
 
-    <% if type_name == 'robject' %>
+    // TODO(sonots): Support nan version
+    <% if type_name == 'robject' || nan == '_nan' %>
     {
         size_t i;
         SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
