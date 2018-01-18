@@ -20,27 +20,31 @@ C_DEPENDS = $(C_TMPL) narray/gen/*.rb
 CU_DEPENDS = $(CU_TMPL) narray/gen/*.rb
 
 <%
-type_c = []
-type_rb = Dir.glob("narray/gen/def/*.rb")
-type_rb.each do |s|
-  type_c << c = "narray/types/"+File.basename(s,".rb")+".c"
+list_type_c = []
+list_type_rb = Dir.glob("narray/gen/def/*.rb")
+list_type_rb.each do |type_rb|
+  type_name = File.basename(type_rb, ".rb")
+  next if ENV['ONLY'] and !type_name.downcase.include?(ENV['ONLY'].downcase)
+  list_type_c << type_c = "narray/types/" + type_name + + ".c"
 %>
-<%=c%>: <%=s%> $(C_DEPENDS)
+<%=type_c%>: <%=type_rb%> $(C_DEPENDS)
 	$(MAKEDIRS) $(@D) types
-	ruby $(C_COGEN) -l -o $@ <%=s%>
+	ruby $(C_COGEN) -l -o $@ <%=type_rb%>
 <% end %>
 
 <%
-type_cu = []
-type_rb = Dir.glob("narray/gen/def/*.rb")
-type_rb.each do |s|
-  type_cu << cu = "narray/types/"+File.basename(s,".rb")+"_kernel.cu"
+list_type_cu = []
+list_type_rb = Dir.glob("narray/gen/def/*.rb")
+list_type_rb.each do |type_rb|
+  type_name = File.basename(type_rb, ".rb")
+  next if ENV['ONLY'] and !type_name.downcase.include?(ENV['ONLY'].downcase)
+  list_type_cu << type_cu = "narray/types/" + type_name + + "_kernel.cu"
 %>
-<%=cu%>: <%=s%> $(CU_DEPENDS)
+<%=type_cu%>: <%=type_rb%> $(CU_DEPENDS)
 	$(MAKEDIRS) $(@D) types
-	ruby $(CU_COGEN) -l -o $@ <%=s%>
+	ruby $(CU_COGEN) -l -o $@ <%=type_rb%>
 <% end %>
 
-src : <%= type_cu.join(" ") %> <%= type_c.join(" ") %>
+src : <%= list_type_cu.join(" ") %> <%= list_type_c.join(" ") %>
 
 CLEANOBJS = *.o */*.o */*/*.o *.bak narray/types/*.c narray/types/*_kernel.cu
