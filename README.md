@@ -78,7 +78,9 @@ Run tests:
 bundle exec rake test
 ```
 
-### Advanced Tips
+## Advanced Tips on Development
+
+### ccache
 
 [ccache](https://ccache.samba.org/) would be useful to speedup compilation time.
 Install ccache and setup as:
@@ -90,6 +92,32 @@ ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/gcc"
 ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/g++"
 ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/nvcc"
 ```
+
+### Compile and run tests only a specific type
+
+```
+bundle exec ONLY=dfloat rake compile
+```
+
+```
+bundle exec ONLY=dfloat ruby test/narray_test.rb
+```
+
+### Run tests with gdb
+
+Compile with debug option:
+
+```
+bundle exec DEBUG=1 rake compile
+```
+
+Run tests with gdb:
+
+```
+bundle exec gdb -x run.gdb --args ruby test/narray_test.rb
+```
+
+You may put a breakpoint by calling `cumo_debug_breakpoint()` at C source codes.
 
 ## Contributing
 

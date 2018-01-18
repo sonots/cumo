@@ -20,6 +20,11 @@ class NArrayTest < Test::Unit::TestCase
     Cumo::DComplex,
   ]
 
+  if ENV['ONLY']
+    types.select!{|type| type.to_s.downcase.include?(ENV['ONLY'].downcase) }
+    float_types.select!{|type| type.to_s.downcase.include?(ENV['ONLY'].downcase) }
+  end
+
   types.each do |dtype|
     test dtype do
       assert { dtype < Cumo::NArray }
