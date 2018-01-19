@@ -157,6 +157,17 @@ struct thrust_multiplies : public thrust::binary_function<dtype, dtype, dtype>
     __host__ __device__ dtype operator()(dtype x, dtype y) { return m_mul(x,y); }
 };
 
+struct thrust_multiplies_mulsum_nan : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) {
+        if (not_nan(x) && not_nan(y)) {
+            return m_mul(x, y);
+        } else {
+            return m_zero;
+        }
+    }
+};
+
 struct thrust_square : public thrust::unary_function<dtype, dtype>
 {
     __host__ __device__ rtype operator()(const dtype& x) const { return c_abs_square(x); }

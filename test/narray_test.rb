@@ -203,6 +203,23 @@ class NArrayTest < Test::Unit::TestCase
       assert_raise(IndexError) { a[:rest, 1, :rest, 0] }
     end
 
+    sub_test_case "#{dtype}, #mulsum" do
+      test "vector.mulsum(vector)" do
+        a = dtype[1..3]
+        b = dtype[2..4]
+        assert { a.mulsum(b) == (1*2 + 2*3 + 3*4) }
+      end
+
+      if [Cumo::DComplex, Cumo::SComplex, Cumo::DFloat, Cumo::SFloat].include?(dtype)
+        test "vector.mulsum(vector, nan: true)" do
+          a = dtype[1..3]
+          a[0] = 0.0/0/0
+          b = dtype[2..4]
+          assert { a.mulsum(b, nan: true) == (0 + 2*3 + 3*4) }
+        end
+      end
+    end
+
     sub_test_case "#{dtype}, #dot" do
       test "vector.dot(vector)" do
         a = dtype[1..3]

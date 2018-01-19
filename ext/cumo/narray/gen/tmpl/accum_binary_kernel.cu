@@ -8,12 +8,11 @@
 }  /* extern "C" { */
 #endif
 
-// TODO(sonots): Support nan version
 template<typename Iterator1, typename Iterator2>
 __global__ void <%="#{type_name}_#{name}#{nan}_reduce_kernel"%>(Iterator1 p1_begin, Iterator1 p1_end, Iterator2 p2_begin, dtype* p3)
 {
     dtype init = m_zero;
-    *p3 = thrust::inner_product(thrust::cuda::par, p1_begin, p1_end, p2_begin, init, thrust_plus(), thrust_multiplies());
+    *p3 = thrust::inner_product(thrust::cuda::par, p1_begin, p1_end, p2_begin, init, thrust_plus(), thrust_multiplies<%= "_#{name}#{nan}" unless nan.empty? %>());
 }
 
 #if defined(__cplusplus)
