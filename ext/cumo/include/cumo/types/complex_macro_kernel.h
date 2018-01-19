@@ -117,8 +117,8 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
 #define m_hypot(x,y) c_hypot(x,y)
 #define m_sinc(x)    c_div(c_sin(x),x)
 
-//#define m_sum_init INT2FIX(0)
-//#define m_mulsum_init INT2FIX(0)
+#define m_sum_init 0
+#define m_mulsum_init 0
 
 #define not_nan(x) (REAL(x)==REAL(x) && IMAG(x)==IMAG(x))
 
@@ -143,5 +143,34 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
         } else if (not_nan(y)) { \
             (x) = m_mul(x,y);    \
         }}
+
+/* --------- thrust ----------------- */
+#include "cumo/cuda/cumo_thrust_complex.hpp"
+
+struct thrust_plus : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_add(x,y); }
+};
+
+struct thrust_multiplies : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_mul(x,y); }
+};
+
+struct thrust_multiplies_mulsum_nan : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) {
+        if (not_nan(x) && not_nan(y)) {
+            return m_mul(x, y);
+        } else {
+            return m_zero;
+        }
+    }
+};
+
+struct thrust_square : public thrust::unary_function<dtype, dtype>
+{
+    __host__ __device__ rtype operator()(const dtype& x) const { return c_abs_square(x); }
+};
 
 #endif // CUMO_COMPLEX_MACRO_KERNEL_H

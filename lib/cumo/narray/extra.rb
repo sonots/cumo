@@ -1084,33 +1084,18 @@ module Cumo
 
     def dot(b)
       t = self.class::UPCAST[b.class]
-      if defined?(Linalg) && [SFloat,DFloat,SComplex,DComplex].include?(t)
-        Linalg.dot(self,b)
+      b = self.class.asarray(b)
+      case b.ndim
+      when 1
+        mulsum(b, axis:-1)
       else
-        b = self.class.asarray(b)
-        case b.ndim
+        case ndim
+        when 0
+          b.mulsum(self, axis:-2)
         when 1
-          mulsum(b, axis:-1)
+          self[true,:new].mulsum(b, axis:-2)
         else
-          case ndim
-          when 0
-            b.mulsum(self, axis:-2)
-          when 1
-            self[true,:new].mulsum(b, axis:-2)
-          else
-            unless @@warn_slow_dot
-              nx = 200
-              ns = 200000
-              am,an = shape[-2..-1]
-              bm,bn = b.shape[-2..-1]
-              if am > nx && an > nx && bm > nx && bn > nx &&
-                  size > ns && b.size > ns
-                @@warn_slow_dot = true
-                warn "\nwarning: Built-in matrix dot is slow. Consider installing Cumo::Linalg.\n\n"
-              end
-            end
-            self[false,:new].mulsum(b[false,:new,true,true], axis:-2)
-          end
+          self[false,:new].mulsum(b[false,:new,true,true], axis:-2)
         end
       end
     end

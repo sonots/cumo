@@ -1,8 +1,14 @@
-//<% (is_float ? ["","_nan"] : [""]).each do |j| %>
+//<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
+
+<% unless type_name == 'robject' %>
+void <%="#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, uint64_t n);
+void <%="#{type_name}_#{name}#{nan}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
+<% end %>
+
 static void
-<%=c_iter%><%=j%>(na_loop_t *const lp)
+<%=c_iter%><%=nan%>(na_loop_t *const lp)
 {
-    size_t   i, n;
+    size_t   n;
     char    *p1, *p2, *p3;
     ssize_t  s1, s2, s3;
 
@@ -11,29 +17,45 @@ static void
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
 
-    SHOW_CPU_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
-    if (s3==0) {
-        dtype z;
-        // Reduce loop
-        GET_DATA(p3,dtype,z);
-        for (i=0; i<n; i++) {
-            dtype x, y;
-            GET_DATA_STRIDE(p1,s1,dtype,x);
-            GET_DATA_STRIDE(p2,s2,dtype,y);
-            m_<%=name%><%=j%>(x,y,z);
-        }
-        SET_DATA(p3,dtype,z);
-        return;
-    } else {
-        for (i=0; i<n; i++) {
-            dtype x, y, z;
-            GET_DATA_STRIDE(p1,s1,dtype,x);
-            GET_DATA_STRIDE(p2,s2,dtype,y);
+    <% if type_name == 'robject' %>
+    {
+        size_t i;
+        SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        if (s3==0) {
+            dtype z;
+            // Reduce loop
             GET_DATA(p3,dtype,z);
-            m_<%=name%><%=j%>(x,y,z);
-            SET_DATA_STRIDE(p3,s3,dtype,z);
+            for (i=0; i<n; i++) {
+                dtype x, y;
+                GET_DATA_STRIDE(p1,s1,dtype,x);
+                GET_DATA_STRIDE(p2,s2,dtype,y);
+                m_<%=name%><%=nan%>(x,y,z);
+            }
+            printf("mulsum_nan\n");
+            SET_DATA(p3,dtype,z);
+            return;
+        } else {
+            printf("mulsum_nan\n");
+            for (i=0; i<n; i++) {
+                dtype x, y, z;
+                GET_DATA_STRIDE(p1,s1,dtype,x);
+                GET_DATA_STRIDE(p2,s2,dtype,y);
+                GET_DATA(p3,dtype,z);
+                m_<%=name%><%=nan%>(x,y,z);
+                SET_DATA_STRIDE(p3,s3,dtype,z);
+            }
         }
     }
+    <% else %>
+    {
+        if (s3==0) {
+            <%="#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(p1,p2,p3,s1,s2,n);
+            return;
+        } else {
+            <%="#{type_name}_#{name}#{nan}_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
+        }
+    }
+    <% end %>
 }
 //<% end %>
 

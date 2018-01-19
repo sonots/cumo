@@ -36,9 +36,27 @@
 
 #define m_isnan(x) 0
 
-//#define m_mulsum(x,y,z) {z += x*y;}
-//#define m_mulsum_init INT2FIX(0)
+#define m_mulsum(x,y,z) {z += x*y;}
+#define m_mulsum_init 0
 //#define m_cumsum(x,y) {x += y;}
 //#define m_cumprod(x,y) {x *= y;}
+
+/* --------- thrust ----------------- */
+#include "cumo/cuda/cumo_thrust.hpp"
+
+struct thrust_plus : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_add(x,y); }
+};
+
+struct thrust_multiplies : public thrust::binary_function<dtype, dtype, dtype>
+{
+    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_mul(x,y); }
+};
+
+struct thrust_square : public thrust::unary_function<dtype, dtype>
+{
+    __host__ __device__ rtype operator()(const dtype& x) const { return m_square(x); }
+};
 
 #endif // CUMO_XINT_MACRO_KERNEL_H
