@@ -1,3 +1,5 @@
+**This project is under development. This project received [Ruby Association Grant 2017](http://www.ruby.or.jp/ja/news/20171206).**
+
 # Cumo
 
 Cumo is CUDA-aware numerical library whose interface is highly compatible with [Ruby Numo](https://github.com/ruby-numo).
@@ -58,6 +60,24 @@ An example:
 => 15
 ```
 
+## How to switch from Numo to Cumo
+
+Basically, `find . -type f | xargs sed -i -e 's/Numo/Cumo/g' -e 's/numo/cumo/g'` should make it work.
+
+If you want to switch Numo and Cumo dynamically, following snippets should work:
+
+```ruby
+if gpu
+  require 'cumo/narray'
+  Xumo = Cumo
+else
+  require 'numo/narray'
+  Xumo = Numo
+end
+
+a = Xumo::DFloat.new(3,5).seq
+```
+
 ## Development
 
 Install ruby dependencies:
@@ -93,7 +113,17 @@ ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/g++"
 ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/nvcc"
 ```
 
+## Run tests only a specific line
+
+`--location` option is available as:
+
+```
+bundle exec ruby test/narray_test.rb --location 121
+```
+
 ### Compile and run tests only a specific type
+
+`ONLY` environment variable is available as:
 
 ```
 bundle exec ONLY=dfloat rake compile
