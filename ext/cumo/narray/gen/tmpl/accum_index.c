@@ -16,10 +16,10 @@ static void
     INIT_COUNTER(lp, n);
     INIT_PTR(lp, 0, d_ptr, d_step);
 
-    SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
     // TODO(sonots): Support nan in CUDA
     // TODO(sonots): Asynchronous CUDA kernel call
     <% if type_name == 'robject' || nan == '_nan' %>
+    SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
     idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
     <% else %>
     idx = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,d_ptr,d_step);
