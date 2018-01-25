@@ -1,8 +1,13 @@
-<% (is_float ? ["","_nan"] : [""]).each do |j|
-   [64,32].each do |i| %>
+<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
+
+<% unless type_name == 'robject' %>
+size_t <%=type_name%>_<%=name%><%=nan%>_kernel_launch(uint64_t n, char *p, ssize_t stride);
+<% end %>
+
+<%   [64,32].each do |i| %>
 #define idx_t int<%=i%>_t
 static void
-<%=c_iter%>_index<%=i%><%=j%>(na_loop_t *const lp)
+<%=c_iter%>_index<%=i%><%=nan%>(na_loop_t *const lp)
 {
     size_t   n, idx;
     char    *d_ptr, *i_ptr, *o_ptr;
@@ -11,8 +16,14 @@ static void
     INIT_COUNTER(lp, n);
     INIT_PTR(lp, 0, d_ptr, d_step);
 
-    SHOW_CPU_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
-    idx = f_<%=name%><%=j%>(n,d_ptr,d_step);
+    SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+    // TODO(sonots): Support nan in CUDA
+    // TODO(sonots): Asynchronous CUDA kernel call
+    <% if type_name == 'robject' || nan == '_nan' %>
+    idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
+    <% else %>
+    idx = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,d_ptr,d_step);
+    <% end %>
 
     INIT_PTR(lp, 1, i_ptr, i_step);
     o_ptr = NDL_PTR(lp,2);
