@@ -4,6 +4,10 @@
 typedef u_int32_t dtype;
 typedef u_int32_t rtype;
 
+#ifndef UINT32_MIN
+#define UINT32_MIN (0)
+#endif
+
 #ifndef UINT32_MAX
 #define UINT32_MAX (4294967295u)
 #endif

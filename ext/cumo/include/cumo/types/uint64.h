@@ -8,6 +8,10 @@ typedef u_int64_t rtype;
 #define m_extract(x)     UINT642NUM((u_int64_t)*(dtype*)(x))
 #define m_sprintf(s,x)   sprintf(s,"%"PRIu64,(u_int64_t)(x))
 
+#ifndef UINT64_MIN
+#define UINT64_MIN (0)
+#endif
+
 #ifndef UINT64_MAX
 #define UINT64_MAX (18446744073709551615ul)
 #endif

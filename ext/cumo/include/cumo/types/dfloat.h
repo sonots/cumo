@@ -40,3 +40,6 @@ inline static void m_rand_norm(dtype mu, dtype sigma, dtype *a0, dtype *a1)
 #define M_EPSILON rb_float_new(2.2204460492503131e-16)
 #define M_MIN     rb_float_new(2.2250738585072014e-308)
 #define M_MAX     rb_float_new(1.7976931348623157e+308)
+
+#define DATA_MIN DBL_MIN
+#define DATA_MAX DBL_MAX

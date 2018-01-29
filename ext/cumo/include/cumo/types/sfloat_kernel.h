@@ -8,4 +8,7 @@ typedef float rtype;
 
 #define m_nearly_eq(x,y) (fabs(x-y)<=(fabs(x)+fabs(y))*FLT_EPSILON*2)
 
+#define DATA_MIN FLT_MIN
+#define DATA_MAX FLT_MAX
+
 #endif // CUMO_SFLOAT_KERNEL_H

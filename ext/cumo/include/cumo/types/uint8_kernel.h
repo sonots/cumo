@@ -4,6 +4,10 @@
 typedef u_int8_t dtype;
 typedef u_int8_t rtype;
 
+#ifndef UINT8_MIN
+#define UINT8_MIN (0)
+#endif
+
 #ifndef UINT8_MAX
 #define UINT8_MAX (255)
 #endif

@@ -4,6 +4,10 @@
 typedef u_int16_t dtype;
 typedef u_int16_t rtype;
 
+#ifndef UINT16_MIN
+#define UINT16_MIN (0)
+#endif
+
 #ifndef UINT16_MAX
 #define UINT16_MAX (65535)
 #endif
