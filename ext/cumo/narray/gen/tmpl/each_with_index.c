@@ -31,7 +31,10 @@ void
     INIT_COUNTER(lp, i);
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     c[nd] = 0;
-    //SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     if (idx1) {
         for (; i--;) {
             GET_DATA_INDEX(p1,idx1,dtype,x);
