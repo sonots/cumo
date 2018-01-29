@@ -8,6 +8,10 @@ typedef u_int32_t rtype;
 #define m_extract(x)     UINT322NUM((u_int32_t)*(dtype*)(x))
 #define m_sprintf(s,x)   sprintf(s,"%"PRIu32,(u_int32_t)(x))
 
+#ifndef UINT32_MIN
+#define UINT32_MIN (0)
+#endif
+
 #ifndef UINT32_MAX
 #define UINT32_MAX (4294967295u)
 #endif

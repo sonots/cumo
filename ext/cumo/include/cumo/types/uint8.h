@@ -8,6 +8,10 @@ typedef u_int8_t rtype;
 #define m_extract(x)     UINT2NUM((unsigned int)*(dtype*)(x))
 #define m_sprintf(s,x)   sprintf(s,"%u",(unsigned int)(x))
 
+#ifndef UINT8_MIN
+#define UINT8_MIN (0)
+#endif
+
 #ifndef UINT8_MAX
 #define UINT8_MAX (255)
 #endif

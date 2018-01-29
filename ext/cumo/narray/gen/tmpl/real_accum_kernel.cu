@@ -31,7 +31,7 @@ dtype <%=type_name%>_min_kernel_launch(uint64_t n, char *p, ssize_t stride)
     ssize_t stride_idx = stride / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
     thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
-    dtype init = *(dtype*)p;
+    dtype init = DATA_MAX;
     if (stride_idx == 1) {
         return thrust::reduce(data_begin, data_end, init, thrust::minimum<dtype>());
     } else {
@@ -45,7 +45,7 @@ dtype <%=type_name%>_max_kernel_launch(uint64_t n, char *p, ssize_t stride)
     ssize_t stride_idx = stride / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
     thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
-    dtype init = *(dtype*)p;
+    dtype init = DATA_MIN;
     if (stride_idx == 1) {
         return thrust::reduce(data_begin, data_end, init, thrust::maximum<dtype>());
     } else {
