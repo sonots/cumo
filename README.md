@@ -123,14 +123,14 @@ bundle exec ruby test/narray_test.rb --location 121
 
 ### Compile and run tests only a specific type
 
-`ONLY` environment variable is available as:
+`DTYPE` environment variable is available as:
 
 ```
-bundle exec ONLY=dfloat rake compile
+bundle exec DTYPE=dfloat rake compile
 ```
 
 ```
-bundle exec ONLY=dfloat ruby test/narray_test.rb
+bundle exec DTYPE=dfloat ruby test/narray_test.rb
 ```
 
 ### Run tests with gdb
