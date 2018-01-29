@@ -3,8 +3,8 @@
 
 #define LOAD_BIT( adr, pos, val )                       \
     {                                                   \
-        size_t dig = (pos) / NB;                        \
-        int    bit = (pos) % NB;                        \
+        size_t dig = (size_t)(pos) / NB;                \
+        int    bit = (size_t)(pos) % NB;                \
         val = (((BIT_DIGIT*)(adr))[dig]>>(bit)) & 1u;   \
     }
 
@@ -12,12 +12,12 @@
     {                                                   \
         size_t dig; int bit;                            \
         if (idx) {                                      \
-            dig = ((pos) + *(idx)) / NB;                \
-            bit = ((pos) + *(idx)) % NB;                \
+            dig = (size_t)((pos) + *(idx)) / NB;        \
+            bit = (size_t)((pos) + *(idx)) % NB;        \
             idx++;                                      \
         } else {                                        \
-            dig = (pos) / NB;                           \
-            bit = (pos) % NB;                           \
+            dig = (size_t)(pos) / NB;                   \
+            bit = (size_t)(pos) % NB;                   \
             pos += step;                                \
         }                                               \
         val = (((BIT_DIGIT*)(adr))[dig]>>bit) & 1u;     \
@@ -25,26 +25,26 @@
 
 #define STORE_BIT(adr,pos,val)                  \
     {                                           \
-        size_t dig = (pos) / NB;                \
-        int    bit = (pos) % NB;                \
+        size_t dig = (size_t)(pos) / NB;        \
+        int    bit = (size_t)(pos) % NB;        \
         ((BIT_DIGIT*)(adr))[dig] =              \
             (((BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
     }
 // val -> val&1 ??
 
 #define STORE_BIT_STEP( adr, pos, step, idx, val )\
-    {                                           \
-        size_t dig; int bit;                    \
-        if (idx) {                              \
-            dig = ((pos) + *(idx)) / NB;        \
-            bit = ((pos) + *(idx)) % NB;        \
-            idx++;                              \
-        } else {                                \
-            dig = (pos) / NB;                   \
-            bit = (pos) % NB;                   \
-            pos += step;                        \
-        }                                       \
-        ((BIT_DIGIT*)(adr))[dig] =              \
+    {                                            \
+        size_t dig; int bit;                     \
+        if (idx) {                               \
+            dig = (size_t)((pos) + *(idx)) / NB; \
+            bit = (size_t)((pos) + *(idx)) % NB; \
+            idx++;                               \
+        } else {                                 \
+            dig = (size_t)(pos) / NB;            \
+            bit = (size_t)(pos) % NB;            \
+            pos += step;                         \
+        }                                        \
+        ((BIT_DIGIT*)(adr))[dig] =               \
             (((BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
     }
 // val -> val&1 ??
