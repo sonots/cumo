@@ -92,6 +92,8 @@ static void
     <%=shift_set%>
 
     SHOW_CPU_WARNING_ONCE("<%=c_iter%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=c_iter%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     if (idx1) {
         for (; i--;) {
             x = m_add(<%=m_rand%>,low);

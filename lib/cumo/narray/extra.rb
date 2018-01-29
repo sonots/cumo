@@ -129,6 +129,7 @@ module Cumo
 
     def to_i
       if size==1
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
         self[0].to_i
       else
         # convert to Int?
@@ -138,6 +139,7 @@ module Cumo
 
     def to_f
       if size==1
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
         self[0].to_f
       else
         # convert to DFloat?
@@ -147,6 +149,7 @@ module Cumo
 
     def to_c
       if size==1
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
         Complex(self[0])
       else
         # convert to DComplex?
