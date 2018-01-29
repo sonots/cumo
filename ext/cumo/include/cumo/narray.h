@@ -396,7 +396,7 @@ _na_get_narray_t(VALUE obj, unsigned char na_type)
 #define NA_MAX_ELMSZ     65535
 
 typedef unsigned int BIT_DIGIT;
-//#define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
+#define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
 #define NB     (sizeof(BIT_DIGIT)*8)
 #define BALL   (~(BIT_DIGIT)0)
 #define SLB(n) (((n)==NB)?~(BIT_DIGIT)0:(~(~(BIT_DIGIT)0<<(n))))

@@ -129,7 +129,7 @@ extern int na_debug_flag;
 #define NA_MAX_ELMSZ     65535
 
 typedef unsigned int BIT_DIGIT;
-//#define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
+#define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
 #define NB     (sizeof(BIT_DIGIT)*8)
 #define BALL   (~(BIT_DIGIT)0)
 #define SLB(n) (((n)==NB)?~(BIT_DIGIT)0:(~(~(BIT_DIGIT)0<<(n))))
