@@ -1,6 +1,7 @@
 #include <string.h>
 #include <ruby.h>
 #include "cumo/narray.h"
+#include "cumo/cuda/runtime.h"
 #include "cumo/template.h"
 
 #if   SIZEOF_VOIDP == 8
@@ -152,6 +153,10 @@ na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, na_index_arg_t *q)
     GetNArrayData(idx,nidx);
     nidxp   = (ssize_t*)nidx->ptr;
     q->idx  = ALLOC_N(size_t, n);
+
+    SHOW_SYNCHRONIZE_WARNING_ONCE("na_parse_narray_index", "all");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     for (k=0; k<n; k++) {
         q->idx[k] = na_range_check(nidxp[k], size, orig_dim);
     }
