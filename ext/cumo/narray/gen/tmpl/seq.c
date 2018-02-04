@@ -41,6 +41,7 @@ static void
     <% if is_object %>
     {
         dtype x;
+        SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         if (idx1) {
             for (; i--;) {
                 x = f_seq(beg,step,c++);
