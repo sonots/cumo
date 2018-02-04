@@ -16,6 +16,11 @@ typedef struct {
     seq_count_t count;
 } seq_opt_t;
 
+<% unless is_object %>
+void <%="#{c_iter}_index_kernel_launch"%>(char *p1, size_t* idx1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n);
+void <%="#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n);
+<% end %>
+
 static void
 <%=c_iter%>(na_loop_t *const lp)
 {
@@ -23,7 +28,6 @@ static void
     char   *p1;
     ssize_t s1;
     size_t *idx1;
-    dtype   x;
     seq_data_t beg, step;
     seq_count_t c;
     seq_opt_t *g;
@@ -34,21 +38,35 @@ static void
     beg  = g->beg;
     step = g->step;
     c    = g->count;
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    if (idx1) {
-        for (; i--;) {
-            x = f_seq(beg,step,c++);
-            *(dtype*)(p1+*idx1) = x;
-            idx1++;
+    <% if type_name == 'robject' %>
+    {
+        dtype x;
+        if (idx1) {
+            for (; i--;) {
+                x = f_seq(beg,step,c++);
+                *(dtype*)(p1+*idx1) = x;
+                idx1++;
+            }
+        } else {
+            for (; i--;) {
+                x = f_seq(beg,step,c++);
+                *(dtype*)(p1) = x;
+                p1 += s1;
+            }
         }
-    } else {
-        for (; i--;) {
-            x = f_seq(beg,step,c++);
-            *(dtype*)(p1) = x;
-            p1 += s1;
-        }
+        g->count = c;
     }
-    g->count = c;
+    <% else %>
+    {
+        size_t n = i;
+        if (idx1) {
+            <%="#{c_iter}_index_kernel_launch"%>(p1,idx1,beg,step,c,n);
+        } else {
+            <%="#{c_iter}_stride_kernel_launch"%>(p1,s1,beg,step,c,n);
+        }
+        g->count += n;
+    }
+    <% end %>
 }
 
 /*
