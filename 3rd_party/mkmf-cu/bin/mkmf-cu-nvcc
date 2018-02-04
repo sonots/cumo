@@ -20,5 +20,6 @@ else
   raise
 end
 
+s << " -arch=sm_30" # TODO(sonots): How to add this nicely?
 $stderr.puts "nvcc" + s
 Open3.capture2("nvcc " + s)
