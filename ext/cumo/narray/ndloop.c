@@ -1107,7 +1107,13 @@ ndloop_copy_to_buffer(na_buffer_copy_t *lp)
     if (nd==0) {
         src = lp->src_ptr + LITER_SRC(lp,0).pos;
         buf = lp->buf_ptr;
-        memcpy(buf,src,elmsz);
+        if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
+            DBG(printf("DtoD] ["));
+            cumo_cuda_runtime_check_status(cudaMemcpyAsync(buf,src,elmsz,cudaMemcpyDeviceToDevice,0));
+        } else {
+            DBG(printf("HtoH] ["));
+            memcpy(buf,src,elmsz);
+        }
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(buf))[j]);});
         goto loop_end;
     }
@@ -1126,7 +1132,13 @@ ndloop_copy_to_buffer(na_buffer_copy_t *lp)
         }
         src = lp->src_ptr + LITER_SRC(lp,nd).pos;
         buf = lp->buf_ptr + buf_pos;
-        memcpy(buf,src,elmsz);
+        if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
+            DBG(printf("DtoD] ["));
+            cumo_cuda_runtime_check_status(cudaMemcpyAsync(buf,src,elmsz,cudaMemcpyDeviceToDevice,0));
+        } else {
+            DBG(printf("HtoH] ["));
+            memcpy(buf,src,elmsz);
+        }
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(buf))[j]);});
         buf_pos += elmsz;
         // count up
@@ -1162,8 +1174,7 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
         if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
             DBG(printf("DtoD] ["));
             cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
-        }
-        else {
+        } else {
             DBG(printf("HtoH] ["));
             memcpy(src,buf,elmsz);
         }
@@ -1188,8 +1199,7 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
         if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
             DBG(printf("DtoD] ["));
             cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
-        }
-        else {
+        } else {
             DBG(printf("HtoH] ["));
             memcpy(src,buf,elmsz);
         }

@@ -23,29 +23,35 @@
         val = (((BIT_DIGIT*)(adr))[dig]>>bit) & 1u;     \
     }
 
-#define STORE_BIT(adr,pos,val)                  \
-    {                                           \
-        size_t dig = (size_t)(pos) / NB;        \
-        int    bit = (size_t)(pos) % NB;        \
-        ((BIT_DIGIT*)(adr))[dig] =              \
-            (((BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
+#define STORE_BIT(adr,pos,val)                                     \
+    {                                                              \
+        size_t dig = (size_t)(pos) / NB;                           \
+        int    bit = (size_t)(pos) % NB;                           \
+        if (val) {                                                 \
+            atomicOr((BIT_DIGIT*)(adr) + (dig), (val)<<(bit));     \
+        } else {                                                   \
+            atomicAnd((BIT_DIGIT*)(adr) + (dig), ~(1u<<(bit)));    \
+        }                                                          \
     }
 // val -> val&1 ??
 
-#define STORE_BIT_STEP( adr, pos, step, idx, val )\
-    {                                            \
-        size_t dig; int bit;                     \
-        if (idx) {                               \
-            dig = (size_t)((pos) + *(idx)) / NB; \
-            bit = (size_t)((pos) + *(idx)) % NB; \
-            idx++;                               \
-        } else {                                 \
-            dig = (size_t)(pos) / NB;            \
-            bit = (size_t)(pos) % NB;            \
-            pos += step;                         \
-        }                                        \
-        ((BIT_DIGIT*)(adr))[dig] =               \
-            (((BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
+#define STORE_BIT_STEP( adr, pos, step, idx, val )                 \
+    {                                                              \
+        size_t dig; int bit;                                       \
+        if (idx) {                                                 \
+            dig = (size_t)((pos) + *(idx)) / NB;                   \
+            bit = (size_t)((pos) + *(idx)) % NB;                   \
+            idx++;                                                 \
+        } else {                                                   \
+            dig = (size_t)(pos) / NB;                              \
+            bit = (size_t)(pos) % NB;                              \
+            pos += step;                                           \
+        }                                                          \
+        if (val) {                                                 \
+            atomicOr((BIT_DIGIT*)(adr) + (dig), (val)<<(bit));     \
+        } else {                                                   \
+            atomicAnd((BIT_DIGIT*)(adr) + (dig), ~((1u)<<(bit)));  \
+        }                                                          \
     }
 // val -> val&1 ??
 
