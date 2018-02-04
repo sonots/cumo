@@ -41,6 +41,11 @@
 //#define m_cumsum(x,y) {x += y;}
 //#define m_cumprod(x,y) {x *= y;}
 
+__host__ __device__ static inline double f_seq(double x, double y, double c)
+{
+    return x + y * c;
+}
+
 /* --------- thrust ----------------- */
 #include "cumo/cuda/cumo_thrust.hpp"
 

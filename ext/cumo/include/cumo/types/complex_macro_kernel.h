@@ -144,6 +144,11 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
             (x) = m_mul(x,y);    \
         }}
 
+__host__ __device__ static inline dtype f_seq(dtype x, dtype y, double c)
+{
+    return c_add(x,c_mul_r(y,c));
+}
+
 /* --------- thrust ----------------- */
 #include "cumo/cuda/cumo_thrust_complex.hpp"
 
