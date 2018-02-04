@@ -5,7 +5,6 @@ dtype <%=type_name%>_sum_kernel_launch(uint64_t n, char *p, ssize_t stride)
     thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
     dtype init = m_zero;
     if (stride_idx == 1) {
-        cumo_debug_breakpoint();
         return thrust::reduce(data_begin, data_end, init, thrust::plus<dtype>());
     } else {
         thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
