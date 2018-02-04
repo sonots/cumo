@@ -38,7 +38,7 @@ static void
     beg  = g->beg;
     step = g->step;
     c    = g->count;
-    <% if type_name == 'robject' %>
+    <% if is_object %>
     {
         dtype x;
         if (idx1) {

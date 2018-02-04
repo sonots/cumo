@@ -101,6 +101,10 @@ static VALUE
 
     size = na->size*sizeof(void*); // max capa
     buf = rb_alloc_tmp_buffer(&tmp, size);
+
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cudaDeviceSynchronize();
+
     res = na_ndloop3(&ndf, buf, 3, self, idx, reduce);
     rb_free_tmp_buffer(&tmp);
     return res;
