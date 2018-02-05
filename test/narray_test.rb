@@ -66,8 +66,8 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.sum == 29 }
         if float_types.include?(dtype)
           assert { a.mean == 29.0/6 }
-          assert { a.var == 13.766666666666669 }
-          assert { a.stddev == 3.710345895825168 }
+          assert { a.var == 13.766666666666666 }
+          assert { a.stddev == 3.7103458958251676 }
           assert { a.rms == 5.901977069875258 }
         end
         assert { a.dup.fill(12) == [12]*6 }
