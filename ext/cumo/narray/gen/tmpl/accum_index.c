@@ -22,7 +22,12 @@ static void
     SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
     idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
     <% else %>
-    idx = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,d_ptr,d_step);
+    if (cumo_cuda_runtime_is_device_memory(d_ptr)) {
+        idx = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,d_ptr,d_step);
+    } else {
+        SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
+    }
     <% end %>
 
     INIT_PTR(lp, 1, i_ptr, i_step);
