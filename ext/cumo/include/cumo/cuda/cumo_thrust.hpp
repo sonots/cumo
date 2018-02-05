@@ -130,8 +130,8 @@ struct thrust_variance_data
         n = mean = M2 = 0;
     }
 
-    T variance()   { return M2 / (n - 1); }
-    T variance_n() { return M2 / n; }
+    __host__ __device__ T variance()   { return M2 / (n - 1); }
+    __host__ __device__ T variance_n() { return M2 / n; }
 };
 
 // stats_unary_op is a functor that takes in a value x and
