@@ -22,8 +22,8 @@ struct thrust_complex_variance_data
         mean = c_zero();
     }
 
-    R variance()   { return M2 / (n - 1); }
-    R variance_n() { return M2 / n; }
+    __host__ __device__ R variance()   { return M2 / (n - 1); }
+    __host__ __device__ R variance_n() { return M2 / n; }
 };
 
 // stats_unary_op is a functor that takes in a value x and
