@@ -1,7 +1,7 @@
 <% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>
-<%=dtype%> <%=type_name%>_<%=name%><%=nan%>_kernel_launch(size_t n, char *p, ssize_t stride);
+void <%=type_name%>_<%=name%><%=nan%>_kernel_launch(size_t n, char *p1, ssize_t s1, char *p2);
 <% end %>
 
 static void
