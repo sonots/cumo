@@ -21,7 +21,7 @@ static void
     SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
     *(<%=dtype%>*)p2 = f_<%=name%><%=nan%>(n,p1,s1);
     <% else %>
-    *(<%=dtype%>*)p2 = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,p1,s1);
+    <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,p1,s1,p2);
     <% end %>
 }
 <% end %>
