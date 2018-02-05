@@ -1,63 +1,106 @@
-dtype <%=type_name%>_sum_kernel_launch(uint64_t n, char *p, ssize_t stride)
+#if defined(__cplusplus)
+#if 0
+{ /* satisfy cc-mode */
+#endif
+}  /* extern "C" { */
+#endif
+
+template<typename Iterator1>
+__global__ void <%=type_name%>_sum_kernel(Iterator1 p1_begin, Iterator1 p1_end, <%=dtype%>* p2)
 {
-    ssize_t stride_idx = stride / sizeof(dtype);
-    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
     dtype init = m_zero;
-    if (stride_idx == 1) {
-        return thrust::reduce(data_begin, data_end, init, thrust::plus<dtype>());
-    } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
-        return thrust::reduce(range.begin(), range.end(), init, thrust::plus<dtype>());
-    }
+    *p2 = thrust::reduce(thrust::cuda::par, p1_begin, p1_end, init, thrust::plus<dtype>());
 }
 
-dtype <%=type_name%>_prod_kernel_launch(uint64_t n, char *p, ssize_t stride)
+template<typename Iterator1>
+__global__ void <%=type_name%>_prod_kernel(Iterator1 p1_begin, Iterator1 p1_end, <%=dtype%>* p2)
 {
-    ssize_t stride_idx = stride / sizeof(dtype);
-    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
     dtype init = m_one;
-    if (stride_idx == 1) {
-        return thrust::reduce(data_begin, data_end, init, thrust::multiplies<dtype>());
-    } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
-        return thrust::reduce(range.begin(), range.end(), init, thrust::multiplies<dtype>());
-    }
+    *p2 = thrust::reduce(thrust::cuda::par, p1_begin, p1_end, init, thrust::multiplies<dtype>());
 }
 
-dtype <%=type_name%>_min_kernel_launch(uint64_t n, char *p, ssize_t stride)
+template<typename Iterator1>
+__global__ void <%=type_name%>_min_kernel(Iterator1 p1_begin, Iterator1 p1_end, <%=dtype%>* p2)
 {
-    ssize_t stride_idx = stride / sizeof(dtype);
-    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
     dtype init = DATA_MAX;
-    if (stride_idx == 1) {
-        return thrust::reduce(data_begin, data_end, init, thrust::minimum<dtype>());
-    } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
-        return thrust::reduce(range.begin(), range.end(), init, thrust::minimum<dtype>());
-    }
+    *p2 = thrust::reduce(thrust::cuda::par, p1_begin, p1_end, init, thrust::minimum<dtype>());
 }
 
-dtype <%=type_name%>_max_kernel_launch(uint64_t n, char *p, ssize_t stride)
+template<typename Iterator1>
+__global__ void <%=type_name%>_max_kernel(Iterator1 p1_begin, Iterator1 p1_end, <%=dtype%>* p2)
 {
-    ssize_t stride_idx = stride / sizeof(dtype);
-    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
     dtype init = DATA_MIN;
-    if (stride_idx == 1) {
-        return thrust::reduce(data_begin, data_end, init, thrust::maximum<dtype>());
+    *p2 = thrust::reduce(thrust::cuda::par, p1_begin, p1_end, init, thrust::maximum<dtype>());
+}
+
+// TODO(sonots): Implement minmax
+__global__ void <%=type_name%>_ptp_kernel(uint64_t n, char *p1, ssize_t s1, <%=dtype%>* p2)
+{
+    dtype min=0,max=1;
+    //<%=type_name%>_minmax_kernel<<<1,1>>>(n,p1,s1,&min,&max);
+    *p2 = m_sub(max,min);
+}
+
+#if defined(__cplusplus)
+extern "C" {
+#if 0
+} /* satisfy cc-mode */
+#endif
+#endif
+
+void <%=type_name%>_sum_kernel_launch(uint64_t n, char *p1, ssize_t s1, char *p2)
+{
+    ssize_t s1_idx = s1 / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
+    if (s1_idx == 1) {
+        <%=type_name%>_sum_kernel<<<1,1>>>(data_begin, data_end, (<%=dtype%>*)p2);
     } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
-        return thrust::reduce(range.begin(), range.end(), init, thrust::maximum<dtype>());
+        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
+        <%=type_name%>_sum_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
     }
 }
 
-void <%=type_name%>_minmax_kernel_launch(uint64_t n, char *p, ssize_t stride, dtype* amin, dtype* amax);
-dtype <%=type_name%>_ptp_kernel_launch(uint64_t n, char *p, ssize_t stride)
+void <%=type_name%>_prod_kernel_launch(uint64_t n, char *p1, ssize_t s1, char *p2)
 {
-    dtype min,max;
-    <%=type_name%>_minmax_kernel_launch(n,p,stride,&min,&max);
-    return m_sub(max,min);
+    ssize_t s1_idx = s1 / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
+    if (s1_idx == 1) {
+        <%=type_name%>_prod_kernel<<<1,1>>>(data_begin, data_end, (<%=dtype%>*)p2);
+    } else {
+        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
+        <%=type_name%>_prod_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
+    }
+}
+
+void <%=type_name%>_min_kernel_launch(uint64_t n, char *p1, ssize_t s1, char *p2)
+{
+    ssize_t s1_idx = s1 / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
+    if (s1_idx == 1) {
+        <%=type_name%>_min_kernel<<<1,1>>>(data_begin, data_end, (<%=dtype%>*)p2);
+    } else {
+        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
+        <%=type_name%>_min_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
+    }
+}
+
+void <%=type_name%>_max_kernel_launch(uint64_t n, char *p1, ssize_t s1, char *p2)
+{
+    ssize_t s1_idx = s1 / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
+    if (s1_idx == 1) {
+        <%=type_name%>_max_kernel<<<1,1>>>(data_begin, data_end, (<%=dtype%>*)p2);
+    } else {
+        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
+        <%=type_name%>_max_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
+    }
+}
+
+void <%=type_name%>_ptp_kernel_launch(uint64_t n, char *p1, ssize_t s1, char *p2)
+{
+    <%=type_name%>_ptp_kernel<<<1,1>>>(n,p1,s1,(<%=dtype%>*)p2);
 }
