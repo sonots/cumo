@@ -1,38 +1,37 @@
 <% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
+<%   [64,32].each do |i| %>
 <% unless type_name == 'robject' %>
-size_t <%=type_name%>_<%=name%><%=nan%>_kernel_launch(uint64_t n, char *p, ssize_t stride);
+void <%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr);
 <% end %>
 
-<%   [64,32].each do |i| %>
 #define idx_t int<%=i%>_t
 static void
 <%=c_iter%>_index<%=i%><%=nan%>(na_loop_t *const lp)
 {
-    size_t   n, idx;
+    size_t   n;
     char    *d_ptr, *i_ptr, *o_ptr;
     ssize_t  d_step, i_step;
 
     INIT_COUNTER(lp, n);
     INIT_PTR(lp, 0, d_ptr, d_step);
+    INIT_PTR(lp, 1, i_ptr, i_step);
+    o_ptr = NDL_PTR(lp,2);
 
     // TODO(sonots): Support nan in CUDA
-    // TODO(sonots): Asynchronous CUDA kernel call
     <% if type_name == 'robject' || nan == '_nan' %>
-    SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
-    idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
-    <% else %>
-    if (cumo_cuda_runtime_is_device_memory(d_ptr)) {
-        idx = <%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,d_ptr,d_step);
-    } else {
+    {
+        size_t idx;
         SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
+        *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
+    }
+    <% else %>
+    {
+        <%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(n,d_ptr,d_step,i_ptr,i_step,o_ptr);
     }
     <% end %>
 
-    INIT_PTR(lp, 1, i_ptr, i_step);
-    o_ptr = NDL_PTR(lp,2);
-    *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
 }
 #undef idx_t
 <% end;end %>

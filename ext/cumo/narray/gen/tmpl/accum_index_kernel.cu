@@ -2,35 +2,56 @@
 <% $cumo_narray_gen_tmpl_accum_index_kernel_included = 1 %>
 <% unless type_name == 'robject' %>
 
-size_t <%=type_name%>_min_index_kernel_launch(uint64_t n, char *p, ssize_t stride)
+<%   [64,32].each do |i| %>
+#define idx_t int<%=i%>_t
+
+#if defined(__cplusplus)
+#if 0
+{ /* satisfy cc-mode */
+#endif
+}  /* extern "C" { */
+#endif
+
+template<typename Iterator>
+__global__ void <%=type_name%>_min_index_int<%=i%>_kernel(Iterator begin, Iterator end, char *i_ptr, ssize_t i_step, char *o_ptr)
 {
-    ssize_t stride_idx = stride / sizeof(dtype);
-    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
-    if (stride_idx == 1) {
-        thrust::device_ptr<dtype> elem = thrust::min_element(data_begin, data_end);
-        return (size_t)(elem.get() - data_begin.get());
-    } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
-        thrust_strided_range<thrust::device_vector<dtype>::iterator>::iterator iter = thrust::min_element(range.begin(), range.end());
-        return (size_t)(iter - range.begin());
-    }
+    Iterator iter = thrust::min_element(thrust::cuda::par, begin, end);
+    size_t idx = (size_t)(iter - begin);
+    *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
 }
 
-size_t <%=type_name%>_max_index_kernel_launch(uint64_t n, char *p, ssize_t stride)
+template<typename Iterator>
+__global__ void <%=type_name%>_max_index_int<%=i%>_kernel(Iterator begin, Iterator end, char *i_ptr, ssize_t i_step, char *o_ptr)
 {
-    ssize_t stride_idx = stride / sizeof(dtype);
-    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p) + n * stride_idx);
-    if (stride_idx == 1) {
-        thrust::device_ptr<dtype> elem = thrust::max_element(data_begin, data_end);
-        return (size_t)(elem.get() - data_begin.get());
-    } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, stride_idx);
-        thrust_strided_range<thrust::device_vector<dtype>::iterator>::iterator iter = thrust::max_element(range.begin(), range.end());
-        return (size_t)(iter - range.begin());
-    }
+    Iterator iter = thrust::max_element(thrust::cuda::par, begin, end);
+    size_t idx = (size_t)(iter - begin);
+    *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
 }
+
+#if defined(__cplusplus)
+extern "C" {
+#if 0
+} /* satisfy cc-mode */
+#endif
+#endif
+
+void <%=type_name%>_min_index_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr)
+{
+    ssize_t d_step_idx = d_step / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)d_ptr);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)d_ptr) + n * d_step_idx);
+    <%=type_name%>_min_index_int<%=i%>_kernel<<<1,1>>>(data_begin, data_end, i_ptr, i_step, o_ptr);
+}
+
+void <%=type_name%>_max_index_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr)
+{
+    ssize_t d_step_idx = d_step / sizeof(dtype);
+    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)d_ptr);
+    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)d_ptr) + n * d_step_idx);
+    <%=type_name%>_max_index_int<%=i%>_kernel<<<1,1>>>(data_begin, data_end, i_ptr, i_step, o_ptr);
+}
+#undef idx_t
+<% end %>
 
 <% end %>
 <% end %>
