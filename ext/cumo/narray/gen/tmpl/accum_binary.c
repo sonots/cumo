@@ -31,11 +31,9 @@ static void
                 GET_DATA_STRIDE(p2,s2,dtype,y);
                 m_<%=name%><%=nan%>(x,y,z);
             }
-            printf("mulsum_nan\n");
             SET_DATA(p3,dtype,z);
             return;
         } else {
-            printf("mulsum_nan\n");
             for (i=0; i<n; i++) {
                 dtype x, y, z;
                 GET_DATA_STRIDE(p1,s1,dtype,x);
