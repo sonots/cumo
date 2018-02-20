@@ -17,7 +17,7 @@ static void
     v1 = lp->args[1].value;
     i = 0;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (lp->args[1].ptr) {
