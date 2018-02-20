@@ -5,12 +5,15 @@ require 'benchmark'
 a = Numo::Int32.ones(10)
 a * 2
 
-[4, 5, 6, 7, 8].each do |digit|
-  size = 10 ** digit
-  started = Time.now
-  a = Numo::Int32.ones(size)
-  a * 2
-  puts "10**#{digit}: #{(Time.now - started).to_f * 1000} msec"
+a = Numo::Int32.new(10000).seq(1)
+b = Numo::Int32.new(10000).seq(10,10)
+Benchmark.bm do |r|
+  r.report do
+    100.times {
+      1000.times { a + b }
+      GC.start
+    }
+  end
 end
 
 # 10**4: 0.114593 msec
