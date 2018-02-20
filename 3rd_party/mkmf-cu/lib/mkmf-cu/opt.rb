@@ -105,6 +105,11 @@ def generate_compiling_command_line(opt_h)
   }
   s << compiler_option(opt_h)
   s << compiler_bin(opt_h)
+
+  if opt_h["--mkmf-cu-ext"][0] == "cxx"
+    s << " -std=c++11"
+  end
+
   return s
 end
 
