@@ -56,6 +56,8 @@ extern double pow(double, double);
 #define m_isfinite(x) isfinite(x)
 
 #define m_mulsum_init INT2FIX(0)
+#define m_gemm_init INT2FIX(0)
+#define m_gemv_init INT2FIX(0)
 
 #define m_sprintf(s,x) sprintf(s,"%g",x)
 
