@@ -1,92 +1,141 @@
-//<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
-
-<% unless type_name == 'robject' %>
-void <%="#{type_name}_#{name}#{nan}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
+//<% is_supported_dtype = ['sfloat', 'dfloat', 'scomplex', 'dcomplex'].include?(type_name) %>
+<% unless is_supported_dtype %>
+void <%="#{type_name}_#{name}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
 <% end %>
 
+#define args_t <%=name%>_args_t
+
+typedef struct {
+  enum CBLAS_ORDER order; // cuBLAS does not have order (row-major or column-major) option
+  enum CBLAS_TRANSPOSE transa, transb;
+  enum CBLAS_SIDE side;
+  enum CBLAS_UPLO uplo;
+  enum CBLAS_DIAG diag;
+  dtype alpha, beta;
+  blasint m, n, k;
+} args_t;
+
+#define func_p <%=func_name%>_p
+
+static <%=func_name%>_t func_p = 0;
+
 static void
-<%=c_iter%><%=nan%>(na_loop_t *const lp)
+<%=c_iter%>(na_loop_t *const lp)
 {
-    size_t   n;
-    char    *p1, *p2, *p3;
-    ssize_t  s1, s2, s3;
+    dtype *a, *b;
+    int    lda, ldb;
+    dtype *c;
+    int    ldc;
+    args_t *g;
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
+    a = (dtype*)NDL_PTR(lp,0);
+    b = (dtype*)NDL_PTR(lp,1);
+    c = (dtype*)NDL_PTR(lp,2);
+    g = (args_t*)(lp->opt_ptr);
 
-    <% if type_name == 'robject' %>
-    {
-        rb_raise(rb_eTypeError,"gemv does not support rbobject");
-    }
-    <% else %>
-    {
-        <%="#{type_name}_#{name}#{nan}_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
-    }
-    <% end %>
-}
-//<% end %>
+    lda = NDL_STEP(lp,0) / sizeof(dtype);
+    ldb = NDL_STEP(lp,1) / sizeof(dtype);
+    ldc = NDL_STEP(lp,2) / sizeof(dtype);
 
-static VALUE
-<%=c_func%>_self(int argc, VALUE *argv, VALUE self)
-{
-    VALUE v, reduce;
-    VALUE naryv[2];
-    ndfunc_arg_in_t ain[4] = {{cT,0},{cT,0},{sym_reduce,0},{sym_init,0}};
-    ndfunc_arg_out_t aout[1] = {{cT,0}};
-    ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP, 4, 1, ain, aout };
+    //printf("m=%d n=%d k=%d\n",g->m,g->n,g->k);
 
-    if (argc < 1) {
-        rb_raise(rb_eArgError,"wrong number of arguments (%d for >=1)",argc);
-    }
-    // should fix below: [self.ndim,other.ndim].max or?
-    naryv[0] = self;
-    naryv[1] = argv[0];
-    //<% if is_float %>
-    reduce = na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, <%=c_iter%>_nan);
-    //<% else %>
-    reduce = na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, 0);
-    //<% end %>
-
-    v =  na_ndloop(&ndf, 4, self, argv[0], reduce, m_<%=name%>_init);
-    return <%=type_name%>_extract(v);
+    //cublasSgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,m,n,k,&al,a,m,b,k,&bet,c,m);
+    cublasSgemm(handle, g->transa, g->transb, g->m, g->n, g->k, &(g->alpha), a, lda, b, ldb, &(g->beta), c, ldc);
 }
 
 /*
-  Binary <%=name%>.
-
-<% if is_float %>
-  @overload <%=op_map%>(other, axis:nil, keepdims:false, nan:false)
-<% else %>
-  @overload <%=op_map%>(other, axis:nil, keepdims:false)
-<% end %>
-  @param [Cumo::NArray,Numeric] other
-  @param [Numeric,Array,Range] axis (keyword) Affected dimensions.
-  @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-<% if is_float %>
-  @param [TrueClass] nan (keyword) If true, apply NaN-aware algorithm (avoid NaN if exists).
-<% end %>
-  @return [Cumo::NArray] <%=name%> of self and other.
+<%
+ args_v = "a, b, [c, alpha:1, beta:0, transa:'N', transb:'N']"
+ params = [
+   mat("a"),
+   mat("b"),
+   mat("c","optional",:inplace),
+   opt("alpha"),
+   opt("beta"),
+   opt("transa"),
+   opt("transb"),
+ ].select{|x| x}.join("\n  ")
+%>
+  @overload <%=name%>(<%=args_v%>)
+  <%=params%>
+  @return [<%=class_name%>] returns c = alpha\*op( A )\*op( B ) + beta\*C.
+<%=description%>
 */
 static VALUE
-<%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
+<%=c_func(-1)%>(int argc, VALUE const argv[], VALUE UNUSED(mod))
 {
-    //<% if !is_object %>
-    VALUE klass, v;
-    //<% end %>
-    if (argc < 1) {
-        rb_raise(rb_eArgError,"wrong number of arguments (%d for >=1)",argc);
-    }
-    //<% if is_object %>
-    return <%=c_func%>_self(argc, argv, self);
-    //<% else %>
-    klass = na_upcast(CLASS_OF(self),CLASS_OF(argv[0]));
-    if (klass==cT) {
-        return <%=c_func%>_self(argc, argv, self);
+    VALUE     a, b, c=Qnil, alpha, beta;
+    narray_t *na1, *na2;
+    blasint   ma, ka, kb, nb, tmp;
+    size_t    shape[2];
+    ndfunc_arg_in_t ain[3] = {{cT,2},{cT,2},{OVERWRITE,2}};
+    ndfunc_arg_out_t aout[1] = {{cT,2,shape}};
+    ndfunc_t ndf = {<%=c_iter%>, NO_LOOP, 3, 0, ain, aout};
+
+    args_t g;
+    VALUE kw_hash = Qnil;
+    ID kw_table[5] = {id_alpha,id_beta,id_transa,id_transb};
+    VALUE opts[7] = {Qundef,Qundef,Qundef,Qundef,Qundef,Qundef};
+
+    CHECK_FUNC(func_p,"<%=func_name%>");
+
+    rb_scan_args(argc, argv, "21:", &a, &b, &c, &kw_hash);
+    rb_get_kwargs(kw_hash, kw_table, 0, 5+TR*2, opts);
+    alpha    = option_value(opts[0],Qnil);
+    g.alpha  = RTEST(alpha) ? m_num_to_data(alpha) : m_one;
+    beta     = option_value(opts[1],Qnil);
+    g.beta   = RTEST(beta)  ? m_num_to_data(beta)  : m_zero;
+    //g.order  = option_order(opts[2]);
+    g.transa = option_trans(opts[2]);
+    g.transb = option_trans(opts[3]);
+
+    GetNArray(a,na1);
+    GetNArray(b,na2);
+    CHECK_DIM_GE(na1,2);
+    CHECK_DIM_GE(na2,2);
+    ma = ROW_SIZE(na1); // m
+    ka = COL_SIZE(na1); // k (lda)
+    kb = ROW_SIZE(na2); // k
+    nb = COL_SIZE(na2); // n (ldb)
+
+    SWAP_IFCOLTR(g.order,g.transa, ma,ka, tmp);
+    SWAP_IFCOLTR(g.order,g.transb, kb,nb, tmp);
+    CHECK_INT_EQ("ka",ka,"kb",kb);
+    g.m = ma;
+    g.n = nb;
+    g.k = ka;
+
+    SWAP_IFROW(g.order, ma,nb, tmp);
+
+    if (c == Qnil) { // c is not given.
+        ndfunc_arg_in_t ain_init = {sym_init,0};
+        ain[2] = ain_init;
+        ndf.nout = 1;
+        c = INT2FIX(0);
+        shape[0] = nb;
+        shape[1] = ma;
     } else {
-        v = rb_funcall(klass, id_cast, 1, self);
-        return rb_funcall2(v, rb_intern("<%=name%>"), argc, argv);
+        narray_t *na3;
+        int nc;
+        COPY_OR_CAST_TO(c,cT);
+        GetNArray(c,na3);
+        CHECK_DIM_GE(na3,2);
+        nc = ROW_SIZE(na3);
+        if (nc < nb) {
+            rb_raise(nary_eShapeError,"nc=%d must be >= nb=%d",nc,nb);
+        }
+        //CHECK_LEADING_GE("ldc",g.ldc,"m",ma);
     }
-    //<% end %>
+    {
+        VALUE ans = na_ndloop3(&ndf, &g, 3, a, b, c);
+
+        if (ndf.nout == 1) { // c is not given.
+            return ans;
+        } else {
+            return c;
+        }
+    }
 }
+
+#undef func_p
+#undef args_t
