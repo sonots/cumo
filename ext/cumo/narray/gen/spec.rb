@@ -3,6 +3,7 @@ def_id "eq"
 def_id "ne"
 def_id "pow"
 def_id "mulsum"
+def_id "gemm"
 if is_complex
   def_id "real"
   def_id "imag"
@@ -301,6 +302,7 @@ cum "cumprod","mul"
 
 # dot
 accum_binary "mulsum"
+gemm "gemm"
 
 # rmsdev
 # prod

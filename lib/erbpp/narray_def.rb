@@ -90,6 +90,16 @@ module DefMethod
     def_method(meth, -1, "accum_binary", :op => ope)
   end
 
+  def gemv(meth, ope=nil)
+    ope = meth if ope.nil?
+    def_method(meth, -1, "gemv", :op => ope)
+  end
+
+  def gemm(meth, ope=nil)
+    ope = meth if ope.nil?
+    def_method(meth, -1, "gemm", :op => ope)
+  end
+
   def qsort(tp, dtype, dcast, suffix="")
     h = {:tp => tp, :dtype => dtype, :dcast => dcast, :suffix => suffix}
     NodefFunction.new(self, "qsort", h)
