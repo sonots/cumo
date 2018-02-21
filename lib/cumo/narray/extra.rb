@@ -1087,18 +1087,49 @@ module Cumo
 
     def dot(b)
       t = self.class::UPCAST[b.class]
-      b = self.class.asarray(b)
-      case b.ndim
-      when 1
-        mulsum(b, axis:-1)
-      else
-        case ndim
-        when 0
-          b.mulsum(self, axis:-2)
+      if [SFloat, DFloat, SComplex, DComplex].include?(t)
+        b = self.class.asarray(b)
+        case a.ndim
         when 1
-          self[true,:new].mulsum(b, axis:-2)
+          case b.ndim
+          when 1
+            self[true,:new].mulsum(b, axis:-2)
+          else
+            Blas.call(:gemv, b, a, trans:'t')
+          end
         else
-          self[false,:new].mulsum(b[false,:new,true,true], axis:-2)
+          case b.ndim
+          when 1
+            Blas.call(:gemv, a, b)
+          else
+            Blas.call(:gemm, a, b)
+          end
+        end
+      else
+        b = self.class.asarray(b)
+        case b.ndim
+        when 1
+          mulsum(b, axis:-1)
+        else
+          case ndim
+          when 0
+            b.mulsum(self, axis:-2)
+          when 1
+            self[true,:new].mulsum(b, axis:-2)
+          else
+            unless @@warn_slow_dot
+              nx = 200
+              ns = 200000
+              am,an = shape[-2..-1]
+              bm,bn = b.shape[-2..-1]
+              if am > nx && an > nx && bm > nx && bn > nx &&
+                  size > ns && b.size > ns
+                @@warn_slow_dot = true
+                warn "\nwarning: matrix dot for #{t} is slow. Consider SFloat, DFloat, SComplex, or DComplex to use cuBLAS.\n\n"
+              end
+            end
+            self[false,:new].mulsum(b[false,:new,true,true], axis:-2)
+          end
         end
       end
     end
