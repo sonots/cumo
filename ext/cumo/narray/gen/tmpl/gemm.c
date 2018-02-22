@@ -6,18 +6,18 @@ void <%="#{type_name}_#{name}_kernel_launch"%>(char *p1, char *p2, char *p3, ssi
 #define args_t <%=name%>_args_t
 
 typedef struct {
-  enum CBLAS_ORDER order; // cuBLAS does not have order (row-major or column-major) option
-  enum CBLAS_TRANSPOSE transa, transb;
-  enum CBLAS_SIDE side;
-  enum CBLAS_UPLO uplo;
-  enum CBLAS_DIAG diag;
+  // enum CBLAS_ORDER order; // cuBLAS does not have order (row-major or column-major) option
+  cublasOperation_t transa, transb;
+  cublasSideMode_t side;
+  cublasFillMode_t uplo;
+  cublasDiagType_t diag;
   dtype alpha, beta;
-  blasint m, n, k;
+  int m, n, k;
 } args_t;
 
-#define func_p <%=func_name%>_p
-
-static <%=func_name%>_t func_p = 0;
+//#define func_p <%=func_name%>_p
+//
+//static <%=func_name%>_t func_p = 0;
 
 static void
 <%=c_iter%>(na_loop_t *const lp)
@@ -66,7 +66,7 @@ static VALUE
 {
     VALUE     a, b, c=Qnil, alpha, beta;
     narray_t *na1, *na2;
-    blasint   ma, ka, kb, nb, tmp;
+    int   ma, ka, kb, nb, tmp;
     size_t    shape[2];
     ndfunc_arg_in_t ain[3] = {{cT,2},{cT,2},{OVERWRITE,2}};
     ndfunc_arg_out_t aout[1] = {{cT,2,shape}};
@@ -74,8 +74,8 @@ static VALUE
 
     args_t g;
     VALUE kw_hash = Qnil;
-    ID kw_table[5] = {id_alpha,id_beta,id_transa,id_transb};
-    VALUE opts[7] = {Qundef,Qundef,Qundef,Qundef,Qundef,Qundef};
+    ID kw_table[4] = {id_alpha,id_beta,id_transa,id_transb};
+    VALUE opts[6] = {Qundef,Qundef,Qundef,Qundef,Qundef,Qundef};
 
     CHECK_FUNC(func_p,"<%=func_name%>");
 
@@ -98,14 +98,15 @@ static VALUE
     kb = ROW_SIZE(na2); // k
     nb = COL_SIZE(na2); // n (ldb)
 
-    SWAP_IFCOLTR(g.order,g.transa, ma,ka, tmp);
-    SWAP_IFCOLTR(g.order,g.transb, kb,nb, tmp);
+    SWAP_IFTR(g.transa, ma, ka, tmp);
+    SWAP_IFTR(g.transb, kb, nb, tmp);
     CHECK_INT_EQ("ka",ka,"kb",kb);
     g.m = ma;
     g.n = nb;
     g.k = ka;
 
-    SWAP_IFROW(g.order, ma,nb, tmp);
+    SWAP(ma, mb, tmp);
+    //SWAP_IFROW(g.order, ma,nb, tmp);
 
     if (c == Qnil) { // c is not given.
         ndfunc_arg_in_t ain_init = {sym_init,0};
@@ -137,5 +138,5 @@ static VALUE
     }
 }
 
-#undef func_p
+//#undef func_p
 #undef args_t
