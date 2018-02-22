@@ -28,10 +28,6 @@ typedef struct {
   int m, n, k;
 } args_t;
 
-//#define func_p <%=func_name%>_p
-//
-//static <%=func_name%>_t func_p = 0;
-
 static void
 <%=c_iter%>(na_loop_t *const lp)
 {
@@ -61,6 +57,7 @@ static void
 
 /*
 <%
+=begin
  args_v = "a, b, [c, alpha:1, beta:0, transa:'N', transb:'N']"
  params = [
    mat("a"),
@@ -71,9 +68,10 @@ static void
    opt("transa"),
    opt("transb"),
  ].select{|x| x}.join("\n  ")
+=end
 %>
-  @overload <%=name%>(<%=args_v%>)
-  <%=params%>
+  @overload <%=name%>(<%#=args_v%>)
+  <%#=params%>
   @return [<%=class_name%>] returns c = alpha\*op( A )\*op( B ) + beta\*C.
 <%=description%>
 */
@@ -92,8 +90,6 @@ static VALUE
     VALUE kw_hash = Qnil;
     ID kw_table[4] = {id_alpha,id_beta,id_transa,id_transb};
     VALUE opts[6] = {Qundef,Qundef,Qundef,Qundef,Qundef,Qundef};
-
-    CHECK_FUNC(func_p,"<%=func_name%>");
 
     rb_scan_args(argc, argv, "21:", &a, &b, &c, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 5+TR*2, opts);

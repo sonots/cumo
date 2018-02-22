@@ -302,7 +302,9 @@ cum "cumprod","mul"
 
 # dot
 accum_binary "mulsum"
-gemm "gemm"
+if is_float || is_complex
+  def_method "gemm"
+end
 
 # rmsdev
 # prod

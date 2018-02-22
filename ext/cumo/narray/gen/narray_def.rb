@@ -66,16 +66,6 @@ module NArrayMethod
     def_method(meth, "accum_binary", op:ope)
   end
 
-  def gemv(meth, ope=nil)
-    ope = meth if ope.nil?
-    def_method(meth, "gemv", op:ope)
-  end
-
-  def gemm(meth, ope=nil)
-    ope = meth if ope.nil?
-    def_method(meth, "gemm", op:ope)
-  end
-
   def qsort(type_name, dtype, dcast, suffix="")
     h = {type_name:type_name, dtype:dtype, dcast:dcast, suffix:suffix}
     def_method("qsort", **h)
