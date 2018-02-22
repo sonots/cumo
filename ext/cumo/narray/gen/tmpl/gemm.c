@@ -31,9 +31,9 @@ static void
 <%=c_iter%>(na_loop_t *const lp)
 {
     dtype *a, *b;
-    int    lda, ldb;
+    //int    lda, ldb;
     dtype *c;
-    int    ldc;
+    //int    ldc;
     args_t *g;
 
     a = (dtype*)NDL_PTR(lp,0);
@@ -41,16 +41,25 @@ static void
     c = (dtype*)NDL_PTR(lp,2);
     g = (args_t*)(lp->opt_ptr);
 
-    lda = NDL_STEP(lp,0) / sizeof(dtype);
-    ldb = NDL_STEP(lp,1) / sizeof(dtype);
-    ldc = NDL_STEP(lp,2) / sizeof(dtype);
+    //lda = NDL_STEP(lp,0) / sizeof(dtype);
+    //ldb = NDL_STEP(lp,1) / sizeof(dtype);
+    //ldc = NDL_STEP(lp,2) / sizeof(dtype);
 
-    //printf("m=%d n=%d k=%d\n",g->m,g->n,g->k);
+    //printf("transa=%d transb=%d m=%d n=%d k=%d\n",g->transa,g->transb,g->m,g->n,g->k);
 
-    //cublasSgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,m,n,k,&al,a,m,b,k,&bet,c,m);
+    // Note that cuBLAS uses the column major matrix representation.
+    // We use technic which following site describes:
+    // https://www.christophlassner.de/using-blas-from-c-with-row-major-data.html
+    //
+    // b^T = nxk matrix
+    // a^T = kxm matrix
+    // c^T = nxm matrix
+    // c^T = b^T * a^T
+    //
+    // cublasSgemm(handle,transb,transa,n,m,k,&alpha,b,n,a,k,&beta,c,n);
     cublasHandle_t handle;
     cublasCreate(&handle);
-    cublas<%=func_prefix%>gemm(handle, g->transa, g->transb, g->m, g->n, g->k, &(g->alpha), a, lda, b, ldb, &(g->beta), c, ldc);
+    cublas<%=func_prefix%>gemm(handle, g->transb, g->transa, g->n, g->m, g->k, &(g->alpha), b, g->n, a, g->k, &(g->beta), c, g->n);
     cublasDestroy(handle);
 }
 
@@ -127,7 +136,6 @@ static VALUE
     g.alpha  = RTEST(alpha) ? m_num_to_data(alpha) : m_one;
     beta     = option_value(opts[1],Qnil);
     g.beta   = RTEST(beta)  ? m_num_to_data(beta)  : m_zero;
-    //g.order  = option_order(opts[2]);
     g.transa = option_trans(opts[2]);
     g.transb = option_trans(opts[3]);
 
@@ -147,6 +155,7 @@ static VALUE
     g.n = nb;
     g.k = ka;
 
+    // TODO(sonots): Check with TEST_ROW_MAJOR?
     SWAP(ma, nb, tmp);
     //SWAP_IFROW(g.order, ma,nb, tmp);
 

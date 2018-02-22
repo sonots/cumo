@@ -45,6 +45,7 @@ static void
 
     lda = NDL_STEP(lp,0) / sizeof(dtype);
 
+    // Note that cuBLAS uses the FORTRAN-order matrix representation.
     cublasHandle_t handle;
     cublasCreate(&handle);
     cublas<%=func_prefix%>gemv(handle, g->trans, g->m, g->n, &(g->alpha), a, lda, (dtype*)p1, s1/sizeof(dtype), &(g->beta), (dtype*)p2, s2/sizeof(dtype));
@@ -132,7 +133,7 @@ static VALUE
     g.alpha = RTEST(alpha) ? m_num_to_data(alpha) : m_one;
     beta    = option_value(opts[1],Qnil);
     g.beta  = RTEST(beta)  ? m_num_to_data(beta)  : m_zero;
-    g.trans = option_trans(opts[3]);
+    g.trans = option_trans(opts[2]);
 
     GetNArray(a,na1);
     CHECK_DIM_GE(na1,2);

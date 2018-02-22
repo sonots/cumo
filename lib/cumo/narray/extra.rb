@@ -1093,14 +1093,14 @@ module Cumo
         when 1
           case b.ndim
           when 1
-            self[true,:new].mulsum(b, axis:-2)
+            self.mulsum(b, axis:-1)
           else
-            b.gemv(self, trans:'t')
+            self[:new, false].gemm(b).flatten
           end
         else
           case b.ndim
           when 1
-            self.gemv(b)
+            self.gemm(b[false, :new]).flatten
           else
             self.gemm(b)
           end
