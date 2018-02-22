@@ -5,8 +5,8 @@
 #include "cumo/narray.h"
 #include "cumo/template.h"
 
-static void *blas_handle = 0;
-static char *blas_prefix = 0;
+//static void *blas_handle = 0;
+//static char *blas_prefix = 0;
 
 VALUE
 cumo_cublas_option_value(VALUE order, VALUE default_value)

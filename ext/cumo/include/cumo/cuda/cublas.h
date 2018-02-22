@@ -1,6 +1,7 @@
 #ifndef CUMO_CUDA_CUBLAS_H
 #define CUMO_CUDA_CUBLAS_H
 
+#include <ruby.h>
 #include "cublas_v2.h"
 
 #if defined(__cplusplus)
