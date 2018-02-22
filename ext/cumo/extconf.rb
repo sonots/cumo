@@ -128,7 +128,7 @@ dir_config('cumo', HEADER_DIRS, LIB_DIRS)
 have_library('cuda')
 have_library('cudart')
 have_library('nvrtc')
-# have_library('cublas')
+have_library('cublas')
 # have_library('cusolver')
 # have_library('curand')
 
