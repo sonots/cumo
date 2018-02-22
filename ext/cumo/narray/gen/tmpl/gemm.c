@@ -1,7 +1,20 @@
-//<% is_supported_dtype = ['sfloat', 'dfloat', 'scomplex', 'dcomplex'].include?(type_name) %>
-<% unless is_supported_dtype %>
-void <%="#{type_name}_#{name}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
-<% end %>
+//<% if ['sfloat', 'dfloat', 'scomplex', 'dcomplex'].include?(type_name) %>
+<%
+  func_prefix =
+    case type_name
+    when 'sfloat'
+      'S'
+    when 'dfloat'
+      'D'
+    when 'scomplex'
+      'C'
+    when 'dcomplex'
+      'Z'
+    end
+%>
+
+// TODO(sonots): Move to suitable place
+#include "cublas_v2.h"
 
 #define args_t <%=name%>_args_t
 
@@ -40,7 +53,10 @@ static void
     //printf("m=%d n=%d k=%d\n",g->m,g->n,g->k);
 
     //cublasSgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,m,n,k,&al,a,m,b,k,&bet,c,m);
-    cublasSgemm(handle, g->transa, g->transb, g->m, g->n, g->k, &(g->alpha), a, lda, b, ldb, &(g->beta), c, ldc);
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+    cublas<%=func_prefix%>gemm(handle, g->transa, g->transb, g->m, g->n, g->k, &(g->alpha), a, lda, b, ldb, &(g->beta), c, ldc);
+    cublasDestroy(handle);
 }
 
 /*
@@ -140,3 +156,4 @@ static VALUE
 
 //#undef func_p
 #undef args_t
+<% end %>
