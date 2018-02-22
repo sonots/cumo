@@ -1089,21 +1089,23 @@ module Cumo
       t = self.class::UPCAST[b.class]
       if [SFloat, DFloat, SComplex, DComplex].include?(t)
         b = self.class.asarray(b)
-        case a.ndim
+        case self.ndim
         when 1
           case b.ndim
           when 1
             self[true,:new].mulsum(b, axis:-2)
           else
-            Blas.call(:gemv, b, a, trans:'t')
+            self.gemm(b)
+            # Blas.call(:gemv, b, self, trans:'t')
           end
         else
-          case b.ndim
-          when 1
-            Blas.call(:gemv, a, b)
-          else
-            Blas.call(:gemm, a, b)
-          end
+          self.gemm(b)
+          # case b.ndim
+          # when 1
+          #   Blas.call(:gemv, self, b)
+          # else
+          #   Blas.call(:gemm, self, b)
+          # end
         end
       else
         b = self.class.asarray(b)

@@ -1,4 +1,3 @@
-//<% if ['sfloat', 'dfloat', 'scomplex', 'dcomplex'].include?(type_name) %>
 <%
   func_prefix =
     case type_name
@@ -13,8 +12,8 @@
     end
 %>
 
-// TODO(sonots): Move to suitable place
 #include "cublas_v2.h"
+#include "cumo/cuda/cublas.h"
 
 #define args_t <%=name%>_args_t
 
@@ -57,7 +56,37 @@ static void
 
 /*
 <%
-=begin
+  def mat(v,*a,**h)
+    tp = h[:type] || class_name
+    a.map!{|x| x==:inplace ? "inplace allowed" : x}
+    a.unshift ">=2-dimentional NArray"
+    "@param #{v} [#{tp}]  matrix (#{a.join(', ')})."
+  end
+
+  def opt(v,tp=nil,*a)
+    tp ||= "String or Symbol"
+    case v
+    when /^order$/
+      "@param #{v} [#{tp}]  if 'R': Row-major, if 'C': Column-major. (default='R')"
+    when /^uplo$/
+      "@param #{v} [#{tp}]  if 'U': Upper triangle, if 'L': Lower triangle. (default='U')"
+    when /^side$/
+      "@param #{v} [#{tp}]  if 'L': op(A)\\*B (left-side op), if 'R': B\\*op(A) (right-side op). (default='L')"
+    when /^diag$/
+      "@param #{v} [#{tp}]  if 'U': assumed to be unit triangular, if 'N': not assumed to be unit triangular. (default='U')"
+    when /^trans(\w+)?$/
+      b = a[0] || $1
+      "@param #{v} [#{tp}]  if 'N': Not transpose #{b}, if 'T': Transpose #{b}. (default='N')"
+    when "alpha"
+      "@param #{v} [Float]  (default=1.0)"
+    when "beta"
+      "@param #{v} [Float]  (default=0.0)"
+    else
+      "@param #{v} [#{tp}]  #{a[0]}"
+    end
+  end
+%>
+<%
  args_v = "a, b, [c, alpha:1, beta:0, transa:'N', transb:'N']"
  params = [
    mat("a"),
@@ -68,17 +97,16 @@ static void
    opt("transa"),
    opt("transb"),
  ].select{|x| x}.join("\n  ")
-=end
 %>
-  @overload <%=name%>(<%#=args_v%>)
-  <%#=params%>
+  @overload <%=name%>(<%=args_v%>)
+  <%=params%>
   @return [<%=class_name%>] returns c = alpha\*op( A )\*op( B ) + beta\*C.
 <%=description%>
 */
 static VALUE
-<%=c_func(-1)%>(int argc, VALUE const argv[], VALUE UNUSED(mod))
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
-    VALUE     a, b, c=Qnil, alpha, beta;
+    VALUE     a=self, b, c=Qnil, alpha, beta;
     narray_t *na1, *na2;
     int   ma, ka, kb, nb, tmp;
     size_t    shape[2];
@@ -88,11 +116,11 @@ static VALUE
 
     args_t g;
     VALUE kw_hash = Qnil;
-    ID kw_table[4] = {id_alpha,id_beta,id_transa,id_transb};
+    ID kw_table[4] = {rb_intern("alpha"),rb_intern("beta"),rb_intern("transa"),rb_intern("transb")};
     VALUE opts[6] = {Qundef,Qundef,Qundef,Qundef,Qundef,Qundef};
 
-    rb_scan_args(argc, argv, "21:", &a, &b, &c, &kw_hash);
-    rb_get_kwargs(kw_hash, kw_table, 0, 5+TR*2, opts);
+    rb_scan_args(argc, argv, "11:", &b, &c, &kw_hash);
+    rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
     alpha    = option_value(opts[0],Qnil);
     g.alpha  = RTEST(alpha) ? m_num_to_data(alpha) : m_one;
     beta     = option_value(opts[1],Qnil);
@@ -117,7 +145,7 @@ static VALUE
     g.n = nb;
     g.k = ka;
 
-    SWAP(ma, mb, tmp);
+    SWAP(ma, nb, tmp);
     //SWAP_IFROW(g.order, ma,nb, tmp);
 
     if (c == Qnil) { // c is not given.
@@ -152,4 +180,3 @@ static VALUE
 
 //#undef func_p
 #undef args_t
-<% end %>
