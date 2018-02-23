@@ -3,7 +3,6 @@ def_id "eq"
 def_id "ne"
 def_id "pow"
 def_id "mulsum"
-def_id "gemm"
 if is_complex
   def_id "real"
   def_id "imag"
@@ -47,6 +46,10 @@ if is_object
   def_id "<" ,"lt"
   def_id "<=","le"
   def_id "<=>","ufo"
+end
+if is_float || is_complex
+  def_id "gemm"
+  def_id "gemv"
 end
 
 if is_int && !is_object
@@ -304,6 +307,7 @@ cum "cumprod","mul"
 accum_binary "mulsum"
 if is_float || is_complex
   def_method "gemm"
+  def_method "gemv"
 end
 
 # rmsdev
