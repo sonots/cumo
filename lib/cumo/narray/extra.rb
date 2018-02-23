@@ -1095,17 +1095,15 @@ module Cumo
           when 1
             self[true,:new].mulsum(b, axis:-2)
           else
-            self.gemm(b)
-            # Blas.call(:gemv, b, self, trans:'t')
+            b.gemv(self, trans:'t')
           end
         else
-          self.gemm(b)
-          # case b.ndim
-          # when 1
-          #   Blas.call(:gemv, self, b)
-          # else
-          #   Blas.call(:gemm, self, b)
-          # end
+          case b.ndim
+          when 1
+            self.gemv(b)
+          else
+            self.gemm(b)
+          end
         end
       else
         b = self.class.asarray(b)
