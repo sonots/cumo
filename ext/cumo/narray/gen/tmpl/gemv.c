@@ -19,6 +19,7 @@
 
 typedef struct {
   // enum CBLAS_ORDER order; // cuBLAS does not have order (row-major or column-major) option
+  cublasOperation_t trans;
   cublasSideMode_t side;
   cublasFillMode_t uplo;
   cublasDiagType_t diag;
@@ -46,7 +47,7 @@ static void
 
     cublasHandle_t handle;
     cublasCreate(&handle);
-    cublas<%=func_prefix%>gemm(handle, g->trans, g->m, g->n, &(g->alpha), a, lda, (dtype*)p1, s1/sizeof(dtype), &(g->beta), (dtype*)p2, s2/sizeof(dtype));
+    cublas<%=func_prefix%>gemv(handle, g->trans, g->m, g->n, &(g->alpha), a, lda, (dtype*)p1, s1/sizeof(dtype), &(g->beta), (dtype*)p2, s2/sizeof(dtype));
     cublasDestroy(handle);
 }
 
@@ -122,18 +123,15 @@ static VALUE
 
     args_t g;
     VALUE kw_hash = Qnil;
-    ID kw_table[4] = {id_alpha,id_beta,id_order,id_trans};
-    VALUE opts[6] = {Qundef,Qundef,Qundef,Qundef,Qundef,Qundef};
+    ID kw_table[3] = {rb_intern("alpha"),rb_intern("beta"),rb_intern("trans")};
+    VALUE opts[6] = {Qundef,Qundef,Qundef,Qundef,Qundef};
 
-    CHECK_FUNC(func_p,"<%=func_name%>");
-
-    rb_scan_args(argc, argv, "21:", &a, &x, &y, &kw_hash);
-    rb_get_kwargs(kw_hash, kw_table, 0, 4+2*TR, opts);
+    rb_scan_args(argc, argv, "11:", &x, &y, &kw_hash);
+    rb_get_kwargs(kw_hash, kw_table, 0, 3, opts);
     alpha   = option_value(opts[0],Qnil);
     g.alpha = RTEST(alpha) ? m_num_to_data(alpha) : m_one;
     beta    = option_value(opts[1],Qnil);
     g.beta  = RTEST(beta)  ? m_num_to_data(beta)  : m_zero;
-    g.order = option_order(opts[2]);
     g.trans = option_trans(opts[3]);
 
     GetNArray(a,na1);
@@ -144,7 +142,7 @@ static VALUE
     GetNArray(x,na2);
     CHECK_DIM_GE(na2,1);
     nx = COL_SIZE(na2);
-    SWAP_IFCOLTR(g.order,g.trans, ma,na, tmp);
+    SWAP_IFTR(g.trans, ma, na, tmp);
     g.m = ma;
     g.n = na;
     CHECK_INT_EQ("na",na,"nx",nx);
