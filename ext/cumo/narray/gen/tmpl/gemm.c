@@ -56,6 +56,8 @@ static void
 
 /*
 <%
+  # ext/numo/linalg/blas/gen/decl.rb
+
   def mat(v,*a,**h)
     tp = h[:type] || class_name
     a.map!{|x| x==:inplace ? "inplace allowed" : x}
@@ -178,5 +180,4 @@ static VALUE
     }
 }
 
-//#undef func_p
 #undef args_t
