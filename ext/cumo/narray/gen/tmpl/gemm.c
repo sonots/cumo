@@ -10,6 +10,17 @@
     when 'dcomplex'
       'Z'
     end
+  dtype =
+    case type_name
+    when 'sfloat'
+      'float'
+    when 'dfloat'
+      'double'
+    when 'scomplex'
+      'cuComplex'
+    when 'dcomplex'
+      'cuDoubleComplex'
+    end
 %>
 
 #include "cublas_v2.h"
@@ -57,9 +68,10 @@ static void
     // c^T = b^T * a^T
     //
     // cublasSgemm(handle,transb,transa,n,m,k,&alpha,b,n,a,k,&beta,c,n);
+   
     cublasHandle_t handle;
     cublasCreate(&handle);
-    cublas<%=func_prefix%>gemm(handle, g->transb, g->transa, g->n, g->m, g->k, &(g->alpha), b, g->n, a, g->k, &(g->beta), c, g->n);
+    cublas<%=func_prefix%>gemm(handle, g->transb, g->transa, g->n, g->m, g->k, (<%=dtype%>*)(&g->alpha), (<%=dtype%>*)b, g->n, (<%=dtype%>*)a, g->k, (<%=dtype%>*)(&g->beta), (<%=dtype%>*)c, g->n);
     cublasDestroy(handle);
 }
 
