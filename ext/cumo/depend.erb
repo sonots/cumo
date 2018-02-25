@@ -25,7 +25,7 @@ list_type_rb = Dir.glob("narray/gen/def/*.rb")
 list_type_rb.each do |type_rb|
   type_name = File.basename(type_rb, ".rb")
   next if ENV['DTYPE'] and !type_name.downcase.include?(ENV['DTYPE'].downcase)
-  list_type_c << type_c = "narray/types/" + type_name + + ".c"
+  list_type_c << type_c = "narray/types/" + type_name + ".c"
 %>
 <%=type_c%>: <%=type_rb%> $(C_DEPENDS)
 	$(MAKEDIRS) $(@D) types
@@ -38,7 +38,7 @@ list_type_rb = Dir.glob("narray/gen/def/*.rb")
 list_type_rb.each do |type_rb|
   type_name = File.basename(type_rb, ".rb")
   next if ENV['DTYPE'] and !type_name.downcase.include?(ENV['DTYPE'].downcase)
-  list_type_cu << type_cu = "narray/types/" + type_name + + "_kernel.cu"
+  list_type_cu << type_cu = "narray/types/" + type_name + "_kernel.cu"
 %>
 <%=type_cu%>: <%=type_rb%> $(CU_DEPENDS)
 	$(MAKEDIRS) $(@D) types
