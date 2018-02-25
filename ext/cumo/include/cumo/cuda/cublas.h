@@ -32,7 +32,8 @@ extern cublasSideMode_t cumo_cublas_option_side(VALUE side);
 //#define check_func cumo_cublas_check_func
 //extern void cumo_cublas_check_func(void **func, const char *name);
 
-#define SWAP(a,b,tmp)                                             \
+// TODO: Check if a and b are row_major?
+#define SWAP_IFROW(a,b,tmp)                                       \
     {(tmp)=(a);(a)=(b);(b)=(tmp);}
 
 #define SWAP_IFTR(trans,a,b,tmp)                                  \

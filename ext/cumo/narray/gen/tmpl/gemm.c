@@ -144,9 +144,9 @@ static VALUE
     CHECK_DIM_GE(na1,2);
     CHECK_DIM_GE(na2,2);
     ma = ROW_SIZE(na1); // m
-    ka = COL_SIZE(na1); // k (lda)
+    ka = COL_SIZE(na1); // k
     kb = ROW_SIZE(na2); // k
-    nb = COL_SIZE(na2); // n (ldb)
+    nb = COL_SIZE(na2); // n
 
     SWAP_IFTR(g.transa, ma, ka, tmp);
     SWAP_IFTR(g.transb, kb, nb, tmp);
@@ -155,9 +155,7 @@ static VALUE
     g.n = nb;
     g.k = ka;
 
-    // TODO(sonots): Check with TEST_ROW_MAJOR?
-    SWAP(ma, nb, tmp);
-    //SWAP_IFROW(g.order, ma,nb, tmp);
+    SWAP_IFROW(ma, nb, tmp);
 
     if (c == Qnil) { // c is not given.
         ndfunc_arg_in_t ain_init = {sym_init,0};
