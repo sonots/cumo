@@ -54,7 +54,6 @@
 #define m_isfinite(x)  ((rb_respond_to(x,id_finite_p)) ? RTEST(rb_funcall(x,id_finite_p,0)) : 0)
 
 #define m_mulsum_init INT2FIX(0)
-#define m_gemm_init INT2FIX(0)
 
 #define m_sprintf(s,x) robj_sprintf(s,x)
 
