@@ -55,7 +55,6 @@
 
 #define m_mulsum_init INT2FIX(0)
 #define m_gemm_init INT2FIX(0)
-#define m_gemv_init INT2FIX(0)
 
 #define m_sprintf(s,x) robj_sprintf(s,x)
 

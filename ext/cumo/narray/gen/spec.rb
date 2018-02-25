@@ -49,7 +49,6 @@ if is_object
 end
 if is_float || is_complex
   def_id "gemm"
-  def_id "gemv"
 end
 
 if is_int && !is_object
@@ -307,7 +306,6 @@ cum "cumprod","mul"
 accum_binary "mulsum"
 if is_float || is_complex
   def_method "gemm"
-  def_method "gemv"
 end
 
 # rmsdev
