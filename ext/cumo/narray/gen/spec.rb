@@ -47,6 +47,9 @@ if is_object
   def_id "<=","le"
   def_id "<=>","ufo"
 end
+if (is_float || is_complex) && !is_object
+  def_id "gemm"
+end
 
 if is_int && !is_object
   def_id "minlength" # for bincount
@@ -301,6 +304,9 @@ cum "cumprod","mul"
 
 # dot
 accum_binary "mulsum"
+if (is_float || is_complex) && !is_object
+  def_method "gemm"
+end
 
 # rmsdev
 # prod
