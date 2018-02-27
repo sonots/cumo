@@ -78,6 +78,10 @@ end
 a = Xumo::DFloat.new(3,5).seq
 ```
 
+## Documentation
+
+See https://github.com/ruby-numo/numo-narray#documentation and replace Numo to Cumo.
+
 ## Development
 
 Install ruby dependencies:
