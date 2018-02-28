@@ -10,7 +10,7 @@
     when 'dcomplex'
       'Z'
     end
-  dtype =
+  cutype =
     case type_name
     when 'sfloat'
       'float'
@@ -68,7 +68,7 @@ static void
    
     cublasHandle_t handle;
     cublasCreate(&handle);
-    cublas<%=func_prefix%>gemm(handle, g->transb, g->transa, g->n, g->m, g->k, (<%=dtype%>*)(&g->alpha), (<%=dtype%>*)b, g->n, (<%=dtype%>*)a, g->k, (<%=dtype%>*)(&g->beta), (<%=dtype%>*)c, g->n);
+    cublas<%=func_prefix%>gemm(handle, g->transb, g->transa, g->n, g->m, g->k, (<%=cutype%>*)(&g->alpha), (<%=cutype%>*)b, g->n, (<%=cutype%>*)a, g->k, (<%=cutype%>*)(&g->beta), (<%=cutype%>*)c, g->n);
     cublasDestroy(handle);
 }
 
