@@ -23,9 +23,6 @@
     end
 %>
 
-#include "cublas_v2.h"
-#include "cumo/cuda/cublas.h"
-
 #define args_t <%=name%>_args_t
 
 typedef struct {

@@ -5,6 +5,8 @@ typedef float rtype;
 #define mTM cumo_mSComplexMath
 
 #include "complex_macro.h"
+#include "cublas_v2.h"
+#include "cumo/cuda/cublas.h"
 
 static inline bool c_nearly_eq(dtype x, dtype y) {
     return c_abs(c_sub(x,y)) <= (c_abs(x)+c_abs(y))*FLT_EPSILON*2;
