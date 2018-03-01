@@ -34,6 +34,9 @@ void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR_IDX(lp, 1, p2, s2, idx2);
 
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     c[nd] = 0;
     if (idx1) {
         if (idx2) {
