@@ -32,6 +32,10 @@ void
     INIT_COUNTER(lp, i);
     INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     c[nd] = 0;
+
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     if (idx1) {
         for (; i--;) {
             LOAD_BIT(a1, p1+*idx1, x); idx1++;
