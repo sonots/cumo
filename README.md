@@ -153,10 +153,10 @@ bundle exec gdb -x run.gdb --args ruby test/narray_test.rb
 
 You may put a breakpoint by calling `cumo_debug_breakpoint()` at C source codes.
 
-### Run tests with Specific GPU device
+### Run program with Specific GPU device
 
 ```
-bundle exec CUDA_DEVICE=1 rake test
+bundle exec CUDA_VISIBLE_DEVICES=1
 ```
 
 ### Run program always synchronizes CPU and GPU
