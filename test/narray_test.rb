@@ -30,6 +30,12 @@ class NArrayTest < Test::Unit::TestCase
       assert { dtype < Cumo::NArray }
     end
 
+    test "#{dtype},free" do
+      a = dtype[1,2,3,5,7,11]
+      assert { a.free }
+      assert { !a.free }  # return false if already freed
+    end
+
     procs = [
       [proc{|tp,a| tp[*a] },""],
       [proc{|tp,a| tp[*a][true] },"[true]"],

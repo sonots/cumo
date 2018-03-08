@@ -1800,7 +1800,32 @@ na_equal(VALUE self, volatile VALUE other)
     return (rb_funcall(vbool, id_count_false, 0)==INT2FIX(0)) ? Qtrue : Qfalse;
 }
 
+/*
+  Free data memory explicitly without waiting GC.
 
+  @return [Boolean] true if free
+*/
+VALUE
+cumo_na_free_data(VALUE self)
+{
+    narray_t *na;
+    GetNArray(self, na);
+
+    if (na->type == NARRAY_DATA_T) {
+        void *ptr = NA_DATA_PTR(na);
+        if (ptr != NULL) {
+            if (cumo_cuda_runtime_is_device_memory(ptr)) {
+                cumo_cuda_runtime_free(ptr);
+            } else {
+                xfree(ptr);
+            }
+            NA_DATA_PTR(na) = NULL;
+            return Qtrue;
+        }
+    }
+
+    return Qfalse;
+}
 
 /* initialization of NArray Class */
 void
@@ -1844,6 +1869,8 @@ Init_narray()
     rb_undef_alloc_func(cNArray);
     rb_define_method(cNArray, "initialize", na_initialize, -2);
     rb_define_method(cNArray, "initialize_copy", na_initialize_copy, 1);
+
+    rb_define_method(cNArray, "free", cumo_na_free_data, 0);
 
     rb_define_singleton_method(cNArray, "zeros", na_s_zeros, -1);
     rb_define_singleton_method(cNArray, "ones", na_s_ones, -1);
