@@ -1,23 +1,23 @@
 require 'cumo/narray'
 require 'benchmark'
 
+NUM = (ARGV.first || 100000).to_i
+
 a = Cumo::Int32.new(10).seq(1)
 b = Cumo::Int32.new(10).seq(10,10)
 c = a + b
+c.free
 
 a = Cumo::Int32.new(10000).seq(1)
 b = Cumo::Int32.new(10000).seq(10,10)
 Benchmark.bm do |r|
-  r.report do
-    100.times {
-      1000.times { a + b }
-      GC.start
-    }
+  r.report(NUM) do
+    NUM.times { (a + b).free }
   end
 end
 
-# 10**4: 0.43667100000000003 msec
-# 10**5: 0.35122000000000003 msec
-# 10**6: 1.0603609999999999 msec
-# 10**7: 7.784008999999999 msec
-# 10**8: 74.664282 msec
+#              user     system      total        real
+#    10000  0.100000   0.000000   0.100000 (  0.099510)
+#   100000  0.880000   0.000000   0.880000 (  0.877870)
+#  1000000  7.180000   0.000000   7.180000 (  7.178121)
+# 10000000 83.140000   0.040000  83.180000 ( 83.179552)
