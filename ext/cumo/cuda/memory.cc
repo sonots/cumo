@@ -185,7 +185,6 @@ private:
     Pool& pool_;
 };
 
-/*
 // Memory pool implementation for single device.
 // - The allocator attempts to find the smallest cached block that will fit
 //   the requested size. If the block is larger than the requested size,
@@ -193,16 +192,24 @@ private:
 //   cudaMalloc.
 // - If the cudaMalloc fails, the allocator will free all cached blocks that
 //   are not split and retry the allocation.
-class SingleDeviceMemoryPool {
+// class SingleDeviceMemoryPool {
+class MemoryPool {
+    using FreeList = std::unordered_set<std::shared_ptr<Chunk>>;  // list of free chunk
+    using Arena = std::vector<FreeList>;  // free_list w.r.t an arena index
+    using ArenaIndex = std::vector<int>;  // mapping of key: arena index <=> value: bin index
+
 private:
     int device_id_;
-    std::unordered_map<void*, Chunk> in_use_;  // {ptr: Chunk}
-    std::unordered_map<intptr_t, std::vector<std::unordered_set<Chunk>>> free_; // {stream_ptr: {index: set(Chunk)}}
-    std::unordered_map<intptr_t, std::vector<int>> index_; // {stream_ptr: [index]}
+    std::unordered_map<intptr_t, std::shared_ptr<Chunk>> in_use_; // ptr => Chunk
+    std::unordered_map<cudaStream_t, Arena> free_;
+    std::unordered_map<cudaStream_t, ArenaIndex> index_;
 
+    // std::vector erase-remove idiom
+    // http://minus9d.hatenablog.com/entry/20120605/1338896754
 public:
+    //SingleDeviceMemoryPool() {
     SingleDeviceMemoryPool() {
-        cumo_cuda_runtime_check_status(cudaGetDevice(&device_id));
+        cumo_cuda_runtime_check_status(cudaGetDevice(&device_id_));
     }
 
     // Round up the memory size to fit memory alignment of cudaMalloc.
@@ -216,70 +223,79 @@ public:
     }
 
     // Get appropriate arena (list of bins) of a given stream
-    std::vector<std::unordered_set<Chunk>>& GetArena(size_t stream_ptr) {
+    Arena& GetArena(cudaStream_t stream_ptr) {
         return free_[stream_ptr];  // initialize if not exist
     }
 
     // Get appropriate arena sparse index of a given stream
-    std::vector<int>& GetArenaIndex(size_t stream_ptr) {
-        return index_[stream_ptr];
+    AernaIndex& GetArenaIndex(cudaStream_t stream_ptr) {
+        return index_[stream_ptr];  // initialize if not exist
     }
 
-    // TODO
-    void AppendToFreeList(size_t size, Chunk chunk, size_t stream_ptr) {
-        cdef int index, bin_index
-        cdef list arena
-        cdef set free_list
-        cdef vector.vector[int]* arena_index
+    bool ExistsOnArena(const Arena& arena, std::size_t i) {
+        return i < arena.size();
+    }
 
+    bool ExistsOnArenaIndex(const ArenaIndex& arena_index, std::size_t i) {
+        return i < arena_index.size();
+    }
+
+    // TODO: how can i pop?
+    // auto chunk = *free_list.begin();
+    // free_list.erase(free_list.begin());
+    auto PopFromFreeList(FreeList& free_list) {
+        return free_list.erase(free_list.begin());
+    }
+
+    bool EraseFromFreeList(FreeList& free_list, const std::shared_ptr<Chunk>& chunk) {
+        return free_list.erase(chunk);
+    }
+
+    bool EraseFromFreeList(FreeList& free_list, auto& iterator_begin) {
+        return free_list.erase(iterator_begin);
+    }
+
+    bool ExistsOnFreeList(const FreeList& free_list, const std::shared_ptr<Chunk>& chunk) {
+        return free_list.find(chunk) != free_list.end();
+    }
+
+    void AppendToFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr = 0) {
         int bin_index = GetBinIndexFromSize(size);
         //rlock.lock_fastrlock(self._free_lock, -1, True)
         //try:
-        arena = GetArean(stream_ptr);
-        std::vector<int>& arena_index = GetArenaIndex(stream_ptr);
-        int index = algorithm.lower_bound(
-                arena_index.begin(), arena_index.end(),
-                bin_index) - arena_index.begin();
+        Arena& arena = GetArean(stream_ptr);
+        ArenaIndex& arena_index = GetArenaIndex(stream_ptr);
+        int index = algorithm.lower_bound(arena_index.begin(), arena_index.end(), bin_index) - arena_index.begin();
         int size = static_cast<int>(arena_index.size());
-        if (index < size and arena_index.at(index) == bin_index) {
-            free_list = arena[index];
-            if (free_list is nullptr) {
-                arena[index] = free_list = set();
-            }
-        } else {
-            free_list = set();
+        if (index >= size || arena_index.at(index) != bin_index) {
             arena_index.insert(arena_index.begin() + index, bin_index);
-            arena.insert(index, free_list);
         }
+        FreeList& free_list = arena[index];
         free_list.add(chunk);
         //finally:
         //    rlock.unlock_fastrlock(self._free_lock)
     }
 
     bool RemoveFromFreeList(size_t size, Chunk chunk, size_t stream_ptr) {
-        cdef int index, bin_index
-        cdef list arena
-        cdef set free_list
-
-        bin_index = GetBinIndexFromSize(size);
+        int bin_index = GetBinIndexFromSize(size);
         // rlock.lock_fastrlock(self._free_lock, -1, True)
         // try:
-        arena = GetArena(stream_ptr);
-        std::vector<int>& arena_index = GetArenaIndex(stream_ptr);
+        Arena& arena = GetArena(stream_ptr);
+        ArenaIndex& arena_index = GetArenaIndex(stream_ptr);
         if (arena_index.size() == 0) {
             return false;
         }
-        index = algorithm.lower_bound(
-                arena_index.begin(), arena_index.end(),
-                bin_index) - arena_index.begin();
+        int index = algorithm.lower_bound(arena_index.begin(), arena_index.end(), bin_index) - arena_index.begin();
         if (arena_index.at(index) != bin_index) {
             return false;
         }
-        free_list = arena[index];
-        if (free_list and chunk in free_list) {
-            free_list.remove(chunk);
-            if (len(free_list) == 0) {
-                arena[index] = nullptr;
+        assert(arena.size() > index);
+        FreeList& free_list = arena[index];
+        auto it = free_list.find(chunk);
+        if (it != free_list.end()) {
+            free_list.erase(it);
+            if (free_list.empty()) {
+                arena.erase(arena.begin() + index);
             }
             return true;
         }
@@ -288,49 +304,51 @@ public:
         return false;
     }
 
-    MemoryPointer Alloc(size_t rounded_size) {
-        return self._allocator(rounded_size);
-    }
+    // MemoryPointer _alloc(size_t rounded_size) {
+    //     return self._allocator(rounded_size);
+    // }
 
-    MemoryPointer Malloc(size_t size) {
-        rounded_size = self.GetRoundedSize(size);
-        return self._malloc(rounded_size);
-    }
+    // MemoryPointer malloc(size_t size) {
+    //     rounded_size = self.GetRoundedSize(size);
+    //     return self._malloc(rounded_size);
+    // }
 
-    MemoryPointer Malloc(size_t size) {
+    MemoryPointer _malloc(size_t size) {
         cdef set free_list
         cdef _Chunk chunk = None
         cdef _Chunk remaining
         cdef int bin_index, index, length
 
-        if size == 0:
-            return MemoryPointer(Memory(0), 0)
+        if (size == 0) {
+            return MemoryPointer(Memory(0), 0);
+        }
 
-        stream_ptr = stream_module.get_current_stream_ptr()
+        // TODO: support cuda stream
+        // stream_ptr = stream_module.get_current_stream_ptr()
+        cudaStream_t stream_ptr = 0;
 
-        bin_index = self.GetBinIndexFromSize(size)
-        # find best-fit, or a smallest larger allocation
-        rlock.lock_fastrlock(self._free_lock, -1, True)
-        try:
-            arena = self._arena(stream_ptr)
-            arena_index = self.GetArenaIndex(stream_ptr)
-            index = algorithm.lower_bound(
-                arena_index.begin(), arena_index.end(),
-                bin_index) - arena_index.begin()
-            length = arena_index.size()
-            for i in range(index, length):
-                free_list = arena[i]
-                if free_list is None:
-                    continue
-                assert len(free_list) > 0
+        int bin_index = GetBinIndexFromSize(size);
+        // find best-fit, or a smallest larger allocation
+        // rlock.lock_fastrlock(self._free_lock, -1, True)
+        // try:
+        Arena& arena = GetArena(stream_ptr);
+        ArenaIndex& arena_index = GetArenaIndex(stream_ptr);
+        int index = algorithm.lower_bound(
+                arena_index.begin(), arena_index.end(), bin_index) - arena_index.begin();
+        int length = static_cast<int>(arena_index.size());
+        for (int i = index; i < length; ++i) {
+            if (!ExistsOnArena(arena, i)) {
+                continue;
+            }
+            FreeList& free_list = arena[i];
                 chunk = free_list.pop()
                 if len(free_list) == 0:
                     arena[i] = None
                 if i - index >= _index_compaction_threshold:
                     _compact_index(self, stream_ptr, False)
                 break
-        finally:
-            rlock.unlock_fastrlock(self._free_lock)
+        // finally:
+        //     rlock.unlock_fastrlock(self._free_lock)
 
         if chunk is not None:
             remaining = chunk.split(size)
