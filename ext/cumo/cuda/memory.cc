@@ -40,7 +40,7 @@ public:
     int device_id() const { return device_id_; }
 private:
     // Pointer to the place within the buffer.
-    void* ptr_ = 0;
+    void* ptr_ = nullptr;
     // Size of the memory allocation in bytes.
     size_t size_ = 0;
     // GPU device id whose memory the pointer refers to.
@@ -64,7 +64,7 @@ public:
     // size: Chunk size in bytes.
     // stream_ptr: Raw stream handle of cuda stream
     Chunk(const std::shared_ptr<Memory>& mem, size_t offset, size_t size, cudaStream_t stream_ptr = 0) :
-        mem_(mem), ptr_(mem->ptr() + offset), offset_(offset), size_(size), stream_ptr_(stream_ptr) {
+        mem_(mem), ptr_(mem->ptr() + offset), offset_(offset), size_(size), device_id_(mem->device_id()), stream_ptr_(stream_ptr) {
         assert(mem->ptr() > 0 || offset == 0);
     }
 
@@ -75,6 +75,8 @@ public:
     size_t offset() const { return offset_; }
 
     size_t size() const { return size_; }
+
+    int device_id() const { return device_id_; }
 
     const std::shared_ptr<Chunk>& prev() const { return prev_; }
 
@@ -128,6 +130,8 @@ private:
     size_t offset_ = 0;
     // Chunk size in bytes.
     size_t size_ = 0;
+    // GPU device id whose memory the pointer refers to.
+    int device_id_;
     // prev memory pointer if split from a larger allocation
     std::shared_ptr<Chunk> prev_;
     // next memory pointer if split from a larger allocation
@@ -136,17 +140,24 @@ private:
     cudaStream_t stream_ptr_;
 };
 
-/*
+class Pool {
+    public:
+    void free(intptr_t ptr, size_t size) {}
+};
+
 // Memory allocation for a memory pool.
 //
 // The instance of this class is created by memory pool allocator, so user
 // should not instantiate it by hand.
-class PooledMemory : public Memory {
-    PooledMemory(Chunck chunk, const Pool& pool) :
-        device_(chunk.device()),
-        ptr_(chunk.ptr()),
-        size_(chunk.size()),
-        pool_(pool) {}
+class PooledMemory {
+public:
+    PooledMemory(const std::shared_ptr<Chunk>& chunk, Pool& pool) :
+        ptr_(chunk->ptr()), size_(chunk->size()), device_id_(chunk->device_id()), pool_(pool) {}
+
+    // Returns the pointer value to the head of the allocation.
+    intptr_t ptr() const { return ptr_; }
+    size_t size() const { return size_; }
+    int device_id() const { return device_id_; }
 
     // TODO: call free via GC
 
@@ -155,21 +166,26 @@ class PooledMemory : public Memory {
     // This function actually does not free the buffer. It just returns the
     // buffer to the memory pool for reuse.
     void free() {
-        if (ptr_ == nullptr) {
-            return;
-        }
-        size_t ptr = ptr_;
-        ptr_ = nullptr;
-        if (pool_ is nullptr) {
-            return;
-        }
-        pool = pool_;
-
+        if (ptr_ == 0) return;
+        intptr_t ptr = ptr_;
         size_t size = size_;
-        pool.free(ptr, size);
+        ptr_ = 0;
+        size_ = 0;
+        pool_.free(ptr, size);
     }
+
+private:
+    // Pointer to the place within the buffer.
+    intptr_t ptr_ = 0;
+    // Size of the memory allocation in bytes.
+    size_t size_ = 0;
+    // GPU device id whose memory the pointer refers to.
+    int device_id_ = -1;
+    // Memory pool instance
+    Pool& pool_;
 };
 
+/*
 // Memory pool implementation for single device.
 // - The allocator attempts to find the smallest cached block that will fit
 //   the requested size. If the block is larger than the requested size,
