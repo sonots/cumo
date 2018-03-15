@@ -16,18 +16,14 @@ const int kRoundSize = 512; // bytes
 namespace {
 
 // Memory allocation on a CUDA device.
-// This class provides an RAII interface of the CUDA memory allocation.
 //
-// Attributes:
-//     ptr (void*): Pointer to the place within the buffer.
-//     size (size_t): Size of the memory allocation in bytes.
-//     device_id (int)): GPU device id whose memory the pointer refers to.
+// This class provides an RAII interface of the CUDA memory allocation.
 class Memory {
 public:
-    // size (size_t): Size of the memory allocation in bytes.
+    // size: Size of the memory allocation in bytes.
     Memory(size_t size) : size_(size) {
         if (size_ > 0) {
-            cumo_cuda_runtime_check_status(cudaGetDevice(&device_));
+            cumo_cuda_runtime_check_status(cudaGetDevice(&device_id_));
             cumo_cuda_runtime_check_status(cudaMallocManaged(&ptr_, size_, cudaMemAttachGlobal));
         }
     }
@@ -39,11 +35,105 @@ public:
     }
 
     // Returns the pointer value to the head of the allocation.
-    void* ptr() const { return ptr_; }
+    intptr_t ptr() const { return reinterpret_cast<intptr_t>(ptr_); }
+    size_t size() const { return size_; }
+    int device_id() const { return device_id_; }
 private:
-    void* ptr_ = nullptr;
+    // Pointer to the place within the buffer.
+    void* ptr_ = 0;
+    // Size of the memory allocation in bytes.
     size_t size_ = 0;
-    int device_ = -1;
+    // GPU device id whose memory the pointer refers to.
+    int device_id_ = -1;
+};
+
+
+// MEMO: memory pool holds chunk, and chunk holds a memory (RAII)
+
+// A chunk points to a device memory.
+//
+// A chunk might be a splitted memory block from a larger allocation.
+// The prev/next pointers contruct a doubly-linked list of memory addresses
+// sorted by base address that must be contiguous.
+//
+// Attributes:
+class Chunk : public std::enable_shared_from_this<Chunk> {
+public:
+    // mem: The device memory buffer.
+    // offset: An offset bytes from the head of the buffer.
+    // size: Chunk size in bytes.
+    // stream_ptr: Raw stream handle of cuda stream
+    Chunk(const std::shared_ptr<Memory>& mem, size_t offset, size_t size, cudaStream_t stream_ptr = 0) :
+        mem_(mem), ptr_(mem->ptr() + offset), offset_(offset), size_(size), stream_ptr_(stream_ptr) {
+        assert(mem->ptr() > 0 || offset == 0);
+    }
+
+    Chunk(const Chunk&) = default;
+
+    intptr_t ptr() const { return ptr_; }
+
+    size_t offset() const { return offset_; }
+
+    size_t size() const { return size_; }
+
+    const std::shared_ptr<Chunk>& prev() const { return prev_; }
+
+    std::shared_ptr<Chunk>& prev() { return prev_; }
+
+    const std::shared_ptr<Chunk>& next() const { return next_; }
+
+    std::shared_ptr<Chunk>& next() { return next_; }
+
+    cudaStream_t stream_ptr() const { return stream_ptr_; }
+
+    void set_prev(const std::shared_ptr<Chunk>& prev) { prev_ = prev; }
+
+    void set_next(const std::shared_ptr<Chunk>& next) { next_ = next; }
+
+    // Split contiguous block of a larger allocation
+    std::shared_ptr<Chunk> split(size_t size) {
+        assert(size_ >= size);
+        if (size_ == size) {
+            return nullptr;
+        }
+
+        auto remaining = std::make_shared<Chunk>(mem_, offset_ + size, size_ - size, stream_ptr_);
+        size_ = size;
+
+        if (next_) {
+            remaining->set_next(std::move(next_));
+            remaining->next()->set_prev(remaining);
+        }
+        next_ = remaining;
+        remaining->set_prev(shared_from_this());
+
+        return remaining;
+    }
+
+    // Merge previously splitted block (chunk)
+    void merge(std::shared_ptr<Chunk>& remaining) {
+        assert(stream_ptr_ == remaining->stream_ptr());
+        size_ += remaining->size();
+        next_ = remaining->next();
+        if (remaining->next()) {
+            next_->set_prev(shared_from_this());
+        }
+    }
+private:
+    // The device memory buffer.
+    std::shared_ptr<Memory> mem_;
+    // Memory address.
+    intptr_t ptr_ = 0;
+    // An offset bytes from the head of the buffer.
+    size_t offset_ = 0;
+    // Chunk size in bytes.
+    size_t size_ = 0;
+    // prev memory pointer if split from a larger allocation
+    std::shared_ptr<Chunk> prev_;
+    // next memory pointer if split from a larger allocation
+    std::shared_ptr<Chunk> next_;
+    // Raw stream handle of cuda stream
+    cudaStream_t stream_ptr_;
 };
 
 /*
@@ -78,81 +168,6 @@ class PooledMemory : public Memory {
         size_t size = size_;
         pool.free(ptr, size);
     }
-};
-
-// A chunk points to a device memory.
-//
-// A chunk might be a splitted memory block from a larger allocation.
-// The prev/next pointers contruct a doubly-linked list of memory addresses
-// sorted by base address that must be contiguous.
-//
-// Attributes:
-//     device (~cupy.cuda.Device): Device whose memory the pointer refers to.
-//     mem (~cupy.cuda.Memory): The device memory buffer.
-//     ptr (size_t): Memory address.
-//     offset (int): An offset bytes from the head of the buffer.
-//     size (int): Chunk size in bytes.
-//     prev (Chunk): prev memory pointer if split from a larger allocation
-//     next (Chunk): next memory pointer if split from a larger allocation
-//     stream_ptr (size_t): Raw stream handle of cupy.cuda.Stream
-class Chunk {
-public:
-    // mem (~cupy.cuda.Memory): The device memory buffer.
-    // offset (int): An offset bytes from the head of the buffer.
-    // size (int): Chunk size in bytes.
-    // stream_ptr (size_t): Raw stream handle of cupy.cuda.Stream
-    Chunk(Memory& mem, size_t offset, size_t size, intptr_t stream_ptr = nullptr) :
-        mem_(mem), ptr_(mem.ptr + offset), offset_(offset), size_(size), stream_ptr_(stream_ptr) {
-        assert(mem.ptr > 0 || offset == 0);
-    }
-    Chunk(const Chunk&) = default;
-
-    intptr_t ptr() const { return ptr_; }
-    size_t offset() const { return offset_; }
-    size_t size() const { return size_; }
-    Chunk& prev() const { return prev_; }
-    Chunk& next() const { return next_; }
-    intptr_t stream_ptr() const { return stream_ptr_; }
-
-    void set_prev(Chunk prev) { prev_ = prev; }
-    void set_next(Chunk next) { next_ = next; }
-
-    // Split contiguous block of a larger allocation
-    Chunk split(size_t size) {
-        assert(size() >= size);
-        if (size() == size) {
-            return nullptr;
-        }
-
-        Chunk remaining{mem_, offset_ + size, size_ - size, stream_ptr_};
-        size_ = size;
-
-        if (next_ != nullptr) {
-            remaining.set_next(next_);
-            remaining.next().set_prev(remaining);
-        }
-        next_ = remaining
-        remaining.set_prev(*this);
-        return remaining;
-    }
-
-    // Merge previously splitted block (chunk)
-    void merge(Chunk remaining) {
-        assert(stream_ptr_ == remaining.stream_ptr());
-        size_ += remaining.size()
-        next_ = remaining.next()
-        if (remaining.next() != nullptr) {
-            next_.set_prev(*this);
-        }
-    }
-private:
-    Memory& mem_;
-    intptr_t ptr_;
-    size_t offset_;
-    size_t size_;
-    Chunk prev_;
-    Chunk next_;
-    intptr_t stream_ptr_;
 };
 
 // Memory pool implementation for single device.
