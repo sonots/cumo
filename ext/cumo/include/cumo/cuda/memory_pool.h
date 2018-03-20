@@ -184,14 +184,6 @@ public:
         return index_[stream_ptr];  // find or create
     }
 
-    bool ExistsOnArena(const Arena& arena, std::size_t i) {
-        return i < arena.size();
-    }
-
-    bool ExistsOnArenaIndexMap(const ArenaIndexMap& arena_index_map, std::size_t i) {
-        return i < arena_index_map.size();
-    }
-
     std::shared_ptr<Chunk>& PopFromFreeList(FreeList& free_list) {
         auto& data = free_list.back();
         free_list.pop_back();
