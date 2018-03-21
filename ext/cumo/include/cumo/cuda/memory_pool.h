@@ -158,6 +158,17 @@ public:
         CheckStatus(cudaGetDevice(&device_id_));
     }
 
+    intptr_t Malloc(size_t size);
+
+    void Free(intptr_t ptr);
+
+// private:
+
+    // TODO: std::shared_ptr<Chunk>&
+    void AppendToFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr = 0);
+
+    bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr = 0);
+
     // Round up the memory size to fit memory alignment of cudaMalloc.
     size_t GetRoundedSize(size_t size) {
         return ((size + kRoundSize - 1) / kRoundSize) * kRoundSize;
@@ -200,15 +211,6 @@ public:
         free_list.erase(iter);
         return true;
     }
-
-    // TODO: std::shared_ptr<Chunk>&
-    void AppendToFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr = 0);
-
-    bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr = 0);
-
-    intptr_t Malloc(size_t size);
-
-    void Free(intptr_t ptr);
 
     //TODO(sonots): Implement
     //cpdef free_all_blocks(self, stream=None):
