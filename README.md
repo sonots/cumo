@@ -38,7 +38,9 @@ Or install it yourself as:
 
     $ gem install cumo
 
-## Quick start
+## How To Use
+
+### Quick start
 
 An example:
 
@@ -60,7 +62,7 @@ An example:
 => 15
 ```
 
-## How to switch from Numo to Cumo
+### How to switch from Numo to Cumo
 
 Basically, `find . -type f | xargs sed -i -e 's/Numo/Cumo/g' -e 's/numo/cumo/g'` should make it work.
 
@@ -77,6 +79,19 @@ end
 
 a = Xumo::DFloat.new(3,5).seq
 ```
+
+### Select a GPU device ID
+
+You can use `CUDA_VISIBLE_DEVICES=$id` environment variable, or
+
+```
+require 'cumo'
+Cumo::CUDA::Runtime.cudaSetDevice(id)
+```
+
+### Enable GPU Memory Pool
+
+Set environment variable `CUMO_MEMORY_POOL=ON`.
 
 ## Documentation
 
