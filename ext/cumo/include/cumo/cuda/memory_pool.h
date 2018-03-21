@@ -32,6 +32,13 @@ private:
     cudaError_t status_;
 };
 
+
+class OutOfMemoryError : public std::runtime_error {
+public:
+    OutOfMemoryError(size_t size, size_t total) :
+        runtime_error("out of memory to allocate " + std::to_string(size) + " bytes (total " + std::to_string(total) + " bytes)") {}
+};
+
 void CheckStatus(cudaError_t status);
 
 // Memory allocation on a CUDA device.
@@ -238,51 +245,15 @@ public:
     // Free all **non-split** chunks in specified arena
     void FreeAllBlocks(cudaStream_t stream_ptr);
 
-    //TODO(sonots): Implement
-    //cpdef n_free_blocks(self):
-    //    cdef Py_ssize_t n = 0
-    //    cdef set free_list
-    //    rlock.lock_fastrlock(self._free_lock, -1, True)
-    //    try:
-    //        for arena in self._free.itervalues():
-    //            for v in arena:
-    //                if v is not None:
-    //                    n += len(v)
-    //    finally:
-    //        rlock.unlock_fastrlock(self._free_lock)
-    //    return n
+    size_t GetNumFreeBlocks();
 
-    //TODO(sonots): Implement
-    //cpdef used_bytes(self):
-    //    cdef Py_ssize_t size = 0
-    //    cdef _Chunk chunk
-    //    rlock.lock_fastrlock(self._in_use_lock, -1, True)
-    //    try:
-    //        for chunk in self._in_use.itervalues():
-    //            size += chunk.size
-    //    finally:
-    //        rlock.unlock_fastrlock(self._in_use_lock)
-    //    return size
+    size_t GetUsedBytes();
 
-    //TODO(sonots): Implement
-    //cpdef free_bytes(self):
-    //    cdef Py_ssize_t size = 0
-    //    cdef set free_list
-    //    cdef _Chunk chunk
-    //    rlock.lock_fastrlock(self._free_lock, -1, True)
-    //    try:
-    //        for arena in self._free.itervalues():
-    //            for free_list in arena:
-    //                if free_list is None:
-    //                    continue
-    //                for chunk in free_list:
-    //                    size += chunk.size
-    //    finally:
-    //        rlock.unlock_fastrlock(self._free_lock)
-    //    return size
+    size_t GetFreeBytes();
 
-    //cpdef total_bytes(self):
-    //    return self.used_bytes() + self.free_bytes()
+    size_t GetTotalBytes() {
+        return GetUsedBytes() + GetFreeBytes();
+    }
 };
 
 } // namespace internal

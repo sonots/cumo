@@ -143,6 +143,9 @@ public:
         TearDown(); SetUp(); TestFreeDifferentSize();
         TearDown(); SetUp(); TestFreeAllBlocks();
         TearDown(); SetUp(); TestFreeAllBlocksSplit();
+        TearDown(); SetUp(); TestGetUsedBytes();
+        TearDown(); SetUp(); TestGetFreeBytes();
+        TearDown(); SetUp(); TestGetTotalBytes();
         TearDown();
     }
 
@@ -392,18 +395,19 @@ public:
     //         self.assertNotEqual(ptr1, p4.ptr)
     //         self.assertNotEqual(ptr2, p4.ptr)
 
-    // def test_used_bytes(self):
-    //     p1 = pool_.Malloc(kRoundSize * 2)
-    //     assert(kRoundSize * 2, pool_.used_bytes())
-    //     p2 = pool_.Malloc(kRoundSize * 4)
-    //     assert(kRoundSize * 6, pool_.used_bytes())
-    //     del p2
-    //     assert(kRoundSize * 2, pool_.used_bytes())
-    //     del p1
-    //     assert(kRoundSize * 0, pool_.used_bytes())
-    //     p3 = pool_.Malloc(kRoundSize * 1)
-    //     assert(kRoundSize * 1, pool_.used_bytes())
-    //     del p3
+    void TestGetUsedBytes() {
+        intptr_t p1 = pool_->Malloc(kRoundSize * 2);
+        assert(kRoundSize * 2 == pool_->GetUsedBytes());
+        intptr_t p2 = pool_->Malloc(kRoundSize * 4);
+        assert(kRoundSize * 6 == pool_->GetUsedBytes());
+        pool_->Free(p2);
+        assert(kRoundSize * 2 == pool_->GetUsedBytes());
+        pool_->Free(p1);
+        assert(kRoundSize * 0 == pool_->GetUsedBytes());
+        intptr_t p3 = pool_->Malloc(kRoundSize * 1);
+        assert(kRoundSize * 1 == pool_->GetUsedBytes());
+        pool_->Free(p3);
+    }
 
     // def test_used_bytes_stream(self):
     //     p1 = pool_.Malloc(kRoundSize * 4)
@@ -413,18 +417,19 @@ public:
     //     assert(kRoundSize * 2, pool_.used_bytes())
     //     del p2
 
-    // def test_free_bytes(self):
-    //     p1 = pool_.Malloc(kRoundSize * 2)
-    //     assert(kRoundSize * 0, pool_.free_bytes())
-    //     p2 = pool_.Malloc(kRoundSize * 4)
-    //     assert(kRoundSize * 0, pool_.free_bytes())
-    //     del p2
-    //     assert(kRoundSize * 4, pool_.free_bytes())
-    //     del p1
-    //     assert(kRoundSize * 6, pool_.free_bytes())
-    //     p3 = pool_.Malloc(kRoundSize * 1)
-    //     assert(kRoundSize * 5, pool_.free_bytes())
-    //     del p3
+    void TestGetFreeBytes() {
+        intptr_t p1 = pool_->Malloc(kRoundSize * 2);
+        assert(kRoundSize * 0 == pool_->GetFreeBytes());
+        intptr_t p2 = pool_->Malloc(kRoundSize * 4);
+        assert(kRoundSize * 0 == pool_->GetFreeBytes());
+        pool_->Free(p2);
+        assert(kRoundSize * 4 == pool_->GetFreeBytes());
+        pool_->Free(p1);
+        assert(kRoundSize * 6 == pool_->GetFreeBytes());
+        intptr_t p3 = pool_->Malloc(kRoundSize * 1);
+        assert(kRoundSize * 5 == pool_->GetFreeBytes());
+        pool_->Free(p3);
+    }
 
     // def test_free_bytes_stream(self):
     //     p1 = pool_.Malloc(kRoundSize * 4)
@@ -434,18 +439,19 @@ public:
     //     assert(kRoundSize * 4, pool_.free_bytes())
     //     del p2
 
-    // def test_total_bytes(self):
-    //     p1 = pool_.Malloc(kRoundSize * 2)
-    //     assert(kRoundSize * 2, pool_.total_bytes())
-    //     p2 = pool_.Malloc(kRoundSize * 4)
-    //     assert(kRoundSize * 6, pool_.total_bytes())
-    //     del p1
-    //     assert(kRoundSize * 6, pool_.total_bytes())
-    //     del p2
-    //     assert(kRoundSize * 6, pool_.total_bytes())
-    //     p3 = pool_.Malloc(kRoundSize * 1)
-    //     assert(kRoundSize * 6, pool_.total_bytes())
-    //     del p3
+    void TestGetTotalBytes() {
+        intptr_t p1 = pool_->Malloc(kRoundSize * 2);
+        assert(kRoundSize * 2 == pool_->GetTotalBytes());
+        intptr_t p2 = pool_->Malloc(kRoundSize * 4);
+        assert(kRoundSize * 6 == pool_->GetTotalBytes());
+        pool_->Free(p1);
+        assert(kRoundSize * 6 == pool_->GetTotalBytes());
+        pool_->Free(p2);
+        assert(kRoundSize * 6 == pool_->GetTotalBytes());
+        intptr_t p3 = pool_->Malloc(kRoundSize * 1);
+        assert(kRoundSize * 6 == pool_->GetTotalBytes());
+        pool_->Free(p3);
+    }
 
     // def test_total_bytes_stream(self):
     //     p1 = pool_.Malloc(kRoundSize * 4)

@@ -117,30 +117,29 @@ intptr_t MemoryPool::Malloc(size_t size) {
         try {
             mem = std::make_shared<Memory>(size);
         } catch (const CUDARuntimeError& e) {
-            throw;
-            // TODO(sonots): Complete below
-            //if (e.status() != cudaErrorMemoryAllocation) {
-            //    throw;
-            //}
-            //free_all_blocks();
-            //try {
-            //    mem = std::make_shared<Memory>(size);
-            //} catch (const CUDARuntimeError& e) {  
-            //    if (e.status() != cudaErrorMemoryAllocation) {
-            //        throw;
-            //    }
-            //    // GC.start
-            //    try {
-            //        mem = std::make_shared<Memory>(size);
-            //    } catch (const CUDARuntimeError& e) {  
-            //        if (e.status() != cudaErrorMemoryAllocation) {
-            //            throw;
-            //        } else {
-            //            size_t total = size + total_bytes();
-            //            throw OutOfMemoryError(size, total);
-            //        }
-            //    }
-            //}
+            if (e.status() != cudaErrorMemoryAllocation) {
+                throw;
+            }
+            FreeAllBlocks();
+            try {
+                mem = std::make_shared<Memory>(size);
+            } catch (const CUDARuntimeError& e) {
+                if (e.status() != cudaErrorMemoryAllocation) {
+                    throw;
+                }
+                size_t total = size + GetTotalBytes();
+                throw OutOfMemoryError(size, total);
+                // GC.start
+                // try {
+                //     mem = std::make_shared<Memory>(size);
+                // } catch (const CUDARuntimeError& e) {
+                //     if (e.status() != cudaErrorMemoryAllocation) {
+                //         throw;
+                //     }
+                //     size_t total = size + total_bytes();
+                //     throw OutOfMemoryError(size, total);
+                // }
+            }
         }
         chunk = std::make_shared<Chunk>(mem, 0, size, stream_ptr);
     }
@@ -245,6 +244,51 @@ void MemoryPool::FreeAllBlocks(cudaStream_t stream_ptr) {
     CompactIndex(stream_ptr, true);
     //finally:
     //    rlock.unlock_fastrlock(self._free_lock)
+}
+
+size_t MemoryPool::GetNumFreeBlocks() {
+    size_t n = 0;
+    // rlock.lock_fastrlock(self._free_lock, -1, True)
+    // try:
+    for (auto kv : free_) {
+        Arena& arena = kv.second;
+        for (auto free_list : arena) {
+            n += free_list.size();
+        }
+    }
+    // finally:
+    //     rlock.unlock_fastrlock(self._free_lock)
+    return n;
+}
+
+size_t MemoryPool::GetUsedBytes() {
+    size_t size = 0;
+    // rlock.lock_fastrlock(self._in_use_lock, -1, True)
+    // try:
+    for (auto kv : in_use_) {
+        std::shared_ptr<Chunk>& chunk = kv.second;
+        size += chunk->size();
+    }
+    // finally:
+    //     rlock.unlock_fastrlock(self._in_use_lock)
+    return size;
+}
+
+size_t MemoryPool::GetFreeBytes() {
+    size_t size = 0;
+    // rlock.lock_fastrlock(self._free_lock, -1, True)
+    // try:
+    for (auto kv : free_) {
+        Arena& arena = kv.second;
+        for (auto free_list : arena) {
+            for (auto chunk : free_list) {
+                size += chunk->size();
+            }
+        }
+    }
+    // finally:
+    //     rlock.unlock_fastrlock(self._free_lock)
+    return size;
 }
 
 } // namespace internal
