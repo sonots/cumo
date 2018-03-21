@@ -117,30 +117,30 @@ intptr_t MemoryPool::Malloc(size_t size) {
         try {
             mem = std::make_shared<Memory>(size);
         } catch (const CUDARuntimeError& e) {
-            throw;
-            // TODO(sonots): Complete below
-            //if (e.status() != cudaErrorMemoryAllocation) {
-            //    throw;
-            //}
-            //free_all_blocks();
-            //try {
-            //    mem = std::make_shared<Memory>(size);
-            //} catch (const CUDARuntimeError& e) {  
-            //    if (e.status() != cudaErrorMemoryAllocation) {
-            //        throw;
-            //    }
-            //    // GC.start
-            //    try {
-            //        mem = std::make_shared<Memory>(size);
-            //    } catch (const CUDARuntimeError& e) {  
-            //        if (e.status() != cudaErrorMemoryAllocation) {
-            //            throw;
-            //        } else {
-            //            size_t total = size + total_bytes();
-            //            throw OutOfMemoryError(size, total);
-            //        }
-            //    }
-            //}
+            if (e.status() != cudaErrorMemoryAllocation) {
+                throw;
+            }
+            FreeAllBlocks();
+            try {
+                mem = std::make_shared<Memory>(size);
+            } catch (const CUDARuntimeError& e) {
+                if (e.status() != cudaErrorMemoryAllocation) {
+                    throw;
+                }
+                size_t total = size + GetTotalBytes();
+                throw OutOfMemoryError(size, total);
+                // TODO(sonots): rb_funcall needs ruby, memory_pool_test can not be ran...
+                // rb_funcall(rb_intern("GC"), rb_intern("start"), 0);
+                // try {
+                //     mem = std::make_shared<Memory>(size);
+                // } catch (const CUDARuntimeError& e) {
+                //     if (e.status() != cudaErrorMemoryAllocation) {
+                //         throw;
+                //     }
+                //     size_t total = size + GetTotalBytes();
+                //     throw OutOfMemoryError(size, total);
+                // }
+            }
         }
         chunk = std::make_shared<Chunk>(mem, 0, size, stream_ptr);
     }
@@ -183,6 +183,113 @@ void MemoryPool::Free(intptr_t ptr) {
         }
     }
     AppendToFreeList(chunk->size(), chunk, stream_ptr);
+}
+
+void MemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {
+    // need lock ouside this function
+    if (!HasArena(stream_ptr)) return;
+
+    Arena new_arena;
+    ArenaIndexMap new_arena_index_map;
+    Arena& arena = GetArena(stream_ptr);
+    ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
+    size_t arena_length = arena.size();
+    for (size_t arena_index = 0; arena_index < arena_length; ++arena_index) {
+        FreeList& free_list = arena[arena_index];
+        if (free_list.empty()) {
+            continue;
+        }
+        if (free) {
+            FreeList keep_list;
+            for (auto chunk : free_list) {
+                if (chunk->prev() != nullptr || chunk->next() != nullptr) {
+                    keep_list.emplace_back(chunk);
+                }
+            }
+            if (keep_list.size() == 0) {
+                continue;
+            }
+            new_arena_index_map.emplace_back(arena_index_map[arena_index]);
+            new_arena.emplace_back(keep_list);
+        } else {
+            new_arena_index_map.emplace_back(arena_index_map[arena_index]);
+            new_arena.emplace_back(free_list);
+        }
+    }
+    if (new_arena.empty()) {
+        index_.erase(stream_ptr);
+        free_.erase(stream_ptr);
+    } else {
+        arena_index_map.swap(new_arena_index_map);
+        arena.swap(new_arena);
+    }
+}
+
+// Free all **non-split** chunks in all arenas
+void MemoryPool::FreeAllBlocks() {
+    // rlock.lock_fastrlock(self._free_lock, -1, True)
+    // try:
+    std::vector<cudaStream_t> keys(free_.size());
+    transform(free_.begin(), free_.end(), keys.begin(), [](auto pair) { return pair.first; });
+    for (cudaStream_t stream_ptr : keys) {
+        CompactIndex(stream_ptr, true);
+    }
+    //finally:
+    //    rlock.unlock_fastrlock(self._free_lock)
+}
+
+// Free all **non-split** chunks in specified arena
+void MemoryPool::FreeAllBlocks(cudaStream_t stream_ptr) {
+    // rlock.lock_fastrlock(self._free_lock, -1, True)
+    // try:
+    CompactIndex(stream_ptr, true);
+    //finally:
+    //    rlock.unlock_fastrlock(self._free_lock)
+}
+
+size_t MemoryPool::GetNumFreeBlocks() {
+    size_t n = 0;
+    // rlock.lock_fastrlock(self._free_lock, -1, True)
+    // try:
+    for (auto kv : free_) {
+        Arena& arena = kv.second;
+        for (auto free_list : arena) {
+            n += free_list.size();
+        }
+    }
+    // finally:
+    //     rlock.unlock_fastrlock(self._free_lock)
+    return n;
+}
+
+size_t MemoryPool::GetUsedBytes() {
+    size_t size = 0;
+    // rlock.lock_fastrlock(self._in_use_lock, -1, True)
+    // try:
+    for (auto kv : in_use_) {
+        std::shared_ptr<Chunk>& chunk = kv.second;
+        size += chunk->size();
+    }
+    // finally:
+    //     rlock.unlock_fastrlock(self._in_use_lock)
+    return size;
+}
+
+size_t MemoryPool::GetFreeBytes() {
+    size_t size = 0;
+    // rlock.lock_fastrlock(self._free_lock, -1, True)
+    // try:
+    for (auto kv : free_) {
+        Arena& arena = kv.second;
+        for (auto free_list : arena) {
+            for (auto chunk : free_list) {
+                size += chunk->size();
+            }
+        }
+    }
+    // finally:
+    //     rlock.unlock_fastrlock(self._free_lock)
+    return size;
 }
 
 } // namespace internal
