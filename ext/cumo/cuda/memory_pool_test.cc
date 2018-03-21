@@ -134,6 +134,7 @@ public:
         TearDown(); SetUp(); TestGetRoundedSize();
         TearDown(); SetUp(); TestGetBinIndex();
         TearDown(); SetUp(); TestAppendToFreeList();
+        TearDown(); SetUp(); TestRemoveFromFreeList();
         TearDown(); SetUp(); TestMalloc();
         TearDown(); SetUp(); TestFree();
         //TearDown(); SetUp(); TestMallocSplit();
@@ -202,6 +203,70 @@ public:
         assert(arena[0].size() == 1);
         assert(arena[1].size() == 2);
         assert(arena[2].size() == 1);
+        assert(arena_index_map.size() == 3);
+        assert(arena_index_map[0] == 2);
+        assert(arena_index_map[1] == 3);
+        assert(arena_index_map[2] == 4);
+    }
+
+    // TODO(sonots): Fix after implementing compaction
+    void TestRemoveFromFreeList() {
+        Arena& arena = pool_->GetArena(stream_ptr_);
+        ArenaIndexMap& arena_index_map = pool_->GetArenaIndexMap(stream_ptr_);
+
+        auto mem1 = std::make_shared<Memory>(kRoundSize * 4);
+        auto chunk1 = std::make_shared<Chunk>(mem1, 0, mem1->size(), stream_ptr_);
+        pool_->AppendToFreeList(chunk1->size(), chunk1, stream_ptr_);
+
+        auto mem2 = std::make_shared<Memory>(kRoundSize * 4);
+        auto chunk2 = std::make_shared<Chunk>(mem2, 0, mem2->size(), stream_ptr_);
+        pool_->AppendToFreeList(chunk2->size(), chunk2, stream_ptr_);
+
+        auto mem3 = std::make_shared<Memory>(kRoundSize * 5);
+        auto chunk3 = std::make_shared<Chunk>(mem3, 0, mem3->size(), stream_ptr_);
+        pool_->AppendToFreeList(chunk3->size(), chunk3, stream_ptr_);
+
+        auto mem4 = std::make_shared<Memory>(kRoundSize * 3);
+        auto chunk4 = std::make_shared<Chunk>(mem4, 0, mem4->size(), stream_ptr_);
+        pool_->AppendToFreeList(chunk4->size(), chunk4, stream_ptr_);
+
+        // remove one from two
+        pool_->RemoveFromFreeList(chunk1->size(), chunk1, stream_ptr_);
+        assert(arena.size() == 3);
+        assert(arena[0].size() == 1);
+        assert(arena[1].size() == 1);
+        assert(arena[2].size() == 1);
+        assert(arena_index_map.size() == 3);
+        assert(arena_index_map[0] == 2);
+        assert(arena_index_map[1] == 3);
+        assert(arena_index_map[2] == 4);
+
+        // remove two from two
+        pool_->RemoveFromFreeList(chunk2->size(), chunk2, stream_ptr_);
+        assert(arena.size() == 3);
+        assert(arena[0].size() == 1);
+        assert(arena[1].size() == 0);
+        assert(arena[2].size() == 1);
+        assert(arena_index_map.size() == 3);
+        assert(arena_index_map[0] == 2);
+        assert(arena_index_map[1] == 3);
+        assert(arena_index_map[2] == 4);
+
+        pool_->RemoveFromFreeList(chunk3->size(), chunk3, stream_ptr_);
+        assert(arena.size() == 3);
+        assert(arena[0].size() == 1);
+        assert(arena[1].size() == 0);
+        assert(arena[2].size() == 0);
+        assert(arena_index_map.size() == 3);
+        assert(arena_index_map[0] == 2);
+        assert(arena_index_map[1] == 3);
+        assert(arena_index_map[2] == 4);
+
+        pool_->RemoveFromFreeList(chunk4->size(), chunk4, stream_ptr_);
+        assert(arena.size() == 3);
+        assert(arena[0].size() == 0);
+        assert(arena[1].size() == 0);
+        assert(arena[2].size() == 0);
         assert(arena_index_map.size() == 3);
         assert(arena_index_map[0] == 2);
         assert(arena_index_map[1] == 3);
