@@ -31,7 +31,7 @@ def build_optparser
 end
 
 def parse_ill_short(argv, opt_h)
-  ["-shared", "-rdynamic", "-dynamic", "-bundle",  "-pipe", "-pg"].each{|opt|
+  ["-shared", "-rdynamic", "-dynamic", "-bundle",  "-pipe", "-pg", "-ggdb3"].each{|opt|
     if ind = argv.find_index(opt)
       opt_h[opt] << ""
       argv.delete_at(ind)
@@ -105,6 +105,11 @@ def generate_compiling_command_line(opt_h)
   }
   s << compiler_option(opt_h)
   s << compiler_bin(opt_h)
+
+  if opt_h["--mkmf-cu-ext"][0] == "cxx"
+    s << " -std=c++14"
+  end
+
   return s
 end
 

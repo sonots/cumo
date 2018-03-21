@@ -24,3 +24,4 @@ t.rb
 .yardoc/
 doc/
 yard/
+*.exe

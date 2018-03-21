@@ -50,6 +50,7 @@ const rb_data_type_t na_data_type = {
     {0, 0, 0,}, 0, 0, 0,
 };
 #include "cumo/narray.h"
+#include "cumo/cuda/memory.h"
 #include "cumo/cuda/runtime.h"
 
 static void

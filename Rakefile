@@ -8,7 +8,11 @@ Rake::TestTask.new(:test) do |t|
 end
 
 task :compile do
-  sh 'cd ext/cumo && ruby extconf.rb && make'
+  sh 'cd ext/cumo && ruby extconf.rb && make && make build-ctest'
+end
+
+task :ctest do
+  sh 'cd ext/cumo && ruby extconf.rb && make run-ctest'
 end
 
 task :clean do
