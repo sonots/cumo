@@ -10,6 +10,8 @@ extern "C" {
 #endif
 #endif
 
+extern VALUE cumo_cuda_eOutOfMemoryError;
+
 char*
 cumo_cuda_runtime_malloc(size_t size);
 
