@@ -44,12 +44,14 @@ public:
         if (size_ > 0) {
             CheckStatus(cudaGetDevice(&device_id_));
             CheckStatus(cudaMallocManaged(&ptr_, size_, cudaMemAttachGlobal));
+            // std::cout << "cudaMalloc " << ptr_ << std::endl;
         }
     }
 
     ~Memory() {
         if (size_ > 0) {
             CheckStatus(cudaFree(ptr_));
+            // std::cout << "cudaFree   " << ptr_ << std::endl;
         }
     }
 
@@ -87,7 +89,7 @@ public:
     Chunk(const Chunk&) = default;
 
     ~Chunk() {
-        // std::cout << "dtor " << this << std::endl;
+        // std::cout << "Chunk dtor " << (void*)ptr_ << " " << this << std::endl;
     }
 
     intptr_t ptr() const { return ptr_; }
@@ -195,6 +197,11 @@ public:
         return std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
     }
 
+    bool HasArena(cudaStream_t stream_ptr) {
+        auto it = free_.find(stream_ptr);
+        return it != free_.end();
+    }
+
     // Get appropriate arena (list of bins) of a given stream
     Arena& GetArena(cudaStream_t stream_ptr) {
         return free_[stream_ptr];  // find or create
@@ -223,20 +230,13 @@ public:
         return true;
     }
 
-    //TODO(sonots): Implement
-    //cpdef free_all_blocks(self, stream=None):
-    //    """Free all **non-split** chunks"""
-    //    cdef size_t stream_ptr
-    //    rlock.lock_fastrlock(self._free_lock, -1, True)
-    //    try:
-    //        # free blocks in all arenas
-    //        if stream is None:
-    //            for stream_ptr in list(self._free.iterkeys()):
-    //                _compact_index(self, stream_ptr, True)
-    //        else:
-    //            _compact_index(self, stream.ptr, True)
-    //    finally:
-    //        rlock.unlock_fastrlock(self._free_lock)
+    void CompactIndex(cudaStream_t stream_ptr, bool free);
+
+    // Free all **non-split** chunks in all arenas
+    void FreeAllBlocks();
+
+    // Free all **non-split** chunks in specified arena
+    void FreeAllBlocks(cudaStream_t stream_ptr);
 
     //TODO(sonots): Implement
     //cpdef n_free_blocks(self):

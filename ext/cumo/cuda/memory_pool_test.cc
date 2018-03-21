@@ -141,6 +141,8 @@ public:
         TearDown(); SetUp(); TestMallocSplit();
         TearDown(); SetUp(); TestFreeMerge();
         TearDown(); SetUp(); TestFreeDifferentSize();
+        TearDown(); SetUp(); TestFreeAllBlocks();
+        TearDown(); SetUp(); TestFreeAllBlocksSplit();
         TearDown();
     }
 
@@ -335,44 +337,43 @@ public:
         assert(p1 != p2);
     }
 
-    // void TestFreeAllBlocks() {
-    //     intptr_t p1 = pool_.Malloc(kRoundSize * 4);
-    //     pool_.Free(p1);
-    //     pool_.FreeAllBlocks();
-    //     intptr_t p2 = pool_.Malloc(kRoundSize * 4);
-    //     assert(p1 != p2);
-    //     pool_.Free(p2);
-    // }
+    void TestFreeAllBlocks() {
+        intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p1);
+        pool_->FreeAllBlocks();
+        intptr_t p2 = pool_->Malloc(kRoundSize * 4);
+        // assert(p1 != p2); // cudaMalloc gets same address ...
+        pool_->Free(p2);
+    }
 
-    // def test_free_all_blocks_split(self):
-    //     # do not free splitted blocks
-    //     p = pool_.Malloc(kRoundSize * 4)
-    //     del p
-    //     head = pool_.Malloc(kRoundSize * 2)
-    //     tail = pool_.Malloc(kRoundSize * 2)
-    //     tailptr = tail.ptr
-    //     del tail
-    //     pool_.free_all_blocks()
-    //     p = pool_.Malloc(kRoundSize * 2)
-    //     assert(tailptr, p.ptr)
-    //     del head
+    void TestFreeAllBlocksSplit() {
+        // do not free splitted blocks
+        intptr_t p = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p);
+        intptr_t head = pool_->Malloc(kRoundSize * 2);
+        intptr_t tail = pool_->Malloc(kRoundSize * 2);
+        pool_->Free(tail);
+        pool_->FreeAllBlocks();
+        intptr_t p2 = pool_->Malloc(kRoundSize * 2);
+        assert(tail == p2);
+        pool_->Free(head);
+    }
 
-    // def test_free_all_blocks_stream(self):
-    //     p1 = pool_.Malloc(kRoundSize * 4)
-    //     ptr1 = p1.ptr
-    //     del p1
-    //     with self.stream:
-    //         p2 = pool_.Malloc(kRoundSize * 4)
-    //         ptr2 = p2.ptr
-    //         del p2
-    //     pool_.free_all_blocks(stream=stream_module.Stream.null)
-    //     p3 = pool_.Malloc(kRoundSize * 4)
-    //     self.assertNotEqual(ptr1, p3.ptr)
-    //     self.assertNotEqual(ptr2, p3.ptr)
-    //     with self.stream:
-    //         p4 = pool_.Malloc(kRoundSize * 4)
-    //         self.assertNotEqual(ptr1, p4.ptr)
-    //         assert(ptr2, p4.ptr)
+    // void TestFreeAllBlocksStream() {
+    //      intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+    //      pool_->Free(p1);
+    //      with self.stream:
+    //          p2 = pool_->Malloc(kRoundSize * 4)
+    //          ptr2 = p2.ptr
+    //          del p2
+    //      pool_->free_all_blocks(stream=stream_module.Stream.null)
+    //      p3 = pool_->Malloc(kRoundSize * 4)
+    //      self.assertNotEqual(ptr1, p3.ptr)
+    //      self.assertNotEqual(ptr2, p3.ptr)
+    //      with self.stream:
+    //          p4 = pool_->Malloc(kRoundSize * 4)
+    //          self.assertNotEqual(ptr1, p4.ptr)
+    //          assert(ptr2, p4.ptr)
 
     // def test_free_all_blocks_all_streams(self):
     //     p1 = pool_.Malloc(kRoundSize * 4)
@@ -390,15 +391,6 @@ public:
     //         p4 = pool_.Malloc(kRoundSize * 4)
     //         self.assertNotEqual(ptr1, p4.ptr)
     //         self.assertNotEqual(ptr2, p4.ptr)
-
-    // def test_free_all_free(self):
-    //     p1 = pool_.Malloc(kRoundSize * 4)
-    //     ptr1 = p1.ptr
-    //     del p1
-    //     with testing.assert_warns(DeprecationWarning):
-    //         pool_.free_all_free()
-    //     p2 = pool_.Malloc(kRoundSize * 4)
-    //     self.assertNotEqual(ptr1, p2.ptr)
 
     // def test_used_bytes(self):
     //     p1 = pool_.Malloc(kRoundSize * 2)
