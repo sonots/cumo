@@ -116,86 +116,101 @@ public:
 
 class TestMemoryPool {
 private:
-    MemoryPool pool_;
+    std::shared_ptr<MemoryPool> pool_;
     cudaStream_t stream_ptr_ = 0;
 
 public:
     TestMemoryPool() {}
 
     void SetUp() {
-        pool_ = MemoryPool();
+        pool_ = std::make_shared<MemoryPool>();
+    }
+
+    void TearDown() {
+        pool_.reset();
+    }
+
+    void Run() {
+        TearDown(); SetUp(); TestGetRoundedSize();
+        TearDown(); SetUp(); TestGetBinIndex();
+        TearDown(); SetUp(); TestMalloc();
+        TearDown(); SetUp(); TestFree();
+        TearDown(); SetUp(); TestMallocSplit();
+        TearDown(); SetUp(); TestFreeMerge();
+        TearDown(); SetUp(); TestFreeDifferentSize();
+        TearDown();
     }
 
     void TestGetRoundedSize() {
-        assert(pool_.GetRoundedSize(kRoundSize - 1) == kRoundSize);
-        assert(pool_.GetRoundedSize(kRoundSize) == kRoundSize);
-        assert(pool_.GetRoundedSize(kRoundSize + 1) == kRoundSize * 2);
+        assert(pool_->GetRoundedSize(kRoundSize - 1) == kRoundSize);
+        assert(pool_->GetRoundedSize(kRoundSize) == kRoundSize);
+        assert(pool_->GetRoundedSize(kRoundSize + 1) == kRoundSize * 2);
     }
 
     void TestGetBinIndex() {
-        assert(pool_.GetBinIndex(kRoundSize - 1) == 0);
-        assert(pool_.GetBinIndex(kRoundSize) == 0);
-        assert(pool_.GetBinIndex(kRoundSize + 1) == 1);
+        assert(pool_->GetBinIndex(kRoundSize - 1) == 0);
+        assert(pool_->GetBinIndex(kRoundSize) == 0);
+        assert(pool_->GetBinIndex(kRoundSize + 1) == 1);
     }
 
     void TestMalloc() {
-        intptr_t p1 = pool_.Malloc(kRoundSize * 4);
-        intptr_t p2 = pool_.Malloc(kRoundSize * 4);
-        intptr_t p3 = pool_.Malloc(kRoundSize * 8);
+        intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+        intptr_t p2 = pool_->Malloc(kRoundSize * 4);
+        intptr_t p3 = pool_->Malloc(kRoundSize * 8);
         assert(p1 != p2);
         assert(p1 != p3);
         assert(p2 != p3);
     }
 
     void TestFree() {
-        intptr_t p1 = pool_.Malloc(kRoundSize * 4);
-        pool_.Free(p1);
-        intptr_t p2 = pool_.Malloc(kRoundSize * 4);
+        intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p1);
+        intptr_t p2 = pool_->Malloc(kRoundSize * 4);
         assert(p1 == p2);
     }
 
     void TestMallocSplit() {
-        intptr_t p = pool_.Malloc(kRoundSize * 4);
-        pool_.Free(p);
-        intptr_t head = pool_.Malloc(kRoundSize * 2);
-        intptr_t tail = pool_.Malloc(kRoundSize * 2);
+        intptr_t p = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p);
+        intptr_t head = pool_->Malloc(kRoundSize * 2);
+        intptr_t tail = pool_->Malloc(kRoundSize * 2);
         assert(p == head);
         assert(p + kRoundSize * 2 == tail);
     }
 
     void TestFreeMerge() {
-        intptr_t p1 = pool_.Malloc(kRoundSize * 4);
-        pool_.Free(p1);
+        intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p1);
 
         // merge head into tail
         {
-            intptr_t head = pool_.Malloc(kRoundSize * 2);
-            intptr_t tail = pool_.Malloc(kRoundSize * 2);
+            intptr_t head = pool_->Malloc(kRoundSize * 2);
+            intptr_t tail = pool_->Malloc(kRoundSize * 2);
             assert(p1 == head);
-            pool_.Free(tail);
-            pool_.Free(head);
-            intptr_t p2 = pool_.Malloc(kRoundSize * 4);
+            pool_->Free(tail);
+            pool_->Free(head);
+            intptr_t p2 = pool_->Malloc(kRoundSize * 4);
             assert(p1 == p2);
-            pool_.Free(p2);
+            pool_->Free(p2);
         }
 
         // merge tail into head
         {
-            intptr_t head = pool_.Malloc(kRoundSize * 2);
-            intptr_t tail = pool_.Malloc(kRoundSize * 2);
+            intptr_t head = pool_->Malloc(kRoundSize * 2);
+            intptr_t tail = pool_->Malloc(kRoundSize * 2);
             assert(p1 == head);
-            pool_.Free(head);
-            pool_.Free(tail);
-            intptr_t p2 = pool_.Malloc(kRoundSize * 4);
+            pool_->Free(head);
+            pool_->Free(tail);
+            intptr_t p2 = pool_->Malloc(kRoundSize * 4);
             assert(p1 == p2);
-            pool_.Free(p2);
+            pool_->Free(p2);
         }
     }
 
     void TestFreeDifferentSize() {
-        intptr_t p1 = pool_.Malloc(kRoundSize * 4);
-        pool_.Free(p1);
-        intptr_t p2 = pool_.Malloc(kRoundSize * 8);
+        intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p1);
+        intptr_t p2 = pool_->Malloc(kRoundSize * 8);
         assert(p1 != p2);
     }
 
@@ -334,5 +349,6 @@ public:
 
 int main() {
     cumo::internal::TestChunk{}.Run();
+    cumo::internal::TestMemoryPool{}.Run();
     return 0;
 }
