@@ -120,7 +120,7 @@ public:
     friend std::shared_ptr<Chunk> Split(std::shared_ptr<Chunk>& self, size_t size);
 
     // Merge previously splitted block (chunk)
-    friend void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk>& remaining);
+    friend void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk> remaining);
 
 
 private:

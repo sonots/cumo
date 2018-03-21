@@ -29,14 +29,14 @@ std::shared_ptr<Chunk> Split(std::shared_ptr<Chunk>& self, size_t size) {
 }
 
 
-void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk>& remaining) {
+void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk> remaining) {
+    assert(remaining != nullptr);
     assert(self->stream_ptr_ == remaining->stream_ptr());
     self->size_ += remaining->size();
     self->next_ = remaining->next();
-    if (remaining->next()) {
+    if (remaining->next() != nullptr) {
         self->next_->set_prev(self);
     }
-    remaining.reset();
 }
 
 void MemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {

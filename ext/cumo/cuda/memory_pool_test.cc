@@ -139,8 +139,8 @@ public:
         TearDown(); SetUp(); TestMalloc();
         TearDown(); SetUp(); TestFree();
         TearDown(); SetUp(); TestMallocSplit();
-        //TearDown(); SetUp(); TestFreeMerge();
-        //TearDown(); SetUp(); TestFreeDifferentSize();
+        TearDown(); SetUp(); TestFreeMerge();
+        TearDown(); SetUp(); TestFreeDifferentSize();
         TearDown();
     }
 
