@@ -129,9 +129,13 @@ private:
     std::shared_ptr<Chunk> next_;
     // Raw stream handle of cuda stream
     cudaStream_t stream_ptr_;
-
+    // chunk is in use
     bool in_use_ = false;
 };
+
+using FreeList = std::vector<std::shared_ptr<Chunk>>;  // list of free chunk
+using Arena = std::vector<FreeList>;  // free_list w.r.t arena index
+using ArenaIndexMap = std::vector<int>;  // arena index <=> bin size index
 
 // Memory pool implementation for single device.
 // - The allocator attempts to find the smallest cached block that will fit
@@ -142,10 +146,6 @@ private:
 //   are not split and retry the allocation.
 // class SingleDeviceMemoryPool {
 class MemoryPool {
-    using FreeList = std::vector<std::shared_ptr<Chunk>>;  // list of free chunk
-    using Arena = std::vector<FreeList>;  // free_list w.r.t arena index
-    using ArenaIndexMap = std::vector<int>;  // arena index <=> bin size index
-
 private:
     int device_id_;
     std::unordered_map<intptr_t, std::shared_ptr<Chunk>> in_use_; // ptr => Chunk
@@ -164,10 +164,9 @@ public:
 
 // private:
 
-    // TODO: std::shared_ptr<Chunk>&
-    void AppendToFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr = 0);
+    void AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
 
-    bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr = 0);
+    bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
 
     // Round up the memory size to fit memory alignment of cudaMalloc.
     size_t GetRoundedSize(size_t size) {
@@ -204,6 +203,7 @@ public:
     // std::vector erase-remove idiom
     // http://minus9d.hatenablog.com/entry/20120605/1338896754
     bool EraseFromFreeList(FreeList& free_list, const std::shared_ptr<Chunk>& chunk) {
+        assert(!chunk->in_use());
         auto iter = std::find(free_list.begin(), free_list.end(), chunk);
         if (iter == free_list.end()) {
             return false;

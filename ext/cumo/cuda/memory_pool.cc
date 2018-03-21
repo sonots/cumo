@@ -37,8 +37,8 @@ void Chunk::Merge(std::shared_ptr<Chunk>& remaining) {
     }
 }
 
-// TODO: std::shared_ptr<Chunk>&
-void MemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr) {
+void MemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
+    assert(chunk != nullptr && !chunk->in_use());
     int bin_index = GetBinIndex(size);
     //rlock.lock_fastrlock(self._free_lock, -1, True)
     //try:
@@ -56,7 +56,8 @@ void MemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk> chunk, cud
     //    rlock.unlock_fastrlock(self._free_lock)
 }
 
-bool MemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk> chunk, cudaStream_t stream_ptr) {
+bool MemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
+    assert(chunk != nullptr && !chunk->in_use());
     int bin_index = GetBinIndex(size);
     // rlock.lock_fastrlock(self._free_lock, -1, True)
     // try:
@@ -77,14 +78,12 @@ bool MemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk> chunk, c
 }
 
 intptr_t MemoryPool::Malloc(size_t size) {
+    // if (size == 0) return 0;
     size = GetRoundedSize(size);
-    //if (size == 0) {
-    //    return MemoryPointer(Memory(0), 0);
-    //}
-
     // TODO: support cuda stream
     // stream_ptr = stream_module.get_current_stream_ptr()
     cudaStream_t stream_ptr = 0;
+
     std::shared_ptr<Chunk> chunk = nullptr;
 
     // find best-fit, or a smallest larger allocation
@@ -144,9 +143,11 @@ intptr_t MemoryPool::Malloc(size_t size) {
         chunk = std::make_shared<Chunk>(mem, 0, size, stream_ptr);
     }
 
+    assert(chunk != nullptr);
     assert(chunk->stream_ptr() == stream_ptr);
     //rlock.lock_fastrlock(self._in_use_lock, -1, True)
     //try:
+    chunk->set_in_use(true);
     in_use_.emplace(chunk->ptr(), chunk);
     //finally:
     //    rlock.unlock_fastrlock(self._in_use_lock)
@@ -160,18 +161,20 @@ void MemoryPool::Free(intptr_t ptr) {
     if (chunk == nullptr) {
         throw std::runtime_error("Cannot free out-of-pool memory");
     }
-    //except KeyError:
-    //    raise RuntimeError('Cannot free out-of-pool memory')
+    chunk->set_in_use(false);
+    in_use_.erase(ptr);
     //finally:
     //    rlock.unlock_fastrlock(self._in_use_lock)
+
+    //TODO(sonots): Support stream
     cudaStream_t stream_ptr = chunk->stream_ptr();
 
-    if (chunk->next() != nullptr) {
+    if (chunk->next() != nullptr && !chunk->next()->in_use()) {
         if (RemoveFromFreeList(chunk->next()->size(), chunk->next(), stream_ptr)) {
             chunk->Merge(chunk->next());
         }
     }
-    if (chunk->prev() != nullptr) {
+    if (chunk->prev() != nullptr && !chunk->prev()->in_use()) {
         if (RemoveFromFreeList(chunk->prev()->size(), chunk->prev(), stream_ptr)) {
             chunk = chunk->prev();
             chunk->Merge(chunk->next());
