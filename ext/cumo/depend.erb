@@ -53,6 +53,6 @@ run-ctest : cuda/memory_pool_test.exe
 	./$<
 
 cuda/memory_pool_test.exe: cuda/memory_pool_test.cc cuda/memory_pool.cc include/cumo/cuda/memory_pool.h
-	nvcc -std=c++14 -I. $(INCFLAGS) -o $@ $< cuda/memory_pool.cc
+	nvcc -std=c++14 <%= ENV['DEBUG'] ? '-g -O0 --compiler-options -Wall' : '' %> -I. $(INCFLAGS) -o $@ $< cuda/memory_pool.cc
 
 CLEANOBJS = *.o */*.o */*/*.o *.bak narray/types/*.c narray/types/*_kernel.cu *.exe */*.exe
