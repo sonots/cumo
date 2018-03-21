@@ -26,6 +26,8 @@ export LIBRARY_PATH="$CUDA_PATH/lib64:$CUDA_PATH/lib:$LIBRARY_PATH"
 
 ## Installation
 
+Add a following line to your Gemfile:
+
 ```ruby
 gem 'cumo'
 ```
