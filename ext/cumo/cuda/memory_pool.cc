@@ -129,14 +129,15 @@ intptr_t MemoryPool::Malloc(size_t size) {
                 }
                 size_t total = size + GetTotalBytes();
                 throw OutOfMemoryError(size, total);
-                // GC.start
+                // TODO(sonots): rb_funcall needs ruby, memory_pool_test can not be ran...
+                // rb_funcall(rb_intern("GC"), rb_intern("start"), 0);
                 // try {
                 //     mem = std::make_shared<Memory>(size);
                 // } catch (const CUDARuntimeError& e) {
                 //     if (e.status() != cudaErrorMemoryAllocation) {
                 //         throw;
                 //     }
-                //     size_t total = size + total_bytes();
+                //     size_t total = size + GetTotalBytes();
                 //     throw OutOfMemoryError(size, total);
                 // }
             }
