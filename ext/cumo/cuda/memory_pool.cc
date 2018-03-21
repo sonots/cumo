@@ -9,32 +9,34 @@ void CheckStatus(cudaError_t status) {
     }
 }
 
-std::shared_ptr<Chunk> Chunk::Split(size_t size) {
-    assert(size_ >= size);
-    if (size_ == size) {
+std::shared_ptr<Chunk> Split(std::shared_ptr<Chunk>& self, size_t size) {
+    assert(self->size_ >= size);
+    if (self->size_ == size) {
         return nullptr;
     }
 
-    auto remaining = std::make_shared<Chunk>(mem_, offset_ + size, size_ - size, stream_ptr_);
-    size_ = size;
+    auto remaining = std::make_shared<Chunk>(self->mem_, self->offset_ + size, self->size_ - size, self->stream_ptr_);
+    self->size_ = size;
 
-    if (next_) {
-        remaining->set_next(std::move(next_));
+    if (self->next_) {
+        remaining->set_next(std::move(self->next_));
         remaining->next()->set_prev(remaining);
     }
-    next_ = remaining;
-    remaining->set_prev(shared_from_this());
+    self->next_ = remaining;
+    remaining->set_prev(self);
 
     return remaining;
 }
 
-void Chunk::Merge(std::shared_ptr<Chunk>& remaining) {
-    assert(stream_ptr_ == remaining->stream_ptr());
-    size_ += remaining->size();
-    next_ = remaining->next();
+
+void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk>& remaining) {
+    assert(self->stream_ptr_ == remaining->stream_ptr());
+    self->size_ += remaining->size();
+    self->next_ = remaining->next();
     if (remaining->next()) {
-        next_->set_prev(shared_from_this());
+        self->next_->set_prev(self);
     }
+    remaining.reset();
 }
 
 void MemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
@@ -105,7 +107,7 @@ intptr_t MemoryPool::Malloc(size_t size) {
     //     rlock.unlock_fastrlock(self._free_lock)
 
     if (chunk != nullptr) {
-        std::shared_ptr<Chunk> remaining = chunk->Split(size);
+        std::shared_ptr<Chunk> remaining = Split(chunk, size);
         if (remaining != nullptr) {
             AppendToFreeList(remaining->size(), remaining, stream_ptr);
         }
@@ -171,13 +173,13 @@ void MemoryPool::Free(intptr_t ptr) {
 
     if (chunk->next() != nullptr && !chunk->next()->in_use()) {
         if (RemoveFromFreeList(chunk->next()->size(), chunk->next(), stream_ptr)) {
-            chunk->Merge(chunk->next());
+            Merge(chunk, chunk->next());
         }
     }
     if (chunk->prev() != nullptr && !chunk->prev()->in_use()) {
         if (RemoveFromFreeList(chunk->prev()->size(), chunk->prev(), stream_ptr)) {
             chunk = chunk->prev();
-            chunk->Merge(chunk->next());
+            Merge(chunk, chunk->next());
         }
     }
     AppendToFreeList(chunk->size(), chunk, stream_ptr);

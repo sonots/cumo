@@ -10,6 +10,10 @@
 
 #include <cuda_runtime.h>
 
+// TODO(sonots): Support multiple devices
+// TODO(sonots): thread-safe
+// TODO(sonots): Support CUDA streams
+
 // CUDA memory pool implementation highly referring CuPy
 
 namespace cumo {
@@ -67,8 +71,10 @@ private:
 // A chunk might be a splitted memory block from a larger allocation.
 // The prev/next pointers contruct a doubly-linked list of memory addresses
 // sorted by base address that must be contiguous.
-class Chunk : public std::enable_shared_from_this<Chunk> {
+class Chunk {
 public:
+    Chunk() {}
+
     // mem: The device memory buffer.
     // offset: An offset bytes from the head of the buffer.
     // size: Chunk size in bytes.
@@ -79,6 +85,10 @@ public:
     }
 
     Chunk(const Chunk&) = default;
+
+    ~Chunk() {
+        // std::cout << "dtor " << this << std::endl;
+    }
 
     intptr_t ptr() const { return ptr_; }
 
@@ -107,10 +117,11 @@ public:
     void set_in_use(bool in_use) { in_use_ = in_use; }
 
     // Split contiguous block of a larger allocation
-    std::shared_ptr<Chunk> Split(size_t size);
+    friend std::shared_ptr<Chunk> Split(std::shared_ptr<Chunk>& self, size_t size);
 
     // Merge previously splitted block (chunk)
-    void Merge(std::shared_ptr<Chunk>& remaining);
+    friend void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk>& remaining);
+
 
 private:
     // The device memory buffer.
@@ -194,8 +205,8 @@ public:
         return index_[stream_ptr];  // find or create
     }
 
-    std::shared_ptr<Chunk>& PopFromFreeList(FreeList& free_list) {
-        auto& data = free_list.back();
+    std::shared_ptr<Chunk> PopFromFreeList(FreeList& free_list) {
+        auto data = free_list.back();
         free_list.pop_back();
         return data;
     }

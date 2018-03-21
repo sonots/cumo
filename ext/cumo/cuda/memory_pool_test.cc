@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <memory>
+#include <iostream>
 
 // TODO(sonots): Use googletest?
 // TODO(sonots): Provide clean way to build this test outside extconf.rb
@@ -25,7 +26,7 @@ public:
         auto mem = std::make_shared<Memory>(kRoundSize * 4);
         auto chunk = std::make_shared<Chunk>(mem, 0, mem->size(), stream_ptr_);
 
-        auto tail = chunk->Split(kRoundSize * 2);
+        auto tail = Split(chunk, kRoundSize * 2);
         assert(chunk->ptr() == mem->ptr());
         assert(chunk->offset() == 0);
         assert(chunk->size() == kRoundSize * 2);
@@ -39,7 +40,7 @@ public:
         assert(tail->next() == nullptr);
         assert(tail->stream_ptr() == stream_ptr_);
 
-        auto tail_of_head = chunk->Split(kRoundSize);
+        auto tail_of_head = Split(chunk, kRoundSize);
         assert(chunk->ptr() == mem->ptr());
         assert(chunk->offset() == 0);
         assert(chunk->size() == kRoundSize);
@@ -53,7 +54,7 @@ public:
         assert(tail_of_head->next()->ptr() == tail->ptr());
         assert(tail_of_head->stream_ptr() == stream_ptr_);
 
-        auto tail_of_tail = tail->Split(kRoundSize);
+        auto tail_of_tail = Split(tail, kRoundSize);
         assert(tail->ptr() == chunk->ptr() + kRoundSize * 2);
         assert(tail->offset() == kRoundSize * 2);
         assert(tail->size() == kRoundSize);
@@ -76,7 +77,7 @@ public:
         auto chunk_offset = chunk->offset();
         auto chunk_size = chunk->size();
 
-        auto tail = chunk->Split(kRoundSize * 2);
+        auto tail = Split(chunk, kRoundSize * 2);
         auto head = chunk;
         auto head_ptr = head->ptr();
         auto head_offset = head->offset();
@@ -85,10 +86,10 @@ public:
         auto tail_offset = tail->offset();
         auto tail_size = tail->size();
 
-        auto tail_of_head = head->Split(kRoundSize);
-        auto tail_of_tail = tail->Split(kRoundSize);
+        auto tail_of_head = Split(head, kRoundSize);
+        auto tail_of_tail = Split(tail, kRoundSize);
 
-        head->Merge(tail_of_head);
+        Merge(head, tail_of_head);
         assert(head->ptr() == head_ptr);
         assert(head->offset() == head_offset);
         assert(head->size() == head_size);
@@ -96,7 +97,7 @@ public:
         assert(head->next()->ptr() == tail_ptr);
         assert(head->stream_ptr() == stream_ptr_);
 
-        tail->Merge(tail_of_tail);
+        Merge(tail, tail_of_tail);
         assert(tail->ptr() == tail_ptr);
         assert(tail->offset() == tail_offset);
         assert(tail->size() == tail_size);
@@ -104,7 +105,7 @@ public:
         assert(tail->next() == nullptr);
         assert(tail->stream_ptr() == stream_ptr_);
 
-        head->Merge(tail);
+        Merge(head, tail);
         assert(head->ptr() == chunk_ptr);
         assert(head->offset() == chunk_offset);
         assert(head->size() == chunk_size);
@@ -137,7 +138,7 @@ public:
         TearDown(); SetUp(); TestRemoveFromFreeList();
         TearDown(); SetUp(); TestMalloc();
         TearDown(); SetUp(); TestFree();
-        //TearDown(); SetUp(); TestMallocSplit();
+        TearDown(); SetUp(); TestMallocSplit();
         //TearDown(); SetUp(); TestFreeMerge();
         //TearDown(); SetUp(); TestFreeDifferentSize();
         TearDown();
