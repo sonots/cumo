@@ -147,7 +147,8 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
                 if (e.status() != cudaErrorMemoryAllocation) {
                     throw;
                 }
-#ifdef NO_RUBY
+#ifdef NO_RUBY // memory_pool_test.cpp does not bind with libruby
+
                 size_t total = size + GetTotalBytes();
                 throw OutOfMemoryError(size, total);
 #else
