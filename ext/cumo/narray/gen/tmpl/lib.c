@@ -4,6 +4,7 @@
 
   created on: 2017-03-11
   Copyright (C) 2017 Masahiro Tanaka
+  Copyright (C) 2018 Naotoshi Seo
 */
 
 #include <ruby.h>
