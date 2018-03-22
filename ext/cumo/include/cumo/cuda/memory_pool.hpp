@@ -44,6 +44,14 @@ void CheckStatus(cudaError_t status);
 //
 // This class provides an RAII interface of the CUDA memory allocation.
 class Memory {
+private:
+    // Pointer to the place within the buffer.
+    void* ptr_ = nullptr;
+    // Size of the memory allocation in bytes.
+    size_t size_ = 0;
+    // GPU device id whose memory the pointer refers to.
+    int device_id_ = -1;
+
 public:
     // size: Size of the memory allocation in bytes.
     Memory(size_t size) : size_(size) {
@@ -65,13 +73,6 @@ public:
     intptr_t ptr() const { return reinterpret_cast<intptr_t>(ptr_); }
     size_t size() const { return size_; }
     int device_id() const { return device_id_; }
-private:
-    // Pointer to the place within the buffer.
-    void* ptr_ = nullptr;
-    // Size of the memory allocation in bytes.
-    size_t size_ = 0;
-    // GPU device id whose memory the pointer refers to.
-    int device_id_ = -1;
 };
 
 // A chunk points to a device memory.
@@ -80,6 +81,26 @@ private:
 // The prev/next pointers contruct a doubly-linked list of memory addresses
 // sorted by base address that must be contiguous.
 class Chunk {
+private:
+    // The device memory buffer.
+    std::shared_ptr<Memory> mem_;
+    // Memory address.
+    intptr_t ptr_ = 0;
+    // An offset bytes from the head of the buffer.
+    size_t offset_ = 0;
+    // Chunk size in bytes.
+    size_t size_ = 0;
+    // GPU device id whose memory the pointer refers to.
+    int device_id_;
+    // prev memory pointer if split from a larger allocation
+    std::shared_ptr<Chunk> prev_;
+    // next memory pointer if split from a larger allocation
+    std::shared_ptr<Chunk> next_;
+    // Raw stream handle of cuda stream
+    cudaStream_t stream_ptr_;
+    // chunk is in use
+    bool in_use_ = false;
+
 public:
     Chunk() {}
 
@@ -129,27 +150,6 @@ public:
 
     // Merge previously splitted block (chunk)
     friend void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk> remaining);
-
-
-private:
-    // The device memory buffer.
-    std::shared_ptr<Memory> mem_;
-    // Memory address.
-    intptr_t ptr_ = 0;
-    // An offset bytes from the head of the buffer.
-    size_t offset_ = 0;
-    // Chunk size in bytes.
-    size_t size_ = 0;
-    // GPU device id whose memory the pointer refers to.
-    int device_id_;
-    // prev memory pointer if split from a larger allocation
-    std::shared_ptr<Chunk> prev_;
-    // next memory pointer if split from a larger allocation
-    std::shared_ptr<Chunk> next_;
-    // Raw stream handle of cuda stream
-    cudaStream_t stream_ptr_;
-    // chunk is in use
-    bool in_use_ = false;
 };
 
 using FreeList = std::vector<std::shared_ptr<Chunk>>;  // list of free chunk
