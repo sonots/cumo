@@ -14,7 +14,7 @@ bool
 cumo_cuda_memory_pool_p()
 {
     const static char* env = std::getenv("CUMO_MEMORY_POOL");
-    static bool enabled = (env != nullptr && std::string(env) != "OFF");
+    static bool enabled = (env != nullptr && std::string(env) != "OFF" && std::string(env) != "0" && std::string(env) != "NO");
     return enabled;
 }
 
