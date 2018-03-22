@@ -23,3 +23,4 @@ t.rb
 .ruby-version
 .yardoc/
 *.exe
+.DS_Store
