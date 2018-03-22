@@ -1,5 +1,5 @@
-#ifndef CUMO_CUDA_MEMORY_POOL_H
-#define CUMO_CUDA_MEMORY_POOL_H
+#ifndef CUMO_CUDA_MEMORY_POOL_IMPL_H
+#define CUMO_CUDA_MEMORY_POOL_IMPL_H
 
 #include <algorithm>
 #include <cassert>
@@ -350,4 +350,4 @@ public:
 } // namespace internal
 } // namespace cumo
 
-#endif /* ifndef CUMO_CUDA_MEMORY_POOL_H */
+#endif /* ifndef CUMO_CUDA_MEMORY_POOL_IMPL_H */
