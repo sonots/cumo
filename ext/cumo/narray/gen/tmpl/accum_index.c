@@ -2,7 +2,7 @@
 
 <%   [64,32].each do |i| %>
 <% unless type_name == 'robject' %>
-void <%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr);
+void cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr);
 <% end %>
 
 #define idx_t int<%=i%>_t
@@ -28,7 +28,7 @@ static void
     }
     <% else %>
     {
-        <%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(n,d_ptr,d_step,i_ptr,i_step,o_ptr);
+        cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(n,d_ptr,d_step,i_ptr,i_step,o_ptr);
     }
     <% end %>
 

@@ -1,5 +1,5 @@
 <% unless type_name == 'robject' %>
-void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t s0, ssize_t s1, ssize_t kofs, dtype data, uint64_t n0, uint64_t n1);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t s0, ssize_t s1, ssize_t kofs, dtype data, uint64_t n0, uint64_t n1);
 <% end %>
 
 #include <cuda_runtime.h>
@@ -39,7 +39,7 @@ static void
         }
     }
     <% else %>
-    <%="#{c_iter}_stride_kernel_launch"%>(p0,s0,s1,kofs,data,n0,n1);
+    <%="cumo_#{c_iter}_stride_kernel_launch"%>(p0,s0,s1,kofs,data,n0,n1);
     <% end %>
 }
 

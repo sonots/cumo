@@ -1,8 +1,8 @@
 <% unless c_iter.include? 'robject' %>
-void <%="#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, uint64_t n);
-void <%="#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, uint64_t n);
-void <%="#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, uint64_t n);
-void <%="#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, uint64_t n);
+void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, uint64_t n);
+void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n);
 <% end %>
 
 static void
@@ -54,15 +54,15 @@ static void
     {
         if (idx2) {
             if (idx1) {
-                <%="#{c_iter}_index_index_kernel_launch"%>(p1,p2,idx1,idx2,i);
+                <%="cumo_#{c_iter}_index_index_kernel_launch"%>(p1,p2,idx1,idx2,i);
             } else {
-                <%="#{c_iter}_stride_index_kernel_launch"%>(p1,p2,s1,idx2,i);
+                <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(p1,p2,s1,idx2,i);
             }
         } else {
             if (idx1) {
-                <%="#{c_iter}_index_stride_kernel_launch"%>(p1,p2,idx1,s2,i);
+                <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(p1,p2,idx1,s2,i);
             } else {
-                <%="#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,i);
+                <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,i);
             }
         }
     }
