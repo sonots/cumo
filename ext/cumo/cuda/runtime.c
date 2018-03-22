@@ -11,9 +11,15 @@ VALUE cumo_cuda_mRuntime;
 #define check_status(status) (cumo_cuda_runtime_check_status((status)))
 
 ///////////////////////////////////////////
-// Initialization
+// Version Management
 ///////////////////////////////////////////
 
+/*
+  Returns the CUDA driver version.
+
+  @return [Integer] Returns the CUDA driver version.
+  @see http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART____VERSION.html#group__CUDART____VERSION_1g8a06ee14a0551606b7c780084d5564ab
+ */
 static VALUE
 rb_cudaDriverGetVersion(VALUE self)
 {
@@ -26,6 +32,12 @@ rb_cudaDriverGetVersion(VALUE self)
     return INT2NUM(_version);
 }
 
+/*
+  Returns the CUDA Runtime version.
+
+  @return [Integer] Returns the CUDA Runtime version.
+  @see http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART____VERSION.html#group__CUDART____VERSION_1g0e3952c7802fd730432180f1f4a6cdc6
+ */
 static VALUE
 rb_cudaRuntimeGetVersion(VALUE self)
 {
