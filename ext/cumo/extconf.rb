@@ -64,8 +64,8 @@ narray/struct
 narray/rand
 cuda/cublas
 cuda/driver
-cuda/memory
 cuda/memory_pool
+cuda/memory_pool_impl
 cuda/runtime
 cuda/nvrtc
 )

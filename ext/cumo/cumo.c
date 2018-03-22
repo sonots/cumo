@@ -28,7 +28,7 @@ void Init_nary_rand();
 void Init_nary_array();
 void Init_nary_struct();
 void Init_cumo_cuda_driver();
-void Init_cumo_cuda_memory();
+void Init_cumo_cuda_memory_pool();
 void Init_cumo_cuda_runtime();
 void Init_cumo_cuda_nvrtc();
 
@@ -76,7 +76,7 @@ Init_cumo()
     Init_nary_struct();
 
     Init_cumo_cuda_driver();
-    Init_cumo_cuda_memory();
+    Init_cumo_cuda_memory_pool();
     Init_cumo_cuda_runtime();
     Init_cumo_cuda_nvrtc();
 }
