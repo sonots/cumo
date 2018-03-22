@@ -115,16 +115,16 @@ public:
     }
 };
 
-class TestMemoryPool {
+class TestSingleDeviceMemoryPool {
 private:
-    std::shared_ptr<MemoryPool> pool_;
+    std::shared_ptr<SingleDeviceMemoryPool> pool_;
     cudaStream_t stream_ptr_ = 0;
 
 public:
-    TestMemoryPool() {}
+    TestSingleDeviceMemoryPool() {}
 
     void SetUp() {
-        pool_ = std::make_shared<MemoryPool>();
+        pool_ = std::make_shared<SingleDeviceMemoryPool>();
     }
 
     void TearDown() {
@@ -137,11 +137,14 @@ public:
         TearDown(); SetUp(); TestAppendToFreeList();
         TearDown(); SetUp(); TestRemoveFromFreeList();
         TearDown(); SetUp(); TestMalloc();
+        TearDown(); SetUp(); TestMallocWithZero();
         TearDown(); SetUp(); TestFree();
+        TearDown(); SetUp(); TestFreeDoubly();
         TearDown(); SetUp(); TestMallocSplit();
         TearDown(); SetUp(); TestFreeMerge();
         TearDown(); SetUp(); TestFreeDifferentSize();
         TearDown(); SetUp(); TestFreeAllBlocks();
+        TearDown(); SetUp(); TestFreeAllBlocksWithoutMalloc();
         TearDown(); SetUp(); TestFreeAllBlocksSplit();
         TearDown(); SetUp(); TestGetUsedBytes();
         TearDown(); SetUp(); TestGetFreeBytes();
@@ -288,11 +291,21 @@ public:
         assert(p2 != p3);
     }
 
+    void TestMallocWithZero() {
+        pool_->Malloc(0); // actually, cuda returns 0
+    }
+
     void TestFree() {
         intptr_t p1 = pool_->Malloc(kRoundSize * 4);
         pool_->Free(p1);
         intptr_t p2 = pool_->Malloc(kRoundSize * 4);
         assert(p1 == p2);
+    }
+
+    void TestFreeDoubly() {
+        intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p1);
+        // pool_->Free(p1); // will abort
     }
 
     void TestMallocSplit() {
@@ -347,6 +360,10 @@ public:
         intptr_t p2 = pool_->Malloc(kRoundSize * 4);
         // assert(p1 != p2); // cudaMalloc gets same address ...
         pool_->Free(p2);
+    }
+
+    void TestFreeAllBlocksWithoutMalloc() {
+        pool_->FreeAllBlocks();
     }
 
     void TestFreeAllBlocksSplit() {
@@ -463,11 +480,75 @@ public:
 
 };
 
+class TestMemoryPool {
+private:
+    std::shared_ptr<MemoryPool> pool_;
+    cudaStream_t stream_ptr_ = 0;
+
+public:
+    TestMemoryPool() {}
+
+    void SetUp() {
+        pool_ = std::make_shared<MemoryPool>();
+    }
+
+    void TearDown() {
+        pool_.reset();
+    }
+
+    void Run() {
+        TearDown(); SetUp(); TestMalloc();
+        TearDown(); SetUp(); TestFree();
+        TearDown(); SetUp(); TestFreeAllBlocks();
+        TearDown(); SetUp(); TestGetNumFreeBlocks();
+        TearDown(); SetUp(); TestGetUsedBytes();
+        TearDown(); SetUp(); TestGetFreeBytes();
+        TearDown(); SetUp(); TestGetTotalBytes();
+        TearDown();
+    }
+
+    void TestMalloc() {
+        auto p = pool_->Malloc(1);
+        assert(0 != p);
+    }
+
+    void TestFree() {
+        auto p = pool_->Malloc(1);
+        pool_->Free(p);
+    }
+
+    void TestFreeAllBlocks() {
+        auto p = pool_->Malloc(1);
+        assert(pool_->GetNumFreeBlocks() == 0);
+        pool_->Free(p);
+        assert(pool_->GetNumFreeBlocks() == 1);
+        pool_->FreeAllBlocks();
+        assert(pool_->GetNumFreeBlocks() == 0);
+    }
+
+    void TestGetNumFreeBlocks() {
+        assert(0 == pool_->GetNumFreeBlocks());
+    }
+
+    void TestGetUsedBytes() {
+        assert(0 == pool_->GetUsedBytes());
+    }
+
+    void TestGetFreeBytes() {
+        assert(0 == pool_->GetFreeBytes());
+    }
+
+    void TestGetTotalBytes() {
+        assert(0 == pool_->GetTotalBytes());
+    }
+};
+
 }  // namespace internal
 }  // namespace cumo
 
 int main() {
     cumo::internal::TestChunk{}.Run();
+    cumo::internal::TestSingleDeviceMemoryPool{}.Run();
     cumo::internal::TestMemoryPool{}.Run();
     return 0;
 }

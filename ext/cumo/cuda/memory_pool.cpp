@@ -39,7 +39,7 @@ void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk> remaining) {
     }
 }
 
-void MemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
+void SingleDeviceMemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
     assert(chunk != nullptr && !chunk->in_use());
     int bin_index = GetBinIndex(size);
     //rlock.lock_fastrlock(self._free_lock, -1, True)
@@ -58,7 +58,7 @@ void MemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cu
     //    rlock.unlock_fastrlock(self._free_lock)
 }
 
-bool MemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
+bool SingleDeviceMemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
     assert(chunk != nullptr && !chunk->in_use());
     int bin_index = GetBinIndex(size);
     // rlock.lock_fastrlock(self._free_lock, -1, True)
@@ -79,8 +79,7 @@ bool MemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, 
     //     rlock.unlock_fastrlock(self._free_lock)
 }
 
-intptr_t MemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
-    // if (size == 0) return 0;
+intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
     size = GetRoundedSize(size);
     std::shared_ptr<Chunk> chunk = nullptr;
 
@@ -152,13 +151,11 @@ intptr_t MemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
     return chunk->ptr();
 }
 
-void MemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
+void SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
     //rlock.lock_fastrlock(self._in_use_lock, -1, True)
     //try:
     std::shared_ptr<Chunk> chunk = in_use_[ptr];
-    if (chunk == nullptr) {
-        throw std::runtime_error("Cannot free out-of-pool memory");
-    }
+    assert(chunk != nullptr);
     chunk->set_in_use(false);
     in_use_.erase(ptr);
     //finally:
@@ -178,7 +175,7 @@ void MemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
     AppendToFreeList(chunk->size(), chunk, stream_ptr);
 }
 
-void MemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {
+void SingleDeviceMemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {
     // need lock ouside this function
     if (!HasArena(stream_ptr)) return;
 
@@ -219,7 +216,7 @@ void MemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {
 }
 
 // Free all **non-split** chunks in all arenas
-void MemoryPool::FreeAllBlocks() {
+void SingleDeviceMemoryPool::FreeAllBlocks() {
     // rlock.lock_fastrlock(self._free_lock, -1, True)
     // try:
     std::vector<cudaStream_t> keys(free_.size());
@@ -232,7 +229,7 @@ void MemoryPool::FreeAllBlocks() {
 }
 
 // Free all **non-split** chunks in specified arena
-void MemoryPool::FreeAllBlocks(cudaStream_t stream_ptr) {
+void SingleDeviceMemoryPool::FreeAllBlocks(cudaStream_t stream_ptr) {
     // rlock.lock_fastrlock(self._free_lock, -1, True)
     // try:
     CompactIndex(stream_ptr, true);
@@ -240,7 +237,7 @@ void MemoryPool::FreeAllBlocks(cudaStream_t stream_ptr) {
     //    rlock.unlock_fastrlock(self._free_lock)
 }
 
-size_t MemoryPool::GetNumFreeBlocks() {
+size_t SingleDeviceMemoryPool::GetNumFreeBlocks() {
     size_t n = 0;
     // rlock.lock_fastrlock(self._free_lock, -1, True)
     // try:
@@ -255,7 +252,7 @@ size_t MemoryPool::GetNumFreeBlocks() {
     return n;
 }
 
-size_t MemoryPool::GetUsedBytes() {
+size_t SingleDeviceMemoryPool::GetUsedBytes() {
     size_t size = 0;
     // rlock.lock_fastrlock(self._in_use_lock, -1, True)
     // try:
@@ -268,7 +265,7 @@ size_t MemoryPool::GetUsedBytes() {
     return size;
 }
 
-size_t MemoryPool::GetFreeBytes() {
+size_t SingleDeviceMemoryPool::GetFreeBytes() {
     size_t size = 0;
     // rlock.lock_fastrlock(self._free_lock, -1, True)
     // try:

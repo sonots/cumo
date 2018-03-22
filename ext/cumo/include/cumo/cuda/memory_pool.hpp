@@ -10,7 +10,6 @@
 
 #include <cuda_runtime.h>
 
-// TODO(sonots): Support multiple devices
 // TODO(sonots): thread-safe
 
 // CUDA memory pool implementation highly referring CuPy
@@ -164,8 +163,7 @@ using ArenaIndexMap = std::vector<int>;  // arena index <=> bin size index
 //   cudaMalloc.
 // - If the cudaMalloc fails, the allocator will free all cached blocks that
 //   are not split and retry the allocation.
-// class SingleDeviceMemoryPool {
-class MemoryPool {
+class SingleDeviceMemoryPool {
 private:
     int device_id_;
     std::unordered_map<intptr_t, std::shared_ptr<Chunk>> in_use_; // ptr => Chunk
@@ -173,8 +171,7 @@ private:
     std::unordered_map<cudaStream_t, ArenaIndexMap> index_;
 
 public:
-    //SingleDeviceMemoryPool() {
-    MemoryPool() {
+    SingleDeviceMemoryPool() {
         CheckStatus(cudaGetDevice(&device_id_));
     }
 
@@ -182,11 +179,23 @@ public:
 
     void Free(intptr_t ptr, cudaStream_t stream_ptr = 0);
 
+    // Free all **non-split** chunks in all arenas
+    void FreeAllBlocks();
+
+    // Free all **non-split** chunks in specified arena
+    void FreeAllBlocks(cudaStream_t stream_ptr);
+
+    size_t GetNumFreeBlocks();
+
+    size_t GetUsedBytes();
+
+    size_t GetFreeBytes();
+
+    size_t GetTotalBytes() {
+        return GetUsedBytes() + GetFreeBytes();
+    }
+
 // private:
-
-    void AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
-
-    bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
 
     // Round up the memory size to fit memory alignment of cudaMalloc.
     size_t GetRoundedSize(size_t size) {
@@ -237,22 +246,113 @@ public:
         return true;
     }
 
+    void AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
+
+    bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
+
     void CompactIndex(cudaStream_t stream_ptr, bool free);
+};
+
+// Memory pool for all GPU devices on the host.
+//
+// A memory pool preserves any allocations even if they are freed by the user.
+// Freed memory buffers are held by the memory pool as *free blocks*, and they
+// are reused for further memory allocations of the same sizes. The allocated
+// blocks are managed for each device, so one instance of this class can be
+// used for multiple devices.
+// .. note::
+//    When the allocation is skipped by reusing the pre-allocated block, it
+//    does not call ``cudaMalloc`` and therefore CPU-GPU synchronization does
+//    not occur. It makes interleaves of memory allocations and kernel
+//    invocations very fast.
+// .. note::
+//    The memory pool holds allocated blocks without freeing as much as
+//    possible. It makes the program hold most of the device memory, which may
+//    make other CUDA programs running in parallel out-of-memory situation.
+class MemoryPool {
+private:
+    int device_id() {
+        int device_id = -1;
+        CheckStatus(cudaGetDevice(&device_id));
+        return device_id;
+    }
+
+    std::unordered_map<int, SingleDeviceMemoryPool> pools_;
+
+public:
+    MemoryPool() {}
+
+    // Allocates the memory, from the pool if possible.
+    //
+    // Args:
+    //     size (int): Size of the memory buffer to allocate in bytes.
+    //     stream_ptr (cudaStream_t): Get the memory from the arena of given stream
+    // Returns:
+    //     intptr_t: Pointer address to the allocated buffer.
+    intptr_t Malloc(size_t size, cudaStream_t stream_ptr = 0) {
+        auto& mp = pools_[device_id()];
+        return mp.Malloc(size, stream_ptr);
+    }
+
+    // Frees the memory, to the pool
+    //
+    // Args:
+    //     ptr (intptr_t): Pointer of the memory buffer
+    //     stream_ptr (cudaStream_t): Return the memory to the arena of given stream
+    void Free(intptr_t ptr, cudaStream_t stream_ptr = 0) {
+        auto& mp = pools_[device_id()];
+        mp.Free(ptr, stream_ptr);
+    }
 
     // Free all **non-split** chunks in all arenas
-    void FreeAllBlocks();
+    void FreeAllBlocks() {
+        auto& mp = pools_[device_id()];
+        return mp.FreeAllBlocks();
+    }
 
     // Free all **non-split** chunks in specified arena
-    void FreeAllBlocks(cudaStream_t stream_ptr);
+    //
+    // Args:
+    //     stream_ptr (cudaStream_t): Release free blocks in the arena of given stream
+    void FreeAllBlocks(cudaStream_t stream_ptr) {
+        auto& mp = pools_[device_id()];
+        return mp.FreeAllBlocks(stream_ptr);
+    }
 
-    size_t GetNumFreeBlocks();
+    // Count the total number of free blocks.
+    //
+    // Returns:
+    //     size_t: The total number of free blocks.
+    size_t GetNumFreeBlocks() {
+        auto& mp = pools_[device_id()];
+        return mp.GetNumFreeBlocks();
+    }
 
-    size_t GetUsedBytes();
+    // Get the total number of bytes used.
+    //
+    // Returns:
+    //     size_t: The total number of bytes used.
+    size_t GetUsedBytes() {
+        auto& mp = pools_[device_id()];
+        return mp.GetUsedBytes();
+    }
 
-    size_t GetFreeBytes();
+    // Get the total number of bytes acquired but not used in the pool.
+    //
+    // Returns:
+    //     size_t: The total number of bytes acquired but not used in the pool.
+    size_t GetFreeBytes() {
+        auto& mp = pools_[device_id()];
+        return mp.GetFreeBytes();
+    }
 
+    // Get the total number of bytes acquired in the pool.
+    //
+    // Returns:
+    //     size_t: The total number of bytes acquired in the pool.
     size_t GetTotalBytes() {
-        return GetUsedBytes() + GetFreeBytes();
+        auto& mp = pools_[device_id()];
+        return mp.GetTotalBytes();
     }
 };
 
