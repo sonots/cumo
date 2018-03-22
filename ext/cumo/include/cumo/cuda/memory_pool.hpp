@@ -11,8 +11,6 @@
 
 #include <cuda_runtime.h>
 
-// TODO(sonots): thread-safe
-
 // CUDA memory pool implementation highly referring CuPy
 
 namespace cumo {
