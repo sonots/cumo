@@ -152,7 +152,7 @@ work:</p>
 <p>You can use <code>CUDA_VISIBLE_DEVICES=$id</code> environment variable, or</p>
 
 <pre class="code ruby"><code class="ruby"><span class='id identifier rubyid_require'>require</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>cumo</span><span class='tstring_end'>&#39;</span></span>
-<span class='const'><span class='object_link'><a href="Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'>CUDA</span><span class='op'>::</span><span class='const'>Runtime</span><span class='period'>.</span><span class='id identifier rubyid_cudaSetDevice'>cudaSetDevice</span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
+<span class='const'><span class='object_link'><a href="Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Cumo/CUDA.html" title="Cumo::CUDA (module)">CUDA</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Cumo/CUDA/Runtime.html" title="Cumo::CUDA::Runtime (module)">Runtime</a></span></span><span class='period'>.</span><span class='id identifier rubyid_cudaSetDevice'><span class='object_link'><a href="Cumo/CUDA/Runtime.html#cudaSetDevice-class_method" title="Cumo::CUDA::Runtime.cudaSetDevice (method)">cudaSetDevice</a></span></span><span class='lparen'>(</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span>
 </code></pre>
 
 <h3 id="label-Enable+GPU+Memory+Pool">Enable GPU Memory Pool</h3>
@@ -179,6 +179,11 @@ and replace Numo to Cumo.</p>
 <p>Run tests:</p>
 
 <pre class="code ruby"><code class="ruby"><span class='id identifier rubyid_bundle'>bundle</span> <span class='id identifier rubyid_exec'>exec</span> <span class='id identifier rubyid_rake'>rake</span> <span class='id identifier rubyid_test'>test</span>
+</code></pre>
+
+<p>Generate docs:</p>
+
+<pre class="code ruby"><code class="ruby"><span class='id identifier rubyid_bundle'>bundle</span> <span class='id identifier rubyid_exec'>exec</span> <span class='id identifier rubyid_rake'>rake</span> <span class='id identifier rubyid_docs'>docs</span>
 </code></pre>
 
 <h2 id="label-Advanced+Tips+on+Development">Advanced Tips on Development</h2>
@@ -241,7 +246,7 @@ href="https://github.com/sonots/cumo">github.com/sonots/cumo</a>.</p>
 </div></div>
 
       <div id="footer">
-  Generated on Thu Mar 22 20:12:48 2018 by
+  Generated on Thu Mar 22 22:05:20 2018 by
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.12 (ruby-2.4.1).
 </div>

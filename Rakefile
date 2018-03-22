@@ -20,12 +20,13 @@ task :clean do
 end
 
 task :docs do
-  dir = "ext/cumo/narray"
-  src = %w[array.c data.c index.c math.c narray.c rand.c struct.c].
-    map{|s| File.join(dir,s)} +
-    [File.join(dir,"types/*.c"), "lib/cumo/narray/extra.rb"]
+  dir = "ext/cumo"
+  srcs = %w[array.c data.c index.c math.c narray.c rand.c struct.c].map{|s| File.join(dir, "narray", s)}
+  srcs += %w[cublas.c driver.c nvrtc.c runtime.c memory_pool.cpp].map{|s| File.join(dir, "cuda", s) }
+  srcs << File.join(dir, "narray", "types/*.c")
+  srcs << "lib/cumo/narray/extra.rb"
   sh "cd ext/cumo; ruby extconf.rb; make src"
-  sh "rm -rf docs .yardoc; yard doc -o docs -m markdown -r README.md #{src.join(' ')}"
+  sh "rm -rf docs .yardoc; yard doc -o docs -m markdown -r README.md #{srcs.join(' ')}"
 end
 task :doc => :docs
 

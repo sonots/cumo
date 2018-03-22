@@ -54,7 +54,11 @@ cumo_cuda_runtime_free(char *ptr)
     }
 }
 
-// Returns previous state (true if enabled)
+/*
+  Enable memory pool.
+
+  @return [Boolean] Returns previous state (true if enabled)
+ */
 static VALUE
 rb_memory_pool_enable(VALUE self)
 {
@@ -63,7 +67,11 @@ rb_memory_pool_enable(VALUE self)
     return ret;
 }
 
-// Returns previous state (true if enabled)
+/*
+  Disable memory pool.
+
+  @return [Boolean] Returns previous state (true if enabled)
+ */
 static VALUE
 rb_memory_pool_disable(VALUE self)
 {
@@ -72,13 +80,20 @@ rb_memory_pool_disable(VALUE self)
     return ret;
 }
 
+/*
+  Returns whether memory pool is enabled or not.
+
+  @return [Boolean] Returns the state (true if enabled)
+ */
 static VALUE
 rb_memory_pool_enabled_p(VALUE self)
 {
     return (memory_pool_enabled ? Qtrue : Qfalse);
 }
 
-// Frees all blocks of the current (current device) memory pool
+/*
+  Free all **non-split** chunks in all arenas.
+ */
 static VALUE
 rb_memory_pool_free_all_blocks(int argc, VALUE* argv, VALUE self)
 {
@@ -96,29 +111,51 @@ rb_memory_pool_free_all_blocks(int argc, VALUE* argv, VALUE self)
     return Qnil;
 }
 
+/*
+  Count the total number of free blocks.
+
+  @return [Integer] The total number of free blocks.
+ */
 static VALUE
 rb_memory_pool_n_free_blocks(VALUE self)
 {
     return SIZET2NUM(pool.GetNumFreeBlocks());
 }
 
+/*
+  Get the total number of bytes used.
+
+  @return [Integer] The total number of bytes used.
+ */
 static VALUE
 rb_memory_pool_used_bytes(VALUE self)
 {
     return SIZET2NUM(pool.GetUsedBytes());
 }
 
+/*
+  Get the total number of bytes acquired but not used in the pool.
+
+  @return [Integer] The total number of bytes acquired but not used in the pool.
+ */
 static VALUE
 rb_memory_pool_free_bytes(VALUE self)
 {
     return SIZET2NUM(pool.GetFreeBytes());
 }
 
+/*
+  Get the total number of bytes acquired in the pool.
+
+  @return [Integer] The total number of bytes acquired in the pool.
+ */
 static VALUE
 rb_memory_pool_total_bytes(VALUE self)
 {
     return SIZET2NUM(pool.GetTotalBytes());
 }
+
+#define METHOD VALUE(*)(ANYARGS)
 
 void
 Init_cumo_cuda_memory()
@@ -128,19 +165,21 @@ Init_cumo_cuda_memory()
     VALUE mMemoryPool = rb_define_module_under(mCUDA, "MemoryPool");
     cumo_cuda_eOutOfMemoryError = rb_define_class_under(mCUDA, "OutOfMemoryError", rb_eStandardError);
     
-    rb_define_singleton_method(mMemoryPool, "enable", (VALUE(*)(ANYARGS))rb_memory_pool_enable, 0);
-    rb_define_singleton_method(mMemoryPool, "disable", (VALUE(*)(ANYARGS))rb_memory_pool_disable, 0);
-    rb_define_singleton_method(mMemoryPool, "enabled?", (VALUE(*)(ANYARGS))rb_memory_pool_enabled_p, 0);
-    rb_define_singleton_method(mMemoryPool, "free_all_blocks", (VALUE(*)(ANYARGS))rb_memory_pool_free_all_blocks, -1);
-    rb_define_singleton_method(mMemoryPool, "n_free_blocks", (VALUE(*)(ANYARGS))rb_memory_pool_n_free_blocks, 0);
-    rb_define_singleton_method(mMemoryPool, "used_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_used_bytes, 0);
-    rb_define_singleton_method(mMemoryPool, "free_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_free_bytes, 0);
-    rb_define_singleton_method(mMemoryPool, "total_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_total_bytes, 0);
+    rb_define_singleton_method(mMemoryPool, "enable", RUBY_METHOD_FUNC(rb_memory_pool_enable), 0);
+    rb_define_singleton_method(mMemoryPool, "disable", RUBY_METHOD_FUNC(rb_memory_pool_disable), 0);
+    rb_define_singleton_method(mMemoryPool, "enabled?", RUBY_METHOD_FUNC(rb_memory_pool_enabled_p), 0);
+    rb_define_singleton_method(mMemoryPool, "free_all_blocks", RUBY_METHOD_FUNC(rb_memory_pool_free_all_blocks), -1);
+    rb_define_singleton_method(mMemoryPool, "n_free_blocks", RUBY_METHOD_FUNC(rb_memory_pool_n_free_blocks), 0);
+    rb_define_singleton_method(mMemoryPool, "used_bytes", RUBY_METHOD_FUNC(rb_memory_pool_used_bytes), 0);
+    rb_define_singleton_method(mMemoryPool, "free_bytes", RUBY_METHOD_FUNC(rb_memory_pool_free_bytes), 0);
+    rb_define_singleton_method(mMemoryPool, "total_bytes", RUBY_METHOD_FUNC(rb_memory_pool_total_bytes), 0);
 
     // default is false, yet
     const char* env = std::getenv("CUMO_MEMORY_POOL");
     memory_pool_enabled = (env != nullptr && std::string(env) != "OFF" && std::string(env) != "0" && std::string(env) != "NO");
 }
+
+#undef METHOD
 
 #if defined(__cplusplus)
 #if 0
