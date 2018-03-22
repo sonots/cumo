@@ -11076,7 +11076,7 @@ nary_to_binary(VALUE self)
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_c'>to_c</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_size'>size</span><span class='op'>==</span><span class='int'>1</span>
-    <span class='const'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'>CUDA</span><span class='op'>::</span><span class='const'>Runtime</span><span class='period'>.</span><span class='id identifier rubyid_cudaDeviceSynchronize'>cudaDeviceSynchronize</span>
+    <span class='const'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="CUDA.html" title="Cumo::CUDA (module)">CUDA</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="CUDA/Runtime.html" title="Cumo::CUDA::Runtime (module)">Runtime</a></span></span><span class='period'>.</span><span class='id identifier rubyid_cudaDeviceSynchronize'><span class='object_link'><a href="CUDA/Runtime.html#cudaDeviceSynchronize-class_method" title="Cumo::CUDA::Runtime.cudaDeviceSynchronize (method)">cudaDeviceSynchronize</a></span></span>
     <span class='const'>Complex</span><span class='lparen'>(</span><span class='kw'>self</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span><span class='rparen'>)</span>
   <span class='kw'>else</span>
     <span class='comment'># convert to DComplex?
@@ -11118,7 +11118,7 @@ nary_to_binary(VALUE self)
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_f'>to_f</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_size'>size</span><span class='op'>==</span><span class='int'>1</span>
-    <span class='const'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'>CUDA</span><span class='op'>::</span><span class='const'>Runtime</span><span class='period'>.</span><span class='id identifier rubyid_cudaDeviceSynchronize'>cudaDeviceSynchronize</span>
+    <span class='const'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="CUDA.html" title="Cumo::CUDA (module)">CUDA</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="CUDA/Runtime.html" title="Cumo::CUDA::Runtime (module)">Runtime</a></span></span><span class='period'>.</span><span class='id identifier rubyid_cudaDeviceSynchronize'><span class='object_link'><a href="CUDA/Runtime.html#cudaDeviceSynchronize-class_method" title="Cumo::CUDA::Runtime.cudaDeviceSynchronize (method)">cudaDeviceSynchronize</a></span></span>
     <span class='kw'>self</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_f'>to_f</span>
   <span class='kw'>else</span>
     <span class='comment'># convert to DFloat?
@@ -11200,7 +11200,7 @@ nary_to_host(VALUE self)
 
 <span class='kw'>def</span> <span class='id identifier rubyid_to_i'>to_i</span>
   <span class='kw'>if</span> <span class='id identifier rubyid_size'>size</span><span class='op'>==</span><span class='int'>1</span>
-    <span class='const'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'>CUDA</span><span class='op'>::</span><span class='const'>Runtime</span><span class='period'>.</span><span class='id identifier rubyid_cudaDeviceSynchronize'>cudaDeviceSynchronize</span>
+    <span class='const'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="CUDA.html" title="Cumo::CUDA (module)">CUDA</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="CUDA/Runtime.html" title="Cumo::CUDA::Runtime (module)">Runtime</a></span></span><span class='period'>.</span><span class='id identifier rubyid_cudaDeviceSynchronize'><span class='object_link'><a href="CUDA/Runtime.html#cudaDeviceSynchronize-class_method" title="Cumo::CUDA::Runtime.cudaDeviceSynchronize (method)">cudaDeviceSynchronize</a></span></span>
     <span class='kw'>self</span><span class='lbracket'>[</span><span class='int'>0</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_i'>to_i</span>
   <span class='kw'>else</span>
     <span class='comment'># convert to Int?
@@ -12136,7 +12136,7 @@ na_make_view(VALUE self)
 </div>
 
       <div id="footer">
-  Generated on Thu Mar 22 20:12:58 2018 by
+  Generated on Thu Mar 22 21:04:20 2018 by
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.12 (ruby-2.4.1).
 </div>
