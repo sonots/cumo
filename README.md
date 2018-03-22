@@ -119,6 +119,12 @@ Run tests:
 bundle exec rake test
 ```
 
+Generate docs:
+
+```
+bundle exec rake docs
+```
+
 ## Advanced Tips on Development
 
 ### ccache
