@@ -67,8 +67,9 @@ void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk> remaining) {
 void SingleDeviceMemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
     assert(chunk != nullptr && !chunk->in_use());
     int bin_index = GetBinIndex(size);
-    //rlock.lock_fastrlock(self._free_lock, -1, True)
-    //try:
+
+    std::lock_guard<std::recursive_mutex> lock{mutex_};
+
     Arena& arena = GetArena(stream_ptr);
     ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
     int arena_index = std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
@@ -79,15 +80,14 @@ void SingleDeviceMemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk
     }
     FreeList& free_list = arena[arena_index];
     free_list.emplace_back(chunk);
-    //finally:
-    //    rlock.unlock_fastrlock(self._free_lock)
 }
 
 bool SingleDeviceMemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
     assert(chunk != nullptr && !chunk->in_use());
     int bin_index = GetBinIndex(size);
-    // rlock.lock_fastrlock(self._free_lock, -1, True)
-    // try:
+
+    std::lock_guard<std::recursive_mutex> lock{mutex_};
+
     Arena& arena = GetArena(stream_ptr);
     ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
     if (arena_index_map.size() == 0) {
@@ -100,31 +100,29 @@ bool SingleDeviceMemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chu
     assert(arena.size() > static_cast<size_t>(arena_index));
     FreeList& free_list = arena[arena_index];
     return EraseFromFreeList(free_list, chunk);
-    // finally:
-    //     rlock.unlock_fastrlock(self._free_lock)
 }
 
 intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
     size = GetRoundedSize(size);
     std::shared_ptr<Chunk> chunk = nullptr;
 
-    // find best-fit, or a smallest larger allocation
-    // rlock.lock_fastrlock(self._free_lock, -1, True)
-    // try:
-    Arena& arena = GetArena(stream_ptr);
-    int arena_index = GetArenaIndex(size);
-    int arena_length = static_cast<int>(arena.size());
-    for (int i = arena_index; i < arena_length; ++i) {
-        FreeList& free_list = arena[i];
-        if (free_list.empty()) {
-            continue;
+    {
+        std::lock_guard<std::recursive_mutex> lock{mutex_};
+
+        // find best-fit, or a smallest larger allocation
+        Arena& arena = GetArena(stream_ptr);
+        int arena_index = GetArenaIndex(size);
+        int arena_length = static_cast<int>(arena.size());
+        for (int i = arena_index; i < arena_length; ++i) {
+            FreeList& free_list = arena[i];
+            if (free_list.empty()) {
+                continue;
+            }
+            chunk = PopFromFreeList(free_list);
+            // TODO(sonots): compact_index
+            break;
         }
-        chunk = PopFromFreeList(free_list);
-        // TODO(sonots): compact_index
-        break;
     }
-    // finally:
-    //     rlock.unlock_fastrlock(self._free_lock)
 
     if (chunk != nullptr) {
         std::shared_ptr<Chunk> remaining = Split(chunk, size);
@@ -170,24 +168,26 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
 
     assert(chunk != nullptr);
     assert(chunk->stream_ptr() == stream_ptr);
-    //rlock.lock_fastrlock(self._in_use_lock, -1, True)
-    //try:
-    chunk->set_in_use(true);
-    in_use_.emplace(chunk->ptr(), chunk);
-    //finally:
-    //    rlock.unlock_fastrlock(self._in_use_lock)
+    {
+        std::lock_guard<std::recursive_mutex> lock{mutex_};
+
+        chunk->set_in_use(true);
+        in_use_.emplace(chunk->ptr(), chunk);
+    }
     return chunk->ptr();
 }
 
 void SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
-    //rlock.lock_fastrlock(self._in_use_lock, -1, True)
-    //try:
-    std::shared_ptr<Chunk> chunk = in_use_[ptr];
-    assert(chunk != nullptr);
-    chunk->set_in_use(false);
-    in_use_.erase(ptr);
-    //finally:
-    //    rlock.unlock_fastrlock(self._in_use_lock)
+    std::shared_ptr<Chunk> chunk = nullptr;
+
+    {
+        std::lock_guard<std::recursive_mutex> lock{mutex_};
+
+        chunk = in_use_[ptr];
+        assert(chunk != nullptr);
+        chunk->set_in_use(false);
+        in_use_.erase(ptr);
+    }
 
     if (chunk->next() != nullptr && !chunk->next()->in_use()) {
         if (RemoveFromFreeList(chunk->next()->size(), chunk->next(), stream_ptr)) {
@@ -245,58 +245,53 @@ void SingleDeviceMemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {
 
 // Free all **non-split** chunks in all arenas
 void SingleDeviceMemoryPool::FreeAllBlocks() {
-    // rlock.lock_fastrlock(self._free_lock, -1, True)
-    // try:
+    std::lock_guard<std::recursive_mutex> lock{mutex_};
+
     std::vector<cudaStream_t> keys(free_.size());
     transform(free_.begin(), free_.end(), keys.begin(), [](auto pair) { return pair.first; });
     for (cudaStream_t stream_ptr : keys) {
         CompactIndex(stream_ptr, true);
     }
-    //finally:
-    //    rlock.unlock_fastrlock(self._free_lock)
 }
 
 // Free all **non-split** chunks in specified arena
 void SingleDeviceMemoryPool::FreeAllBlocks(cudaStream_t stream_ptr) {
-    // rlock.lock_fastrlock(self._free_lock, -1, True)
-    // try:
+    std::lock_guard<std::recursive_mutex> lock{mutex_};
+
     CompactIndex(stream_ptr, true);
-    //finally:
-    //    rlock.unlock_fastrlock(self._free_lock)
 }
 
 size_t SingleDeviceMemoryPool::GetNumFreeBlocks() {
     size_t n = 0;
-    // rlock.lock_fastrlock(self._free_lock, -1, True)
-    // try:
+
+    std::lock_guard<std::recursive_mutex> lock{mutex_};
+
     for (auto kv : free_) {
         Arena& arena = kv.second;
         for (auto free_list : arena) {
             n += free_list.size();
         }
     }
-    // finally:
-    //     rlock.unlock_fastrlock(self._free_lock)
     return n;
 }
 
 size_t SingleDeviceMemoryPool::GetUsedBytes() {
     size_t size = 0;
-    // rlock.lock_fastrlock(self._in_use_lock, -1, True)
-    // try:
+
+    std::lock_guard<std::recursive_mutex> lock{mutex_};
+
     for (auto kv : in_use_) {
         std::shared_ptr<Chunk>& chunk = kv.second;
         size += chunk->size();
     }
-    // finally:
-    //     rlock.unlock_fastrlock(self._in_use_lock)
     return size;
 }
 
 size_t SingleDeviceMemoryPool::GetFreeBytes() {
     size_t size = 0;
-    // rlock.lock_fastrlock(self._free_lock, -1, True)
-    // try:
+
+    std::lock_guard<std::recursive_mutex> lock{mutex_};
+
     for (auto kv : free_) {
         Arena& arena = kv.second;
         for (auto free_list : arena) {
@@ -305,8 +300,6 @@ size_t SingleDeviceMemoryPool::GetFreeBytes() {
             }
         }
     }
-    // finally:
-    //     rlock.unlock_fastrlock(self._free_lock)
     return size;
 }
 

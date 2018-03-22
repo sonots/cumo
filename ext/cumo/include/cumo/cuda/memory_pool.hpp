@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
@@ -158,6 +159,7 @@ private:
     std::unordered_map<intptr_t, std::shared_ptr<Chunk>> in_use_; // ptr => Chunk
     std::unordered_map<cudaStream_t, Arena> free_;
     std::unordered_map<cudaStream_t, ArenaIndexMap> index_;
+    std::recursive_mutex mutex_;
 
 public:
     SingleDeviceMemoryPool() {
