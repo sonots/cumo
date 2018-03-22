@@ -42,6 +42,13 @@ rb_cudaRuntimeGetVersion(VALUE self)
 // Device and context operations
 /////////////////////////////////////////
 
+/*
+  Returns which device is currently being used.
+
+  @return [Integer] Returns the device on which the active host thread executes the device code.
+  @raise [Cumo::CUDA::RuntimeError]
+  @see http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g80861db2ce7c29b6e8055af8ae01bc78
+ */
 static VALUE
 rb_cudaGetDevice(VALUE self)
 {
@@ -54,6 +61,15 @@ rb_cudaGetDevice(VALUE self)
     return INT2NUM(_device);
 }
 
+/*
+  Returns information about the device.
+
+  @param [Integer] attrib Device attribute to query
+  @param [Integer] device Device number to query
+  @return [Integer] Returned device attribute value
+  @raise [Cumo::CUDA::RuntimeError]
+  @see http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1gb22e8256592b836df9a9cc36c9db7151
+ */
 static VALUE
 rb_cudaDeviceGetAttributes(VALUE self, VALUE attrib, VALUE device)
 {
@@ -68,6 +84,13 @@ rb_cudaDeviceGetAttributes(VALUE self, VALUE attrib, VALUE device)
     return INT2NUM(_ret);
 }
 
+/*
+  Returns the number of compute-capable devices.
+
+  @return [Integer] Returns the number of devices with compute capability greater or equal to 2.0
+  @raise [Cumo::CUDA::RuntimeError]
+  @see http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g18808e54893cfcaafefeab31a73cc55f
+ */
 static VALUE
 rb_cudaGetDeviceCount(VALUE self)
 {
@@ -80,6 +103,13 @@ rb_cudaGetDeviceCount(VALUE self)
     return INT2NUM(_count);
 }
 
+/*
+  Set device to be used for GPU executions.
+
+  @param [Integer] device Device on which the active host thread should execute the device code.
+  @raise [Cumo::CUDA::RuntimeError]
+  @see http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g159587909ffa0791bbe4b40187a4c6bb
+ */
 static VALUE
 rb_cudaSetDevice(VALUE self, VALUE device)
 {
@@ -92,6 +122,12 @@ rb_cudaSetDevice(VALUE self, VALUE device)
     return Qnil;
 }
 
+/*
+  Wait for compute device to finish.
+
+  @raise [Cumo::CUDA::RuntimeError]
+  @see http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g10e20b05a95f638a4071a655503df25d
+ */
 static VALUE
 rb_cudaDeviceSynchronize(VALUE self)
 {
