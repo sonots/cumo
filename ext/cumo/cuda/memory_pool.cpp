@@ -1,307 +1,150 @@
-#include "cumo/cuda/memory_pool.hpp"
-
-#ifdef NO_RUBY
-#else
 #include <ruby.h>
+#include <cuda_runtime.h>
+#include "cumo/cuda/memory_pool.h"
+#include "cumo/cuda/memory_pool_impl.hpp"
+#include "cumo/cuda/runtime.h"
+
+#include <cstdlib>
+#include <string>
+
+#if defined(__cplusplus)
+extern "C" {
+#if 0
+} /* satisfy cc-mode */
+#endif
 #endif
 
-namespace cumo {
-namespace internal {
+static cumo::internal::MemoryPool pool{};
+static bool memory_pool_enabled;
 
-void CheckStatus(cudaError_t status) {
-    if (status != 0) {
-        throw CUDARuntimeError(status);
-    }
-}
+VALUE cumo_cuda_eOutOfMemoryError;
 
-Memory::Memory(size_t size) : size_(size) {
-    if (size_ > 0) {
-        CheckStatus(cudaGetDevice(&device_id_));
-        CheckStatus(cudaMallocManaged(&ptr_, size_, cudaMemAttachGlobal));
-        // std::cout << "cudaMalloc " << ptr_ << std::endl;
-    }
-}
-
-Memory::~Memory() {
-    if (size_ > 0) {
-        // std::cout << "cudaFree  " << ptr_ << std::endl;
-        cudaError_t status = cudaFree(ptr_);
-        // CUDA driver may shut down before freeing memory inside memory pool.
-        // It is okay to simply ignore because CUDA driver automatically frees memory.
-        if (status != cudaErrorCudartUnloading) {
-            CheckStatus(status);
-        }
-    }
-}
-
-std::shared_ptr<Chunk> Split(std::shared_ptr<Chunk>& self, size_t size) {
-    assert(self->size_ >= size);
-    if (self->size_ == size) {
-        return nullptr;
-    }
-
-    auto remaining = std::make_shared<Chunk>(self->mem_, self->offset_ + size, self->size_ - size, self->stream_ptr_);
-    self->size_ = size;
-
-    if (self->next_) {
-        remaining->set_next(std::move(self->next_));
-        remaining->next()->set_prev(remaining);
-    }
-    self->next_ = remaining;
-    remaining->set_prev(self);
-
-    return remaining;
-}
-
-
-void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk> remaining) {
-    assert(remaining != nullptr);
-    assert(self->stream_ptr_ == remaining->stream_ptr());
-    self->size_ += remaining->size();
-    self->next_ = remaining->next();
-    if (remaining->next() != nullptr) {
-        self->next_->set_prev(self);
-    }
-}
-
-void SingleDeviceMemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
-    assert(chunk != nullptr && !chunk->in_use());
-    int bin_index = GetBinIndex(size);
-
-    std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-    Arena& arena = GetArena(stream_ptr);
-    ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
-    int arena_index = std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
-    int length = static_cast<int>(arena_index_map.size());
-    if (arena_index >= length || arena_index_map.at(arena_index) != bin_index) {
-        arena_index_map.insert(arena_index_map.begin() + arena_index, bin_index);
-        arena.insert(arena.begin() + arena_index, FreeList{});
-    }
-    FreeList& free_list = arena[arena_index];
-    free_list.emplace_back(chunk);
-}
-
-bool SingleDeviceMemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
-    assert(chunk != nullptr && !chunk->in_use());
-    int bin_index = GetBinIndex(size);
-
-    std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-    Arena& arena = GetArena(stream_ptr);
-    ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
-    if (arena_index_map.size() == 0) {
-        return false;
-    }
-    int arena_index = std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
-    if (arena_index_map.at(arena_index) != bin_index) {
-        return false;
-    }
-    assert(arena.size() > static_cast<size_t>(arena_index));
-    FreeList& free_list = arena[arena_index];
-    return EraseFromFreeList(free_list, chunk);
-}
-
-intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
-    size = GetRoundedSize(size);
-    std::shared_ptr<Chunk> chunk = nullptr;
-
-    {
-        std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-        // find best-fit, or a smallest larger allocation
-        Arena& arena = GetArena(stream_ptr);
-        int arena_index = GetArenaIndex(size);
-        int arena_length = static_cast<int>(arena.size());
-        for (int i = arena_index; i < arena_length; ++i) {
-            FreeList& free_list = arena[i];
-            if (free_list.empty()) {
-                continue;
-            }
-            chunk = PopFromFreeList(free_list);
-            // TODO(sonots): compact_index
-            break;
-        }
-    }
-
-    if (chunk != nullptr) {
-        std::shared_ptr<Chunk> remaining = Split(chunk, size);
-        if (remaining != nullptr) {
-            AppendToFreeList(remaining->size(), remaining, stream_ptr);
-        }
-    } else {
-        // cudaMalloc if a cache is not found
-        std::shared_ptr<Memory> mem = nullptr;
+char*
+cumo_cuda_runtime_malloc(size_t size)
+{
+    if (memory_pool_enabled) {
         try {
-            mem = std::make_shared<Memory>(size);
-        } catch (const CUDARuntimeError& e) {
-            if (e.status() != cudaErrorMemoryAllocation) {
-                throw;
-            }
-            FreeAllBlocks();
-            try {
-                mem = std::make_shared<Memory>(size);
-            } catch (const CUDARuntimeError& e) {
-                if (e.status() != cudaErrorMemoryAllocation) {
-                    throw;
-                }
-#ifdef NO_RUBY // memory_pool_test.cpp does not bind with libruby
-
-                size_t total = size + GetTotalBytes();
-                throw OutOfMemoryError(size, total);
-#else
-                rb_funcall(rb_intern("GC"), rb_intern("start"), 0);
-                try {
-                    mem = std::make_shared<Memory>(size);
-                } catch (const CUDARuntimeError& e) {
-                    if (e.status() != cudaErrorMemoryAllocation) {
-                        throw;
-                    }
-                    size_t total = size + GetTotalBytes();
-                    throw OutOfMemoryError(size, total);
-                }
-#endif
-            }
+            // TODO(sonots): Get current CUDA stream and pass it
+            return reinterpret_cast<char*>(pool.Malloc(size));
+        } catch (const cumo::internal::CUDARuntimeError& e) {
+            cumo_cuda_runtime_check_status(e.status());
+        } catch (const cumo::internal::OutOfMemoryError& e) {
+            rb_raise(cumo_cuda_eOutOfMemoryError, "%s", e.what());
         }
-        chunk = std::make_shared<Chunk>(mem, 0, size, stream_ptr);
-    }
-
-    assert(chunk != nullptr);
-    assert(chunk->stream_ptr() == stream_ptr);
-    {
-        std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-        chunk->set_in_use(true);
-        in_use_.emplace(chunk->ptr(), chunk);
-    }
-    return chunk->ptr();
-}
-
-void SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
-    std::shared_ptr<Chunk> chunk = nullptr;
-
-    {
-        std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-        chunk = in_use_[ptr];
-        assert(chunk != nullptr);
-        chunk->set_in_use(false);
-        in_use_.erase(ptr);
-    }
-
-    if (chunk->next() != nullptr && !chunk->next()->in_use()) {
-        if (RemoveFromFreeList(chunk->next()->size(), chunk->next(), stream_ptr)) {
-            Merge(chunk, chunk->next());
-        }
-    }
-    if (chunk->prev() != nullptr && !chunk->prev()->in_use()) {
-        if (RemoveFromFreeList(chunk->prev()->size(), chunk->prev(), stream_ptr)) {
-            chunk = chunk->prev();
-            Merge(chunk, chunk->next());
-        }
-    }
-    AppendToFreeList(chunk->size(), chunk, stream_ptr);
-}
-
-void SingleDeviceMemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {
-    // need lock ouside this function
-    if (!HasArena(stream_ptr)) return;
-
-    Arena new_arena;
-    ArenaIndexMap new_arena_index_map;
-    Arena& arena = GetArena(stream_ptr);
-    ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
-    size_t arena_length = arena.size();
-    for (size_t arena_index = 0; arena_index < arena_length; ++arena_index) {
-        FreeList& free_list = arena[arena_index];
-        if (free_list.empty()) {
-            continue;
-        }
-        if (free) {
-            FreeList keep_list;
-            for (auto chunk : free_list) {
-                if (chunk->prev() != nullptr || chunk->next() != nullptr) {
-                    keep_list.emplace_back(chunk);
-                }
-            }
-            if (keep_list.size() == 0) {
-                continue;
-            }
-            new_arena_index_map.emplace_back(arena_index_map[arena_index]);
-            new_arena.emplace_back(keep_list);
-        } else {
-            new_arena_index_map.emplace_back(arena_index_map[arena_index]);
-            new_arena.emplace_back(free_list);
-        }
-    }
-    if (new_arena.empty()) {
-        index_.erase(stream_ptr);
-        free_.erase(stream_ptr);
     } else {
-        arena_index_map.swap(new_arena_index_map);
-        arena.swap(new_arena);
+        void *ptr = 0;
+        cumo_cuda_runtime_check_status(cudaMallocManaged(&ptr, size, cudaMemAttachGlobal));
+        return reinterpret_cast<char*>(ptr);
     }
+    return 0; // should not reach here
 }
 
-// Free all **non-split** chunks in all arenas
-void SingleDeviceMemoryPool::FreeAllBlocks() {
-    std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-    std::vector<cudaStream_t> keys(free_.size());
-    transform(free_.begin(), free_.end(), keys.begin(), [](auto pair) { return pair.first; });
-    for (cudaStream_t stream_ptr : keys) {
-        CompactIndex(stream_ptr, true);
-    }
-}
-
-// Free all **non-split** chunks in specified arena
-void SingleDeviceMemoryPool::FreeAllBlocks(cudaStream_t stream_ptr) {
-    std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-    CompactIndex(stream_ptr, true);
-}
-
-size_t SingleDeviceMemoryPool::GetNumFreeBlocks() {
-    size_t n = 0;
-
-    std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-    for (auto kv : free_) {
-        Arena& arena = kv.second;
-        for (auto free_list : arena) {
-            n += free_list.size();
+void
+cumo_cuda_runtime_free(char *ptr)
+{
+    if (memory_pool_enabled) {
+        try {
+            // TODO(sonots): Get current CUDA stream and pass it
+            pool.Free(reinterpret_cast<intptr_t>(ptr));
+        } catch (const cumo::internal::CUDARuntimeError& e) {
+            cumo_cuda_runtime_check_status(e.status());
         }
+    } else {
+        cumo_cuda_runtime_check_status(cudaFree((void*)ptr));
     }
-    return n;
 }
 
-size_t SingleDeviceMemoryPool::GetUsedBytes() {
-    size_t size = 0;
-
-    std::lock_guard<std::recursive_mutex> lock{mutex_};
-
-    for (auto kv : in_use_) {
-        std::shared_ptr<Chunk>& chunk = kv.second;
-        size += chunk->size();
-    }
-    return size;
+// Returns previous state (true if enabled)
+static VALUE
+rb_memory_pool_enable(VALUE self)
+{
+    VALUE ret = (memory_pool_enabled ? Qtrue : Qfalse);
+    memory_pool_enabled = true;
+    return ret;
 }
 
-size_t SingleDeviceMemoryPool::GetFreeBytes() {
-    size_t size = 0;
+// Returns previous state (true if enabled)
+static VALUE
+rb_memory_pool_disable(VALUE self)
+{
+    VALUE ret = (memory_pool_enabled ? Qtrue : Qfalse);
+    memory_pool_enabled = false;
+    return ret;
+}
 
-    std::lock_guard<std::recursive_mutex> lock{mutex_};
+static VALUE
+rb_memory_pool_enabled_p(VALUE self)
+{
+    return (memory_pool_enabled ? Qtrue : Qfalse);
+}
 
-    for (auto kv : free_) {
-        Arena& arena = kv.second;
-        for (auto free_list : arena) {
-            for (auto chunk : free_list) {
-                size += chunk->size();
-            }
+// Frees all blocks of the current (current device) memory pool
+static VALUE
+rb_memory_pool_free_all_blocks(int argc, VALUE* argv, VALUE self)
+{
+    try {
+        if (argc < 1) {
+            pool.FreeAllBlocks();
+        } else {
+            // TODO(sonots): FIX if we create a Stream object
+            cudaStream_t stream_ptr = (cudaStream_t)NUM2SIZET(argv[0]);
+            pool.FreeAllBlocks(stream_ptr);
         }
+    } catch (const cumo::internal::CUDARuntimeError& e) {
+        cumo_cuda_runtime_check_status(e.status());
     }
-    return size;
+    return Qnil;
 }
 
-} // namespace internal
-} // namespace cumo
+static VALUE
+rb_memory_pool_n_free_blocks(VALUE self)
+{
+    return SIZET2NUM(pool.GetNumFreeBlocks());
+}
+
+static VALUE
+rb_memory_pool_used_bytes(VALUE self)
+{
+    return SIZET2NUM(pool.GetUsedBytes());
+}
+
+static VALUE
+rb_memory_pool_free_bytes(VALUE self)
+{
+    return SIZET2NUM(pool.GetFreeBytes());
+}
+
+static VALUE
+rb_memory_pool_total_bytes(VALUE self)
+{
+    return SIZET2NUM(pool.GetTotalBytes());
+}
+
+void
+Init_cumo_cuda_memory()
+{
+    VALUE mCumo = rb_define_module("Cumo");
+    VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
+    VALUE mMemoryPool = rb_define_module_under(mCUDA, "MemoryPool");
+    cumo_cuda_eOutOfMemoryError = rb_define_class_under(mCUDA, "OutOfMemoryError", rb_eStandardError);
+    
+    rb_define_singleton_method(mMemoryPool, "enable", (VALUE(*)(ANYARGS))rb_memory_pool_enable, 0);
+    rb_define_singleton_method(mMemoryPool, "disable", (VALUE(*)(ANYARGS))rb_memory_pool_disable, 0);
+    rb_define_singleton_method(mMemoryPool, "enabled?", (VALUE(*)(ANYARGS))rb_memory_pool_enabled_p, 0);
+    rb_define_singleton_method(mMemoryPool, "free_all_blocks", (VALUE(*)(ANYARGS))rb_memory_pool_free_all_blocks, -1);
+    rb_define_singleton_method(mMemoryPool, "n_free_blocks", (VALUE(*)(ANYARGS))rb_memory_pool_n_free_blocks, 0);
+    rb_define_singleton_method(mMemoryPool, "used_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_used_bytes, 0);
+    rb_define_singleton_method(mMemoryPool, "free_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_free_bytes, 0);
+    rb_define_singleton_method(mMemoryPool, "total_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_total_bytes, 0);
+
+    // default is false, yet
+    const char* env = std::getenv("CUMO_MEMORY_POOL");
+    memory_pool_enabled = (env != nullptr && std::string(env) != "OFF" && std::string(env) != "0" && std::string(env) != "NO");
+}
+
+#if defined(__cplusplus)
+#if 0
+{ /* satisfy cc-mode */
+#endif
+}  /* extern "C" { */
+#endif

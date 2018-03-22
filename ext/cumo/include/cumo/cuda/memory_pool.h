@@ -1,5 +1,5 @@
-#ifndef CUMO_CUDA_MEMORY_H
-#define CUMO_CUDA_MEMORY_H
+#ifndef CUMO_CUDA_MEMORY_POOL_H
+#define CUMO_CUDA_MEMORY_POOL_H
 
 #include "cumo/narray.h"
 
@@ -25,4 +25,4 @@ cumo_cuda_runtime_free(char *ptr);
 }  /* extern "C" { */
 #endif
 
-#endif /* ifndef CUMO_CUDA_MEMORY_H */
+#endif /* ifndef CUMO_CUDA_MEMORY_POOL_H */

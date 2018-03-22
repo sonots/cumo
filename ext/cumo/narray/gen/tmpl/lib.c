@@ -11,8 +11,8 @@
 #include "cumo/narray.h"
 #include "cumo/template.h"
 #include "SFMT.h"
+#include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
-#include "cumo/cuda/memory.h"
 
 #define m_map(x) m_num_to_data(rb_yield(m_data_to_num(x)))
 
