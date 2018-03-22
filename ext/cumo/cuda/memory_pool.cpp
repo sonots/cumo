@@ -54,7 +54,11 @@ cumo_cuda_runtime_free(char *ptr)
     }
 }
 
-// Returns previous state (true if enabled)
+/*
+  Enable memory pool.
+
+  @return [Boolean] Returns previous state (true if enabled)
+ */
 static VALUE
 rb_memory_pool_enable(VALUE self)
 {
@@ -63,7 +67,11 @@ rb_memory_pool_enable(VALUE self)
     return ret;
 }
 
-// Returns previous state (true if enabled)
+/*
+  Disable memory pool.
+
+  @return [Boolean] Returns previous state (true if enabled)
+ */
 static VALUE
 rb_memory_pool_disable(VALUE self)
 {
@@ -72,13 +80,20 @@ rb_memory_pool_disable(VALUE self)
     return ret;
 }
 
+/*
+  Returns whether memory pool is enabled or not.
+
+  @return [Boolean] Returns the state (true if enabled)
+ */
 static VALUE
 rb_memory_pool_enabled_p(VALUE self)
 {
     return (memory_pool_enabled ? Qtrue : Qfalse);
 }
 
-// Frees all blocks of the current (current device) memory pool
+/*
+  Free all **non-split** chunks in all arenas.
+ */
 static VALUE
 rb_memory_pool_free_all_blocks(int argc, VALUE* argv, VALUE self)
 {
@@ -96,24 +111,44 @@ rb_memory_pool_free_all_blocks(int argc, VALUE* argv, VALUE self)
     return Qnil;
 }
 
+/*
+  Count the total number of free blocks.
+
+  @return [Integer] The total number of free blocks.
+ */
 static VALUE
 rb_memory_pool_n_free_blocks(VALUE self)
 {
     return SIZET2NUM(pool.GetNumFreeBlocks());
 }
 
+/*
+  Get the total number of bytes used.
+
+  @return [Integer] The total number of bytes used.
+ */
 static VALUE
 rb_memory_pool_used_bytes(VALUE self)
 {
     return SIZET2NUM(pool.GetUsedBytes());
 }
 
+/*
+  Get the total number of bytes acquired but not used in the pool.
+
+  @return [Integer] The total number of bytes acquired but not used in the pool.
+ */
 static VALUE
 rb_memory_pool_free_bytes(VALUE self)
 {
     return SIZET2NUM(pool.GetFreeBytes());
 }
 
+/*
+  Get the total number of bytes acquired in the pool.
+
+  @return [Integer] The total number of bytes acquired in the pool.
+ */
 static VALUE
 rb_memory_pool_total_bytes(VALUE self)
 {
