@@ -53,25 +53,14 @@ private:
     int device_id_ = -1;
 
 public:
-    // size: Size of the memory allocation in bytes.
-    Memory(size_t size) : size_(size) {
-        if (size_ > 0) {
-            CheckStatus(cudaGetDevice(&device_id_));
-            CheckStatus(cudaMallocManaged(&ptr_, size_, cudaMemAttachGlobal));
-            // std::cout << "cudaMalloc " << ptr_ << std::endl;
-        }
-    }
+    Memory(size_t size);
 
-    ~Memory() {
-        if (size_ > 0) {
-            CheckStatus(cudaFree(ptr_));
-            // std::cout << "cudaFree   " << ptr_ << std::endl;
-        }
-    }
+    ~Memory();
 
-    // Returns the pointer value to the head of the allocation.
     intptr_t ptr() const { return reinterpret_cast<intptr_t>(ptr_); }
+
     size_t size() const { return size_; }
+
     int device_id() const { return device_id_; }
 };
 
@@ -281,6 +270,8 @@ private:
 
 public:
     MemoryPool() {}
+
+    ~MemoryPool() { pools_.clear(); }
 
     // Allocates the memory, from the pool if possible.
     //

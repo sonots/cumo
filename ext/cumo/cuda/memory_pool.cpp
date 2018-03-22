@@ -9,6 +9,26 @@ void CheckStatus(cudaError_t status) {
     }
 }
 
+Memory::Memory(size_t size) : size_(size) {
+    if (size_ > 0) {
+        CheckStatus(cudaGetDevice(&device_id_));
+        CheckStatus(cudaMallocManaged(&ptr_, size_, cudaMemAttachGlobal));
+        // std::cout << "cudaMalloc " << ptr_ << std::endl;
+    }
+}
+
+Memory::~Memory() {
+    if (size_ > 0) {
+        // std::cout << "cudaFree  " << ptr_ << std::endl;
+        cudaError_t status = cudaFree(ptr_);
+        // CUDA driver may shut down before freeing memory inside memory pool.
+        // It is okay to simply ignore because CUDA driver automatically frees memory.
+        if (status != cudaErrorCudartUnloading) {
+            CheckStatus(status);
+        }
+    }
+}
+
 std::shared_ptr<Chunk> Split(std::shared_ptr<Chunk>& self, size_t size) {
     assert(self->size_ >= size);
     if (self->size_ == size) {
