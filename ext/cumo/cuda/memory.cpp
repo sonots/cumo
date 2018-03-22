@@ -14,8 +14,8 @@ extern "C" {
 #endif
 #endif
 
-cumo::internal::MemoryPool pool{};
-bool memory_pool_enabled;
+static cumo::internal::MemoryPool pool{};
+static bool memory_pool_enabled;
 
 VALUE cumo_cuda_eOutOfMemoryError;
 
