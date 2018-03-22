@@ -155,6 +155,8 @@ rb_memory_pool_total_bytes(VALUE self)
     return SIZET2NUM(pool.GetTotalBytes());
 }
 
+#define METHOD VALUE(*)(ANYARGS)
+
 void
 Init_cumo_cuda_memory_pool()
 {
@@ -163,19 +165,21 @@ Init_cumo_cuda_memory_pool()
     VALUE mMemoryPool = rb_define_module_under(mCUDA, "MemoryPool");
     cumo_cuda_eOutOfMemoryError = rb_define_class_under(mCUDA, "OutOfMemoryError", rb_eStandardError);
     
-    rb_define_singleton_method(mMemoryPool, "enable", (VALUE(*)(ANYARGS))rb_memory_pool_enable, 0);
-    rb_define_singleton_method(mMemoryPool, "disable", (VALUE(*)(ANYARGS))rb_memory_pool_disable, 0);
-    rb_define_singleton_method(mMemoryPool, "enabled?", (VALUE(*)(ANYARGS))rb_memory_pool_enabled_p, 0);
-    rb_define_singleton_method(mMemoryPool, "free_all_blocks", (VALUE(*)(ANYARGS))rb_memory_pool_free_all_blocks, -1);
-    rb_define_singleton_method(mMemoryPool, "n_free_blocks", (VALUE(*)(ANYARGS))rb_memory_pool_n_free_blocks, 0);
-    rb_define_singleton_method(mMemoryPool, "used_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_used_bytes, 0);
-    rb_define_singleton_method(mMemoryPool, "free_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_free_bytes, 0);
-    rb_define_singleton_method(mMemoryPool, "total_bytes", (VALUE(*)(ANYARGS))rb_memory_pool_total_bytes, 0);
+    rb_define_singleton_method(mMemoryPool, "enable", RUBY_METHOD_FUNC(rb_memory_pool_enable), 0);
+    rb_define_singleton_method(mMemoryPool, "disable", RUBY_METHOD_FUNC(rb_memory_pool_disable), 0);
+    rb_define_singleton_method(mMemoryPool, "enabled?", RUBY_METHOD_FUNC(rb_memory_pool_enabled_p), 0);
+    rb_define_singleton_method(mMemoryPool, "free_all_blocks", RUBY_METHOD_FUNC(rb_memory_pool_free_all_blocks), -1);
+    rb_define_singleton_method(mMemoryPool, "n_free_blocks", RUBY_METHOD_FUNC(rb_memory_pool_n_free_blocks), 0);
+    rb_define_singleton_method(mMemoryPool, "used_bytes", RUBY_METHOD_FUNC(rb_memory_pool_used_bytes), 0);
+    rb_define_singleton_method(mMemoryPool, "free_bytes", RUBY_METHOD_FUNC(rb_memory_pool_free_bytes), 0);
+    rb_define_singleton_method(mMemoryPool, "total_bytes", RUBY_METHOD_FUNC(rb_memory_pool_total_bytes), 0);
 
     // default is false, yet
     const char* env = std::getenv("CUMO_MEMORY_POOL");
     memory_pool_enabled = (env != nullptr && std::string(env) != "OFF" && std::string(env) != "0" && std::string(env) != "NO");
 }
+
+#undef METHOD
 
 #if defined(__cplusplus)
 #if 0
