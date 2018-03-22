@@ -1,5 +1,10 @@
 #include "cumo/cuda/memory_pool.hpp"
 
+#ifdef NO_RUBY
+#else
+#include <ruby.h>
+#endif
+
 namespace cumo {
 namespace internal {
 
@@ -142,19 +147,21 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
                 if (e.status() != cudaErrorMemoryAllocation) {
                     throw;
                 }
+#ifdef NO_RUBY
                 size_t total = size + GetTotalBytes();
                 throw OutOfMemoryError(size, total);
-                // TODO(sonots): rb_funcall needs ruby, memory_pool_test can not be ran...
-                // rb_funcall(rb_intern("GC"), rb_intern("start"), 0);
-                // try {
-                //     mem = std::make_shared<Memory>(size);
-                // } catch (const CUDARuntimeError& e) {
-                //     if (e.status() != cudaErrorMemoryAllocation) {
-                //         throw;
-                //     }
-                //     size_t total = size + GetTotalBytes();
-                //     throw OutOfMemoryError(size, total);
-                // }
+#else
+                rb_funcall(rb_intern("GC"), rb_intern("start"), 0);
+                try {
+                    mem = std::make_shared<Memory>(size);
+                } catch (const CUDARuntimeError& e) {
+                    if (e.status() != cudaErrorMemoryAllocation) {
+                        throw;
+                    }
+                    size_t total = size + GetTotalBytes();
+                    throw OutOfMemoryError(size, total);
+                }
+#endif
             }
         }
         chunk = std::make_shared<Chunk>(mem, 0, size, stream_ptr);

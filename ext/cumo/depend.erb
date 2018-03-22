@@ -52,7 +52,7 @@ build-ctest : cuda/memory_pool_test.exe
 run-ctest : cuda/memory_pool_test.exe
 	./$<
 
-cuda/memory_pool_test.exe: cuda/memory_pool_test.cpp cuda/memory_pool.o include/cumo/cuda/memory_pool.hpp
-	nvcc -std=c++14 <%= ENV['DEBUG'] ? '-g -O0 --compiler-options -Wall' : '' %> -L. -L$(libdir) -lruby-static -I. $(INCFLAGS) -o $@ $< cuda/memory_pool.o --linker-options -R$(libdir)
+cuda/memory_pool_test.exe: cuda/memory_pool_test.cpp cuda/memory_pool.cpp include/cumo/cuda/memory_pool.hpp
+	nvcc -DNO_RUBY -std=c++14 <%= ENV['DEBUG'] ? '-g -O0 --compiler-options -Wall' : '' %> -L. -L$(libdir) -I. $(INCFLAGS) -o $@ $< cuda/memory_pool.cpp
 
 CLEANOBJS = *.o */*.o */*/*.o *.bak narray/types/*.c narray/types/*_kernel.cu *.exe */*.exe
