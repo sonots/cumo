@@ -1,0 +1,8770 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>
+  Class: Cumo::Int8
+  
+    &mdash; Documentation by YARD 0.9.12
+  
+</title>
+
+  <link rel="stylesheet" href="../css/style.css" type="text/css" charset="utf-8" />
+
+  <link rel="stylesheet" href="../css/common.css" type="text/css" charset="utf-8" />
+
+<script type="text/javascript" charset="utf-8">
+  pathId = "Cumo::Int8";
+  relpath = '../';
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div class="nav_wrap">
+      <iframe id="nav" src="../class_list.html?1"></iframe>
+      <div id="resizer"></div>
+    </div>
+
+    <div id="main" tabindex="-1">
+      <div id="header">
+        <div id="menu">
+  
+    <a href="../_index.html">Index (I)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span>
+     &raquo; 
+    <span class="title">Int8</span>
+  
+</div>
+
+        <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../class_list.html">
+
+        <svg width="24" height="24">
+          <rect x="0" y="4" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="12" width="24" height="4" rx="1" ry="1"></rect>
+          <rect x="0" y="20" width="24" height="4" rx="1" ry="1"></rect>
+        </svg>
+    </a>
+  
+</div>
+        <div class="clear"></div>
+      </div>
+
+      <div id="content"><h1>Class: Cumo::Int8
+  
+  
+  
+</h1>
+<div class="box_info">
+  
+  <dl>
+    <dt>Inherits:</dt>
+    <dd>
+      <span class="inheritName"><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">NArray</a></span></span>
+      
+        <ul class="fullTree">
+          <li>Object</li>
+          
+            <li class="next"><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">NArray</a></span></li>
+          
+            <li class="next">Cumo::Int8</li>
+          
+        </ul>
+        <a href="#" class="inheritanceTree">show all</a>
+      
+    </dd>
+  </dl>
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+  <dl>
+    <dt>Defined in:</dt>
+    <dd>ext/cumo/narray/types/int8.c</dd>
+  </dl>
+  
+</div>
+
+
+  <h2>Constant Summary</h2>
+  <dl class="constants">
+    
+      <dt id="UPCAST-constant" class="">UPCAST =
+        
+      </dt>
+      <dd><pre class="code"><span class='id identifier rubyid_hCast'>hCast</span></pre></dd>
+    
+      <dt id="ELEMENT_BIT_SIZE-constant" class="">ELEMENT_BIT_SIZE =
+        
+      </dt>
+      <dd><pre class="code"><span class='const'>INT2FIX</span><span class='lparen'>(</span><span class='id identifier rubyid_sizeof'>sizeof</span><span class='lparen'>(</span><span class='id identifier rubyid_dtype'>dtype</span><span class='rparen'>)</span><span class='op'>*</span><span class='int'>8</span><span class='rparen'>)</span></pre></dd>
+    
+      <dt id="ELEMENT_BYTE_SIZE-constant" class="">ELEMENT_BYTE_SIZE =
+        
+      </dt>
+      <dd><pre class="code"><span class='const'>INT2FIX</span><span class='lparen'>(</span><span class='id identifier rubyid_sizeof'>sizeof</span><span class='lparen'>(</span><span class='id identifier rubyid_dtype'>dtype</span><span class='rparen'>)</span><span class='rparen'>)</span></pre></dd>
+    
+      <dt id="CONTIGUOUS_STRIDE-constant" class="">CONTIGUOUS_STRIDE =
+        
+      </dt>
+      <dd><pre class="code"><span class='const'>INT2FIX</span><span class='lparen'>(</span><span class='id identifier rubyid_sizeof'>sizeof</span><span class='lparen'>(</span><span class='id identifier rubyid_dtype'>dtype</span><span class='rparen'>)</span><span class='rparen'>)</span></pre></dd>
+    
+      <dt id="MAX-constant" class="">MAX =
+        
+      </dt>
+      <dd><pre class="code"><span class='const'>M_MAX</span></pre></dd>
+    
+      <dt id="MIN-constant" class="">MIN =
+        
+      </dt>
+      <dd><pre class="code"><span class='const'>M_MIN</span></pre></dd>
+    
+  </dl>
+
+
+
+  
+  
+  <h3 class="inherited">Constants inherited
+     from <span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">NArray</a></span></h3>
+  <p class="inherited"><span class='object_link'><a href="NArray.html#VERSION-constant" title="Cumo::NArray::VERSION (constant)">NArray::VERSION</a></span></p>
+
+
+
+
+
+  
+    <h2>
+      Class Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#[]-class_method" title="[] (class method)">.<strong>[]</strong>(obj)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Cast object to Cumo::Int8.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#cast-class_method" title="cast (class method)">.<strong>cast</strong>(obj)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Cast object to Cumo::Int8.</p>
+</div></span>
+  
+</li>
+
+      
+    </ul>
+  
+    <h2>
+      Instance Method Summary
+      <small><a href="#" class="summary_toggle">collapse</a></small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#%25-instance_method" title="#% (instance method)">#<strong>%</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary mod.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#&-instance_method" title="#&amp; (instance method)">#<strong>&amp;</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary bit_and.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#*-instance_method" title="#* (instance method)">#<strong>*</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary mul.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#**-instance_method" title="#** (instance method)">#<strong>**</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary power.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#%2B-instance_method" title="#+ (instance method)">#<strong>+</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary add.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#--instance_method" title="#- (instance method)">#<strong>-</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary sub.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#-@-instance_method" title="#-@ (instance method)">#<strong>-@</strong>  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Unary minus.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#%2F-instance_method" title="#/ (instance method)">#<strong>/</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary div.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#<<-instance_method" title="#&lt;&lt; (instance method)">#<strong>&lt;&lt;</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary left_shift.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#>>-instance_method" title="#&gt;&gt; (instance method)">#<strong>&gt;&gt;</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary right_shift.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#[]-instance_method" title="#[] (instance method)">#<strong>[]</strong>(dim0, ..., dimL)  &#x21d2; Numeric, NArray::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Array element referenece or slice view.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#[]=-instance_method" title="#[]= (instance method)">#<strong>[]=</strong>(dim0, .., dimL, val)  &#x21d2; Numeric </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Array element(s) set.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#%5E-instance_method" title="#^ (instance method)">#<strong>^</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary bit_xor.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#abs-instance_method" title="#abs (instance method)">#<strong>abs</strong>  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>abs of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#allocate-instance_method" title="#allocate (instance method)">#<strong>allocate</strong>  &#x21d2; Object </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#bincount-instance_method" title="#bincount (instance method)">#<strong>bincount</strong>([weight], minlength: nil)  &#x21d2; UInt32 or UInt64 or SFloat or DFloat </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Count the number of occurrences of each non-negative integer value.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#clip-instance_method" title="#clip (instance method)">#<strong>clip</strong>(min, max)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Clip array elements by [min,max].</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#coerce_cast-instance_method" title="#coerce_cast (instance method)">#<strong>coerce_cast</strong>(type)  &#x21d2; nil </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>return NArray with cast to the type of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#cumprod-instance_method" title="#cumprod (instance method)">#<strong>cumprod</strong>(axis: nil, nan: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>cumprod of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#cumsum-instance_method" title="#cumsum (instance method)">#<strong>cumsum</strong>(axis: nil, nan: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>cumsum of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#divmod-instance_method" title="#divmod (instance method)">#<strong>divmod</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary divmod.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#each-instance_method" title="#each (instance method)">#<strong>each</strong>  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Calls the given block once for each element in self, passing that element
+as a parameter.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#each_with_index-instance_method" title="#each_with_index (instance method)">#<strong>each_with_index</strong>  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Invokes the given block once for each element of self, passing that element
+and indices along each axis as parameters.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#eq-instance_method" title="#eq (instance method)">#<strong>eq</strong>(other)  &#x21d2; Cumo::Bit </a>
+    
+
+    
+      (also: #nearly_eq)
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Comparison eq other.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#extract-instance_method" title="#extract (instance method)">#<strong>extract</strong>  &#x21d2; Numeric, Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Extract an element only if self is a dimensionless NArray.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#eye-instance_method" title="#eye (instance method)">#<strong>eye</strong>([element,offset])  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Eye: Set a value to diagonal components, set 0 to non-diagonal components.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#fill-instance_method" title="#fill (instance method)">#<strong>fill</strong>(other)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Fill elements with other.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#format-instance_method" title="#format (instance method)">#<strong>format</strong>(format)  &#x21d2; Cumo::RObject </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Format elements into strings.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#format_to_a-instance_method" title="#format_to_a (instance method)">#<strong>format_to_a</strong>(format)  &#x21d2; Array </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Format elements into strings.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#ge-instance_method" title="#ge (instance method)">#<strong>ge</strong>(other)  &#x21d2; Cumo::Bit </a>
+    
+
+    
+      (also: #&gt;=)
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Comparison ge other.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#gt-instance_method" title="#gt (instance method)">#<strong>gt</strong>(other)  &#x21d2; Cumo::Bit </a>
+    
+
+    
+      (also: #&gt;)
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Comparison gt other.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#inspect-instance_method" title="#inspect (instance method)">#<strong>inspect</strong>  &#x21d2; String </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Returns a string containing a human-readable representation of NArray.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#le-instance_method" title="#le (instance method)">#<strong>le</strong>(other)  &#x21d2; Cumo::Bit </a>
+    
+
+    
+      (also: #&lt;=)
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Comparison le other.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#lt-instance_method" title="#lt (instance method)">#<strong>lt</strong>(other)  &#x21d2; Cumo::Bit </a>
+    
+
+    
+      (also: #&lt;)
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Comparison lt other.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#map-instance_method" title="#map (instance method)">#<strong>map</strong>  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Unary map.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#map_with_index-instance_method" title="#map_with_index (instance method)">#<strong>map_with_index</strong>  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Invokes the given block once for each element of self, passing that element
+and indices along each axis as parameters.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#max-instance_method" title="#max (instance method)">#<strong>max</strong>(axis: nil, keepdims: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>max of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#max_index-instance_method" title="#max_index (instance method)">#<strong>max_index</strong>(axis: nil)  &#x21d2; Integer, Cumo::Int </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>max_index.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#median-instance_method" title="#median (instance method)">#<strong>median</strong>(axis: nil, keepdims: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>median of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#min-instance_method" title="#min (instance method)">#<strong>min</strong>(axis: nil, keepdims: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>min of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#min_index-instance_method" title="#min_index (instance method)">#<strong>min_index</strong>(axis: nil)  &#x21d2; Integer, Cumo::Int </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>min_index.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#minmax-instance_method" title="#minmax (instance method)">#<strong>minmax</strong>(axis: nil, keepdims: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>minmax of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#mulsum-instance_method" title="#mulsum (instance method)">#<strong>mulsum</strong>(other, axis: nil, keepdims: false)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary mulsum.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#ne-instance_method" title="#ne (instance method)">#<strong>ne</strong>(other)  &#x21d2; Cumo::Bit </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Comparison ne other.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#poly-instance_method" title="#poly (instance method)">#<strong>poly</strong>(a0, a1, ...)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Polynomial.: a0 + a1<em>x + a2</em>x<em>2 + a3x</em>*3 + …</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#prod-instance_method" title="#prod (instance method)">#<strong>prod</strong>(axis: nil, keepdims: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>prod of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#ptp-instance_method" title="#ptp (instance method)">#<strong>ptp</strong>(axis: nil, keepdims: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>ptp of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#rand-instance_method" title="#rand (instance method)">#<strong>rand</strong>([[low],high])  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Generate uniformly distributed random numbers on self narray.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#reciprocal-instance_method" title="#reciprocal (instance method)">#<strong>reciprocal</strong>  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Unary reciprocal.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#seq-instance_method" title="#seq (instance method)">#<strong>seq</strong>([beg,[step]])  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+      (also: #indgen)
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Set linear sequence of numbers to self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#sign-instance_method" title="#sign (instance method)">#<strong>sign</strong>  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Unary sign.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#sort-instance_method" title="#sort (instance method)">#<strong>sort</strong>(axis: nil)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>sort of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#sort_index-instance_method" title="#sort_index (instance method)">#<strong>sort_index</strong>(axis: nil)  &#x21d2; Integer, Cumo::Int </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>sort_index.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#square-instance_method" title="#square (instance method)">#<strong>square</strong>  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Unary square.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#store-instance_method" title="#store (instance method)">#<strong>store</strong>(other)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Store elements to Cumo::Int8 from other.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#sum-instance_method" title="#sum (instance method)">#<strong>sum</strong>(axis: nil, keepdims: false)  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>sum of self.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#to_a-instance_method" title="#to_a (instance method)">#<strong>to_a</strong>  &#x21d2; Array </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Convert self to Array.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#%7C-instance_method" title="#| (instance method)">#<strong>|</strong>(other)  &#x21d2; Cumo::NArray </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Binary bit_or.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#~-instance_method" title="#~ (instance method)">#<strong>~</strong>  &#x21d2; Cumo::Int8 </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Unary bit_not.</p>
+</div></span>
+  
+</li>
+
+      
+    </ul>
+  
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  <h3 class="inherited">Methods inherited from <span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">NArray</a></span></h3>
+  <p class="inherited"><span class='object_link'><a href="NArray.html#==-instance_method" title="Cumo::NArray#== (method)">#==</a></span>, <span class='object_link'><a href="NArray.html#append-instance_method" title="Cumo::NArray#append (method)">#append</a></span>, <span class='object_link'><a href="NArray.html#array_type-class_method" title="Cumo::NArray.array_type (method)">array_type</a></span>, <span class='object_link'><a href="NArray.html#asarray-class_method" title="Cumo::NArray.asarray (method)">asarray</a></span>, <span class='object_link'><a href="NArray.html#at-instance_method" title="Cumo::NArray#at (method)">#at</a></span>, <span class='object_link'><a href="NArray.html#byte_size-class_method" title="Cumo::NArray.byte_size (method)">byte_size</a></span>, <span class='object_link'><a href="NArray.html#byte_size-instance_method" title="Cumo::NArray#byte_size (method)">#byte_size</a></span>, <span class='object_link'><a href="NArray.html#byte_swapped%3F-instance_method" title="Cumo::NArray#byte_swapped? (method)">#byte_swapped?</a></span>, <span class='object_link'><a href="NArray.html#cast_to-instance_method" title="Cumo::NArray#cast_to (method)">#cast_to</a></span>, <span class='object_link'><a href="NArray.html#coerce-instance_method" title="Cumo::NArray#coerce (method)">#coerce</a></span>, <span class='object_link'><a href="NArray.html#column_major%3F-instance_method" title="Cumo::NArray#column_major? (method)">#column_major?</a></span>, <span class='object_link'><a href="NArray.html#column_stack-class_method" title="Cumo::NArray.column_stack (method)">column_stack</a></span>, <span class='object_link'><a href="NArray.html#concatenate-class_method" title="Cumo::NArray.concatenate (method)">concatenate</a></span>, <span class='object_link'><a href="NArray.html#concatenate-instance_method" title="Cumo::NArray#concatenate (method)">#concatenate</a></span>, <span class='object_link'><a href="NArray.html#contiguous%3F-instance_method" title="Cumo::NArray#contiguous? (method)">#contiguous?</a></span>, <span class='object_link'><a href="NArray.html#cov-instance_method" title="Cumo::NArray#cov (method)">#cov</a></span>, <span class='object_link'><a href="NArray.html#debug=-class_method" title="Cumo::NArray.debug= (method)">debug=</a></span>, <span class='object_link'><a href="NArray.html#debug_info-instance_method" title="Cumo::NArray#debug_info (method)">#debug_info</a></span>, <span class='object_link'><a href="NArray.html#deg2rad-instance_method" title="Cumo::NArray#deg2rad (method)">#deg2rad</a></span>, <span class='object_link'><a href="NArray.html#delete-instance_method" title="Cumo::NArray#delete (method)">#delete</a></span>, <span class='object_link'><a href="NArray.html#diag-instance_method" title="Cumo::NArray#diag (method)">#diag</a></span>, <span class='object_link'><a href="NArray.html#diag_indices-instance_method" title="Cumo::NArray#diag_indices (method)">#diag_indices</a></span>, <span class='object_link'><a href="NArray.html#diag_indices-class_method" title="Cumo::NArray.diag_indices (method)">diag_indices</a></span>, <span class='object_link'><a href="NArray.html#diagonal-instance_method" title="Cumo::NArray#diagonal (method)">#diagonal</a></span>, <span class='object_link'><a href="NArray.html#diff-instance_method" title="Cumo::NArray#diff (method)">#diff</a></span>, <span class='object_link'><a href="NArray.html#dot-instance_method" title="Cumo::NArray#dot (method)">#dot</a></span>, <span class='object_link'><a href="NArray.html#dsplit-instance_method" title="Cumo::NArray#dsplit (method)">#dsplit</a></span>, <span class='object_link'><a href="NArray.html#dstack-class_method" title="Cumo::NArray.dstack (method)">dstack</a></span>, <span class='object_link'><a href="NArray.html#empty%3F-instance_method" title="Cumo::NArray#empty? (method)">#empty?</a></span>, <span class='object_link'><a href="NArray.html#expand_dims-instance_method" title="Cumo::NArray#expand_dims (method)">#expand_dims</a></span>, <span class='object_link'><a href="NArray.html#eye-class_method" title="Cumo::NArray.eye (method)">eye</a></span>, <span class='object_link'><a href="NArray.html#flatten-instance_method" title="Cumo::NArray#flatten (method)">#flatten</a></span>, <span class='object_link'><a href="NArray.html#fliplr-instance_method" title="Cumo::NArray#fliplr (method)">#fliplr</a></span>, <span class='object_link'><a href="NArray.html#flipud-instance_method" title="Cumo::NArray#flipud (method)">#flipud</a></span>, <span class='object_link'><a href="NArray.html#free-instance_method" title="Cumo::NArray#free (method)">#free</a></span>, <span class='object_link'><a href="NArray.html#from_binary-class_method" title="Cumo::NArray.from_binary (method)">from_binary</a></span>, <span class='object_link'><a href="NArray.html#host_order%3F-instance_method" title="Cumo::NArray#host_order? (method)">#host_order?</a></span>, <span class='object_link'><a href="NArray.html#hsplit-instance_method" title="Cumo::NArray#hsplit (method)">#hsplit</a></span>, <span class='object_link'><a href="NArray.html#hstack-class_method" title="Cumo::NArray.hstack (method)">hstack</a></span>, <span class='object_link'><a href="NArray.html#initialize-instance_method" title="Cumo::NArray#initialize (method)">#initialize</a></span>, <span class='object_link'><a href="NArray.html#initialize_copy-instance_method" title="Cumo::NArray#initialize_copy (method)">#initialize_copy</a></span>, <span class='object_link'><a href="NArray.html#inner-instance_method" title="Cumo::NArray#inner (method)">#inner</a></span>, <span class='object_link'><a href="NArray.html#inplace-instance_method" title="Cumo::NArray#inplace (method)">#inplace</a></span>, <span class='object_link'><a href="NArray.html#inplace!-instance_method" title="Cumo::NArray#inplace! (method)">#inplace!</a></span>, <span class='object_link'><a href="NArray.html#inplace%3F-instance_method" title="Cumo::NArray#inplace? (method)">#inplace?</a></span>, <span class='object_link'><a href="NArray.html#insert-instance_method" title="Cumo::NArray#insert (method)">#insert</a></span>, <span class='object_link'><a href="NArray.html#inspect_cols-class_method" title="Cumo::NArray.inspect_cols (method)">inspect_cols</a></span>, <span class='object_link'><a href="NArray.html#inspect_cols=-class_method" title="Cumo::NArray.inspect_cols= (method)">inspect_cols=</a></span>, <span class='object_link'><a href="NArray.html#inspect_rows-class_method" title="Cumo::NArray.inspect_rows (method)">inspect_rows</a></span>, <span class='object_link'><a href="NArray.html#inspect_rows=-class_method" title="Cumo::NArray.inspect_rows= (method)">inspect_rows=</a></span>, <span class='object_link'><a href="NArray.html#kron-instance_method" title="Cumo::NArray#kron (method)">#kron</a></span>, <span class='object_link'><a href="NArray.html#linspace-class_method" title="Cumo::NArray.linspace (method)">linspace</a></span>, <span class='object_link'><a href="NArray.html#logspace-class_method" title="Cumo::NArray.logspace (method)">logspace</a></span>, <span class='object_link'><a href="NArray.html#marshal_dump-instance_method" title="Cumo::NArray#marshal_dump (method)">#marshal_dump</a></span>, <span class='object_link'><a href="NArray.html#marshal_load-instance_method" title="Cumo::NArray#marshal_load (method)">#marshal_load</a></span>, <span class='object_link'><a href="NArray.html#ndim-instance_method" title="Cumo::NArray#ndim (method)">#ndim</a></span>, <span class='object_link'><a href="NArray.html#new_fill-instance_method" title="Cumo::NArray#new_fill (method)">#new_fill</a></span>, <span class='object_link'><a href="NArray.html#new_like-class_method" title="Cumo::NArray.new_like (method)">new_like</a></span>, <span class='object_link'><a href="NArray.html#new_narray-instance_method" title="Cumo::NArray#new_narray (method)">#new_narray</a></span>, <span class='object_link'><a href="NArray.html#new_ones-instance_method" title="Cumo::NArray#new_ones (method)">#new_ones</a></span>, <span class='object_link'><a href="NArray.html#new_zeros-instance_method" title="Cumo::NArray#new_zeros (method)">#new_zeros</a></span>, <span class='object_link'><a href="NArray.html#ones-class_method" title="Cumo::NArray.ones (method)">ones</a></span>, <span class='object_link'><a href="NArray.html#out_of_place!-instance_method" title="Cumo::NArray#out_of_place! (method)">#out_of_place!</a></span>, <span class='object_link'><a href="NArray.html#outer-instance_method" title="Cumo::NArray#outer (method)">#outer</a></span>, <span class='object_link'><a href="NArray.html#parse-class_method" title="Cumo::NArray.parse (method)">parse</a></span>, <span class='object_link'><a href="NArray.html#profile-class_method" title="Cumo::NArray.profile (method)">profile</a></span>, <span class='object_link'><a href="NArray.html#profile=-class_method" title="Cumo::NArray.profile= (method)">profile=</a></span>, <span class='object_link'><a href="NArray.html#rad2deg-instance_method" title="Cumo::NArray#rad2deg (method)">#rad2deg</a></span>, <span class='object_link'><a href="NArray.html#repeat-instance_method" title="Cumo::NArray#repeat (method)">#repeat</a></span>, <span class='object_link'><a href="NArray.html#reshape-instance_method" title="Cumo::NArray#reshape (method)">#reshape</a></span>, <span class='object_link'><a href="NArray.html#reshape!-instance_method" title="Cumo::NArray#reshape! (method)">#reshape!</a></span>, <span class='object_link'><a href="NArray.html#reverse-instance_method" title="Cumo::NArray#reverse (method)">#reverse</a></span>, <span class='object_link'><a href="NArray.html#rot90-instance_method" title="Cumo::NArray#rot90 (method)">#rot90</a></span>, <span class='object_link'><a href="NArray.html#row_major%3F-instance_method" title="Cumo::NArray#row_major? (method)">#row_major?</a></span>, <span class='object_link'><a href="NArray.html#shape-instance_method" title="Cumo::NArray#shape (method)">#shape</a></span>, <span class='object_link'><a href="NArray.html#size-instance_method" title="Cumo::NArray#size (method)">#size</a></span>, <span class='object_link'><a href="NArray.html#split-instance_method" title="Cumo::NArray#split (method)">#split</a></span>, <span class='object_link'><a href="NArray.html#srand-class_method" title="Cumo::NArray.srand (method)">srand</a></span>, <span class='object_link'><a href="NArray.html#store_binary-instance_method" title="Cumo::NArray#store_binary (method)">#store_binary</a></span>, <span class='object_link'><a href="NArray.html#swap_byte-instance_method" title="Cumo::NArray#swap_byte (method)">#swap_byte</a></span>, <span class='object_link'><a href="NArray.html#swapaxes-instance_method" title="Cumo::NArray#swapaxes (method)">#swapaxes</a></span>, <span class='object_link'><a href="NArray.html#tile-instance_method" title="Cumo::NArray#tile (method)">#tile</a></span>, <span class='object_link'><a href="NArray.html#to_binary-instance_method" title="Cumo::NArray#to_binary (method)">#to_binary</a></span>, <span class='object_link'><a href="NArray.html#to_c-instance_method" title="Cumo::NArray#to_c (method)">#to_c</a></span>, <span class='object_link'><a href="NArray.html#to_f-instance_method" title="Cumo::NArray#to_f (method)">#to_f</a></span>, <span class='object_link'><a href="NArray.html#to_host-instance_method" title="Cumo::NArray#to_host (method)">#to_host</a></span>, <span class='object_link'><a href="NArray.html#to_i-instance_method" title="Cumo::NArray#to_i (method)">#to_i</a></span>, <span class='object_link'><a href="NArray.html#to_network-instance_method" title="Cumo::NArray#to_network (method)">#to_network</a></span>, <span class='object_link'><a href="NArray.html#to_swapped-instance_method" title="Cumo::NArray#to_swapped (method)">#to_swapped</a></span>, <span class='object_link'><a href="NArray.html#to_vacs-instance_method" title="Cumo::NArray#to_vacs (method)">#to_vacs</a></span>, <span class='object_link'><a href="NArray.html#trace-instance_method" title="Cumo::NArray#trace (method)">#trace</a></span>, <span class='object_link'><a href="NArray.html#transpose-instance_method" title="Cumo::NArray#transpose (method)">#transpose</a></span>, <span class='object_link'><a href="NArray.html#tril-instance_method" title="Cumo::NArray#tril (method)">#tril</a></span>, <span class='object_link'><a href="NArray.html#tril!-instance_method" title="Cumo::NArray#tril! (method)">#tril!</a></span>, <span class='object_link'><a href="NArray.html#tril_indices-instance_method" title="Cumo::NArray#tril_indices (method)">#tril_indices</a></span>, <span class='object_link'><a href="NArray.html#tril_indices-class_method" title="Cumo::NArray.tril_indices (method)">tril_indices</a></span>, <span class='object_link'><a href="NArray.html#triu-instance_method" title="Cumo::NArray#triu (method)">#triu</a></span>, <span class='object_link'><a href="NArray.html#triu!-instance_method" title="Cumo::NArray#triu! (method)">#triu!</a></span>, <span class='object_link'><a href="NArray.html#triu_indices-instance_method" title="Cumo::NArray#triu_indices (method)">#triu_indices</a></span>, <span class='object_link'><a href="NArray.html#triu_indices-class_method" title="Cumo::NArray.triu_indices (method)">triu_indices</a></span>, <span class='object_link'><a href="NArray.html#upcast-class_method" title="Cumo::NArray.upcast (method)">upcast</a></span>, <span class='object_link'><a href="NArray.html#view-instance_method" title="Cumo::NArray#view (method)">#view</a></span>, <span class='object_link'><a href="NArray.html#vsplit-instance_method" title="Cumo::NArray#vsplit (method)">#vsplit</a></span>, <span class='object_link'><a href="NArray.html#vstack-class_method" title="Cumo::NArray.vstack (method)">vstack</a></span>, <span class='object_link'><a href="NArray.html#zeros-class_method" title="Cumo::NArray.zeros (method)">zeros</a></span></p>
+<div id="constructor_details" class="method_details_list">
+  <h2>Constructor Details</h2>
+  
+    <p class="notice">This class inherits a constructor from <span class='object_link'><a href="NArray.html#initialize-instance_method" title="Cumo::NArray#initialize (method)">Cumo::NArray</a></span></p>
+  
+</div>
+
+
+  <div id="class_method_details" class="method_details_list">
+    <h2>Class Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="[]-class_method">
+  
+    
+      <span class="overload">.<strong>[]</strong>(elements)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> </span>
+    
+      <span class="overload">.<strong>cast</strong>(array)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> </span>
+    
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Cast object to Cumo::Int8.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>elements</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>array</span>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1215
+1216
+1217
+1218
+1219
+1220
+1221
+1222
+1223
+1224
+1225
+1226
+1227
+1228
+1229
+1230
+1231
+1232
+1233
+1234
+1235
+1236
+1237
+1238
+1239
+1240
+1241
+1242
+1243
+1244
+1245</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1215</span>
+
+static VALUE
+int8_s_cast(VALUE type, VALUE obj)
+{
+    VALUE v;
+    narray_t *na;
+    dtype x;
+
+    if (CLASS_OF(obj)==cT) {
+        return obj;
+    }
+    if (RTEST(rb_obj_is_kind_of(obj,rb_cNumeric))) {
+        x = m_num_to_data(obj);
+        return int8_new_dim0(x);
+    }
+    if (RTEST(rb_obj_is_kind_of(obj,rb_cArray))) {
+        return int8_cast_array(obj);
+    }
+    if (IsNArray(obj)) {
+        GetNArray(obj,na);
+        v = nary_new(cT, NA_NDIM(na), NA_SHAPE(na));
+        if (NA_SIZE(na) &gt; 0) {
+            int8_store(v,obj);
+        }
+        return v;
+    }
+    
+#line 41 &quot;narray/gen/tmpl/cast.c&quot;
+    rb_raise(nary_eCastError,&quot;cannot cast to %s&quot;,rb_class2name(type));
+    return Qnil;
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="cast-class_method">
+  
+    
+      <span class="overload">.<strong>[]</strong>(elements)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> </span>
+    
+      <span class="overload">.<strong>cast</strong>(array)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> </span>
+    
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Cast object to Cumo::Int8.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>elements</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>array</span>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1215
+1216
+1217
+1218
+1219
+1220
+1221
+1222
+1223
+1224
+1225
+1226
+1227
+1228
+1229
+1230
+1231
+1232
+1233
+1234
+1235
+1236
+1237
+1238
+1239
+1240
+1241
+1242
+1243
+1244
+1245</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1215</span>
+
+static VALUE
+int8_s_cast(VALUE type, VALUE obj)
+{
+    VALUE v;
+    narray_t *na;
+    dtype x;
+
+    if (CLASS_OF(obj)==cT) {
+        return obj;
+    }
+    if (RTEST(rb_obj_is_kind_of(obj,rb_cNumeric))) {
+        x = m_num_to_data(obj);
+        return int8_new_dim0(x);
+    }
+    if (RTEST(rb_obj_is_kind_of(obj,rb_cArray))) {
+        return int8_cast_array(obj);
+    }
+    if (IsNArray(obj)) {
+        GetNArray(obj,na);
+        v = nary_new(cT, NA_NDIM(na), NA_SHAPE(na));
+        if (NA_SIZE(na) &gt; 0) {
+            int8_store(v,obj);
+        }
+        return v;
+    }
+    
+#line 41 &quot;narray/gen/tmpl/cast.c&quot;
+    rb_raise(nary_eCastError,&quot;cannot cast to %s&quot;,rb_class2name(type));
+    return Qnil;
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+  <div id="instance_method_details" class="method_details_list">
+    <h2>Instance Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="%-instance_method">
+  
+    #<strong>%</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary mod.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self % other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2335
+2336
+2337
+2338
+2339
+2340
+2341
+2342
+2343
+2344
+2345
+2346
+2347
+2348
+2349
+2350
+2351</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2335</span>
+
+static VALUE
+int8_mod(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_mod_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, &#39;%&#39;, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="&-instance_method">
+  
+    #<strong>&amp;</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary bit_and.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self &amp; other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2920
+2921
+2922
+2923
+2924
+2925
+2926
+2927
+2928
+2929
+2930
+2931
+2932
+2933
+2934
+2935
+2936</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2920</span>
+
+static VALUE
+int8_bit_and(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_bit_and_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, &#39;&amp;&#39;, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="*-instance_method">
+  
+    #<strong>*</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary mul.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self * other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2181
+2182
+2183
+2184
+2185
+2186
+2187
+2188
+2189
+2190
+2191
+2192
+2193
+2194
+2195
+2196
+2197</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2181</span>
+
+static VALUE
+int8_mul(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_mul_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, &#39;*&#39;, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="**-instance_method">
+  
+    #<strong>**</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary power.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self to the other-th power.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2472
+2473
+2474
+2475
+2476
+2477
+2478
+2479
+2480
+2481
+2482
+2483
+2484
+2485
+2486</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2472</span>
+
+static VALUE
+int8_pow(VALUE self, VALUE other)
+{
+    
+#line 88 &quot;narray/gen/tmpl/pow.c&quot;
+    VALUE klass, v;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_pow_self(self,other);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_pow, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="+-instance_method">
+  
+    #<strong>+</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary add.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self + other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2035
+2036
+2037
+2038
+2039
+2040
+2041
+2042
+2043
+2044
+2045
+2046
+2047
+2048
+2049
+2050
+2051</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2035</span>
+
+static VALUE
+int8_add(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_add_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, &#39;+&#39;, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="--instance_method">
+  
+    #<strong>-</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary sub.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self - other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2108
+2109
+2110
+2111
+2112
+2113
+2114
+2115
+2116
+2117
+2118
+2119
+2120
+2121
+2122
+2123
+2124</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2108</span>
+
+static VALUE
+int8_sub(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_sub_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, &#39;-&#39;, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="-@-instance_method">
+  
+    #<strong>-@</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Unary minus.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>minus of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2540
+2541
+2542
+2543
+2544
+2545
+2546
+2547
+2548
+2549
+2550</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2540</span>
+
+static VALUE
+int8_minus(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{cT,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = {iter_int8_minus, FULL_LOOP, 1,1, ain,aout};
+
+    
+#line 131 &quot;narray/gen/tmpl/unary.c&quot;
+    return na_ndloop(&amp;ndf, 1, self);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="/-instance_method">
+  
+    #<strong>/</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary div.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self / other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2258
+2259
+2260
+2261
+2262
+2263
+2264
+2265
+2266
+2267
+2268
+2269
+2270
+2271
+2272
+2273
+2274</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2258</span>
+
+static VALUE
+int8_div(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_div_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, &#39;/&#39;, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="<<-instance_method">
+  
+    #<strong>&lt;&lt;</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary left_shift.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self &lt;&lt; other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3203
+3204
+3205
+3206
+3207
+3208
+3209
+3210
+3211
+3212
+3213
+3214
+3215
+3216
+3217
+3218
+3219</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3203</span>
+
+static VALUE
+int8_left_shift(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_left_shift_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_left_shift, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id=">>-instance_method">
+  
+    #<strong>&gt;&gt;</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary right_shift.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self &gt;&gt; other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3276
+3277
+3278
+3279
+3280
+3281
+3282
+3283
+3284
+3285
+3286
+3287
+3288
+3289
+3290
+3291
+3292</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3276</span>
+
+static VALUE
+int8_right_shift(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_right_shift_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_right_shift, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="[]-instance_method">
+  
+    #<strong>[]</strong>(dim0, ..., dimL)  &#x21d2; <tt>Numeric</tt>, <tt>NArray::Int8</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Array element referenece or slice view. — Returns the element at
+<code>dim0</code>, <code>dim1</code>, … are Numeric indices for each
+dimension, or returns a NArray View as a sliced subarray if
+<code>dim0</code>, <code>dim1</code>, … includes other than Numeric index,
+e.g., Range or Array or true.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>a = Cumo::DFloat.new(4,5).seq
+=&gt; Cumo::DFloat#shape=[4,5]
+[[0, 1, 2, 3, 4],
+ [5, 6, 7, 8, 9],
+ [10, 11, 12, 13, 14],
+ [15, 16, 17, 18, 19]]
+
+a[1,1]
+=&gt; 6.0
+
+a[1..3,1]
+=&gt; Cumo::DFloat#shape=[3]
+[6, 11, 16]
+
+a[1,[1,3,4]]
+=&gt; Cumo::DFloat#shape=[3]
+[6, 8, 9]
+
+a[true,2].fill(99)
+a
+=&gt; Cumo::DFloat#shape=[4,5]
+[[0, 1, 99, 3, 4],
+ [5, 6, 99, 8, 9],
+ [10, 11, 99, 13, 14],
+ [15, 16, 99, 18, 19]]</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>dim0,...,dimL</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Range</tt>, <tt>etc</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Multi-dimensional Index.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>NArray::Int8</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Element object or NArray view.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1287
+1288
+1289
+1290
+1291
+1292
+1293
+1294
+1295
+1296
+1297
+1298
+1299
+1300
+1301
+1302
+1303
+1304</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1287</span>
+
+static VALUE
+int8_aref(int argc, VALUE *argv, VALUE self)
+{
+    int nd;
+    size_t pos;
+    char *ptr;
+
+    nd = na_get_result_dimension(self, argc, argv, sizeof(dtype), &amp;pos);
+    if (nd) {
+        return na_aref_main(argc, argv, self, 0, nd);
+    } else {
+        // TODO(sonots): Return 0-dimensional narray rather than Synchronize()
+        ptr = na_get_pointer_for_read(self) + pos;
+        SHOW_SYNCHRONIZE_WARNING_ONCE(&quot;aref&quot;, &quot;int8&quot;);
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        return m_extract(ptr);
+    }
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="[]=-instance_method">
+  
+    #<strong>[]=</strong>(dim0, .., dimL, val)  &#x21d2; <tt>Numeric</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Array element(s) set. — Replace element(s) at <code>dim0</code>,
+<code>dim1</code>, … (index/range/array/true for each dimention).
+Broadcasting mechanism is applied.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>a = Cumo::DFloat.new(3,4).seq
+=&gt; Cumo::DFloat#shape=[3,4]
+[[0, 1, 2, 3],
+ [4, 5, 6, 7],
+ [8, 9, 10, 11]]
+
+a[1,2]=99
+a
+=&gt; Cumo::DFloat#shape=[3,4]
+[[0, 1, 2, 3],
+ [4, 5, 99, 7],
+ [8, 9, 10, 11]]
+
+a[1,[0,2]] = [101,102]
+a
+=&gt; Cumo::DFloat#shape=[3,4]
+[[0, 1, 2, 3],
+ [101, 5, 102, 7],
+ [8, 9, 10, 11]]
+
+a[1,true]=99
+a
+=&gt; Cumo::DFloat#shape=[3,4]
+[[0, 1, 2, 3],
+ [99, 99, 99, 99],
+ [8, 9, 10, 11]]</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>dim0,..,dimL</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Range</tt>, <tt>etc</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Multi-dimensional Index.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>val</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>etc</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Value(s) to be set to self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns val (last argument).</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1347
+1348
+1349
+1350
+1351
+1352
+1353
+1354
+1355
+1356
+1357
+1358
+1359
+1360
+1361
+1362
+1363
+1364
+1365
+1366
+1367
+1368
+1369
+1370
+1371
+1372</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1347</span>
+
+static VALUE
+int8_aset(int argc, VALUE *argv, VALUE self)
+{
+    int nd;
+    size_t pos;
+    char *ptr;
+    VALUE a;
+    dtype x;
+
+    argc--;
+    if (argc==0) {
+        int8_store(self, argv[argc]);
+    } else {
+        nd = na_get_result_dimension(self, argc, argv, sizeof(dtype), &amp;pos);
+        if (nd) {
+            a = na_aref_main(argc, argv, self, 0, nd);
+            int8_store(a, argv[argc]);
+        } else {
+            x = int8_extract_data(argv[argc]);
+            ptr = na_get_pointer_for_read_write(self) + pos;
+            *(dtype*)ptr = x;
+        }
+
+    }
+    return argv[argc];
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="^-instance_method">
+  
+    #<strong>^</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary bit_xor.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self ^ other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3066
+3067
+3068
+3069
+3070
+3071
+3072
+3073
+3074
+3075
+3076
+3077
+3078
+3079
+3080
+3081
+3082</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3066</span>
+
+static VALUE
+int8_bit_xor(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_bit_xor_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, &#39;^&#39;, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="abs-instance_method">
+  
+    #<strong>abs</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>abs of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>abs of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1970
+1971
+1972
+1973
+1974
+1975
+1976
+1977
+1978</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1970</span>
+
+static VALUE
+int8_abs(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{cT,0}};
+    ndfunc_arg_out_t aout[1] = {{cRT,0}};
+    ndfunc_t ndf = { iter_int8_abs, FULL_LOOP, 1, 1, ain, aout };
+
+    return na_ndloop(&amp;ndf, 1, self);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="allocate-instance_method">
+  
+    #<strong>allocate</strong>  &#x21d2; <tt>Object</tt> 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 139</span>
+
+static VALUE
+int8_allocate(VALUE self)
+{
+    narray_t *na;
+    void *ptr;
+
+    GetNArray(self,na);
+
+    switch(NA_TYPE(na)) {
+    case NARRAY_DATA_T:
+        ptr = NA_DATA_PTR(na);
+        if (na-&gt;size &gt; 0 &amp;&amp; ptr == NULL) {
+            
+#line 22 &quot;narray/gen/tmpl/allocate.c&quot;
+            ptr = cumo_cuda_runtime_malloc(sizeof(dtype) * na-&gt;size);
+            
+            NA_DATA_PTR(na) = ptr;
+        }
+        break;
+    case NARRAY_VIEW_T:
+        rb_funcall(NA_VIEW_DATA(na), rb_intern(&quot;allocate&quot;), 0);
+        break;
+    case NARRAY_FILEMAP_T:
+        //ptr = ((narray_filemap_t*)na)-&gt;ptr;
+        // to be implemented
+    default:
+        rb_bug(&quot;invalid narray type : %d&quot;,NA_TYPE(na));
+    }
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="bincount-instance_method">
+  
+    #<strong>bincount</strong>([weight], minlength: nil)  &#x21d2; <tt><span class='object_link'><a href="UInt32.html" title="Cumo::UInt32 (class)">UInt32</a></span> or <span class='object_link'><a href="UInt64.html" title="Cumo::UInt64 (class)">UInt64</a></span> or <span class='object_link'><a href="SFloat.html" title="Cumo::SFloat (class)">SFloat</a></span> or <span class='object_link'><a href="DFloat.html" title="Cumo::DFloat (class)">DFloat</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Count the number of occurrences of each non-negative integer value. Only
+Integer-types has this method.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>Cumo::Int32[0..4].bincount
+=&gt; Cumo::UInt32#shape=[5]
+   [1, 1, 1, 1, 1]
+
+Cumo::Int32[0, 1, 1, 3, 2, 1, 7].bincount
+=&gt; Cumo::UInt32#shape=[8]
+   [1, 3, 1, 1, 0, 0, 0, 1]
+
+x = Cumo::Int32[0, 1, 1, 3, 2, 1, 7, 23]
+x.bincount.size == x.max+1
+=&gt; true
+
+w = Cumo::DFloat[0.3, 0.5, 0.2, 0.7, 1.0, -0.6]
+x = Cumo::Int32[0, 1, 1, 2, 2, 2]
+x.bincount(w)
+=&gt; Cumo::DFloat#shape=[3]
+   [0.3, 0.7, 1.1]</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>weight</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="SFloat.html" title="Cumo::SFloat (class)">SFloat</a></span> or <span class='object_link'><a href="DFloat.html" title="Cumo::DFloat (class)">DFloat</a></span> or Array</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(optional) Array of float values. Its size along last axis should be same
+as that of self.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>minlength</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword, optional) Minimum size along last axis for the output array.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="UInt32.html" title="Cumo::UInt32 (class)">UInt32</a></span> or <span class='object_link'><a href="UInt64.html" title="Cumo::UInt64 (class)">UInt64</a></span> or <span class='object_link'><a href="SFloat.html" title="Cumo::SFloat (class)">SFloat</a></span> or <span class='object_link'><a href="DFloat.html" title="Cumo::DFloat (class)">DFloat</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Returns Float NArray if weight array is supplied, otherwise returns UInt32
+or UInt64 depending on the size along last axis.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4392
+4393
+4394
+4395
+4396
+4397
+4398
+4399
+4400
+4401
+4402
+4403
+4404
+4405
+4406
+4407
+4408
+4409
+4410
+4411
+4412
+4413
+4414
+4415
+4416
+4417
+4418
+4419
+4420
+4421
+4422
+4423
+4424
+4425
+4426
+4427
+4428
+4429
+4430
+4431
+4432
+4433
+4434
+4435</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4392</span>
+
+static VALUE
+int8_bincount(int argc, VALUE *argv, VALUE self)
+{
+    VALUE weight=Qnil, kw=Qnil;
+    VALUE opts[1] = {Qundef};
+    VALUE v, wclass;
+    ID table[1] = {id_minlength};
+    size_t length, minlength;
+
+    rb_scan_args(argc, argv, &quot;01:&quot;, &amp;weight, &amp;kw);
+    rb_get_kwargs(kw, table, 0, 1, opts);
+
+  
+#line 152 &quot;narray/gen/tmpl/bincount.c&quot;
+    v = int8_minmax(0,0,self);
+    if (m_num_to_data(RARRAY_AREF(v,0)) &lt; 0) {
+        rb_raise(rb_eArgError,&quot;array items must be non-netagive&quot;);
+    }
+    v = RARRAY_AREF(v,1);
+  
+    length = NUM2SIZET(v) + 1;
+
+    if (opts[0] != Qundef) {
+        minlength = NUM2SIZET(opts[0]);
+        if (minlength &gt; length) {
+            length = minlength;
+        }
+    }
+
+    if (NIL_P(weight)) {
+        if (length &gt; 4294967295ul) {
+            return int8_bincount_64(self, length);
+        } else {
+            return int8_bincount_32(self, length);
+        }
+    } else {
+        wclass = CLASS_OF(weight);
+        if (wclass == cumo_cSFloat) {
+            return int8_bincount_sf(self, weight, length);
+        } else {
+            return int8_bincount_df(self, weight, length);
+        }
+    }
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="clip-instance_method">
+  
+    #<strong>clip</strong>(min, max)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Clip array elements by [min,max]. If either of min or max is nil, one side
+is clipped.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code><span class='id identifier rubyid_a'>a</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Int32.html" title="Cumo::Int32 (class)">Int32</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="NArray.html#initialize-instance_method" title="Cumo::NArray#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='int'>10</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_seq'>seq</span>
+<span class='id identifier rubyid_p'>p</span> <span class='id identifier rubyid_a'>a</span><span class='period'>.</span><span class='id identifier rubyid_clip'>clip</span><span class='lparen'>(</span><span class='int'>1</span><span class='comma'>,</span><span class='int'>8</span><span class='rparen'>)</span>
+<span class='comment'># Cumo::Int32#shape=[10]
+</span><span class='comment'># [1, 1, 2, 3, 4, 5, 6, 7, 8, 8]
+</span>
+<span class='id identifier rubyid_p'>p</span> <span class='id identifier rubyid_a'>a</span>
+<span class='comment'># Cumo::Int32#shape=[10]
+</span><span class='comment'># [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+</span>
+<span class='id identifier rubyid_p'>p</span> <span class='id identifier rubyid_a'>a</span><span class='period'>.</span><span class='id identifier rubyid_inplace'>inplace</span><span class='period'>.</span><span class='id identifier rubyid_clip'>clip</span><span class='lparen'>(</span><span class='int'>3</span><span class='comma'>,</span><span class='int'>6</span><span class='rparen'>)</span>
+<span class='comment'># Cumo::Int32(view)#shape=[10]
+</span><span class='comment'># [3, 3, 3, 3, 4, 5, 6, 6, 6, 6]
+</span>
+<span class='id identifier rubyid_p'>p</span> <span class='id identifier rubyid_a'>a</span>
+<span class='comment'># Cumo::Int32#shape=[10]
+</span><span class='comment'># [3, 3, 3, 3, 4, 5, 6, 6, 6, 6]
+</span>
+<span class='id identifier rubyid_p'>p</span> <span class='id identifier rubyid_a'>a</span> <span class='op'>=</span> <span class='const'><span class='object_link'><a href="../Cumo.html" title="Cumo (module)">Cumo</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Int32.html" title="Cumo::Int32 (class)">Int32</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="NArray.html#initialize-instance_method" title="Cumo::NArray#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='int'>10</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_seq'>seq</span>
+<span class='comment'># Cumo::Int32#shape=[10]
+</span><span class='comment'># [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+</span>
+<span class='id identifier rubyid_p'>p</span> <span class='id identifier rubyid_a'>a</span><span class='period'>.</span><span class='id identifier rubyid_clip'>clip</span><span class='lparen'>(</span><span class='lbracket'>[</span><span class='int'>3</span><span class='comma'>,</span><span class='int'>4</span><span class='comma'>,</span><span class='int'>1</span><span class='comma'>,</span><span class='int'>1</span><span class='comma'>,</span><span class='int'>1</span><span class='comma'>,</span><span class='int'>4</span><span class='comma'>,</span><span class='int'>4</span><span class='comma'>,</span><span class='int'>4</span><span class='comma'>,</span><span class='int'>4</span><span class='comma'>,</span><span class='int'>4</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='int'>8</span><span class='rparen'>)</span>
+<span class='comment'># Cumo::Int32#shape=[10]
+</span><span class='comment'># [3, 4, 2, 3, 4, 5, 6, 7, 8, 8]</span></code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>min</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>max</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>result of clip.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3635
+3636
+3637
+3638
+3639
+3640
+3641
+3642
+3643
+3644
+3645
+3646
+3647
+3648
+3649
+3650
+3651
+3652
+3653
+3654
+3655
+3656
+3657</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3635</span>
+
+static VALUE
+int8_clip(VALUE self, VALUE min, VALUE max)
+{
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{cT,0},{cT,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf_min = { iter_int8_clip_min, STRIDE_LOOP, 2, 1, ain, aout };
+    ndfunc_t ndf_max = { iter_int8_clip_max, STRIDE_LOOP, 2, 1, ain, aout };
+    ndfunc_t ndf_both = { iter_int8_clip, STRIDE_LOOP, 3, 1, ain, aout };
+
+    if (RTEST(min)) {
+        if (RTEST(max)) {
+            return na_ndloop(&amp;ndf_both, 3, self, min, max);
+        } else {
+            return na_ndloop(&amp;ndf_min, 2, self, min);
+        }
+    } else {
+        if (RTEST(max)) {
+            return na_ndloop(&amp;ndf_max, 2, self, max);
+        }
+    }
+    rb_raise(rb_eArgError,&quot;min and max are not given&quot;);
+    return Qnil;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="coerce_cast-instance_method">
+  
+    #<strong>coerce_cast</strong>(type)  &#x21d2; <tt>nil</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>return NArray with cast to the type of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>nil</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1381
+1382
+1383
+1384
+1385</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1381</span>
+
+static VALUE
+int8_coerce_cast(VALUE self, VALUE type)
+{
+    return Qnil;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="cumprod-instance_method">
+  
+    #<strong>cumprod</strong>(axis: nil, nan: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>cumprod of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>nan</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>If true, apply NaN-aware algorithm (avoid NaN if exists).</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>cumprod of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4525
+4526
+4527
+4528
+4529
+4530
+4531
+4532
+4533
+4534
+4535
+4536
+4537
+4538
+4539</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4525</span>
+
+static VALUE
+int8_cumprod(int argc, VALUE *argv, VALUE self)
+{
+    VALUE reduce;
+    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = { iter_int8_cumprod, STRIDE_LOOP|NDF_FLAT_REDUCE|NDF_CUM,
+                     2, 1, ain, aout };
+
+  
+#line 47 &quot;narray/gen/tmpl/cum.c&quot;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    return na_ndloop(&amp;ndf, 2, self, reduce);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="cumsum-instance_method">
+  
+    #<strong>cumsum</strong>(axis: nil, nan: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>cumsum of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>nan</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>If true, apply NaN-aware algorithm (avoid NaN if exists).</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>cumsum of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4473
+4474
+4475
+4476
+4477
+4478
+4479
+4480
+4481
+4482
+4483
+4484
+4485
+4486
+4487</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4473</span>
+
+static VALUE
+int8_cumsum(int argc, VALUE *argv, VALUE self)
+{
+    VALUE reduce;
+    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = { iter_int8_cumsum, STRIDE_LOOP|NDF_FLAT_REDUCE|NDF_CUM,
+                     2, 1, ain, aout };
+
+  
+#line 47 &quot;narray/gen/tmpl/cum.c&quot;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    return na_ndloop(&amp;ndf, 2, self, reduce);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="divmod-instance_method">
+  
+    #<strong>divmod</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary divmod.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>divmod of self and other.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2394
+2395
+2396
+2397
+2398
+2399
+2400
+2401
+2402
+2403
+2404
+2405
+2406
+2407
+2408</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2394</span>
+
+static VALUE
+int8_divmod(VALUE self, VALUE other)
+{
+    
+#line 61 &quot;narray/gen/tmpl/binary2.c&quot;
+    VALUE klass, v;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_divmod_self(self, other);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_divmod, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="each-instance_method">
+  
+    #<strong>each</strong>  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Calls the given block once for each element in self, passing that element
+as a parameter. For a block {|x| … }</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Yields:</p>
+<ul class="yield">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>x</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>x is element of NArray.</p>
+</div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1657
+1658
+1659
+1660
+1661
+1662
+1663
+1664
+1665</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1657</span>
+
+static VALUE
+int8_each(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{Qnil,0}};
+    ndfunc_t ndf = {iter_int8_each, FULL_LOOP_NIP, 1,0, ain,0};
+
+    na_ndloop(&amp;ndf, 1, self);
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="each_with_index-instance_method">
+  
+    #<strong>each_with_index</strong>  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Invokes the given block once for each element of self, passing that element
+and indices along each axis as parameters. For a block {|x,i,j,…| … }</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Yields:</p>
+<ul class="yield">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>x</tt>, <tt>i</tt>, <tt>j</tt>, <tt>...</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>x is an element, i,j,… are multidimensional indices.</p>
+</div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1807
+1808
+1809
+1810
+1811
+1812
+1813
+1814
+1815</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1807</span>
+
+static VALUE
+int8_each_with_index(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{Qnil,0}};
+    ndfunc_t ndf = {iter_int8_each_with_index, FULL_LOOP_NIP, 1,0, ain,0};
+
+    na_ndloop_with_index(&amp;ndf, 1, self);
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="eq-instance_method">
+  
+    #<strong>eq</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt> 
+  
+
+  
+    <span class="aliases">Also known as:
+    <span class="names"><span id='nearly_eq-instance_method'>nearly_eq</span></span>
+    </span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Comparison eq other.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>result of self eq other.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2789
+2790
+2791
+2792
+2793
+2794
+2795
+2796
+2797
+2798
+2799
+2800
+2801
+2802
+2803</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2789</span>
+
+static VALUE
+int8_eq(VALUE self, VALUE other)
+{
+    
+#line 59 &quot;narray/gen/tmpl/cond_binary.c&quot;
+    VALUE klass, v;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_eq_self(self, other);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_eq, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="extract-instance_method">
+  
+    #<strong>extract</strong>  &#x21d2; <tt>Numeric</tt>, <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Extract an element only if self is a dimensionless NArray. — Extract
+element value as Ruby Object if self is a dimensionless NArray, otherwise
+returns self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 179</span>
+
+static VALUE
+int8_extract(VALUE self)
+{
+    volatile VALUE v;
+    char *ptr;
+    narray_t *na;
+    GetNArray(self,na);
+
+    if (na-&gt;ndim==0) {
+        ptr = na_get_pointer_for_read(self) + na_get_offset(self);
+        SHOW_SYNCHRONIZE_WARNING_ONCE(&quot;extract&quot;, &quot;int8&quot;);
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        v = m_extract(ptr);
+        na_release_lock(self);
+        return v;
+    }
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="eye-instance_method">
+  
+    #<strong>eye</strong>([element,offset])  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Eye: Set a value to diagonal components, set 0 to non-diagonal components.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>element</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Diagonal element to be stored. Default is 1.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>offset</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Diagonal offset from the main diagonal. The default is 0. k&gt;0 for
+diagonals above the main diagonal, and k&lt;0 for diagonals below the main
+diagonal.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>eye of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4762
+4763
+4764
+4765
+4766
+4767
+4768
+4769
+4770
+4771
+4772
+4773
+4774
+4775
+4776
+4777
+4778
+4779
+4780
+4781
+4782
+4783
+4784
+4785
+4786
+4787
+4788
+4789
+4790
+4791
+4792
+4793
+4794
+4795
+4796
+4797
+4798
+4799
+4800
+4801
+4802
+4803
+4804
+4805
+4806
+4807
+4808
+4809
+4810
+4811
+4812</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4762</span>
+
+static VALUE
+int8_eye(int argc, VALUE *argv, VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{OVERWRITE,2}};
+    ndfunc_t ndf = {iter_int8_eye, NO_LOOP, 1,0, ain,0};
+    ssize_t kofs;
+    dtype data;
+    char *g;
+    int nd;
+    narray_t *na;
+
+    // check arguments
+    if (argc &gt; 2) {
+        rb_raise(rb_eArgError,&quot;too many arguments (%d for 0..2)&quot;,argc);
+    } else if (argc == 2) {
+        data = m_num_to_data(argv[0]);
+        kofs = NUM2SSIZET(argv[1]);
+    } else if (argc == 1) {
+        data = m_num_to_data(argv[0]);
+        kofs = 0;
+    } else {
+        data = m_one;
+        kofs = 0;
+    }
+
+    GetNArray(self,na);
+    nd = na-&gt;ndim;
+    if (nd &lt; 2) {
+        rb_raise(nary_eDimensionError,&quot;less than 2-d array&quot;);
+    }
+
+    // Diagonal offset from the main diagonal.
+    if (kofs &gt;= 0) {
+        if ((size_t)(kofs) &gt;= na-&gt;shape[nd-1]) {
+            rb_raise(rb_eArgError,&quot;invalid diagonal offset(%&quot;SZF&quot;d) for &quot;
+                     &quot;last dimension size(%&quot;SZF&quot;d)&quot;,kofs,na-&gt;shape[nd-1]);
+        }
+    } else {
+        if ((size_t)(-kofs) &gt;= na-&gt;shape[nd-2]) {
+            rb_raise(rb_eArgError,&quot;invalid diagonal offset(%&quot;SZF&quot;d) for &quot;
+                     &quot;last-1 dimension size(%&quot;SZF&quot;d)&quot;,kofs,na-&gt;shape[nd-2]);
+        }
+    }
+
+    g = ALLOCA_N(char,sizeof(ssize_t)+sizeof(dtype));
+    *(ssize_t*)g = kofs;
+    *(dtype*)(g+sizeof(ssize_t)) = data;
+
+    na_ndloop3(&amp;ndf, g, 1, self);
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="fill-instance_method">
+  
+    #<strong>fill</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Fill elements with other.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1468
+1469
+1470
+1471
+1472
+1473
+1474
+1475
+1476</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1468</span>
+
+static VALUE
+int8_fill(VALUE self, VALUE val)
+{
+    ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{sym_option}};
+    ndfunc_t ndf = { iter_int8_fill, FULL_LOOP, 2, 0, ain, 0 };
+
+    na_ndloop(&amp;ndf, 2, self, val);
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="format-instance_method">
+  
+    #<strong>format</strong>(format)  &#x21d2; <tt><span class='object_link'><a href="RObject.html" title="Cumo::RObject (class)">Cumo::RObject</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Format elements into strings.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>format</span>
+      
+      
+        <span class='type'>(<tt>String</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="RObject.html" title="Cumo::RObject (class)">Cumo::RObject</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>array of formated strings.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1529
+1530
+1531
+1532
+1533
+1534
+1535
+1536
+1537
+1538
+1539
+1540
+1541</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1529</span>
+
+static VALUE
+int8_format(int argc, VALUE *argv, VALUE self)
+{
+    VALUE fmt=Qnil;
+
+    ndfunc_arg_in_t ain[2] = {{Qnil,0},{sym_option}};
+    ndfunc_arg_out_t aout[1] = {{cumo_cRObject,0}};
+    ndfunc_t ndf = { iter_int8_format, FULL_LOOP_NIP, 2, 1, ain, aout };
+
+    rb_scan_args(argc, argv, &quot;01&quot;, &amp;fmt);
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    return na_ndloop(&amp;ndf, 2, self, fmt);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="format_to_a-instance_method">
+  
+    #<strong>format_to_a</strong>(format)  &#x21d2; <tt>Array</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Format elements into strings.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>format</span>
+      
+      
+        <span class='type'>(<tt>String</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>array of formated strings.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1582
+1583
+1584
+1585
+1586
+1587
+1588
+1589
+1590
+1591
+1592
+1593</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1582</span>
+
+static VALUE
+int8_format_to_a(int argc, VALUE *argv, VALUE self)
+{
+    volatile VALUE fmt=Qnil;
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
+    ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
+    ndfunc_t ndf = { iter_int8_format_to_a, FULL_LOOP_NIP, 3, 1, ain, aout };
+
+    rb_scan_args(argc, argv, &quot;01&quot;, &amp;fmt);
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    return na_ndloop_cast_narray_to_rarray(&amp;ndf, self, fmt);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="ge-instance_method">
+  
+    #<strong>ge</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt> 
+  
+
+  
+    <span class="aliases">Also known as:
+    <span class="names"><span id='>=-instance_method'>&gt;=</span></span>
+    </span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Comparison ge other.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>result of self ge other.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3399
+3400
+3401
+3402
+3403
+3404
+3405
+3406
+3407
+3408
+3409
+3410
+3411
+3412
+3413</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3399</span>
+
+static VALUE
+int8_ge(VALUE self, VALUE other)
+{
+    
+#line 59 &quot;narray/gen/tmpl/cond_binary.c&quot;
+    VALUE klass, v;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_ge_self(self, other);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_ge, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="gt-instance_method">
+  
+    #<strong>gt</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt> 
+  
+
+  
+    <span class="aliases">Also known as:
+    <span class="names"><span id='>-instance_method'>&gt;</span></span>
+    </span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Comparison gt other.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>result of self gt other.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3341
+3342
+3343
+3344
+3345
+3346
+3347
+3348
+3349
+3350
+3351
+3352
+3353
+3354
+3355</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3341</span>
+
+static VALUE
+int8_gt(VALUE self, VALUE other)
+{
+    
+#line 59 &quot;narray/gen/tmpl/cond_binary.c&quot;
+    VALUE klass, v;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_gt_self(self, other);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_gt, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="inspect-instance_method">
+  
+    #<strong>inspect</strong>  &#x21d2; <tt>String</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Returns a string containing a human-readable representation of NArray.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>String</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1610
+1611
+1612
+1613
+1614
+1615</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1610</span>
+
+VALUE
+int8_inspect(VALUE ary)
+{
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    return na_ndloop_inspect(ary, iter_int8_inspect, Qnil);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="le-instance_method">
+  
+    #<strong>le</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt> 
+  
+
+  
+    <span class="aliases">Also known as:
+    <span class="names"><span id='<=-instance_method'>&lt;=</span></span>
+    </span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Comparison le other.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>result of self le other.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3515
+3516
+3517
+3518
+3519
+3520
+3521
+3522
+3523
+3524
+3525
+3526
+3527
+3528
+3529</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3515</span>
+
+static VALUE
+int8_le(VALUE self, VALUE other)
+{
+    
+#line 59 &quot;narray/gen/tmpl/cond_binary.c&quot;
+    VALUE klass, v;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_le_self(self, other);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_le, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="lt-instance_method">
+  
+    #<strong>lt</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt> 
+  
+
+  
+    <span class="aliases">Also known as:
+    <span class="names"><span id='<-instance_method'>&lt;</span></span>
+    </span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Comparison lt other.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>result of self lt other.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3457
+3458
+3459
+3460
+3461
+3462
+3463
+3464
+3465
+3466
+3467
+3468
+3469
+3470
+3471</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3457</span>
+
+static VALUE
+int8_lt(VALUE self, VALUE other)
+{
+    
+#line 59 &quot;narray/gen/tmpl/cond_binary.c&quot;
+    VALUE klass, v;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_lt_self(self, other);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_lt, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="map-instance_method">
+  
+    #<strong>map</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Unary map.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>map of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1732
+1733
+1734
+1735
+1736
+1737
+1738
+1739
+1740
+1741
+1742
+1743</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1732</span>
+
+static VALUE
+int8_map(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{cT,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = {iter_int8_map, FULL_LOOP, 1,1, ain,aout};
+
+    
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    
+    return na_ndloop(&amp;ndf, 1, self);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="map_with_index-instance_method">
+  
+    #<strong>map_with_index</strong>  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Invokes the given block once for each element of self, passing that element
+and indices along each axis as parameters. Creates a new NArray containing
+the values returned by the block. Inplace option is allowed, i.e.,
+<code>nary.inplace.map</code> overwrites <code>nary</code>.</p>
+
+<p>For a block {|x,i,j,…| … }</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Yields:</p>
+<ul class="yield">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>x</tt>, <tt>i</tt>, <tt>j</tt>, <tt>...</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>x is an element, i,j,… are multidimensional indices.</p>
+</div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>mapped array</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1908
+1909
+1910
+1911
+1912
+1913
+1914
+1915
+1916</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1908</span>
+
+static VALUE
+int8_map_with_index(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{Qnil,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = {iter_int8_map_with_index, FULL_LOOP, 1,1, ain,aout};
+
+    return na_ndloop_with_index(&amp;ndf, 1, self);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="max-instance_method">
+  
+    #<strong>max</strong>(axis: nil, keepdims: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>max of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keepdims</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) If true, the reduced axes are left in the result array as
+dimensions with size one.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result of max.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3852
+3853
+3854
+3855
+3856
+3857
+3858
+3859
+3860
+3861
+3862
+3863
+3864
+3865
+3866
+3867
+3868
+3869</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3852</span>
+
+static VALUE
+int8_max(int argc, VALUE *argv, VALUE self)
+{
+    VALUE v, reduce;
+    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = { iter_int8_max, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE, 2, 1, ain, aout };
+
+  
+#line 52 &quot;narray/gen/tmpl/accum.c&quot;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    v =  na_ndloop(&amp;ndf, 2, self, reduce);
+  
+    return int8_extract(v);
+  
+#line 60 &quot;narray/gen/tmpl/accum.c&quot;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="max_index-instance_method">
+  
+    #<strong>max_index</strong>(axis: nil)  &#x21d2; <tt>Integer</tt>, <tt>Cumo::Int</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>max_index. Return an index of result.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>Cumo::NArray[3,4,1,2].min_index =&gt; 3</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>Cumo::Int</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result index of max_index.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3991
+3992
+3993
+3994
+3995
+3996
+3997
+3998
+3999
+4000
+4001
+4002
+4003
+4004
+4005
+4006
+4007
+4008
+4009
+4010
+4011
+4012
+4013
+4014
+4015
+4016
+4017
+4018
+4019
+4020
+4021
+4022
+4023
+4024</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3991</span>
+
+static VALUE
+int8_max_index(int argc, VALUE *argv, VALUE self)
+{
+    narray_t *na;
+    VALUE idx, reduce;
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{Qnil,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{0,0,0}};
+    ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 3,1, ain,aout};
+
+    GetNArray(self,na);
+    if (na-&gt;ndim==0) {
+        return INT2FIX(0);
+    }
+    if (na-&gt;size &gt; (~(u_int32_t)0)) {
+        aout[0].type = cumo_cInt64;
+        idx = nary_new(cumo_cInt64, na-&gt;ndim, na-&gt;shape);
+        ndf.func = iter_int8_max_index_index64;
+      
+#line 72 &quot;narray/gen/tmpl/accum_index.c&quot;
+        reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+      
+    } else {
+        aout[0].type = cumo_cInt32;
+        idx = nary_new(cumo_cInt32, na-&gt;ndim, na-&gt;shape);
+        ndf.func = iter_int8_max_index_index32;
+      
+#line 81 &quot;narray/gen/tmpl/accum_index.c&quot;
+        reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+      
+    }
+    rb_funcall(idx, rb_intern(&quot;seq&quot;), 0);
+
+    return na_ndloop(&amp;ndf, 3, self, idx, reduce);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="median-instance_method">
+  
+    #<strong>median</strong>(axis: nil, keepdims: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>median of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keepdims</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) If true, the reduced axes are left in the result array as
+dimensions with size one.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns median of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+5524
+5525
+5526
+5527
+5528
+5529
+5530
+5531
+5532
+5533
+5534
+5535
+5536
+5537
+5538
+5539</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 5524</span>
+
+static VALUE
+int8_median(int argc, VALUE *argv, VALUE self)
+{
+    VALUE reduce;
+    ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
+    ndfunc_t ndf = {0, NDF_HAS_LOOP|NDF_FLAT_REDUCE, 2,1, ain,aout};
+
+    self = na_copy(self); // as temporary buffer
+  
+#line 61 &quot;narray/gen/tmpl/median.c&quot;
+    ndf.func = iter_int8_median;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    return na_ndloop(&amp;ndf, 2, self, reduce);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="min-instance_method">
+  
+    #<strong>min</strong>(axis: nil, keepdims: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>min of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keepdims</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) If true, the reduced axes are left in the result array as
+dimensions with size one.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result of min.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3799
+3800
+3801
+3802
+3803
+3804
+3805
+3806
+3807
+3808
+3809
+3810
+3811
+3812
+3813
+3814
+3815
+3816</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3799</span>
+
+static VALUE
+int8_min(int argc, VALUE *argv, VALUE self)
+{
+    VALUE v, reduce;
+    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = { iter_int8_min, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE, 2, 1, ain, aout };
+
+  
+#line 52 &quot;narray/gen/tmpl/accum.c&quot;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    v =  na_ndloop(&amp;ndf, 2, self, reduce);
+  
+    return int8_extract(v);
+  
+#line 60 &quot;narray/gen/tmpl/accum.c&quot;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="min_index-instance_method">
+  
+    #<strong>min_index</strong>(axis: nil)  &#x21d2; <tt>Integer</tt>, <tt>Cumo::Int</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>min_index. Return an index of result.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>Cumo::NArray[3,4,1,2].min_index =&gt; 3</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>Cumo::Int</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result index of min_index.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4093
+4094
+4095
+4096
+4097
+4098
+4099
+4100
+4101
+4102
+4103
+4104
+4105
+4106
+4107
+4108
+4109
+4110
+4111
+4112
+4113
+4114
+4115
+4116
+4117
+4118
+4119
+4120
+4121
+4122
+4123
+4124
+4125
+4126</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4093</span>
+
+static VALUE
+int8_min_index(int argc, VALUE *argv, VALUE self)
+{
+    narray_t *na;
+    VALUE idx, reduce;
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{Qnil,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{0,0,0}};
+    ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 3,1, ain,aout};
+
+    GetNArray(self,na);
+    if (na-&gt;ndim==0) {
+        return INT2FIX(0);
+    }
+    if (na-&gt;size &gt; (~(u_int32_t)0)) {
+        aout[0].type = cumo_cInt64;
+        idx = nary_new(cumo_cInt64, na-&gt;ndim, na-&gt;shape);
+        ndf.func = iter_int8_min_index_index64;
+      
+#line 72 &quot;narray/gen/tmpl/accum_index.c&quot;
+        reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+      
+    } else {
+        aout[0].type = cumo_cInt32;
+        idx = nary_new(cumo_cInt32, na-&gt;ndim, na-&gt;shape);
+        ndf.func = iter_int8_min_index_index32;
+      
+#line 81 &quot;narray/gen/tmpl/accum_index.c&quot;
+        reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+      
+    }
+    rb_funcall(idx, rb_intern(&quot;seq&quot;), 0);
+
+    return na_ndloop(&amp;ndf, 3, self, idx, reduce);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="minmax-instance_method">
+  
+    #<strong>minmax</strong>(axis: nil, keepdims: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>minmax of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keepdims</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) If true, the reduced axes are left in the result array as
+dimensions with size one.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>, <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>min and max of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4157
+4158
+4159
+4160
+4161
+4162
+4163
+4164
+4165
+4166
+4167
+4168
+4169
+4170</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4157</span>
+
+static VALUE
+int8_minmax(int argc, VALUE *argv, VALUE self)
+{
+    VALUE reduce;
+    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[2] = {{cT,0},{cT,0}};
+    ndfunc_t ndf = {iter_int8_minmax, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 2,2, ain,aout};
+
+  
+#line 44 &quot;narray/gen/tmpl/minmax.c&quot;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    return na_ndloop(&amp;ndf, 2, self, reduce);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="mulsum-instance_method">
+  
+    #<strong>mulsum</strong>(other, axis: nil, keepdims: false)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary mulsum.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keepdims</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) If true, the reduced axes are left in the result array as
+dimensions with size one.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>mulsum of self and other.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4609
+4610
+4611
+4612
+4613
+4614
+4615
+4616
+4617
+4618
+4619
+4620
+4621
+4622
+4623
+4624
+4625
+4626
+4627
+4628</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4609</span>
+
+static VALUE
+int8_mulsum(int argc, VALUE *argv, VALUE self)
+{
+    //
+    VALUE klass, v;
+    //
+    if (argc &lt; 1) {
+        rb_raise(rb_eArgError,&quot;wrong number of arguments (%d for &gt;=1)&quot;,argc);
+    }
+    //
+#line 113 &quot;narray/gen/tmpl/accum_binary.c&quot;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(argv[0]));
+    if (klass==cT) {
+        return int8_mulsum_self(argc, argv, self);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall2(v, rb_intern(&quot;mulsum&quot;), argc, argv);
+    }
+    //
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="ne-instance_method">
+  
+    #<strong>ne</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Comparison ne other.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="Bit.html" title="Cumo::Bit (class)">Cumo::Bit</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>result of self ne other.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2847
+2848
+2849
+2850
+2851
+2852
+2853
+2854
+2855
+2856
+2857
+2858
+2859
+2860
+2861</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2847</span>
+
+static VALUE
+int8_ne(VALUE self, VALUE other)
+{
+    
+#line 59 &quot;narray/gen/tmpl/cond_binary.c&quot;
+    VALUE klass, v;
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_ne_self(self, other);
+    } else {
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, id_ne, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="poly-instance_method">
+  
+    #<strong>poly</strong>(a0, a1, ...)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Polynomial.: a0 + a1<em>x + a2</em>x<strong>2 + a3_x_<em>3 + … +
+an</em>x</strong>n</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>a0</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>a1</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>, …</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4973
+4974
+4975
+4976
+4977
+4978
+4979
+4980
+4981
+4982
+4983
+4984
+4985
+4986
+4987
+4988
+4989
+4990
+4991
+4992
+4993
+4994
+4995
+4996</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4973</span>
+
+static VALUE
+int8_poly(VALUE self, VALUE args)
+{
+    int argc, i;
+    VALUE *argv;
+    volatile VALUE v, a;
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = { iter_int8_poly, NO_LOOP, 0, 1, 0, aout };
+
+    argc = RARRAY_LEN(args);
+    ndf.nin = argc+1;
+    ndf.ain = ALLOCA_N(ndfunc_arg_in_t,argc+1);
+    for (i=0; i&lt;argc+1; i++) {
+        ndf.ain[i].type = cT;
+    }
+    argv = ALLOCA_N(VALUE,argc+1);
+    argv[0] = self;
+    for (i=0; i&lt;argc; i++) {
+        argv[i+1] = RARRAY_PTR(args)[i];
+    }
+    a = rb_ary_new4(argc+1, argv);
+    v = na_ndloop2(&amp;ndf, a);
+    return int8_extract(v);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="prod-instance_method">
+  
+    #<strong>prod</strong>(axis: nil, keepdims: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>prod of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keepdims</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) If true, the reduced axes are left in the result array as
+dimensions with size one.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result of prod.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3746
+3747
+3748
+3749
+3750
+3751
+3752
+3753
+3754
+3755
+3756
+3757
+3758
+3759
+3760
+3761
+3762
+3763</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3746</span>
+
+static VALUE
+int8_prod(int argc, VALUE *argv, VALUE self)
+{
+    VALUE v, reduce;
+    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = { iter_int8_prod, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE, 2, 1, ain, aout };
+
+  
+#line 52 &quot;narray/gen/tmpl/accum.c&quot;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    v =  na_ndloop(&amp;ndf, 2, self, reduce);
+  
+    return int8_extract(v);
+  
+#line 60 &quot;narray/gen/tmpl/accum.c&quot;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="ptp-instance_method">
+  
+    #<strong>ptp</strong>(axis: nil, keepdims: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>ptp of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keepdims</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) If true, the reduced axes are left in the result array as
+dimensions with size one.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result of ptp.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3905
+3906
+3907
+3908
+3909
+3910
+3911
+3912
+3913
+3914
+3915
+3916
+3917
+3918
+3919
+3920
+3921
+3922</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3905</span>
+
+static VALUE
+int8_ptp(int argc, VALUE *argv, VALUE self)
+{
+    VALUE v, reduce;
+    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = { iter_int8_ptp, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE, 2, 1, ain, aout };
+
+  
+#line 52 &quot;narray/gen/tmpl/accum.c&quot;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    v =  na_ndloop(&amp;ndf, 2, self, reduce);
+  
+    return int8_extract(v);
+  
+#line 60 &quot;narray/gen/tmpl/accum.c&quot;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="rand-instance_method">
+  
+    #<strong>rand</strong>([[low],high])  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Generate uniformly distributed random numbers on self narray.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>Cumo::DFloat.new(6).rand
+=&gt; Cumo::DFloat#shape=[6]
+   [0.0617545, 0.373067, 0.794815, 0.201042, 0.116041, 0.344032]
+Cumo::DComplex.new(6).rand(5+5i)
+=&gt; Cumo::DComplex#shape=[6]
+   [2.69974+3.68908i, 0.825443+0.254414i, 0.540323+0.34354i, 4.52061+2.39322i, ...]
+Cumo::Int32.new(6).rand(2,5)
+=&gt; Cumo::Int32#shape=[6]
+   [4, 3, 3, 2, 4, 2]</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>low</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>lower inclusive boundary of random numbers. (default=0)</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>high</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>upper exclusive boundary of random numbers. (default=1 or 1+1i for complex
+types)</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4915
+4916
+4917
+4918
+4919
+4920
+4921
+4922
+4923
+4924
+4925
+4926
+4927
+4928
+4929
+4930
+4931
+4932
+4933
+4934
+4935
+4936
+4937
+4938
+4939
+4940
+4941
+4942
+4943</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4915</span>
+
+static VALUE
+int8_rand(int argc, VALUE *args, VALUE self)
+{
+    rand_opt_t g;
+    VALUE v1=Qnil, v2=Qnil;
+    dtype high;
+    ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
+    ndfunc_t ndf = {iter_int8_rand, FULL_LOOP, 1,0, ain,0};
+
+    
+    rb_scan_args(argc, args, &quot;11&quot;, &amp;v1, &amp;v2);
+    if (v2==Qnil) {
+        g.low = m_zero;
+        g.max = high = m_num_to_data(v1);
+    
+#line 156 &quot;narray/gen/tmpl/rand.c&quot;
+    } else {
+        g.low = m_num_to_data(v1);
+        high = m_num_to_data(v2);
+        g.max = m_sub(high,g.low);
+    }
+    
+    if (high &lt;= g.low) {
+        rb_raise(rb_eArgError,&quot;high must be larger than low&quot;);
+    }
+    
+    na_ndloop3(&amp;ndf, &amp;g, 1, self);
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="reciprocal-instance_method">
+  
+    #<strong>reciprocal</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Unary reciprocal.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>reciprocal of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2604
+2605
+2606
+2607
+2608
+2609
+2610
+2611
+2612
+2613
+2614</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2604</span>
+
+static VALUE
+int8_reciprocal(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{cT,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = {iter_int8_reciprocal, FULL_LOOP, 1,1, ain,aout};
+
+    
+#line 131 &quot;narray/gen/tmpl/unary.c&quot;
+    return na_ndloop(&amp;ndf, 1, self);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="seq-instance_method">
+  
+    #<strong>seq</strong>([beg,[step]])  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+    <span class="aliases">Also known as:
+    <span class="names"><span id='indgen-instance_method'>indgen</span></span>
+    </span>
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Set linear sequence of numbers to self. The sequence is obtained from 
+beg+i*step where i is 1-dimensional index.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>Cumo::DFloat.new(6).seq(1,-0.2)
+=&gt; Cumo::DFloat#shape=[6]
+   [1, 0.8, 0.6, 0.4, 0.2, 0]
+Cumo::DComplex.new(6).seq(1,-0.2+0.2i)
+=&gt; Cumo::DComplex#shape=[6]
+   [1+0i, 0.8+0.2i, 0.6+0.4i, 0.4+0.6i, 0.2+0.8i, 0+1i]</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>beg</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>begining of sequence. (default=0)</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>step</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>step of sequence. (default=1)</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+4697
+4698
+4699
+4700
+4701
+4702
+4703
+4704
+4705
+4706
+4707
+4708
+4709
+4710
+4711
+4712
+4713
+4714
+4715
+4716
+4717</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 4697</span>
+
+static VALUE
+int8_seq(int argc, VALUE *args, VALUE self)
+{
+    seq_opt_t *g;
+    VALUE vbeg=Qnil, vstep=Qnil;
+    ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
+    ndfunc_t ndf = {iter_int8_seq, FULL_LOOP, 1,0, ain,0};
+
+    g = ALLOCA_N(seq_opt_t,1);
+    g-&gt;beg = m_zero;
+    g-&gt;step = m_one;
+    g-&gt;count = 0;
+    rb_scan_args(argc, args, &quot;02&quot;, &amp;vbeg, &amp;vstep);
+#line 103 &quot;narray/gen/tmpl/seq.c&quot;
+    if (vbeg!=Qnil) {g-&gt;beg = NUM2DBL(vbeg);}
+    if (vstep!=Qnil) {g-&gt;step = NUM2DBL(vstep);}
+
+#line 110 &quot;narray/gen/tmpl/seq.c&quot;
+    na_ndloop3(&amp;ndf, g, 1, self);
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="sign-instance_method">
+  
+    #<strong>sign</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Unary sign.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>sign of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2668
+2669
+2670
+2671
+2672
+2673
+2674
+2675
+2676
+2677
+2678</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2668</span>
+
+static VALUE
+int8_sign(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{cT,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = {iter_int8_sign, FULL_LOOP, 1,1, ain,aout};
+
+    
+#line 131 &quot;narray/gen/tmpl/unary.c&quot;
+    return na_ndloop(&amp;ndf, 1, self);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="sort-instance_method">
+  
+    #<strong>sort</strong>(axis: nil)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>sort of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>Cumo::DFloat[3,4,1,2].sort =&gt; Cumo::DFloat[1,2,3,4]</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result of sort.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+5170
+5171
+5172
+5173
+5174
+5175
+5176
+5177
+5178
+5179
+5180
+5181
+5182
+5183
+5184
+5185
+5186
+5187</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 5170</span>
+
+static VALUE
+int8_sort(int argc, VALUE *argv, VALUE self)
+{
+    VALUE reduce;
+    ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{sym_reduce,0}};
+    ndfunc_t ndf = {0, STRIDE_LOOP|NDF_FLAT_REDUCE, 2,0, ain,0};
+
+    if (!TEST_INPLACE(self)) {
+        self = na_copy(self);
+    }
+  
+#line 43 &quot;narray/gen/tmpl/sort.c&quot;
+    ndf.func = iter_int8_sort;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    na_ndloop(&amp;ndf, 2, self, reduce);
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="sort_index-instance_method">
+  
+    #<strong>sort_index</strong>(axis: nil)  &#x21d2; <tt>Integer</tt>, <tt>Cumo::Int</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>sort_index. Returns an index array of sort result.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  <div class="examples">
+    <p class="tag_title">Examples:</p>
+    
+      
+      <pre class="example code"><code>Cumo::NArray[3,4,1,2].sort_index =&gt; Cumo::Int32[2,3,0,1]</code></pre>
+    
+  </div>
+
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>, <tt>Cumo::Int</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result index of sort_index.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+5436
+5437
+5438
+5439
+5440
+5441
+5442
+5443
+5444
+5445
+5446
+5447
+5448
+5449
+5450
+5451
+5452
+5453
+5454
+5455
+5456
+5457
+5458
+5459
+5460
+5461
+5462
+5463
+5464
+5465
+5466
+5467
+5468
+5469
+5470
+5471
+5472
+5473
+5474
+5475
+5476
+5477
+5478
+5479
+5480
+5481</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 5436</span>
+
+static VALUE
+int8_sort_index(int argc, VALUE *argv, VALUE self)
+{
+    size_t size;
+    narray_t *na;
+    VALUE idx, tmp, reduce, res;
+    char *buf;
+    ndfunc_arg_in_t ain[3] = {{cT,0},{0,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{0,0,0}};
+    ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_CUM, 3,1, ain,aout};
+
+    GetNArray(self,na);
+    if (na-&gt;ndim==0) {
+        return INT2FIX(0);
+    }
+    if (na-&gt;size &gt; (~(u_int32_t)0)) {
+        ain[1].type =
+        aout[0].type = cumo_cInt64;
+        idx = nary_new(cumo_cInt64, na-&gt;ndim, na-&gt;shape);
+       
+#line 84 &quot;narray/gen/tmpl/sort_index.c&quot;
+         ndf.func = int8_index64_qsort;
+         reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+       
+    } else {
+        ain[1].type =
+        aout[0].type = cumo_cInt32;
+        idx = nary_new(cumo_cInt32, na-&gt;ndim, na-&gt;shape);
+       
+#line 96 &quot;narray/gen/tmpl/sort_index.c&quot;
+         ndf.func = int8_index32_qsort;
+         reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+       
+    }
+    rb_funcall(idx, rb_intern(&quot;seq&quot;), 0);
+
+    size = na-&gt;size*sizeof(void*); // max capa
+    buf = rb_alloc_tmp_buffer(&amp;tmp, size);
+
+    SHOW_CPU_WARNING_ONCE(&quot;sort_index&quot;, &quot;int8&quot;);
+    cudaDeviceSynchronize();
+
+    res = na_ndloop3(&amp;ndf, buf, 3, self, idx, reduce);
+    rb_free_tmp_buffer(&amp;tmp);
+    return res;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="square-instance_method">
+  
+    #<strong>square</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Unary square.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>square of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2732
+2733
+2734
+2735
+2736
+2737
+2738
+2739
+2740
+2741
+2742</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2732</span>
+
+static VALUE
+int8_square(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{cT,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = {iter_int8_square, FULL_LOOP, 1,1, ain,aout};
+
+    
+#line 131 &quot;narray/gen/tmpl/unary.c&quot;
+    return na_ndloop(&amp;ndf, 1, self);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="store-instance_method">
+  
+    #<strong>store</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Store elements to Cumo::Int8 from other.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt>Object</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+963
+964
+965
+966
+967
+968
+969
+970
+971
+972
+973
+974
+975
+976
+977
+978
+979
+980
+981
+982
+983
+984
+985
+986
+987
+988
+989
+990
+991
+992
+993
+994
+995
+996
+997
+998
+999
+1000
+1001
+1002
+1003
+1004
+1005
+1006
+1007
+1008
+1009
+1010
+1011
+1012
+1013
+1014
+1015
+1016
+1017
+1018
+1019
+1020
+1021
+1022
+1023
+1024
+1025
+1026
+1027
+1028
+1029
+1030
+1031
+1032
+1033
+1034
+1035
+1036
+1037
+1038
+1039
+1040
+1041
+1042
+1043
+1044
+1045
+1046
+1047
+1048
+1049
+1050
+1051
+1052
+1053
+1054
+1055
+1056
+1057
+1058
+1059
+1060
+1061
+1062
+1063
+1064
+1065
+1066
+1067
+1068
+1069
+1070</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 963</span>
+
+static VALUE
+int8_store(VALUE self, VALUE obj)
+{
+    VALUE r, klass;
+
+    klass = CLASS_OF(obj);
+
+    
+    if (klass==cumo_cInt8) {
+        int8_store_int8(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (IS_INTEGER_CLASS(klass) || klass==rb_cFloat || klass==rb_cComplex) {
+        int8_store_numeric(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cBit) {
+        int8_store_bit(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cDFloat) {
+        int8_store_dfloat(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cSFloat) {
+        int8_store_sfloat(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cInt64) {
+        int8_store_int64(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cInt32) {
+        int8_store_int32(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cInt16) {
+        int8_store_int16(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cUInt64) {
+        int8_store_uint64(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cUInt32) {
+        int8_store_uint32(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cUInt16) {
+        int8_store_uint16(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cUInt8) {
+        int8_store_uint8(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==cumo_cRObject) {
+        int8_store_robject(self,obj);
+        return self;
+    }
+    
+#line 19 &quot;narray/gen/tmpl/store.c&quot;
+    if (klass==rb_cArray) {
+        int8_store_array(self,obj);
+        return self;
+    }
+    
+
+    if (IsNArray(obj)) {
+        r = rb_funcall(obj, rb_intern(&quot;coerce_cast&quot;), 1, cT);
+        if (CLASS_OF(r)==cT) {
+            int8_store(self,r);
+            return self;
+        }
+    }
+
+    
+#line 36 &quot;narray/gen/tmpl/store.c&quot;
+    rb_raise(nary_eCastError, &quot;unknown conversion from %s to %s&quot;,
+             rb_class2name(CLASS_OF(obj)),
+             rb_class2name(CLASS_OF(self)));
+    
+    return self;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="sum-instance_method">
+  
+    #<strong>sum</strong>(axis: nil, keepdims: false)  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>sum of self.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>axis</span>
+      
+      
+        <span class='type'>(<tt>Numeric</tt>, <tt>Array</tt>, <tt>Range</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) Affected dimensions.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>keepdims</span>
+      
+      
+        <span class='type'>(<tt>TrueClass</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>(keyword) If true, the reduced axes are left in the result array as
+dimensions with size one.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>returns result of sum.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3693
+3694
+3695
+3696
+3697
+3698
+3699
+3700
+3701
+3702
+3703
+3704
+3705
+3706
+3707
+3708
+3709
+3710</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3693</span>
+
+static VALUE
+int8_sum(int argc, VALUE *argv, VALUE self)
+{
+    VALUE v, reduce;
+    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = { iter_int8_sum, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE, 2, 1, ain, aout };
+
+  
+#line 52 &quot;narray/gen/tmpl/accum.c&quot;
+    reduce = na_reduce_dimension(argc, argv, 1, &amp;self, &amp;ndf, 0);
+  
+    v =  na_ndloop(&amp;ndf, 2, self, reduce);
+  
+    return int8_extract(v);
+  
+#line 60 &quot;narray/gen/tmpl/accum.c&quot;
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="to_a-instance_method">
+  
+    #<strong>to_a</strong>  &#x21d2; <tt>Array</tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Convert self to Array.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+1423
+1424
+1425
+1426
+1427
+1428
+1429
+1430
+1431</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 1423</span>
+
+static VALUE
+int8_to_a(VALUE self)
+{
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
+    ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
+    ndfunc_t ndf = { iter_int8_to_a, FULL_LOOP_NIP, 3, 1, ain, aout };
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    return na_ndloop_cast_narray_to_rarray(&amp;ndf, self, Qnil);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="|-instance_method">
+  
+    #<strong>|</strong>(other)  &#x21d2; <tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Binary bit_or.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+<p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>other</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>, <tt>Numeric</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="NArray.html" title="Cumo::NArray (class)">Cumo::NArray</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>self | other</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+2993
+2994
+2995
+2996
+2997
+2998
+2999
+3000
+3001
+3002
+3003
+3004
+3005
+3006
+3007
+3008
+3009</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 2993</span>
+
+static VALUE
+int8_bit_or(VALUE self, VALUE other)
+{
+    
+#line 127 &quot;narray/gen/tmpl/binary.c&quot;
+    VALUE klass, v;
+
+    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    if (klass==cT) {
+        return int8_bit_or_self(self, other);
+    } else {
+        // TODO(sonots): CPU warning
+        v = rb_funcall(klass, id_cast, 1, self);
+        return rb_funcall(v, &#39;|&#39;, 1, other);
+    }
+    
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="~-instance_method">
+  
+    #<strong>~</strong>  &#x21d2; <tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Unary bit_not.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+  
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="" title="Cumo::Int8 (class)">Cumo::Int8</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>bit_not of self.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+3136
+3137
+3138
+3139
+3140
+3141
+3142
+3143
+3144
+3145
+3146</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'ext/cumo/narray/types/int8.c', line 3136</span>
+
+static VALUE
+int8_bit_not(VALUE self)
+{
+    ndfunc_arg_in_t ain[1] = {{cT,0}};
+    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    ndfunc_t ndf = {iter_int8_bit_not, FULL_LOOP, 1,1, ain,aout};
+
+    
+#line 131 &quot;narray/gen/tmpl/unary.c&quot;
+    return na_ndloop(&amp;ndf, 1, self);
+}</pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+      <div id="footer">
+  Generated on Thu Mar 22 20:13:19 2018 by
+  <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.9.12 (ruby-2.4.1).
+</div>
+
+    </div>
+  </body>
+</html>

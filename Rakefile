@@ -19,14 +19,15 @@ task :clean do
   sh 'cd ext/cumo && make clean'
 end
 
-task :doc do
+task :docs do
   dir = "ext/cumo/narray"
   src = %w[array.c data.c index.c math.c narray.c rand.c struct.c].
     map{|s| File.join(dir,s)} +
     [File.join(dir,"types/*.c"), "lib/cumo/narray/extra.rb"]
   sh "cd ext/cumo; ruby extconf.rb; make src"
-  sh "rm -rf yard .yardoc; yard doc -o yard -m markdown -r README.md #{src.join(' ')}"
+  sh "rm -rf docs .yardoc; yard doc -o docs -m markdown -r README.md #{src.join(' ')}"
 end
+task :doc => :docs
 
 task :gdb do
   sh "gdb -x run.gdb --args ruby -I. ./test.rb"
