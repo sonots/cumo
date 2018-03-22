@@ -101,7 +101,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#cudaDeviceGetAttributes-class_method" title="cudaDeviceGetAttributes (class method)">.<strong>cudaDeviceGetAttributes</strong>(attrib, device)  &#x21d2; Object </a>
+      <a href="#cudaDeviceGetAttributes-class_method" title="cudaDeviceGetAttributes (class method)">.<strong>cudaDeviceGetAttributes</strong>(attrib, device)  &#x21d2; Integer </a>
     
 
     
@@ -115,7 +115,9 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>Returns information about the device.</p>
+</div></span>
   
 </li>
 
@@ -137,7 +139,9 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>Wait for compute device to finish.</p>
+</div></span>
   
 </li>
 
@@ -169,7 +173,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#cudaGetDevice-class_method" title="cudaGetDevice (class method)">.<strong>cudaGetDevice</strong>  &#x21d2; Object </a>
+      <a href="#cudaGetDevice-class_method" title="cudaGetDevice (class method)">.<strong>cudaGetDevice</strong>  &#x21d2; Integer </a>
     
 
     
@@ -184,7 +188,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>///////////////////////////////////////.</p>
+<p>Returns which device is currently being used.</p>
 </div></span>
   
 </li>
@@ -193,7 +197,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#cudaGetDeviceCount-class_method" title="cudaGetDeviceCount (class method)">.<strong>cudaGetDeviceCount</strong>  &#x21d2; Object </a>
+      <a href="#cudaGetDeviceCount-class_method" title="cudaGetDeviceCount (class method)">.<strong>cudaGetDeviceCount</strong>  &#x21d2; Integer </a>
     
 
     
@@ -207,7 +211,9 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>Returns the number of compute-capable devices.</p>
+</div></span>
   
 </li>
 
@@ -251,7 +257,9 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>Set device to be used for GPU executions.</p>
+</div></span>
   
 </li>
 
@@ -268,34 +276,119 @@
       <div class="method_details first">
   <h3 class="signature first" id="cudaDeviceGetAttributes-class_method">
   
-    .<strong>cudaDeviceGetAttributes</strong>(attrib, device)  &#x21d2; <tt>Object</tt> 
+    .<strong>cudaDeviceGetAttributes</strong>(attrib, device)  &#x21d2; <tt>Integer</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Returns information about the device.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>attrib</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Device attribute to query</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>device</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Device number to query</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Returned device attribute value</p>
+</div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="RuntimeError.html" title="Cumo::CUDA::RuntimeError (class)">Cumo::CUDA::RuntimeError</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><a href="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1gb22e8256592b836df9a9cc36c9db7151" target="_parent" title="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1gb22e8256592b836df9a9cc36c9db7151">http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1gb22e8256592b836df9a9cc36c9db7151</a></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69</pre>
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 57</span>
+      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 73</span>
 
 static VALUE
 rb_cudaDeviceGetAttributes(VALUE self, VALUE attrib, VALUE device)
@@ -324,23 +417,54 @@ rb_cudaDeviceGetAttributes(VALUE self, VALUE attrib, VALUE device)
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Wait for compute device to finish.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="RuntimeError.html" title="Cumo::CUDA::RuntimeError (class)">Cumo::CUDA::RuntimeError</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><a href="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g10e20b05a95f638a4071a655503df25d" target="_parent" title="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g10e20b05a95f638a4071a655503df25d">http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g10e20b05a95f638a4071a655503df25d</a></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-95
-96
-97
-98
-99
-100
-101
-102</pre>
+131
+132
+133
+134
+135
+136
+137
+138</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 95</span>
+      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 131</span>
 
 static VALUE
 rb_cudaDeviceSynchronize(VALUE self)
@@ -415,7 +539,7 @@ rb_cudaDriverGetVersion(VALUE self)
       <div class="method_details ">
   <h3 class="signature " id="cudaGetDevice-class_method">
   
-    .<strong>cudaGetDevice</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>cudaGetDevice</strong>  &#x21d2; <tt>Integer</tt> 
   
 
   
@@ -424,13 +548,52 @@ rb_cudaDriverGetVersion(VALUE self)
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>///////////////////////////////////////</p>
+<p>Returns which device is currently being used.</p>
 
 
   </div>
 </div>
 <div class="tags">
   
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Returns the device on which the active host thread executes the device
+code.</p>
+</div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="RuntimeError.html" title="Cumo::CUDA::RuntimeError (class)">Cumo::CUDA::RuntimeError</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><a href="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g80861db2ce7c29b6e8055af8ae01bc78" target="_parent" title="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g80861db2ce7c29b6e8055af8ae01bc78">http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g80861db2ce7c29b6e8055af8ae01bc78</a></li>
+    
+  </ul>
 
 </div><table class="source_code">
   <tr>
@@ -438,20 +601,20 @@ rb_cudaDriverGetVersion(VALUE self)
       <pre class="lines">
 
 
-45
-46
-47
-48
-49
-50
-51
 52
 53
 54
-55</pre>
+55
+56
+57
+58
+59
+60
+61
+62</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 45</span>
+      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 52</span>
 
 static VALUE
 rb_cudaGetDevice(VALUE self)
@@ -472,32 +635,82 @@ rb_cudaGetDevice(VALUE self)
       <div class="method_details ">
   <h3 class="signature " id="cudaGetDeviceCount-class_method">
   
-    .<strong>cudaGetDeviceCount</strong>  &#x21d2; <tt>Object</tt> 
+    .<strong>cudaGetDeviceCount</strong>  &#x21d2; <tt>Integer</tt> 
   
 
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Returns the number of compute-capable devices.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+<p class="tag_title">Returns:</p>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Returns the number of devices with compute capability greater or equal to
+2.0</p>
+</div>
+      
+    </li>
+  
+</ul>
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="RuntimeError.html" title="Cumo::CUDA::RuntimeError (class)">Cumo::CUDA::RuntimeError</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><a href="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g18808e54893cfcaafefeab31a73cc55f" target="_parent" title="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g18808e54893cfcaafefeab31a73cc55f">http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g18808e54893cfcaafefeab31a73cc55f</a></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81</pre>
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 71</span>
+      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 94</span>
 
 static VALUE
 rb_cudaGetDeviceCount(VALUE self)
@@ -570,26 +783,77 @@ rb_cudaRuntimeGetVersion(VALUE self)
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Set device to be used for GPU executions.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>device</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>Device on which the active host thread should execute the device code.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+<p class="tag_title">Raises:</p>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="RuntimeError.html" title="Cumo::CUDA::RuntimeError (class)">Cumo::CUDA::RuntimeError</a></span></tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+  <p class="tag_title">See Also:</p>
+  <ul class="see">
+    
+      <li><a href="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g159587909ffa0791bbe4b40187a4c6bb" target="_parent" title="http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g159587909ffa0791bbe4b40187a4c6bb">http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g159587909ffa0791bbe4b40187a4c6bb</a></li>
+    
+  </ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93</pre>
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 83</span>
+      <pre class="code"><span class="info file"># File 'ext/cumo/cuda/runtime.c', line 113</span>
 
 static VALUE
 rb_cudaSetDevice(VALUE self, VALUE device)
@@ -612,7 +876,7 @@ rb_cudaSetDevice(VALUE self, VALUE device)
 </div>
 
       <div id="footer">
-  Generated on Thu Mar 22 21:04:16 2018 by
+  Generated on Thu Mar 22 21:23:11 2018 by
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.9.12 (ruby-2.4.1).
 </div>
