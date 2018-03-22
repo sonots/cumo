@@ -84,16 +84,23 @@ a = Xumo::DFloat.new(3,5).seq
 
 ### Select a GPU device ID
 
-You can use `CUDA_VISIBLE_DEVICES=$id` environment variable, or
+Set `CUDA_VISIBLE_DEVICES=id` environment variable, or
 
 ```
 require 'cumo'
 Cumo::CUDA::Runtime.cudaSetDevice(id)
 ```
 
+where `id` is an integer.
+
 ### Enable GPU Memory Pool
 
-Set environment variable `CUMO_MEMORY_POOL=ON`.
+Set `CUMO_MEMORY_POOL=ON` environment variable , or
+
+```
+require 'cumo'
+Cumo::CUDA::MemoryPool.enable
+```
 
 ## Documentation
 
