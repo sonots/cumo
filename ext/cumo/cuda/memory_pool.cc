@@ -79,13 +79,9 @@ bool MemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, 
     //     rlock.unlock_fastrlock(self._free_lock)
 }
 
-intptr_t MemoryPool::Malloc(size_t size) {
+intptr_t MemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
     // if (size == 0) return 0;
     size = GetRoundedSize(size);
-    // TODO: support cuda stream
-    // stream_ptr = stream_module.get_current_stream_ptr()
-    cudaStream_t stream_ptr = 0;
-
     std::shared_ptr<Chunk> chunk = nullptr;
 
     // find best-fit, or a smallest larger allocation
@@ -156,7 +152,7 @@ intptr_t MemoryPool::Malloc(size_t size) {
     return chunk->ptr();
 }
 
-void MemoryPool::Free(intptr_t ptr) {
+void MemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
     //rlock.lock_fastrlock(self._in_use_lock, -1, True)
     //try:
     std::shared_ptr<Chunk> chunk = in_use_[ptr];
@@ -167,9 +163,6 @@ void MemoryPool::Free(intptr_t ptr) {
     in_use_.erase(ptr);
     //finally:
     //    rlock.unlock_fastrlock(self._in_use_lock)
-
-    //TODO(sonots): Support stream
-    cudaStream_t stream_ptr = chunk->stream_ptr();
 
     if (chunk->next() != nullptr && !chunk->next()->in_use()) {
         if (RemoveFromFreeList(chunk->next()->size(), chunk->next(), stream_ptr)) {

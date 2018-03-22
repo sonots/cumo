@@ -12,7 +12,6 @@
 
 // TODO(sonots): Support multiple devices
 // TODO(sonots): thread-safe
-// TODO(sonots): Support CUDA streams
 
 // CUDA memory pool implementation highly referring CuPy
 
@@ -178,9 +177,9 @@ public:
         CheckStatus(cudaGetDevice(&device_id_));
     }
 
-    intptr_t Malloc(size_t size);
+    intptr_t Malloc(size_t size, cudaStream_t stream_ptr = 0);
 
-    void Free(intptr_t ptr);
+    void Free(intptr_t ptr, cudaStream_t stream_ptr = 0);
 
 // private:
 

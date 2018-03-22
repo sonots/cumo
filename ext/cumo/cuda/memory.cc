@@ -23,6 +23,7 @@ cumo_cuda_runtime_malloc(size_t size)
 {
     if (cumo_cuda_memory_pool_p()) {
         try {
+            // TODO(sonots): Get current CUDA stream and pass it
             return reinterpret_cast<char*>(pool.Malloc(size));
         } catch (const cumo::internal::CUDARuntimeError& e) {
             cumo_cuda_runtime_check_status(e.status());
@@ -42,6 +43,7 @@ cumo_cuda_runtime_free(char *ptr)
 {
     if (cumo_cuda_memory_pool_p()) {
         try {
+            // TODO(sonots): Get current CUDA stream and pass it
             pool.Free(reinterpret_cast<intptr_t>(ptr));
         } catch (const cumo::internal::CUDARuntimeError& e) {
             cumo_cuda_runtime_check_status(e.status());
