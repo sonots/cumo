@@ -23,12 +23,13 @@ namespace internal {
 constexpr int kRoundSize = 512; // bytes
 
 class CUDARuntimeError : public std::runtime_error {
+private:
+    cudaError_t status_;
+
 public:
     CUDARuntimeError(cudaError_t status) :
         runtime_error(cudaGetErrorString(status)), status_(status) {}
     cudaError_t status() const { return status_; }
-private:
-    cudaError_t status_;
 };
 
 
