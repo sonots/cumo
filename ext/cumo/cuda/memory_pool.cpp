@@ -1,4 +1,4 @@
-#include "cumo/cuda/memory_pool.h"
+#include "cumo/cuda/memory_pool.hpp"
 
 namespace cumo {
 namespace internal {

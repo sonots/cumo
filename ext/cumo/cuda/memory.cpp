@@ -1,13 +1,22 @@
 #include <ruby.h>
 #include <cuda_runtime.h>
 #include "cumo/cuda/memory.h"
-#include "cumo/cuda/memory_pool.h"
+#include "cumo/cuda/memory_pool.hpp"
 #include "cumo/cuda/runtime.h"
 
 #include <cstdlib>
 #include <string>
 
+#if defined(__cplusplus)
+extern "C" {
+#if 0
+} /* satisfy cc-mode */
+#endif
+#endif
+
 cumo::internal::MemoryPool pool{};
+
+VALUE cumo_cuda_eOutOfMemoryError;
 
 // default: false (yet)
 bool
@@ -60,3 +69,10 @@ Init_cumo_cuda_memory()
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     cumo_cuda_eOutOfMemoryError = rb_define_class_under(mCUDA, "OutOfMemoryError", rb_eStandardError);
 }
+
+#if defined(__cplusplus)
+#if 0
+{ /* satisfy cc-mode */
+#endif
+}  /* extern "C" { */
+#endif
