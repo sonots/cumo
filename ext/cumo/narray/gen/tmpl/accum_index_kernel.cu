@@ -13,7 +13,7 @@
 #endif
 
 template<typename Iterator>
-__global__ void <%=type_name%>_min_index_int<%=i%>_kernel(Iterator begin, Iterator end, char *i_ptr, ssize_t i_step, char *o_ptr)
+__global__ void cumo_<%=type_name%>_min_index_int<%=i%>_kernel(Iterator begin, Iterator end, char *i_ptr, ssize_t i_step, char *o_ptr)
 {
     Iterator iter = thrust::min_element(thrust::cuda::par, begin, end);
     size_t idx = (size_t)(iter - begin);
@@ -21,7 +21,7 @@ __global__ void <%=type_name%>_min_index_int<%=i%>_kernel(Iterator begin, Iterat
 }
 
 template<typename Iterator>
-__global__ void <%=type_name%>_max_index_int<%=i%>_kernel(Iterator begin, Iterator end, char *i_ptr, ssize_t i_step, char *o_ptr)
+__global__ void cumo_<%=type_name%>_max_index_int<%=i%>_kernel(Iterator begin, Iterator end, char *i_ptr, ssize_t i_step, char *o_ptr)
 {
     Iterator iter = thrust::max_element(thrust::cuda::par, begin, end);
     size_t idx = (size_t)(iter - begin);
@@ -35,20 +35,20 @@ extern "C" {
 #endif
 #endif
 
-void <%=type_name%>_min_index_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr)
+void cumo_<%=type_name%>_min_index_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr)
 {
     ssize_t d_step_idx = d_step / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)d_ptr);
     thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)d_ptr) + n * d_step_idx);
-    <%=type_name%>_min_index_int<%=i%>_kernel<<<1,1>>>(data_begin, data_end, i_ptr, i_step, o_ptr);
+    cumo_<%=type_name%>_min_index_int<%=i%>_kernel<<<1,1>>>(data_begin, data_end, i_ptr, i_step, o_ptr);
 }
 
-void <%=type_name%>_max_index_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr)
+void cumo_<%=type_name%>_max_index_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr)
 {
     ssize_t d_step_idx = d_step / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)d_ptr);
     thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)d_ptr) + n * d_step_idx);
-    <%=type_name%>_max_index_int<%=i%>_kernel<<<1,1>>>(data_begin, data_end, i_ptr, i_step, o_ptr);
+    cumo_<%=type_name%>_max_index_int<%=i%>_kernel<<<1,1>>>(data_begin, data_end, i_ptr, i_step, o_ptr);
 }
 #undef idx_t
 <% end %>

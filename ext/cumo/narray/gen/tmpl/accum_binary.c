@@ -1,8 +1,8 @@
 //<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>
-void <%="#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, uint64_t n);
-void <%="#{type_name}_#{name}#{nan}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
+void <%="cumo_#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, uint64_t n);
+void <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
 <% end %>
 
 static void
@@ -47,10 +47,10 @@ static void
     <% else %>
     {
         if (s3==0) {
-            <%="#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(p1,p2,p3,s1,s2,n);
+            <%="cumo_#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(p1,p2,p3,s1,s2,n);
             return;
         } else {
-            <%="#{type_name}_#{name}#{nan}_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
+            <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
         }
     }
     <% end %>

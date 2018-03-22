@@ -1,5 +1,5 @@
 <% unless type_name == 'robject' %>
-void <%="#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, char *p4, ssize_t s1, ssize_t s2, ssize_t s3, ssize_t s4, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, char *p4, ssize_t s1, ssize_t s2, ssize_t s3, ssize_t s4, uint64_t n);
 <% end %>
 
 static void
@@ -31,7 +31,7 @@ static void
             SET_DATA_STRIDE(p4,s4,dtype,b);
         }
         <% else %>
-        <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,p4,s1,s2,s3,s4,n);
+        <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,p4,s1,s2,s3,s4,n);
         <% end %>
     }
 }

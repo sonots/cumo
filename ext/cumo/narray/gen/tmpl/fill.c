@@ -1,6 +1,6 @@
 <% unless type_name == 'robject' %>
-void <%="#{c_iter}_index_kernel_launch"%>(char *ptr, size_t *idx, dtype val, uint64_t n);
-void <%="#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype val, uint64_t n);
+void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *ptr, size_t *idx, dtype val, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype val, uint64_t n);
 <% end %>
 
 static void
@@ -28,9 +28,9 @@ static void
     }
     <% else %>
     if (idx1) {
-        <%="#{c_iter}_index_kernel_launch"%>(p1,idx1,y,i);
+        <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,idx1,y,i);
     } else {
-        <%="#{c_iter}_stride_kernel_launch"%>(p1,s1,y,i);
+        <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,s1,y,i);
     }
     <% end %>
 }

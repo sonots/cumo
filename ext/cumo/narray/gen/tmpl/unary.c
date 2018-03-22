@@ -1,10 +1,10 @@
 <% if type_name == 'robject' || name == 'map' %>
 <% else %>
-void <%="#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, uint64_t n);
-void <%="#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, uint64_t n);
-void <%="#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, uint64_t n);
-void <%="#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n);
-void <%="#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, uint64_t n);
+void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, uint64_t n);
+void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, uint64_t n);
+void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, uint64_t n);
 <% end %>
 
 static void
@@ -81,31 +81,31 @@ static void
     {
         if (idx1) {
             if (idx2) {
-                <%="#{c_iter}_index_index_kernel_launch"%>(p1,p2,idx1,idx2,n);
+                <%="cumo_#{c_iter}_index_index_kernel_launch"%>(p1,p2,idx1,idx2,n);
             } else {
-                <%="#{c_iter}_index_stride_kernel_launch"%>(p1,p2,idx1,s2,n);
+                <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(p1,p2,idx1,s2,n);
             }
         } else {
             if (idx2) {
-                <%="#{c_iter}_stride_index_kernel_launch"%>(p1,p2,s1,idx2,n);
+                <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(p1,p2,s1,idx2,n);
             } else {
                 //<% if need_align %>
                 if (is_aligned(p1,sizeof(dtype)) &&
                     is_aligned(p2,sizeof(dtype)) ) {
                     if (s1 == sizeof(dtype) &&
                         s2 == sizeof(dtype) ) {
-                        <%="#{c_iter}_contiguous_kernel_launch"%>(p1,p2,n);
+                        <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(p1,p2,n);
                         return;
                     }
                     if (is_aligned_step(s1,sizeof(dtype)) &&
                         is_aligned_step(s2,sizeof(dtype)) ) {
                         //<% end %>
-                        <%="#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,n);
+                        <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,n);
                         return;
                         //<% if need_align %>
                     }
                 }
-                <%="#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,n);
+                <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,n);
                 //<% end %>
             }
         }

@@ -1,19 +1,19 @@
 // TODO(sonots): handle zero division error in CUDA kernel?
 // ref. https://devtalk.nvidia.com/default/topic/415951/divide-by-zero-handling/
 
-<% if is_int and %w[div mod divmod].include? name %>
+//<% if is_int and %w[div mod divmod].include? name %>
 #define check_intdivzero(y)              \
     if ((y)==0) {                        \
         lp->err_type = rb_eZeroDivError; \
         return;                          \
     }
-<% else %>
+//<% else %>
 #define check_intdivzero(y) {}
-<% end %>
+//<% end %>
 
 <% unless type_name == 'robject' %>
-void <%="#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, char *p3, uint64_t n);
-void <%="#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
+void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, char *p3, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
 <% end %>
 
 static void
@@ -83,19 +83,19 @@ static void
                 s2 == sizeof(dtype) &&
                 s3 == sizeof(dtype) ) {
 
-                <%="#{c_iter}_contiguous_kernel_launch"%>(p1,p2,p3,n);
+                <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(p1,p2,p3,n);
                 return;
             }
             if (is_aligned_step(s1,sizeof(dtype)) &&
                 is_aligned_step(s2,sizeof(dtype)) &&
                 is_aligned_step(s3,sizeof(dtype)) ) {
                 //<% end %>
-                <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
+                <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
                 return;
                 //<% if need_align %>
             }
         }
-        <%="#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
+        <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
         //<% end %>
     }
     <% end %>

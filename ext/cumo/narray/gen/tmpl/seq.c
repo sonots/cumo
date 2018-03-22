@@ -17,8 +17,8 @@ typedef struct {
 } seq_opt_t;
 
 <% unless is_object %>
-void <%="#{c_iter}_index_kernel_launch"%>(char *p1, size_t* idx1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n);
-void <%="#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n);
+void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t* idx1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n);
 <% end %>
 
 static void
@@ -61,9 +61,9 @@ static void
     {
         size_t n = i;
         if (idx1) {
-            <%="#{c_iter}_index_kernel_launch"%>(p1,idx1,beg,step,c,n);
+            <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,idx1,beg,step,c,n);
         } else {
-            <%="#{c_iter}_stride_kernel_launch"%>(p1,s1,beg,step,c,n);
+            <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,s1,beg,step,c,n);
         }
         g->count += n;
     }
