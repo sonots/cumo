@@ -7,6 +7,37 @@ if RUBY_VERSION < "2.0.0"
   exit(1)
 end
 
+def find_narray_h
+  $LOAD_PATH.each do |x|
+    if File.exist? File.join(x,'numo/numo/narray.h')
+      $INCFLAGS = "-I#{x}/numo " + $INCFLAGS
+      break
+    end
+  end
+end
+
+def find_libnarray_a
+  $LOAD_PATH.each do |x|
+    if File.exist? File.join(x,'numo/libnarray.a')
+      $LDFLAGS = "-L#{x}/numo " + $LDFLAGS
+      break
+    end
+  end
+end
+
+def create_depend
+  message "creating depend\n"
+  depend_path = File.join(__dir__, "depend")
+  File.open(depend_path, "w") do |depend|
+    depend_erb_path = File.join(__dir__, "depend.erb")
+    File.open(depend_erb_path, "r") do |depend_erb|
+      erb = ERB.new(depend_erb.read)
+      erb.filename = depend_erb_path
+      depend.print(erb.result)
+    end
+  end
+end
+
 rm_f 'include/cumo/extconf.h'
 
 if ENV['DEBUG']
@@ -14,7 +45,7 @@ if ENV['DEBUG']
 end
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
-$INCFLAGS = "-Iinclude -Inarray #$INCFLAGS"
+$INCFLAGS = "-Iinclude -Inarray #{$INCFLAGS}"
 
 $INSTALLFILES = Dir.glob(%w[include/cumo/*.h include/cumo/types/*.h include/cumo/cuda/*.h]).map{|x| [x,'$(archdir)'] }
 $INSTALLFILES << ['include/cumo/extconf.h','$(archdir)']
@@ -75,6 +106,33 @@ if RUBY_VERSION[0..3] == "2.1."
   srcs << "kwargs"
 end
 
+$objs = srcs.map {|src| "#{src}.o" }
+
+dir_config("narray")
+
+find_narray_h
+if !have_header("numo/narray.h")
+  puts "
+  Header numo/narray.h was not found. Give pathname as follows:
+  % ruby extconf.rb --with-narray-include=narray_h_dir"
+  exit(1)
+end
+
+if RUBY_PLATFORM =~ /cygwin|mingw/
+  find_libnarray_a
+  unless have_library("narray","nary_new")
+    puts "libnarray.a not found"
+    exit(1)
+  end
+end
+
+if have_header("dlfcn.h")
+  exit(1) unless have_library("dl")
+  exit(1) unless have_func("dlopen")
+elsif have_header("windows.h")
+  exit(1) unless have_func("LoadLibrary")
+end
+
 if have_header("stdbool.h")
   stdbool = "stdbool.h"
 else
@@ -109,20 +167,10 @@ have_func("exp10")
 have_var("rb_cComplex")
 have_func("rb_thread_call_without_gvl")
 
-$objs = srcs.collect{|i| i+".o"}
-
 create_header('include/cumo/extconf.h')
 $extconf_h = nil # nvcc does not support #include RUBY_EXTCONF_H
 
-depend_path = File.join(__dir__, "depend")
-File.open(depend_path, "w") do |depend|
-  depend_erb_path = File.join(__dir__, "depend.erb")
-  File.open(depend_erb_path, "r") do |depend_erb|
-    erb = ERB.new(depend_erb.read)
-    erb.filename = depend_erb_path
-    depend.print(erb.result)
-  end
-end
+create_depend
 
 HEADER_DIRS = (ENV['CPATH'] || '').split(':')
 LIB_DIRS = (ENV['LIBRARY_PATH'] || '').split(':')
