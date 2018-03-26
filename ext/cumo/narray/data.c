@@ -919,7 +919,7 @@ cumo_na_dot(VALUE self, VALUE other)
 #endif
 
 void
-Init_nary_data()
+Init_cumo_nary_data()
 {
     rb_define_method(cNArray, "copy", na_copy, 0); // deprecated
 

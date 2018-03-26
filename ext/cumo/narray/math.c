@@ -104,7 +104,7 @@ VALUE nary_math_method_missing(int argc, VALUE *argv, VALUE mod)
 
 
 void
-Init_nary_math()
+Init_cumo_nary_math()
 {
     VALUE hCast;
 

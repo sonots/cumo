@@ -1830,7 +1830,7 @@ cumo_na_free_data(VALUE self)
 
 /* initialization of NArray Class */
 void
-Init_narray()
+Init_cumo_narray()
 {
     mCumo = rb_define_module("Cumo");
 

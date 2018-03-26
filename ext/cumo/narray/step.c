@@ -468,7 +468,7 @@ nary_is_sequence( VALUE arg )
 
 
 void
-Init_nary_step()
+Init_cumo_nary_step()
 {
     na_cStep = rb_define_class_under(cNArray, "Step", rb_cObject);
     rb_include_module(na_cStep, rb_mEnumerable);

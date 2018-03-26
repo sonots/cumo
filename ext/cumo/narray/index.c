@@ -815,7 +815,7 @@ na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_
 
 
 void
-Init_nary_index()
+Init_cumo_nary_index()
 {
     rb_define_method(cNArray, "slice", na_slice, -1);
 

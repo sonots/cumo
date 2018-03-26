@@ -829,7 +829,7 @@ NST_TYPEDEF(scomplex,cumo_cSComplex)
     rb_define_alias(rb_singleton_class(klass),name1,name2)
 
 void
-Init_nary_struct()
+Init_cumo_nary_struct()
 {
     cT = rb_define_class_under(mCumo, "Struct", cumo_cNArray);
     //cNStMember = rb_define_class_under(cT, "Member", rb_cObject);

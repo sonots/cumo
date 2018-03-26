@@ -66,7 +66,7 @@ static VALUE
 }
 
 void
-Init_nary_rand() {
+Init_cumo_nary_rand() {
     rb_define_singleton_method(cNArray, "srand", nary_s_srand, -1);
     init_gen_rand(0);
 }
