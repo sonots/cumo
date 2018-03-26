@@ -1,5 +1,5 @@
-#ifndef INTERN_H
-#define INTERN_H
+#ifndef CUMO_INTERN_H
+#define CUMO_INTERN_H
 
 void cumo_debug_breakpoint(void);
 
@@ -111,4 +111,4 @@ VALUE rb_extract_keywords(VALUE *orighash);
 #endif
 
 
-#endif /* ifndef INTERN_H */
+#endif /* ifndef CUMO_INTERN_H */

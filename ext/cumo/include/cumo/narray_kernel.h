@@ -1,5 +1,5 @@
-#ifndef NARRAY_KERNEL_H
-#define NARRAY_KERNEL_H
+#ifndef CUMO_NARRAY_KERNEL_H
+#define CUMO_NARRAY_KERNEL_H
 
 #if defined(__cplusplus)
 extern "C" {
@@ -147,4 +147,4 @@ typedef unsigned int BIT_DIGIT;
 }  /* extern "C" { */
 #endif
 
-#endif /* ifndef NARRAY_KERNEL_H */
+#endif /* ifndef CUMO_NARRAY_KERNEL_H */

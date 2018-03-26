@@ -1,5 +1,5 @@
-#ifndef COMPAT_H
-#define COMPAT_H
+#ifndef CUMO_COMPAT_H
+#define CUMO_COMPAT_H
 
 #if !defined RSTRING_LEN
 #define RSTRING_LEN(a) RSTRING(a)->len
@@ -20,4 +20,4 @@
 #define RARRAY_ASET(a,i,v) (RARRAY_PTR(a)[i] = v)
 #endif
 
-#endif /* ifndef COMPAT_H */
+#endif /* ifndef CUMO_COMPAT_H */

@@ -1,4 +1,4 @@
-#define NARRAY_C
+#define CUMO_NARRAY_C
 #include <ruby.h>
 #include <assert.h>
 

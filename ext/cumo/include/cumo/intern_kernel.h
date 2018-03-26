@@ -1,6 +1,6 @@
-#ifndef INTERN_KERNEL_H
-#define INTERN_KERNEL_H
+#ifndef CUMO_INTERN_KERNEL_H
+#define CUMO_INTERN_KERNEL_H
 
 void cumo_debug_breakpoint(void);
 
-#endif /* ifndef INTERN_KERNEL_H */
+#endif /* ifndef CUMO_INTERN_KERNEL_H */

@@ -1,5 +1,5 @@
-#ifndef TEMPLATE_KERNEL_H
-#define TEMPLATE_KERNEL_H
+#ifndef CUMO_TEMPLATE_KERNEL_H
+#define CUMO_TEMPLATE_KERNEL_H
 
 #define LOAD_BIT( adr, pos, val )                       \
     {                                                   \
@@ -74,4 +74,4 @@ get_blockDim(size_t n)
 }
 
 
-#endif /* ifndef TEMPLATE_KERNEL_H */
+#endif /* ifndef CUMO_TEMPLATE_KERNEL_H */

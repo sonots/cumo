@@ -1,5 +1,5 @@
-#ifndef NARRAY_H
-#define NARRAY_H
+#ifndef CUMO_NARRAY_H
+#define CUMO_NARRAY_H
 
 #if defined(__cplusplus)
 extern "C" {
@@ -121,7 +121,7 @@ typedef int fortran_integer;
 
 extern int na_debug_flag;
 
-#ifndef NARRAY_C
+#ifndef CUMO_NARRAY_C
 extern VALUE cumo_cNArray;
 extern VALUE rb_mCumo;
 extern VALUE nary_eCastError;
@@ -422,4 +422,4 @@ typedef unsigned int BIT_DIGIT;
 }  /* extern "C" { */
 #endif
 
-#endif /* ifndef NARRAY_H */
+#endif /* ifndef CUMO_NARRAY_H */
