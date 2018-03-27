@@ -1419,7 +1419,7 @@ loop_narray(ndfunc_t *nf, na_md_loop_t *lp)
 }
 
 
-VALUE
+static VALUE
 na_ndloop_main(ndfunc_t *nf, VALUE args, void *opt_ptr)
 {
     unsigned int copy_flag;
@@ -1992,7 +1992,7 @@ na_ndloop_with_index(nf, argc, va_alist)
 
 
 void
-Init_nary_ndloop()
+Init_cumo_nary_ndloop()
 {
     id_cast    = rb_intern("cast");
     id_extract = rb_intern("extract");

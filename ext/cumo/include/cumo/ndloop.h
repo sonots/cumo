@@ -1,5 +1,5 @@
-#ifndef NDLOOP_H
-#define NDLOOP_H
+#ifndef CUMO_NDLOOP_H
+#define CUMO_NDLOOP_H
 
 typedef struct NA_LOOP_ITER {
     ssize_t    pos; // - required for each dimension.
@@ -86,4 +86,4 @@ typedef struct NDFUNCTION {
     ndfunc_arg_out_t *aout; // spec of output result
 } ndfunc_t;
 
-#endif /* NDLOOP_H */
+#endif /* CUMO_NDLOOP_H */

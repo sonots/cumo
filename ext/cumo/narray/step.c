@@ -56,22 +56,7 @@ step_init(
     SET_EXCL(self, excl);
 }
 
-VALUE
-nary_step_new(
-  VALUE beg,
-  VALUE end,
-  VALUE step,
-  VALUE len,
-  VALUE excl
-)
-{
-    VALUE self = rb_obj_alloc(na_cStep);
-
-    step_init(self, beg, end, step, len, excl);
-    return self;
-}
-
-VALUE
+static VALUE
 nary_step_new2(
   VALUE range,
   VALUE step,
@@ -455,20 +440,8 @@ nary_s_step( int argc, VALUE *argv, VALUE mod )
 }
 
 
-VALUE
-nary_is_sequence( VALUE arg )
-{
-    if ( rb_obj_is_kind_of(arg, rb_cRange) )
-        return Qtrue;
-    if ( rb_obj_is_kind_of(arg, na_cStep) )
-        return Qtrue;
-    return Qfalse;
-}
-
-
-
 void
-Init_nary_step()
+Init_cumo_nary_step()
 {
     na_cStep = rb_define_class_under(cNArray, "Step", rb_cObject);
     rb_include_module(na_cStep, rb_mEnumerable);

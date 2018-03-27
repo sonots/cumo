@@ -76,7 +76,7 @@ static ID id_shift_left;
 static ID id_mask;
 
 
-void
+static void
 na_index_set_step(na_index_arg_t *q, int i, size_t n, size_t beg, ssize_t step)
 {
     q->n    = n;
@@ -87,7 +87,7 @@ na_index_set_step(na_index_arg_t *q, int i, size_t n, size_t beg, ssize_t step)
     q->orig_dim = i;
 }
 
-void
+static void
 na_index_set_scalar(na_index_arg_t *q, int i, ssize_t size, ssize_t x)
 {
     if (x < -size || x >= size)
@@ -608,7 +608,7 @@ na_aref_md_ensure(VALUE data_value)
     return Qnil;
 }
 
-VALUE
+static VALUE
 na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd)
 {
     VALUE args; // should be GC protected
@@ -815,7 +815,7 @@ na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_
 
 
 void
-Init_nary_index()
+Init_cumo_nary_index()
 {
     rb_define_method(cNArray, "slice", na_slice, -1);
 

@@ -11,7 +11,7 @@ static VALUE
   @overload inspect
   @return [String]
 */
-VALUE
+static VALUE
 <%=c_func(0)%>(VALUE ary)
 {
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());

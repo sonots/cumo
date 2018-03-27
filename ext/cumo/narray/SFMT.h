@@ -72,15 +72,25 @@
   #define PRE_ALWAYS inline
 #endif
 
-uint32_t gen_rand32(void);
-uint64_t gen_rand64(void);
-void fill_array32(uint32_t *array, int size);
-void fill_array64(uint64_t *array, int size);
-void init_gen_rand(uint32_t seed);
-void init_by_array(uint32_t *init_key, int key_length);
-const char *get_idstring(void);
-int get_min_array_size32(void);
-int get_min_array_size64(void);
+/* Add cumo_ prefix to avoid symbol colision with numo */
+#define gen_rand32 cumo_gen_rand32
+uint32_t cumo_gen_rand32(void);
+#define gen_rand64 cumo_gen_rand64
+uint64_t cumo_gen_rand64(void);
+#define fill_array32 cumo_fill_array32
+void cumo_fill_array32(uint32_t* array, int size);
+#define fill_array64 cumo_fill_array64
+void cumo_fill_array64(uint64_t* array, int size);
+#define init_gen_rand cumo_init_gen_rand
+void cumo_init_gen_rand(uint32_t seed);
+#define init_by_array cumo_init_by_array
+void cumo_init_by_array(uint32_t* init_key, int key_length);
+#define get_idstring cumo_get_idstring
+const char* cumo_get_idstring(void);
+#define get_min_array_size32 cumo_get_min_array_size32
+int cumo_get_min_array_size32(void);
+#define get_min_array_size64 cumo_get_min_array_size64
+int cumo_get_min_array_size64(void);
 
 /* These real versions are due to Isaku Wada */
 /** generates a random number on [0,1]-real-interval */

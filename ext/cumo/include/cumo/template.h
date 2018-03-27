@@ -1,5 +1,5 @@
-#ifndef TEMPLATE_H
-#define TEMPLATE_H
+#ifndef CUMO_TEMPLATE_H
+#define CUMO_TEMPLATE_H
 
 #define INIT_COUNTER( lp, c )                   \
     {   c = (lp)->n[0]; }
@@ -155,4 +155,4 @@ is_aligned_step(const ssize_t step, const size_t alignment)
 #define SHOW_SYNCHRONIZE_WARNING_ONCE( func_name, type_name ) \
     SHOW_WARNING_ONCE("Warning: Method \"" func_name "\" for dtype \"" type_name "\" synchronizes with CPU.\n")
 
-#endif /* ifndef TEMPLATE_H */
+#endif /* ifndef CUMO_TEMPLATE_H */
