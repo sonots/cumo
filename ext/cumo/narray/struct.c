@@ -73,7 +73,7 @@ nst_definition(VALUE nst, VALUE idx)
 
 void na_copy_array_structure(VALUE self, VALUE view);
 
-VALUE
+static VALUE
 na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
 {
     size_t i, n;
@@ -169,7 +169,7 @@ na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
 }
 
 
-VALUE
+static VALUE
 nst_field_view(VALUE self, VALUE idx)
 {
     VALUE def, type, ofs;
@@ -185,7 +185,7 @@ nst_field_view(VALUE self, VALUE idx)
     return na_make_view_struct(self, type, ofs);
 }
 
-VALUE
+static VALUE
 nst_field(VALUE self, VALUE idx)
 {
     VALUE obj;
@@ -199,7 +199,7 @@ nst_field(VALUE self, VALUE idx)
     return obj;
 }
 
-VALUE
+static VALUE
 nst_field_set(VALUE self, VALUE idx, VALUE other)
 {
     VALUE obj;
@@ -782,7 +782,7 @@ iter_struct_inspect(char *ptr, size_t pos, VALUE opt)
   @overload inspect
   @return [String]
 */
-VALUE
+static VALUE
 nary_struct_inspect(VALUE ary)
 {
     VALUE opt;

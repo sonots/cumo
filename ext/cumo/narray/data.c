@@ -51,7 +51,7 @@ static ID id_swap_byte;
 }
 
 #define m_memcpy(src,dst) memcpy(dst,src,e)
-void
+static void
 iter_copy_bytes(na_loop_t *const lp)
 {
     size_t e;
@@ -200,7 +200,7 @@ check_axis(int axis, int ndim)
     #  [[1, 5],
     #   [3, 7]]]
 */
-VALUE
+static VALUE
 na_swapaxes(VALUE self, VALUE a1, VALUE a2)
 {
     int  i, j, ndim;
@@ -226,7 +226,7 @@ na_swapaxes(VALUE self, VALUE a1, VALUE a2)
     return view;
 }
 
-VALUE
+static VALUE
 na_transpose_map(VALUE self, int *map)
 {
     int  i, ndim;
@@ -256,7 +256,7 @@ na_transpose_map(VALUE self, int *map)
 
 #define SWAP(a,b,tmp) {tmp=a;a=b;b=tmp;}
 
-VALUE
+static VALUE
 na_transpose(int argc, VALUE *argv, VALUE self)
 {
     int ndim, *map, *permute;
@@ -585,7 +585,7 @@ na_flatten(VALUE self)
      [10, 11, 12, 3, 14],
      [15, 16, 17, 18, 4]]
  */
-VALUE
+static VALUE
 na_diagonal(int argc, VALUE *argv, VALUE self)
 {
     int  i, k, nd;
