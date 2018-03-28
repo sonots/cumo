@@ -9,7 +9,7 @@
 // structure used to accumulate the moments and other
 // statistical properties encountered so far.
 template <typename T, typename R>
-struct thrust_complex_variance_data
+struct cumo_thrust_complex_variance_data
 {
     R n;
     T mean;
@@ -29,12 +29,12 @@ struct thrust_complex_variance_data
 // stats_unary_op is a functor that takes in a value x and
 // returns a variace_data whose mean value is initialized to x.
 template <typename T, typename R>
-struct thrust_complex_variance_unary_op
+struct cumo_thrust_complex_variance_unary_op
 {
     __host__ __device__
-    thrust_complex_variance_data<T,R> operator()(const T& x) const
+    cumo_thrust_complex_variance_data<T,R> operator()(const T& x) const
     {
-         thrust_complex_variance_data<T,R> result;
+         cumo_thrust_complex_variance_data<T,R> result;
          result.n    = 1;
          result.mean = x;
          result.M2   = 0;
@@ -43,20 +43,20 @@ struct thrust_complex_variance_unary_op
     }
 };
 
-// thrust_variance_binary_op is a functor that accepts two thrust_variance_data
-// structs and returns a new thrust_variance_data which are an
-// approximation to the thrust_variance for
+// cumo_thrust_variance_binary_op is a functor that accepts two cumo_thrust_variance_data
+// structs and returns a new cumo_thrust_variance_data which are an
+// approximation to the cumo_thrust_variance for
 // all values that have been agregated so far
 template <typename T, typename R>
-struct thrust_complex_variance_binary_op
-    : public thrust::binary_function<const thrust_complex_variance_data<T,R>&,
-                                     const thrust_complex_variance_data<T,R>&,
-                                           thrust_complex_variance_data<T,R> >
+struct cumo_thrust_complex_variance_binary_op
+    : public thrust::binary_function<const cumo_thrust_complex_variance_data<T,R>&,
+                                     const cumo_thrust_complex_variance_data<T,R>&,
+                                           cumo_thrust_complex_variance_data<T,R> >
 {
     __host__ __device__
-    thrust_complex_variance_data<T,R> operator()(const thrust_complex_variance_data<T,R>& x, const thrust_complex_variance_data<T,R>& y) const
+    cumo_thrust_complex_variance_data<T,R> operator()(const cumo_thrust_complex_variance_data<T,R>& x, const cumo_thrust_complex_variance_data<T,R>& y) const
     {
-        thrust_complex_variance_data<T,R> result;
+        cumo_thrust_complex_variance_data<T,R> result;
 
         // precompute some common subexpressions
         R n  = x.n + y.n;

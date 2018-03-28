@@ -56,7 +56,7 @@ void cumo_<%=type_name%>_sum_kernel_launch(uint64_t n, char *p1, ssize_t s1, cha
     if (s1_idx == 1) {
         cumo_<%=type_name%>_sum_kernel<<<1,1>>>(data_begin, data_end, (<%=dtype%>*)p2);
     } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
+        cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_sum_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
     }
 }
@@ -69,7 +69,7 @@ void cumo_<%=type_name%>_prod_kernel_launch(uint64_t n, char *p1, ssize_t s1, ch
     if (s1_idx == 1) {
         cumo_<%=type_name%>_prod_kernel<<<1,1>>>(data_begin, data_end, (<%=dtype%>*)p2);
     } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
+        cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_prod_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
     }
 }
@@ -82,7 +82,7 @@ void cumo_<%=type_name%>_min_kernel_launch(uint64_t n, char *p1, ssize_t s1, cha
     if (s1_idx == 1) {
         cumo_<%=type_name%>_min_kernel<<<1,1>>>(data_begin, data_end, (<%=dtype%>*)p2);
     } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
+        cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_min_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
     }
 }
@@ -95,7 +95,7 @@ void cumo_<%=type_name%>_max_kernel_launch(uint64_t n, char *p1, ssize_t s1, cha
     if (s1_idx == 1) {
         cumo_<%=type_name%>_max_kernel<<<1,1>>>(data_begin, data_end, (<%=dtype%>*)p2);
     } else {
-        thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
+        cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_max_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
     }
 }
