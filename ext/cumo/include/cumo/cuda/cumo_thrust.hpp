@@ -22,7 +22,7 @@
 // ref. https://github.com/thrust/thrust/blob/master/examples/strided_range.cu (Apache License)
 
 template <typename Iterator>
-class thrust_strided_range
+class cumo_thrust_strided_range
 {
     public:
 
@@ -50,7 +50,7 @@ class thrust_strided_range
     typedef PermutationIterator iterator;
 
     // construct strided_range for the range [first,last)
-    thrust_strided_range(Iterator first, Iterator last, difference_type stride)
+    cumo_thrust_strided_range(Iterator first, Iterator last, difference_type stride)
         : first(first), last(last), stride(stride) {}
 
     iterator begin(void) const
@@ -73,40 +73,40 @@ class thrust_strided_range
 // compute minimum and maximum values in a single reduction
 // ref. https://github.com/thrust/thrust/blob/master/examples/minmax.cu (Apache License)
 
-// thrust_minmax_pair stores the minimum and maximum
+// cumo_thrust_minmax_pair stores the minimum and maximum
 // values that have been encountered so far
 template <typename T>
-struct thrust_minmax_pair
+struct cumo_thrust_minmax_pair
 {
     T min_val;
     T max_val;
 };
 
-// thrust_minmax_unary_op is a functor that takes in a value x and
-// returns a thrust_minmax_pair whose minimum and maximum values
+// cumo_thrust_minmax_unary_op is a functor that takes in a value x and
+// returns a cumo_thrust_minmax_pair whose minimum and maximum values
 // are initialized to x.
 template <typename T>
-struct thrust_minmax_unary_op : public thrust::unary_function< T, thrust_minmax_pair<T> >
+struct cumo_thrust_minmax_unary_op : public thrust::unary_function< T, cumo_thrust_minmax_pair<T> >
 {
-    __host__ __device__ thrust_minmax_pair<T> operator()(const T& x) const
+    __host__ __device__ cumo_thrust_minmax_pair<T> operator()(const T& x) const
     {
-        thrust_minmax_pair<T> result;
+        cumo_thrust_minmax_pair<T> result;
         result.min_val = x;
         result.max_val = x;
         return result;
     }
 };
 
-// thrust_minmax_binary_op is a functor that accepts two thrust_minmax_pair
-// structs and returns a new thrust_minmax_pair whose minimum and
+// cumo_thrust_minmax_binary_op is a functor that accepts two cumo_thrust_minmax_pair
+// structs and returns a new cumo_thrust_minmax_pair whose minimum and
 // maximum values are the min() and max() respectively of
 // the minimums and maximums of the input pairs
 template <typename T>
-struct thrust_minmax_binary_op : public thrust::binary_function< thrust_minmax_pair<T>, thrust_minmax_pair<T>, thrust_minmax_pair<T> >
+struct cumo_thrust_minmax_binary_op : public thrust::binary_function< cumo_thrust_minmax_pair<T>, cumo_thrust_minmax_pair<T>, cumo_thrust_minmax_pair<T> >
 {
-    __host__ __device__ thrust_minmax_pair<T> operator()(const thrust_minmax_pair<T>& x, const thrust_minmax_pair<T>& y) const
+    __host__ __device__ cumo_thrust_minmax_pair<T> operator()(const cumo_thrust_minmax_pair<T>& x, const cumo_thrust_minmax_pair<T>& y) const
     {
-        thrust_minmax_pair<T> result;
+        cumo_thrust_minmax_pair<T> result;
         result.min_val = thrust::min(x.min_val, y.min_val);
         result.max_val = thrust::max(x.max_val, y.max_val);
         return result;
@@ -118,7 +118,7 @@ struct thrust_minmax_binary_op : public thrust::binary_function< thrust_minmax_p
 // structure used to accumulate the moments and other
 // statistical properties encountered so far.
 template <typename T>
-struct thrust_variance_data
+struct cumo_thrust_variance_data
 {
     T n;
     T mean;
@@ -137,12 +137,12 @@ struct thrust_variance_data
 // stats_unary_op is a functor that takes in a value x and
 // returns a variace_data whose mean value is initialized to x.
 template <typename T>
-struct thrust_variance_unary_op
+struct cumo_thrust_variance_unary_op
 {
     __host__ __device__
-    thrust_variance_data<T> operator()(const T& x) const
+    cumo_thrust_variance_data<T> operator()(const T& x) const
     {
-         thrust_variance_data<T> result;
+         cumo_thrust_variance_data<T> result;
          result.n    = 1;
          result.mean = x;
          result.M2   = 0;
@@ -151,20 +151,20 @@ struct thrust_variance_unary_op
     }
 };
 
-// thrust_variance_binary_op is a functor that accepts two thrust_variance_data
-// structs and returns a new thrust_variance_data which are an
-// approximation to the thrust_variance for
+// cumo_thrust_variance_binary_op is a functor that accepts two cumo_thrust_variance_data
+// structs and returns a new cumo_thrust_variance_data which are an
+// approximation to the cumo_thrust_variance for
 // all values that have been agregated so far
 template <typename T>
-struct thrust_variance_binary_op
-    : public thrust::binary_function<const thrust_variance_data<T>&,
-                                     const thrust_variance_data<T>&,
-                                           thrust_variance_data<T> >
+struct cumo_thrust_variance_binary_op
+    : public thrust::binary_function<const cumo_thrust_variance_data<T>&,
+                                     const cumo_thrust_variance_data<T>&,
+                                           cumo_thrust_variance_data<T> >
 {
     __host__ __device__
-    thrust_variance_data<T> operator()(const thrust_variance_data<T>& x, const thrust_variance_data <T>& y) const
+    cumo_thrust_variance_data<T> operator()(const cumo_thrust_variance_data<T>& x, const cumo_thrust_variance_data <T>& y) const
     {
-        thrust_variance_data<T> result;
+        cumo_thrust_variance_data<T> result;
 
         // precompute some common subexpressions
         T n  = x.n + y.n;
