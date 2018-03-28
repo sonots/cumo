@@ -488,6 +488,7 @@ check_array(VALUE item) {
     return 0;
 }
 
+/*
 static size_t
 check_array_1d(VALUE item, size_t size) {
     narray_t *na;
@@ -515,6 +516,7 @@ check_array_1d(VALUE item, size_t size) {
     }
     return 0;
 }
+*/
 
 /*
 VALUE

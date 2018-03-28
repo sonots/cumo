@@ -3,6 +3,8 @@
 
 void cumo_debug_breakpoint(void);
 
+/* Add cumo_ prefix to avoid C symbol collisions with Numo without modifying C implementations */
+
 #define rb_narray_new cumo_nary_new
 #define nary_new cumo_nary_new
 VALUE cumo_nary_new(VALUE elem, int ndim, size_t *shape);

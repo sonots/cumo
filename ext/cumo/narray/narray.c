@@ -1,6 +1,9 @@
 #define CUMO_NARRAY_C
 #include <ruby.h>
 #include <assert.h>
+#include "cumo/narray.h"
+#include "cumo/cuda/memory_pool.h"
+#include "cumo/cuda/runtime.h"
 
 /* global variables within this module */
 VALUE cumo_cNArray;
@@ -30,8 +33,6 @@ static ID id_axis;
 static ID id_nan;
 static ID id_keepdims;
 
-VALUE cPointer;
-
 VALUE sym_reduce;
 VALUE sym_option;
 VALUE sym_loop_opt;
@@ -49,9 +50,6 @@ const rb_data_type_t na_data_type = {
     "Cumo::NArray",
     {0, 0, 0,}, 0, 0, 0,
 };
-#include "cumo/narray.h"
-#include "cumo/cuda/memory_pool.h"
-#include "cumo/cuda/runtime.h"
 
 static void
 nary_debug_info_nadata(VALUE self)
