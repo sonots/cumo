@@ -155,8 +155,6 @@ rb_memory_pool_total_bytes(VALUE self)
     return SIZET2NUM(pool.GetTotalBytes());
 }
 
-#define METHOD VALUE(*)(ANYARGS)
-
 void
 Init_cumo_cuda_memory_pool()
 {
@@ -178,8 +176,6 @@ Init_cumo_cuda_memory_pool()
     const char* env = std::getenv("CUMO_MEMORY_POOL");
     memory_pool_enabled = (env != nullptr && std::string(env) != "OFF" && std::string(env) != "0" && std::string(env) != "NO");
 }
-
-#undef METHOD
 
 #if defined(__cplusplus)
 #if 0
