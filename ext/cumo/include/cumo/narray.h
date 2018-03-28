@@ -15,6 +15,7 @@ extern "C" {
 #include "cumo/compat.h"
 #include "cumo/template.h"
 #include "cumo/extconf.h"
+#include "cumo/intern_fwd.h"
 
 #ifdef HAVE_STDBOOL_H
 # include <stdbool.h>
@@ -134,8 +135,6 @@ extern const rb_data_type_t na_data_type;
 //EXTERN const int na_sizeof[NA_NTYPES+1];
 #endif
 
-#define cNArray cumo_cNArray
-#define mCumo rb_mCumo
 //#define na_upcast(x,y) cumo_na_upcast(x,y)
 
 /* global variables within this module */
