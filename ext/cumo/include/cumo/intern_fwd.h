@@ -3,6 +3,9 @@
 
 /* Add cumo_ prefix to avoid C symbol collisions with Numo without modifying C implementations */
 
+#define na_debug_flag cumo_na_debug_flag
+extern int cumo_na_debug_flag;
+
 #define mCumo rb_mCumo
 extern VALUE rb_mCumo;
 #define cNArray cumo_cNArray
