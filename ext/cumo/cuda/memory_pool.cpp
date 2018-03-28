@@ -1,7 +1,7 @@
 #include <ruby.h>
 #include <cuda_runtime.h>
+#include "memory_pool_impl.hpp"
 #include "cumo/cuda/memory_pool.h"
-#include "cumo/cuda/memory_pool_impl.hpp"
 #include "cumo/cuda/runtime.h"
 
 #include <cstdlib>

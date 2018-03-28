@@ -45,7 +45,7 @@ if ENV['DEBUG']
 end
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
-$INCFLAGS = "-Iinclude -Inarray #{$INCFLAGS}"
+$INCFLAGS = "-Iinclude -Inarray -Icuda #{$INCFLAGS}"
 
 $INSTALLFILES = Dir.glob(%w[include/cumo/*.h include/cumo/types/*.h include/cumo/cuda/*.h]).map{|x| [x,'$(archdir)'] }
 $INSTALLFILES << ['include/cumo/extconf.h','$(archdir)']

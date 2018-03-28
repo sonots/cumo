@@ -1,4 +1,4 @@
-#include "cumo/cuda/memory_pool_impl.hpp"
+#include "memory_pool_impl.hpp"
 
 #include <cassert>
 #include <memory>
