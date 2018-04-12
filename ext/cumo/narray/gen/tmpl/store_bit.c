@@ -1,9 +1,9 @@
-<% unless c_iter.include? 'robject' %>
+//<% unless c_iter.include? 'robject' %>
 void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, size_t p2, BIT_DIGIT *a2, size_t *idx1, size_t *idx2, uint64_t n);
 void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, size_t p2, BIT_DIGIT *a2, ssize_t s1, size_t *idx2, uint64_t n);
 void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, size_t p2, BIT_DIGIT *a2, size_t *idx1, ssize_t s2, uint64_t n);
 void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, size_t p2, BIT_DIGIT *a2, ssize_t s1, ssize_t s2, uint64_t n);
-<% end %>
+//<% end %>
 
 static void
 <%=c_iter%>(na_loop_t *const lp)
@@ -19,7 +19,7 @@ static void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR_BIT_IDX(lp, 1, a2, p2, s2, idx2);
 
-    <% if c_iter.include? 'robject' %>
+    //<% if c_iter.include? 'robject' %>
     {
         BIT_DIGIT x;
         dtype y;
@@ -28,13 +28,13 @@ static void
             if (idx1) {
                 for (; i--;) {
                     LOAD_BIT(a2, p2+*idx2, x); idx2++;
-                    y = m_from_real(x);
+                    y = m_from_sint(x);
                     SET_DATA_INDEX(p1,idx1,dtype,y);
                 }
             } else {
                 for (; i--;) {
                     LOAD_BIT(a2, p2+*idx2, x); idx2++;
-                    y = m_from_real(x);
+                    y = m_from_sint(x);
                     SET_DATA_STRIDE(p1,s1,dtype,y);
                 }
             }
@@ -42,19 +42,19 @@ static void
             if (idx1) {
                 for (; i--;) {
                     LOAD_BIT(a2, p2, x); p2 += s2;
-                    y = m_from_real(x);
+                    y = m_from_sint(x);
                     SET_DATA_INDEX(p1,idx1,dtype,y);
                 }
             } else {
                 for (; i--;) {
                     LOAD_BIT(a2, p2, x); p2 += s2;
-                    y = m_from_real(x);
+                    y = m_from_sint(x);
                     SET_DATA_STRIDE(p1,s1,dtype,y);
                 }
             }
         }
     }
-    <% else %>
+    //<% else %>
     {
         if (idx2) {
             if (idx1) {
@@ -70,7 +70,7 @@ static void
             }
         }
     }
-    <% end %>
+    //<% end %>
 }
 
 
