@@ -1,5 +1,4 @@
 require "erb"
-require_relative "erbln"
 
 class ErbPP
 
@@ -67,12 +66,8 @@ class ErbPP
       Dir.glob(x).each do |dir|
         path = File.join(dir,file)
         if File.exist?(path)
-          if get(:line_number)
-            erb = ERBLN.new(File.read(path), path, trim_mode)
-          else
-            erb = ERB.new(File.read(path), safe_level, trim_mode)
-            erb.filename = path
-          end
+          erb = ERB.new(File.read(path), safe_level, trim_mode)
+          erb.filename = path
           return erb
         end
       end
