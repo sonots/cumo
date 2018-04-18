@@ -3,6 +3,11 @@
 
 #define m_from_double(x) (x)
 #define m_from_real(x) (x)
+#define m_from_sint(x) (x)
+#define m_from_int32(x) (x)
+#define m_from_int64(x) (x)
+#define m_from_uint32(x) (x)
+#define m_from_uint64(x) (x)
 
 #define m_add(x,y) ((x)+(y))
 #define m_sub(x,y) ((x)-(y))
@@ -43,31 +48,6 @@
      (qsort_cast(a) > qsort_cast(b)) ? 1 : -1)
 #define cmpgt(a,b)                              \
     (qsort_cast(a) > qsort_cast(b))
-
-
-static inline dtype f_sum(size_t n, char *p, ssize_t stride)
-{
-    dtype x,y=0;
-    size_t i=n;
-    for (; i--;) {
-        x = *(dtype*)p;
-        y += x;
-        p += stride;
-    }
-    return y;
-}
-
-static inline dtype f_prod(size_t n, char *p, ssize_t stride)
-{
-    dtype x,y=1;
-    size_t i=n;
-    for (; i--;) {
-        x = *(dtype*)p;
-        y *= x;
-        p += stride;
-    }
-    return y;
-}
 
 static inline dtype f_min(size_t n, char *p, ssize_t stride)
 {
@@ -170,4 +150,20 @@ static inline dtype f_ptp(size_t n, char *p, ssize_t stride)
 static inline double f_seq(double x, double y, double c)
 {
     return x + y * c;
+}
+
+static inline dtype f_maximum(dtype x, dtype y)
+{
+    if (m_ge(x,y)) {
+        return x;
+    }
+    return y;
+}
+
+static inline dtype f_minimum(dtype x, dtype y)
+{
+    if (m_le(x,y)) {
+        return x;
+    }
+    return y;
 }

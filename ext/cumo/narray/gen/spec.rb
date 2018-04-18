@@ -23,6 +23,9 @@ if is_comparable && !is_object
   def_id "lt"
   def_id "le"
 end
+if is_comparable
+  def_id "nan"
+end
 if is_object
   def_id "bit_and"
   def_id "bit_or"
@@ -109,14 +112,14 @@ def_method "store" do
   end
   store_from "DFloat","double",   "m_from_real"
   store_from "SFloat","float",    "m_from_real"
-  store_from "Int64", "int64_t",  "m_from_real"
-  store_from "Int32", "int32_t",  "m_from_real"
-  store_from "Int16", "int16_t",  "m_from_real"
-  store_from "Int8",  "int8_t",   "m_from_real"
-  store_from "UInt64","u_int64_t","m_from_real"
-  store_from "UInt32","u_int32_t","m_from_real"
-  store_from "UInt16","u_int16_t","m_from_real"
-  store_from "UInt8", "u_int8_t", "m_from_real"
+  store_from "Int64", "int64_t",  "m_from_int64"
+  store_from "Int32", "int32_t",  "m_from_int32"
+  store_from "Int16", "int16_t",  "m_from_sint"
+  store_from "Int8",  "int8_t",   "m_from_sint"
+  store_from "UInt64","u_int64_t","m_from_uint64"
+  store_from "UInt32","u_int32_t","m_from_uint32"
+  store_from "UInt16","u_int16_t","m_from_sint"
+  store_from "UInt8", "u_int8_t", "m_from_sint"
   store_from "RObject", "VALUE",  "m_num_to_data"
   store_array
 end
@@ -273,8 +276,19 @@ if is_float
   cond_unary "isfinite"
 end
 
-accum "sum","dtype","cT"
-accum "prod","dtype","cT"
+if is_int
+  if is_unsigned
+    accum "sum","u_int64_t","cumo_cUInt64"
+    accum "prod","u_int64_t","cumo_cUInt64"
+  else
+    accum "sum","int64_t","cumo_cInt64"
+    accum "prod","int64_t","cumo_cInt64"
+  end
+else
+  accum "sum","dtype","cT"
+  accum "prod","dtype","cT"
+end
+
 if is_double_precision
   accum "kahan_sum","dtype","cT"
 end
@@ -293,6 +307,8 @@ if is_comparable
   accum_index "max_index"
   accum_index "min_index"
   def_method "minmax"
+  def_module_function "maximum", "ewcomp", n_arg:2
+  def_module_function "minimum", "ewcomp", n_arg:2
 end
 
 if is_int && !is_object
