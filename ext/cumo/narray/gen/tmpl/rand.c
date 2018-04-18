@@ -91,9 +91,6 @@ static void
     max = g->max;
     <%=shift_set%>
 
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     if (idx1) {
         for (; i--;) {
             x = m_add(<%=m_rand%>,low);
@@ -163,6 +160,11 @@ static VALUE
         rb_raise(rb_eArgError,"high must be larger than low");
     }
     <% end %>
+
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     na_ndloop3(&ndf, &g, 1, self);
     return self;
 }

@@ -34,9 +34,6 @@ static void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR_IDX(lp, 1, p2, s2, idx2);
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
     c[nd] = 0;
     if (idx1) {
         if (idx2) {
@@ -93,6 +90,9 @@ static VALUE
     ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     ndfunc_arg_out_t aout[1] = {{cT,0}};
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,1, ain,aout};
+
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     return na_ndloop_with_index(&ndf, 1, self);
 }
