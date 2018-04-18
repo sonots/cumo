@@ -2,14 +2,12 @@ require_relative "../test_helper"
 
 module Cumo::CUDA
   class MemoryPoolTest < Test::Unit::TestCase
-    class << self
-      def startup
-        @orig_state = MemoryPool.enabled?
-      end
+    def setup
+      @orig_state = MemoryPool.enabled?
+    end
 
-      def shutdown
-        @orig_state ? MemoryPool.enable : MemoryPool.disable
-      end
+    def teardown
+      @orig_state ? MemoryPool.enable : MemoryPool.disable
     end
 
     def test_enable
