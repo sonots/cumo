@@ -49,7 +49,7 @@ static VALUE
     } else {
         // TODO(sonots): Return 0-dimensional narray rather than Synchronize()
         ptr = na_get_pointer_for_read(self) + pos;
-        SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>[] (0-dimension)", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         return m_extract(ptr);
     }
