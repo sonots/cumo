@@ -3,14 +3,14 @@
 
 <% if is_float %>
   @overload <%=name%>(a1, a2, nan:false)
-  @param [Numo::NArray,Numeric] a1  The array to be compared.
-  @param [Numo::NArray,Numeric] a2  The array to be compared.
+  @param [Cumo::NArray,Numeric] a1  The array to be compared.
+  @param [Cumo::NArray,Numeric] a2  The array to be compared.
   @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN if exist).
 <% else %>
   @overload <%=name%>(a1, a2)
-  @param [Numo::NArray,Numeric] a1,a2  The arrays holding the elements to be compared.
+  @param [Cumo::NArray,Numeric] a1,a2  The arrays holding the elements to be compared.
 <% end %>
-  @return [Numo::<%=class_name%>]
+  @return [Cumo::<%=class_name%>]
 */
 
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
@@ -59,6 +59,9 @@ static VALUE
     <% else %>
     rb_scan_args(argc, argv, "20", &a1, &a2);
     <% end %>
+
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     return na_ndloop(&ndf, 2, a1, a2);
 }
