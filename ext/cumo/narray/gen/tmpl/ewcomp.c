@@ -21,6 +21,10 @@ static void
     char    *p1, *p2, *p3;
     ssize_t  s1, s2, s3;
 
+    // TODO(sonots): CUDA kernelize
+    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     INIT_COUNTER(lp, n);
     INIT_PTR(lp, 0, p1, s1);
     INIT_PTR(lp, 1, p2, s2);
@@ -59,9 +63,6 @@ static VALUE
     <% else %>
     rb_scan_args(argc, argv, "20", &a1, &a2);
     <% end %>
-
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     return na_ndloop(&ndf, 2, a1, a2);
 }
