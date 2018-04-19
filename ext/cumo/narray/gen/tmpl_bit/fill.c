@@ -10,6 +10,9 @@ static void
     BIT_DIGIT  y;
     VALUE x = lp->option;
 
+    // TODO(sonots): CUDA kernelize
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     if (x==INT2FIX(0) || x==Qfalse) {
         y = 0;
     } else

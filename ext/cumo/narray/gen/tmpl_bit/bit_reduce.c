@@ -8,6 +8,9 @@ static void
     size_t    *idx1, *idx2;
     BIT_DIGIT  x=0, y=0;
 
+    // TODO(sonots): CUDA kernelize
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     INIT_COUNTER(lp, i);
     INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     INIT_PTR_BIT_IDX(lp, 1, a2, p2, s2, idx2);

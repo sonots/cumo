@@ -9,6 +9,9 @@ static void
     BIT_DIGIT  x=0;
     VALUE      a, y;
 
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     INIT_COUNTER(lp, i);
     INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     a = rb_ary_new2(i);
@@ -39,6 +42,6 @@ static VALUE
     ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
     ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 3,1, ain,aout};
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     return na_ndloop_cast_narray_to_rarray(&ndf, self, Qnil);
 }

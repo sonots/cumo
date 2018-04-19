@@ -13,6 +13,9 @@ static void
     size_t len, c;
     double beg, step;
 
+    // TODO(sonots): CUDA kernelize
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     INIT_COUNTER(lp, n);
     INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     v1 = lp->args[1].value;

@@ -9,6 +9,9 @@ static void
     BIT_DIGIT *a1, *a3;
     BIT_DIGIT  x;
 
+    // TODO(sonots): CUDA kernelize
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     INIT_COUNTER(lp, n);
     INIT_PTR_BIT_IDX(lp, 0, a3, p3, s3, idx3);
     INIT_PTR_BIT_IDX(lp, 1, a1, p1, s1, idx1);

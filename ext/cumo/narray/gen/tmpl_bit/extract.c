@@ -17,7 +17,10 @@ static VALUE
     if (na->ndim==0) {
         pos = na_get_offset(self);
         ptr = (BIT_DIGIT*)na_get_pointer_for_read(self);
+
+        SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
         val = ((*((ptr)+(pos)/NB)) >> ((pos)%NB)) & 1u;
         na_release_lock(self);
         return INT2FIX(val);

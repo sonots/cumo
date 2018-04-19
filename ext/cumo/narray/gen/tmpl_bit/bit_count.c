@@ -13,11 +13,12 @@ static void
     BIT_DIGIT x=0;
     int_t   y;
 
+    // TODO(sonots): CUDA kernelize
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     INIT_COUNTER(lp, i);
     INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     INIT_PTR(lp, 1, p2, s2);
-    // TODO(sonots): CUDA
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     if (s2==0) {
         GET_DATA(p2, int_t, y);
         if (idx1) {

@@ -10,6 +10,9 @@ static void
     size_t  count;
     where_opt_t *g;
 
+    // TODO(sonots): CUDA kernelize
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     g = (where_opt_t*)(lp->opt_ptr);
     count = g->count;
     pidx  = (size_t*)(g->idx1);

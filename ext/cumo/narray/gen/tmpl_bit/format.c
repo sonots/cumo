@@ -22,6 +22,9 @@ static void
     VALUE  y;
     VALUE  fmt = lp->option;
 
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     INIT_COUNTER(lp, i);
     INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     INIT_PTR(lp, 1, p2, s2);
@@ -57,6 +60,5 @@ static VALUE
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 2,1, ain,aout};
 
     rb_scan_args(argc, argv, "01", &fmt);
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     return na_ndloop(&ndf, 2, self, fmt);
 }
