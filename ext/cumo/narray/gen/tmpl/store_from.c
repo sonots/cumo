@@ -1,9 +1,9 @@
-<% unless c_iter.include? 'robject' %>
+//<% unless c_iter.include? 'robject' %>
 void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, uint64_t n);
 void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, uint64_t n);
 void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, uint64_t n);
 void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n);
-<% end %>
+//<% end %>
 
 static void
 <%=c_iter%>(na_loop_t *const lp)
@@ -15,7 +15,7 @@ static void
     INIT_COUNTER(lp, i);
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR_IDX(lp, 1, p2, s2, idx2);
-    <% if c_iter.include? 'robject' %>
+    //<% if c_iter.include? 'robject' %>
     SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     {
         <%=dtype%> x;
@@ -50,7 +50,7 @@ static void
             }
         }
     }
-    <% else %>
+    //<% else %>
     {
         if (idx2) {
             if (idx1) {
@@ -66,7 +66,7 @@ static void
             }
         }
     }
-    <% end %>
+    //<% end %>
 }
 
 

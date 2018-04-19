@@ -56,4 +56,3 @@ void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize
 }
 
 <% end %>
-
