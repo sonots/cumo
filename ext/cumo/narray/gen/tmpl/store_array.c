@@ -1,3 +1,16 @@
+//<% unless c_iter.include? 'robject' %>
+void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, dtype* z, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, dtype* z, uint64_t n);
+void <%="cumo_#{c_iter}_index_scalar_kernel_launch"%>(char *p1, size_t *idx1, dtype z, uint64_t n);
+void <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(char *p1, ssize_t s1, dtype z, uint64_t n);
+
+static void CUDART_CB
+<%=c_iter%>_callback(cudaStream_t stream, cudaError_t status, void *data)
+{
+    xfree(data);
+}
+//<% end %>
+
 static void
 <%=c_iter%>(na_loop_t *const lp)
 {
@@ -16,9 +29,6 @@ static void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     v1 = lp->args[1].value;
     i = 0;
-
-    SHOW_SYNCHRONIZE_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (lp->args[1].ptr) {
         if (v1 == Qtrue) {
@@ -47,51 +57,122 @@ static void
         n1 = 1;
     }
 
-    if (idx1) {
-        for (i=i1=0; i1<n1 && i<n; i++,i1++) {
-            x = ptr[i1];
-            if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
-                nary_step_sequence(x,&len,&beg,&step);
-                for (c=0; c<len && i<n; c++,i++) {
-                    y = beg + step * c;
-                    z = m_from_double(y);
+    //<% if c_iter.include? 'robject' %>
+    {
+        SHOW_CPU_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
+
+        if (idx1) {
+            for (i=i1=0; i1<n1 && i<n; i++,i1++) {
+                x = ptr[i1];
+                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
+                    nary_step_sequence(x,&len,&beg,&step);
+                    for (c=0; c<len && i<n; c++,i++) {
+                        y = beg + step * c;
+                        z = m_from_double(y);
+                        SET_DATA_INDEX(p1, idx1, dtype, z);
+                    }
+                }
+                else if (TYPE(x) != T_ARRAY) {
+                    z = m_num_to_data(x);
                     SET_DATA_INDEX(p1, idx1, dtype, z);
                 }
             }
-            else if (TYPE(x) != T_ARRAY) {
-                z = m_num_to_data(x);
-                SET_DATA_INDEX(p1, idx1, dtype, z);
+        } else {
+            for (i=i1=0; i1<n1 && i<n; i++,i1++) {
+                x = ptr[i1];
+                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
+                    nary_step_sequence(x,&len,&beg,&step);
+                    for (c=0; c<len && i<n; c++,i++) {
+                        y = beg + step * c;
+                        z = m_from_double(y);
+                        SET_DATA_STRIDE(p1, s1, dtype, z);
+                    }
+                }
+                else if (TYPE(x) != T_ARRAY) {
+                    z = m_num_to_data(x);
+                    SET_DATA_STRIDE(p1, s1, dtype, z);
+                }
             }
         }
-    } else {
-        for (i=i1=0; i1<n1 && i<n; i++,i1++) {
+    }
+    //<% else %>
+    {
+        // To copy ruby non-contiguous array values into cuda memory asynchronously, we do
+        // 1. copy to contiguous heap memory
+        // 2. copy to contiguous device memory
+        // 3. launch kernel to copy the contiguous device memory into strided (or indexed) narray cuda memory
+        // 4. free the contiguous device memory
+        // 5. run callback to free the heap memory after kernel finishes
+        //
+        // FYI: We may have to care of cuda stream callback serializes stream execution when we support stream.
+        // https://devtalk.nvidia.com/default/topic/822942/why-does-cudastreamaddcallback-serialize-kernel-execution-and-break-concurrency-/
+        dtype* host_z = ALLOC_N(dtype, n);
+        for (i=i1=0; i1<n1 && i<n; i1++) {
             x = ptr[i1];
             if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
                 nary_step_sequence(x,&len,&beg,&step);
                 for (c=0; c<len && i<n; c++,i++) {
                     y = beg + step * c;
-                    z = m_from_double(y);
-                    SET_DATA_STRIDE(p1, s1, dtype, z);
+                    host_z[i] = m_from_double(y);
                 }
             }
             else if (TYPE(x) != T_ARRAY) {
-                z = m_num_to_data(x);
+                host_z[i] = m_num_to_data(x);
+                i++;
+            }
+        }
+
+        if (!idx1 && s1 == sizeof(dtype)) {
+            // optimization: Since p1 is contiguous, we skip creating another contiguous device memory
+            cudaError_t status = cudaMemcpyAsync(p1,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0);
+            if (status == 0) {
+                cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,<%=c_iter%>_callback,host_z,0));
+            } else {
+                xfree(host_z);
+            }
+            cumo_cuda_runtime_check_status(status);
+        } else {
+            dtype* device_z = (dtype*)cumo_cuda_runtime_malloc(sizeof(dtype) * n);
+            cudaError_t status = cudaMemcpyAsync(device_z,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0);
+            if (status == 0) {
+                if (idx1) {
+                    <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,idx1,device_z,i);
+                } else {
+                    <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,s1,device_z,i);
+                }
+                cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,<%=c_iter%>_callback,host_z,0));
+            } else {
+                xfree(host_z);
+            }
+            cumo_cuda_runtime_free((void*)device_z);
+            cumo_cuda_runtime_check_status(status);
+        }
+    }
+    //<% end %>
+
+ loop_end:
+    z = m_zero;
+    //<% if c_iter.include? 'robject' %>
+    {
+        if (idx1) {
+            for (; i<n; i++) {
+                SET_DATA_INDEX(p1, idx1, dtype, z);
+            }
+        } else {
+            for (; i<n; i++) {
                 SET_DATA_STRIDE(p1, s1, dtype, z);
             }
         }
     }
-
- loop_end:
-    z = m_zero;
-    if (idx1) {
-        for (; i<n; i++) {
-            SET_DATA_INDEX(p1, idx1, dtype, z);
-        }
-    } else {
-        for (; i<n; i++) {
-            SET_DATA_STRIDE(p1, s1, dtype, z);
+    //<% else %>
+    {
+        if (idx1) {
+            <%="cumo_#{c_iter}_index_scalar_kernel_launch"%>(p1,idx1+i,z,n-i);
+        } else {
+            <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(p1+s1*i,s1,z,n-i);
         }
     }
+    //<% end %>
 }
 
 static VALUE
