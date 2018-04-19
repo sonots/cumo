@@ -17,6 +17,9 @@ static void
     v1 = lp->args[1].value;
     i = 0;
 
+    SHOW_SYNCHRONIZE_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     if (lp->args[1].ptr) {
         if (v1 == Qtrue) {
             iter_<%=type_name%>_store_<%=type_name%>(lp);
@@ -96,9 +99,6 @@ static VALUE
 {
     ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{rb_cArray,0}};
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 2, 0, ain, 0};
-
-    SHOW_SYNCHRONIZE_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     na_ndloop_store_rarray(&ndf, self, rary);
     return self;
