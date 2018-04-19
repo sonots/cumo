@@ -57,6 +57,9 @@ static VALUE
         } else {
             x = <%=type_name%>_extract_data(argv[argc]);
             ptr = na_get_pointer_for_read_write(self) + pos;
+            // TODO(sonots): asynchronous
+            SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
             *(dtype*)ptr = x;
         }
 
