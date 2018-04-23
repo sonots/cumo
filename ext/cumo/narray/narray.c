@@ -1288,6 +1288,9 @@ nary_to_binary(VALUE self)
     VALUE str;
     narray_t *na;
 
+    SHOW_SYNCHRONIZE_WARNING_ONCE("nary_to_binary", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     GetNArray(self,na);
     if (na->type == NARRAY_VIEW_T) {
         if (na_check_contiguous(self)==Qtrue) {
@@ -1312,6 +1315,9 @@ static VALUE
 nary_marshal_dump(VALUE self)
 {
     VALUE a;
+
+    SHOW_SYNCHRONIZE_WARNING_ONCE("nary_marshal_dump", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     a = rb_ary_new();
     rb_ary_push(a, INT2FIX(1));     // version
