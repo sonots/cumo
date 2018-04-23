@@ -267,6 +267,23 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    if [Cumo::DComplex, Cumo::SComplex, Cumo::DFloat, Cumo::SFloat].include?(dtype)
+      sub_test_case "#{dtype}, #gemm" do
+        test "matrix.gemm(matrix) with trans options" do
+          a = dtype[1..6].reshape(2,3)
+          b = dtype[1..6].reshape(2,3)
+          assert { a.gemm(b.transpose) == a.gemm(b, transb: true) } # trans option is faster
+          assert { a.transpose.gemm(b) == a.gemm(b, transa: true) }
+        end
+        test "matrix.gemm(matrix) with alpha" do
+          a = dtype[1..6].reshape(2,3)
+          b = dtype[1..6].reshape(2,3)
+          alpha = [Cumo::DComplex, Cumo::SComplex].include?(dtype) ? Complex(3) : 3
+          assert { a.gemm(b.transpose) * alpha == a.gemm(b, transb: true, alpha: alpha) }
+        end
+      end
+    end
+
     test "#{dtype},eye" do
       assert { dtype.new(3, 3).eye(1) == [[1,0,0],[0,1,0],[0,0,1]] }
       assert { dtype.new(3, 3).eye(2) == [[2,0,0],[0,2,0],[0,0,2]] }

@@ -39,9 +39,9 @@ static void
 <%=c_iter%>(na_loop_t *const lp)
 {
     dtype *a, *b;
-    //int    lda, ldb;
+    int    lda, ldb;
     dtype *c;
-    //int    ldc;
+    int    ldc;
     args_t *g;
 
     a = (dtype*)NDL_PTR(lp,0);
@@ -49,11 +49,11 @@ static void
     c = (dtype*)NDL_PTR(lp,2);
     g = (args_t*)(lp->opt_ptr);
 
-    //lda = NDL_STEP(lp,0) / sizeof(dtype);
-    //ldb = NDL_STEP(lp,1) / sizeof(dtype);
-    //ldc = NDL_STEP(lp,2) / sizeof(dtype);
+    lda = NDL_STEP(lp,0) / sizeof(dtype);
+    ldb = NDL_STEP(lp,1) / sizeof(dtype);
+    ldc = NDL_STEP(lp,2) / sizeof(dtype);
 
-    //printf("transa=%d transb=%d m=%d n=%d k=%d\n",g->transa,g->transb,g->m,g->n,g->k);
+    //printf("transa=%d transb=%d m=%d n=%d k=%d lda=%d ldb=%d ldc=%d\n",g->transa,g->transb,g->m,g->n,g->k,lda,ldb,ldc);
 
     // Note that cuBLAS uses the column major matrix representation.
     // We use technic which following site describes:
@@ -68,7 +68,7 @@ static void
    
     cublasHandle_t handle;
     cublasCreate(&handle);
-    cublas<%=func_prefix%>gemm(handle, g->transb, g->transa, g->n, g->m, g->k, (<%=cutype%>*)(&g->alpha), (<%=cutype%>*)b, g->n, (<%=cutype%>*)a, g->k, (<%=cutype%>*)(&g->beta), (<%=cutype%>*)c, g->n);
+    cublas<%=func_prefix%>gemm(handle, g->transb, g->transa, g->n, g->m, g->k, (<%=cutype%>*)(&g->alpha), (<%=cutype%>*)b, ldb, (<%=cutype%>*)a, lda, (<%=cutype%>*)(&g->beta), (<%=cutype%>*)c, ldc);
     cublasDestroy(handle);
 }
 
@@ -137,7 +137,7 @@ static VALUE
     args_t g;
     VALUE kw_hash = Qnil;
     ID kw_table[4] = {rb_intern("alpha"),rb_intern("beta"),rb_intern("transa"),rb_intern("transb")};
-    VALUE opts[6] = {Qundef,Qundef,Qundef,Qundef,Qundef,Qundef};
+    VALUE opts[4] = {Qundef,Qundef,Qundef,Qundef};
 
     rb_scan_args(argc, argv, "11:", &b, &c, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);

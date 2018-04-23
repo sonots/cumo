@@ -9,14 +9,14 @@
 //static char *blas_prefix = 0;
 
 VALUE
-cumo_cublas_option_value(VALUE order, VALUE default_value)
+cumo_cublas_option_value(VALUE value, VALUE default_value)
 {
-    switch(TYPE(order)) {
+    switch(TYPE(value)) {
     case T_NIL:
     case T_UNDEF:
         return default_value;
     }
-    return order;
+    return value;
 }
 
 //enum CBLAS_ORDER
