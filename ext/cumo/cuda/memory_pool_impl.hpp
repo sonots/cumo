@@ -186,7 +186,7 @@ public:
 
 // private:
 
-    // Round up the memory size to fit memory alignment of cudaMalloc.
+    // Rounds up the memory size to fit memory alignment of cudaMalloc.
     size_t GetRoundedSize(size_t size) {
         return ((size + kRoundSize - 1) / kRoundSize) * kRoundSize;
     }
@@ -207,12 +207,24 @@ public:
         return it != free_.end();
     }
 
-    // Get appropriate arena (list of bins) of a given stream
+    // Returns appropriate arena (list of bins) of a given stream.
+    //
+    // All free chunks in the stream belong to one of the bin in the arena.
+    //
+    // Caller is responsible to acquire lock.
     Arena& GetArena(cudaStream_t stream_ptr) {
         return free_[stream_ptr];  // find or create
     }
 
-    // Get appropriate arena sparse index of a given stream
+    // Returns appropriate arena sparse index of a given stream.
+    //
+    // Each element of the returned vector is an index value of the arena
+    // for the stream. The k-th element of the arena index is the bin index
+    // of the arena. For example, when the arena index is `[1, 3]`, it means
+    // that the arena has 2 bins, and `arena[0]` is for bin index 1 and
+    // `arena[1]` is for bin index 3.
+    //
+    // Caller is responsible to acquire lock.
     ArenaIndexMap& GetArenaIndexMap(cudaStream_t stream_ptr) {
         return index_[stream_ptr];  // find or create
     }
@@ -237,6 +249,11 @@ public:
 
     void AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
 
+    // Removes the chunk from the free list.
+    //
+    // @return true if the chunk can successfully be removed from
+    //         the free list. false` otherwise (e.g., the chunk could not
+    //         be found in the free list as the chunk is allocated.)
     bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
 
     void CompactIndex(cudaStream_t stream_ptr, bool free);
