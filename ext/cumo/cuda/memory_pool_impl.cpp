@@ -91,6 +91,10 @@ bool SingleDeviceMemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chu
         return false;
     }
     int arena_index = std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
+    if (static_cast<size_t>(arena_index) == arena_index_map.size()) {
+        // Bin does not exist for the given chunk size.
+        return false;
+    }
     if (arena_index_map.at(arena_index) != bin_index) {
         return false;
     }
