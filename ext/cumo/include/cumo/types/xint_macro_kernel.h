@@ -51,6 +51,22 @@ __host__ __device__ static inline double f_seq(double x, double y, double c)
     return x + y * c;
 }
 
+__host__ __device__ static inline dtype f_maximum(dtype x, dtype y)
+{
+    if (m_ge(x,y)) {
+        return x;
+    }
+    return y;
+}
+
+__host__ __device__ static inline dtype f_minimum(dtype x, dtype y)
+{
+    if (m_le(x,y)) {
+        return x;
+    }
+    return y;
+}
+
 /* --------- thrust ----------------- */
 #include "cumo/cuda/cumo_thrust.hpp"
 
