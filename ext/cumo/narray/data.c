@@ -56,6 +56,7 @@ iter_copy_bytes(na_loop_t *const lp)
 {
     size_t e;
     e = lp->args[0].elmsz;
+    // TODO(sonots): CUDA kernelize
     LOOP_UNARY_PTR(lp,m_memcpy);
 }
 
