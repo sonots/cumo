@@ -12,25 +12,23 @@
 //<% end %>
 
 <% unless type_name == 'robject' %>
-void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, char *p3, uint64_t n);
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
+void <%="cumo_#{c_iter}_kernel_launch"%>(na_iarray_t* a1, na_iarray_t* a2, na_iarray_t* a3, na_indexer_t* indexer);
 <% end %>
 
 static void
 <%=c_iter%>(na_loop_t *const lp)
 {
-    size_t   n;
-    char    *p1, *p2, *p3;
-    ssize_t  s1, s2, s3;
-
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
-
     <% if type_name == 'robject' %>
     {
-        size_t i;
+        size_t   i, n;
+        char    *p1, *p2, *p3;
+        ssize_t  s1, s2, s3;
+
+        INIT_COUNTER(lp, n);
+        INIT_PTR(lp, 0, p1, s1);
+        INIT_PTR(lp, 1, p2, s2);
+        INIT_PTR(lp, 2, p3, s3);
+
         SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         //<% if need_align %>
         if (is_aligned(p1,sizeof(dtype)) &&
@@ -114,29 +112,12 @@ static void
     }
     <% else %>
     {
-        //<% if need_align %>
-        if (is_aligned(p1,sizeof(dtype)) &&
-            is_aligned(p2,sizeof(dtype)) &&
-            is_aligned(p3,sizeof(dtype)) ) {
+        na_iarray_t a1 = na_make_iarray(&lp->args[0]);
+        na_iarray_t a2 = na_make_iarray(&lp->args[1]);
+        na_iarray_t a3 = na_make_iarray(&lp->args[2]);
+        na_indexer_t indexer = na_make_indexer(&lp->args[0]);
 
-            if (s1 == sizeof(dtype) &&
-                s2 == sizeof(dtype) &&
-                s3 == sizeof(dtype) ) {
-
-                <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(p1,p2,p3,n);
-                return;
-            }
-            if (is_aligned_step(s1,sizeof(dtype)) &&
-                is_aligned_step(s2,sizeof(dtype)) &&
-                is_aligned_step(s3,sizeof(dtype)) ) {
-                //<% end %>
-                <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
-                return;
-                //<% if need_align %>
-            }
-        }
-        <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
-        //<% end %>
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer);
     }
     <% end %>
 }
@@ -147,7 +128,11 @@ static VALUE
 {
     ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     ndfunc_arg_out_t aout[1] = {{cT,0}};
+    <% if type_name == 'robject' %>
     ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 2, 1, ain, aout };
+    <% else %>
+    ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP|NDF_INDEXER_LOOP, 2, 1, ain, aout };
+    <% end %>
 
     return na_ndloop(&ndf, 2, self, other);
 }

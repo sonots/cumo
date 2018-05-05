@@ -851,6 +851,10 @@ ndloop_set_output(ndfunc_t *nf, na_md_loop_t *lp, VALUE args)
 }
 
 
+// Compressing dimesions.
+//
+// For example, compressing [2,3] shape into [6] so that we can process
+// all elements with one user loop.
 static void
 ndfunc_contract_loop(na_md_loop_t *lp)
 {
@@ -929,10 +933,11 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
     int j, ud=0;
 
     if (lp->reduce_dim > 0) {
+        // Increased user.ndim by number of dimensions to be reduced for reduction function.
         ud = lp->reduce_dim;
     }
     else if (lp->ndim > 0 && NDF_TEST(nf,NDF_HAS_LOOP)) {
-        // set user.ndim to 1 (default is 0) for element-wise function
+        // Set user.ndim to 1 (default is 0) for element-wise function.
         ud = 1;
     }
     else {
@@ -941,7 +946,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
     if (ud > lp->ndim) {
         rb_bug("Reduce-dimension is larger than loop-dimension");
     }
-    // increase user dimension. NOTE: lp->ndim + lp->user.ndim is the total dimension.
+    // Increase user loop dimension. NOTE: lp->ndim + lp->user.ndim is the total dimension.
     lp->user.ndim += ud;
     lp->ndim -= ud;
     for (j=0; j<lp->narg; j++) {
@@ -960,6 +965,30 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
     for (j=0; j<lp->narg; j++) {
         LARG(lp,j).iter = &LITER(lp,lp->ndim,j);
         //printf("in ndfunc_set_user_loop: lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
+    }
+}
+
+
+// Initialize lp->user for indexer loop.
+//
+// In indexer loop, the  loop_narray is not used, user function processes
+// all dimensions with Indexer for performance.
+static void
+ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
+{
+    int j;
+
+    lp->user.ndim = lp->ndim;
+    lp->ndim = 0;
+
+    for (j=0; j<lp->narg; j++) {
+        LARG(lp,j).ndim = lp->user.ndim;
+        LARG(lp,j).shape = &(lp->n[lp->ndim]);
+    }
+
+    lp->user.n = &(lp->n[lp->ndim]);
+    for (j=0; j<lp->narg; j++) {
+        LARG(lp,j).iter = &LITER(lp,lp->ndim,j);
     }
 }
 
@@ -1291,7 +1320,7 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
 }
 
 // TODO(sonots): Support idx by Indexer.
-static bool
+/*static bool
 _loop_is_using_idx(na_md_loop_t *lp)
 {
     size_t c;
@@ -1323,7 +1352,7 @@ _loop_is_using_idx(na_md_loop_t *lp)
  loop_end:
     ;
     return false;
-}
+}*/
 
 static void
 loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
@@ -1359,14 +1388,23 @@ ndloop_run(VALUE vlp)
         //}
     }
 
-    // Cumo custom
-    // TODO(sonots): Support idx by Indexer.
-    if (lp->loop_func == loop_narray && !_loop_is_using_idx(lp)) {
-        loop_narray_without_user_loop(nf, lp);
-    }
-    else {
-        // setup objects in which resuts are stored
+    // CUMO: Do not use loop_narray, but directly process all dimensions with Indexer in user function for performance.
+    if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
+        // setup lp->user for INDEXER_LOOP
+        ndfunc_set_user_indexer_loop(nf, lp);
+        // if (na_debug_flag) {
+        //     printf("-- ndfunc_set_user_indexer_loop --\n");
+        //     print_ndloop(lp);
+        // }
+
+        (*(nf->func))(&(lp->user));
+    } else {
+        // setup objects in which results are stored
         ndfunc_set_user_loop(nf, lp);
+        // if (na_debug_flag) {
+        //     printf("-- ndfunc_set_user_loop --\n");
+        //     print_ndloop(lp);
+        // }
 
         // setup buffering during loop
         if (lp->loop_func == loop_narray) {

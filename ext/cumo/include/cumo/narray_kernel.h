@@ -122,7 +122,8 @@ extern int na_debug_flag;
 #define NARRAY_VIEW_T     0x2
 #define NARRAY_FILEMAP_T  0x3
 
-#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+//#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+#define NA_MAX_DIMENSION 8
 #define NA_MAX_ELMSZ     65535
 
 typedef unsigned int BIT_DIGIT;
@@ -135,6 +136,7 @@ typedef unsigned int BIT_DIGIT;
 #define ELEMENT_BYTE_SIZE "ELEMENT_BYTE_SIZE"
 #define CONTIGUOUS_STRIDE "CONTIGUOUS_STRIDE"
 
+#include "cumo/indexer.h"
 #include "cumo/intern_kernel.h"
 
 #if defined(__cplusplus)

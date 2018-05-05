@@ -395,7 +395,8 @@ _na_get_narray_t(VALUE obj, unsigned char na_type)
 #define NUM2REAL(v)  NUM2DBL( rb_funcall((v),na_id_real,0) )
 #define NUM2IMAG(v)  NUM2DBL( rb_funcall((v),na_id_imag,0) )
 
-#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+//#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+#define NA_MAX_DIMENSION 8
 #define NA_MAX_ELMSZ     65535
 
 typedef unsigned int BIT_DIGIT;
@@ -415,6 +416,7 @@ typedef unsigned int BIT_DIGIT;
 #define IS_INTEGER_CLASS(c) ((c)==rb_cFixnum||(c)==rb_cBignum)
 #endif
 
+#include "cumo/indexer.h"
 #include "cumo/ndloop.h"
 #include "cumo/intern.h"
 
