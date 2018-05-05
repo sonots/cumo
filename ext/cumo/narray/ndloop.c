@@ -37,16 +37,16 @@ typedef struct NA_LOOP_XARGS {
 typedef struct NA_MD_LOOP {
     int  narg;
     int  nin;
-    int  ndim;                // n of total dimention
+    int  ndim;                // n of total dimention looped at loop_narray. NOTE: lp->ndim + lp-.user.ndim is the total dimension.
     unsigned int copy_flag;   // set i-th bit if i-th arg is cast
     void    *ptr;             // memory for n
     na_loop_iter_t *iter_ptr; // memory for iter
-    size_t  *n;               // n of elements for each dim
+    size_t  *n;               // n of elements for each dim (shape)
     na_loop_t  user;          // loop in user function
     na_loop_xargs_t *xargs;   // extra data for each arg
     int    writeback;         // write back result to i-th arg
     int    init_aidx;         // index of initializer argument
-    int    reduce_dim;
+    int    reduce_dim;        // number of dimensions to be reduced in reduction kernel
     int   *trans_map;
     VALUE  vargs;
     VALUE  reduce;
@@ -188,6 +188,8 @@ print_ndloop(na_md_loop_t *lp) {
 }
 
 
+// returns 0x01 if NDF_HAS_LOOP, but not supporting NDF_STRIDE_LOOP
+// returns 0x02 if NDF_HAS_LOOP, but not supporting NDF_INDEX_LOOP
 static unsigned int
 ndloop_func_loop_spec(ndfunc_t *nf, int user_ndim)
 {
@@ -914,6 +916,13 @@ ndfunc_contract_loop(na_md_loop_t *lp)
 }
 
 
+// Ndloop does loop at two places, loop_narray and user loop.
+// loop_narray is an outer loop, and the user loop is an internal loop.
+//
+// lp->ndim: ndim to be looped at loop_narray
+// lp->user.ndim: ndim to be looped at user function
+//
+// For example, for element-wise function, lp->user.ndim is 1, and lp->ndim -= 1.
 static void
 ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
 {
@@ -923,6 +932,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
         ud = lp->reduce_dim;
     }
     else if (lp->ndim > 0 && NDF_TEST(nf,NDF_HAS_LOOP)) {
+        // set user.ndim to 1 (default is 0) for element-wise function
         ud = 1;
     }
     else {
@@ -931,7 +941,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
     if (ud > lp->ndim) {
         rb_bug("Reduce-dimension is larger than loop-dimension");
     }
-    // increase user dimension
+    // increase user dimension. NOTE: lp->ndim + lp->user.ndim is the total dimension.
     lp->user.ndim += ud;
     lp->ndim -= ud;
     for (j=0; j<lp->narg; j++) {
@@ -945,6 +955,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
     //printf("lp->reduce_dim=%d lp->user.ndim=%d lp->ndim=%d\n",lp->reduce_dim,lp->user.ndim,lp->ndim);
 
  skip_ud:
+    // user function shape is the latter part of na_md_loop shape.
     lp->user.n = &(lp->n[lp->ndim]);
     for (j=0; j<lp->narg; j++) {
         LARG(lp,j).iter = &LITER(lp,lp->ndim,j);
@@ -953,6 +964,8 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
 }
 
 
+// Set whether buffer copy is required or not
+// Ndloop not supporting index or stride (step) loop requires buffer copy to make contiguous memory.
 static void
 ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
 {
@@ -1094,6 +1107,7 @@ ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
 }
 
 
+// Make contiguous memory for ops not supporting index or stride (step) loop
 static void
 ndloop_copy_to_buffer(na_buffer_copy_t *lp)
 {
@@ -1276,6 +1290,40 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
     return results;
 }
 
+// TODO(sonots): Support idx by Indexer.
+static bool
+_loop_is_using_idx(na_md_loop_t *lp)
+{
+    size_t c;
+    int  i, j;
+    int  nd = lp->ndim;
+
+    if (nd<0) {
+        rb_bug("bug? lp->ndim = %d\n", lp->ndim);
+    }
+
+    // loop body
+    for (i=0,c=0;;) {
+        // i-th dimension
+        for (; i<nd; i++) {
+            // j-th argument
+            for (j=0; j<lp->narg; j++) {
+                if (LITER(lp,i,j).idx) {
+                    return true;
+                }
+            }
+        }
+        for (;;) {
+            if (i<=0) goto loop_end;
+            i--;
+            if (++c < lp->n[i]) break;
+            c = 0;
+        }
+    }
+ loop_end:
+    ;
+    return false;
+}
 
 static void
 loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
@@ -1311,21 +1359,28 @@ ndloop_run(VALUE vlp)
         //}
     }
 
-    // setup objects in which resuts are stored
-    ndfunc_set_user_loop(nf, lp);
-
-    // setup buffering during loop
-    if (lp->loop_func == loop_narray) {
-        loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
-        ndfunc_set_bufcp(lp, loop_spec);
+    // Cumo custom
+    // TODO(sonots): Support idx by Indexer.
+    if (lp->loop_func == loop_narray && !_loop_is_using_idx(lp)) {
+        loop_narray_without_user_loop(nf, lp);
     }
-    if (na_debug_flag) {
-        printf("-- ndfunc_set_bufcp --\n");
-        print_ndloop(lp);
-    }
+    else {
+        // setup objects in which resuts are stored
+        ndfunc_set_user_loop(nf, lp);
 
-    // loop
-    (*(lp->loop_func))(nf, lp);
+        // setup buffering during loop
+        if (lp->loop_func == loop_narray) {
+            loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
+            ndfunc_set_bufcp(lp, loop_spec);
+        }
+        if (na_debug_flag) {
+            printf("-- ndfunc_set_bufcp --\n");
+            print_ndloop(lp);
+        }
+
+        // loop
+        (*(lp->loop_func))(nf, lp);
+    }
 
     //if (na_debug_flag) {
     //    printf("-- after loop --\n");
