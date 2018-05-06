@@ -13,8 +13,7 @@ static void
     BIT_DIGIT x=0;
     int_t   y;
 
-    // TODO(sonots): CUDA kernelize
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     INIT_COUNTER(lp, i);

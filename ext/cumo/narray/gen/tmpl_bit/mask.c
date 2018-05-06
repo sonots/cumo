@@ -10,8 +10,7 @@ static void
     size_t  count;
     where_opt_t *g;
 
-    // TODO(sonots): CUDA kernelize
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     g = (where_opt_t*)(lp->opt_ptr);
@@ -99,6 +98,7 @@ static VALUE
     ndfunc_arg_in_t ain[2] = {{cT,0},{Qnil,0}};
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 2, 0, ain, 0};
 
+    // TODO(sonots): bit_count_true synchronizes with CPU. Avoid.
     n_1 = NUM2SIZET(<%=find_tmpl("count_true").c_func%>(0, NULL, mask));
     idx_1 = nary_new(cIndex, 1, &n_1);
     g.count = 0;
