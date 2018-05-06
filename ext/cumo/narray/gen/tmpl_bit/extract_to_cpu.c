@@ -6,7 +6,6 @@
   otherwise returns self.
 */
 
-// TODO(sonots): Return Cumo::Bit instead of ruby built-in object to avoid synchronization
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {
