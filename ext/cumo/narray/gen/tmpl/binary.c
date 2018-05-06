@@ -170,7 +170,6 @@ static VALUE
     if (klass==cT) {
         return <%=c_func%>_self(self, other);
     } else {
-        // TODO(sonots): CPU warning
         v = rb_funcall(klass, id_cast, 1, self);
         return rb_funcall(v, <%=id_op%>, 1, other);
     }
