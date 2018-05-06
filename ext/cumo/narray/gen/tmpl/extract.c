@@ -1,9 +1,9 @@
 /*
-  Extract an element only if self is a dimensionless NArray.
+  Returns self.
   @overload extract
-  @return [Numeric,Cumo::NArray]
-  --- Extract element value as Ruby Object if self is a dimensionless NArray,
-  otherwise returns self.
+  @return [Cumo::NArray]
+  --- This method always returns self unlike Numo/NArray to avoid synchronization between GPU and CPU.
+  Use "extract_to_cpu" instead to get a Ruby numeric object for 0-dimensional NArray as Numo/NArray's extract.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)
