@@ -1239,39 +1239,40 @@ ndfunc_write_back(ndfunc_t *nf, na_md_loop_t *lp, VALUE orig_args, VALUE results
 static VALUE
 ndloop_extract(VALUE results, ndfunc_t *nf)
 {
-    long n, i;
-    VALUE x, y;
-    narray_t *na;
+    // long n, i;
+    // VALUE x, y;
+    // narray_t *na;
 
     // extract result objects
     switch(nf->nout) {
     case 0:
         return Qnil;
     case 1:
-        x = RARRAY_AREF(results,0);
-        if (NDF_TEST(nf,NDF_EXTRACT)) {
-            if (IsNArray(x)){
-                GetNArray(x,na);
-                if (NA_NDIM(na)==0) {
-                    x = rb_funcall(x, id_extract, 0);
-                }
-            }
-        }
-        return x;
+        return RARRAY_AREF(results,0);
+        // x = RARRAY_AREF(results,0);
+        // if (NDF_TEST(nf,NDF_EXTRACT)) {
+        //     if (IsNArray(x)){
+        //         GetNArray(x,na);
+        //         if (NA_NDIM(na)==0) {
+        //             x = rb_funcall(x, id_extract, 0);
+        //         }
+        //     }
+        // }
+        // return x;
     }
-    if (NDF_TEST(nf,NDF_EXTRACT)) {
-        n = RARRAY_LEN(results);
-        for (i=0; i<n; i++) {
-            x = RARRAY_AREF(results,i);
-            if (IsNArray(x)){
-                GetNArray(x,na);
-                if (NA_NDIM(na)==0) {
-                    y = rb_funcall(x, id_extract, 0);
-                    RARRAY_ASET(results,i,y);
-                }
-            }
-        }
-    }
+    // if (NDF_TEST(nf,NDF_EXTRACT)) {
+    //     n = RARRAY_LEN(results);
+    //     for (i=0; i<n; i++) {
+    //         x = RARRAY_AREF(results,i);
+    //         if (IsNArray(x)){
+    //             GetNArray(x,na);
+    //             if (NA_NDIM(na)==0) {
+    //                 y = rb_funcall(x, id_extract, 0);
+    //                 RARRAY_ASET(results,i,y);
+    //             }
+    //         }
+    //     }
+    // }
     return results;
 }
 
