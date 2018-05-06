@@ -184,7 +184,8 @@ void SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
         std::lock_guard<std::recursive_mutex> lock{mutex_};
 
         chunk = in_use_[ptr];
-        assert(chunk != nullptr);
+        // assert(chunk != nullptr);
+        if (!chunk) return;
         chunk->set_in_use(false);
         in_use_.erase(ptr);
     }
@@ -282,7 +283,7 @@ size_t SingleDeviceMemoryPool::GetUsedBytes() {
 
     for (auto kv : in_use_) {
         std::shared_ptr<Chunk>& chunk = kv.second;
-        size += chunk->size();
+        if (chunk) size += chunk->size();
     }
     return size;
 }
@@ -296,7 +297,7 @@ size_t SingleDeviceMemoryPool::GetFreeBytes() {
         Arena& arena = kv.second;
         for (auto free_list : arena) {
             for (auto chunk : free_list) {
-                size += chunk->size();
+                if (chunk) size += chunk->size();
             }
         }
     }
