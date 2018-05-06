@@ -5,26 +5,21 @@
   --- Extract element value as Ruby Object if self is a dimensionless NArray,
   otherwise returns self.
 */
-
-// TODO(sonots): Return Cumo::Bit instead of ruby built-in object to avoid synchronization
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {
-    BIT_DIGIT *ptr, val;
-    size_t pos;
+    volatile VALUE v;
+    char *ptr;
     narray_t *na;
     GetNArray(self,na);
 
     if (na->ndim==0) {
-        pos = na_get_offset(self);
-        ptr = (BIT_DIGIT*)na_get_pointer_for_read(self);
-
+        ptr = na_get_pointer_for_read(self) + na_get_offset(self);
         SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-        val = ((*((ptr)+(pos)/NB)) >> ((pos)%NB)) & 1u;
+        v = m_extract(ptr);
         na_release_lock(self);
-        return INT2FIX(val);
+        return v;
     }
     return self;
 }
