@@ -15,7 +15,7 @@ static void
     GET_DATA_STRIDE(p1,s1,dtype,x);
     SET_DATA_STRIDE(p2,s2,dtype,x);
     //printf("i=%lu x=%f\n",i,x);
-    SHOW_CPU_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     for (i--; i--;) {
         GET_DATA_STRIDE(p1,s1,dtype,y);
         m_<%=name%><%=j%>(x,y);

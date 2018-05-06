@@ -13,6 +13,7 @@ static void
     where_opt_t *g;
 
     // TODO(sonots): CUDA kernelize
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     g = (where_opt_t*)(lp->opt_ptr);

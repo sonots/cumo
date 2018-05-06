@@ -9,7 +9,7 @@ static void
     INIT_PTR(lp, 0, p1, s1);
     INIT_PTR(lp, 1, p2, s2);
     INIT_PTR(lp, 2, p3, s3);
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     for (; i--;) {
         GET_DATA_STRIDE(p1,s1,dtype,x);
         m_<%=name%>(x,y,z);

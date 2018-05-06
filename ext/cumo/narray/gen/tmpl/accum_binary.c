@@ -20,7 +20,7 @@ static void
     <% if type_name == 'robject' %>
     {
         size_t i;
-        SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         if (s3==0) {
             dtype z;
             // Reduce loop

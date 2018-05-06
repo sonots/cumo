@@ -28,7 +28,7 @@ static void
     {
         size_t i0, i1;
         char *p1;
-        SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         for (i0=0; i0 < n0; i0++) {
             p1 = p0;
             for (i1=0; i1 < n1; i1++) {

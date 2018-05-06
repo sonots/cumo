@@ -31,7 +31,7 @@ static void
     <% if type_name == 'robject' %>
     {
         size_t i;
-        SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         //<% if need_align %>
         if (is_aligned(p1,sizeof(dtype)) &&
             is_aligned(p2,sizeof(dtype)) &&

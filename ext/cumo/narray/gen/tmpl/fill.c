@@ -16,7 +16,7 @@ static void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     y = m_num_to_data(x);
     <% if type_name == 'robject' %>
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             SET_DATA_INDEX(p1,idx1,dtype,y);

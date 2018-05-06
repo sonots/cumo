@@ -10,7 +10,7 @@ static void
     INIT_COUNTER(lp, i);
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR_IDX(lp, 1, p2, s2, idx2);
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         if (idx2) {
             for (; i--;) {

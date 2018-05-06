@@ -19,7 +19,7 @@ static void
     <% if type_name == 'robject' %>
     {
         dtype x;
-        SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         if (idx1) {
             if (idx2) {
                 for (; i--;) {

@@ -11,7 +11,7 @@ static void
     p2 = (lp->args[1]).ptr + (lp->args[1].iter[0]).pos;
     buf = (dtype*)p1;
 
-    SHOW_CPU_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     <%=type_name%>_qsort<%=j%>(buf, n, sizeof(dtype));
 
     <% if is_float %>

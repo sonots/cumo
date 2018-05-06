@@ -10,7 +10,7 @@ static void
     INIT_COUNTER(lp, n);
     INIT_PTR(lp, 0, p1, s1);
 
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     f_<%=name%><%=j%>(n,p1,s1,&xmin,&xmax);
 
     *(dtype*)(lp->args[1].ptr + lp->args[1].iter[0].pos) = xmin;

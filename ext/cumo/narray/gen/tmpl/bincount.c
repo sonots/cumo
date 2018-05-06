@@ -22,7 +22,7 @@ static void
         *(<%=cnt_type%>*)(p2 + s2*x) = 0;
     }
 
-    SHOW_CPU_WARNING_ONCE("<%=name%>_<%=bits%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_<%=bits%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             GET_DATA_INDEX(p1,idx1,dtype,x);

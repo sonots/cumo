@@ -16,7 +16,7 @@ static void
     INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     INIT_PTR_IDX(lp, 1, p2, s2, idx2);
     //<% if c_iter.include? 'robject' %>
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     {
         <%=dtype%> x;
         dtype y;

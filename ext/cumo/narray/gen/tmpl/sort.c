@@ -8,7 +8,7 @@ static void
 
     INIT_COUNTER(lp, n);
     INIT_PTR(lp, 0, ptr, step);
-    SHOW_CPU_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     <%=type_name%>_qsort<%=j%>(ptr, n, step);
 }
 <% end %>

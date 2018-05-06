@@ -11,6 +11,7 @@ static void
     VALUE x = lp->option;
 
     // TODO(sonots): CUDA kernelize
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (x==INT2FIX(0) || x==Qfalse) {

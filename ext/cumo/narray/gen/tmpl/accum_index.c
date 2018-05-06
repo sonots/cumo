@@ -22,7 +22,7 @@ static void
     <% if type_name == 'robject' || nan == '_nan' %>
     {
         size_t idx;
-        SHOW_CPU_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
         *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
     }
