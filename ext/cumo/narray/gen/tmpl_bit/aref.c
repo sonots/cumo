@@ -46,7 +46,7 @@ static VALUE
 
     nd = na_get_result_dimension(self, argc, argv, 1, &pos);
     if (nd) {
-        return na_aref_main(argc, argv, self, 0, nd);
+        return na_aref_main(argc, argv, self, 0, nd, pos);
     } else {
         // TODO(sonots): Return 0-dimensional narray rather than Synchronize()
         ptr = na_get_pointer_for_read(self);

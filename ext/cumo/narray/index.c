@@ -29,6 +29,9 @@ struct enumerator {
 };
 
 // note: the memory refed by this pointer is not freed and causes memroy leak.
+//
+// @example
+//     a[1..3,1] generates two na_index_arg_t(s). First is for 1..3, and second is for 1.
 typedef struct {
     size_t  n; // the number of elements of the dimesnion
     size_t  beg; // the starting point in the dimension
@@ -313,6 +316,10 @@ na_index_parse_args(VALUE args, narray_t *na, na_index_arg_t *q, int ndim)
     size_t total=1;
     VALUE v;
 
+    if (ndim == 0) {
+        return /*total*/1;
+    }
+
     nidx = RARRAY_LEN(args);
 
     for (i=j=k=0; i<nidx; i++) {
@@ -522,14 +529,16 @@ na_ndim_new_narray(int ndim, const na_index_arg_t *q)
 typedef struct {
     VALUE args, self, store;
     int ndim;
-    na_index_arg_t *q;
+    na_index_arg_t *q; // multi-dimensional index args
     narray_t *na1;
     int keep_dim;
+    size_t pos; // offset position for 0-dimensional narray. 0-dimensional array does not use q.
 } na_aref_md_data_t;
 
 static na_index_arg_t*
 na_allocate_index_args(int ndim)
 {
+    if (ndim == 0) return NULL;
     na_index_arg_t *q = ALLOC_N(na_index_arg_t, ndim);
     int i;
 
@@ -579,13 +588,22 @@ VALUE na_aref_md_protected(VALUE data_value)
     switch(na1->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        na_index_aref_nadata((narray_data_t *)na1,na2,q,elmsz,ndim,keep_dim);
+        if (ndim == 0) {
+            na2->offset = data->pos;
+        } else {
+            na_index_aref_nadata((narray_data_t *)na1,na2,q,elmsz,ndim,keep_dim);
+        }
         na2->data = self;
         break;
     case NARRAY_VIEW_T:
-        na2->offset = ((narray_view_t *)na1)->offset;
-        na2->data = ((narray_view_t *)na1)->data;
-        na_index_aref_naview((narray_view_t *)na1,na2,q,elmsz,ndim,keep_dim);
+        if (ndim == 0) {
+            na2->offset = ((narray_view_t *)na1)->offset + data->pos;
+            na2->data = ((narray_view_t *)na1)->data;
+        } else {
+            na2->offset = ((narray_view_t *)na1)->offset;
+            na2->data = ((narray_view_t *)na1)->data;
+            na_index_aref_naview((narray_view_t *)na1,na2,q,elmsz,ndim,keep_dim);
+        }
         break;
     }
     if (store) {
@@ -604,12 +622,12 @@ na_aref_md_ensure(VALUE data_value)
     for (i=0; i<data->ndim; i++) {
         xfree(data->q[i].idx);
     }
-    xfree(data->q);
+    if (data->q) xfree(data->q);
     return Qnil;
 }
 
 static VALUE
-na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd)
+na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, size_t pos)
 {
     VALUE args; // should be GC protected
     narray_t *na1;
@@ -649,6 +667,7 @@ na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd)
     data.q = na_allocate_index_args(result_nd);
     data.na1 = na1;
     data.keep_dim = keep_dim;
+    data.pos = pos;
 
     return rb_ensure(na_aref_md_protected, (VALUE)&data, na_aref_md_ensure, (VALUE)&data);
 }
@@ -656,7 +675,7 @@ na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd)
 
 /* method: [](idx1,idx2,...,idxN) */
 VALUE
-na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int nd)
+na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, size_t pos)
 {
     na_index_arg_to_internal_order(nidx, idx, self);
 
@@ -668,18 +687,18 @@ na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int nd)
             return rb_funcall(*idx,id_mask,1,self);
         }
     }
-    return na_aref_md(nidx, idx, self, keep_dim, nd);
+    return na_aref_md(nidx, idx, self, keep_dim, result_nd, pos);
 }
 
 
 /* method: slice(idx1,idx2,...,idxN) */
 static VALUE na_slice(int argc, VALUE *argv, VALUE self)
 {
-    int nd;
+    int result_nd;
     size_t pos;
 
-    nd = na_get_result_dimension(self, argc, argv, 0, &pos);
-    return na_aref_main(argc, argv, self, 1, nd);
+    result_nd = na_get_result_dimension(self, argc, argv, 0, &pos);
+    return na_aref_main(argc, argv, self, 1, result_nd, pos);
 }
 
 
