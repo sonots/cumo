@@ -10,6 +10,9 @@ static dtype
     size_t pos;
     VALUE  r, klass;
 
+    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     if (IsNArray(obj)) {
         GetNArray(obj,na);
         if (na->size != 1) {
