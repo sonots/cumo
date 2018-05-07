@@ -13,6 +13,8 @@
   Ruby numeric object as Numo::NArray does to avoid synchronization
   between GPU and CPU.
 
+  Use "aref_cpu" instead to get a Ruby numeric object for 0-dimensional NArray as Numo/NArray's one.
+
   @example
       a = Cumo::DFloat.new(4,5).seq
       => Cumo::DFloat#shape=[4,5]
