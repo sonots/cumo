@@ -84,5 +84,5 @@ static VALUE
 
     reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     v = na_ndloop(&ndf, 3, self, reduce, INT2FIX(0));
-    return rb_funcall(v,rb_intern("extract_to_cpu"),0);
+    return rb_funcall(v,rb_intern("extract_cpu"),0);
 }

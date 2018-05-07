@@ -194,7 +194,7 @@ nst_field(VALUE self, VALUE idx)
     obj = nst_field_view(self,idx);
     GetNArrayView(obj,nv);
     if (nv->base.ndim==0) {
-        obj = rb_funcall(obj,rb_intern("extract_to_cpu"),0);
+        obj = rb_funcall(obj,rb_intern("extract_cpu"),0);
     }
     return obj;
 }
@@ -407,7 +407,7 @@ iter_nstruct_to_a(na_loop_t *const lp)
         GetNArrayView(elmt,ne);
         ne->offset = pos + ofs;
         if (ne->base.ndim==0) {
-            velm = rb_funcall(elmt,rb_intern("extract_to_cpu"),0);
+            velm = rb_funcall(elmt,rb_intern("extract_cpu"),0);
         } else {
             velm = rb_funcall(elmt,rb_intern("to_a"),0);
         }

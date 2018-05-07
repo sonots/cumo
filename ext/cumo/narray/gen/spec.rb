@@ -100,7 +100,7 @@ def_method "allocate"
 # Type conversion
 
 def_method "extract"
-def_method "extract_to_cpu"
+def_method "extract_cpu"
 def_method "new_dim0"
 
 def_method "store" do
