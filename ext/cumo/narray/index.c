@@ -590,6 +590,7 @@ VALUE na_aref_md_protected(VALUE data_value)
     case NARRAY_FILEMAP_T:
         if (ndim == 0) {
             na2->offset = data->pos;
+            na2->base.size = 1;
         } else {
             na_index_aref_nadata((narray_data_t *)na1,na2,q,elmsz,ndim,keep_dim);
         }
@@ -599,6 +600,7 @@ VALUE na_aref_md_protected(VALUE data_value)
         if (ndim == 0) {
             na2->offset = ((narray_view_t *)na1)->offset + data->pos;
             na2->data = ((narray_view_t *)na1)->data;
+            na2->base.size = 1;
         } else {
             na2->offset = ((narray_view_t *)na1)->offset;
             na2->data = ((narray_view_t *)na1)->data;
