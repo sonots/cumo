@@ -1,5 +1,3 @@
-void <%="cumo_#{c_func(-1)}_kernel_launch"%>(dtype *ptr, dtype x);
-
 /*
   Array element(s) set.
   @overload []=(dim0,..,dimL,val)
@@ -44,24 +42,15 @@ static VALUE
 {
     int nd;
     size_t pos;
-    char *ptr;
     VALUE a;
-    dtype x;
 
     argc--;
     if (argc==0) {
         <%=c_func.sub(/_aset/,"_store")%>(self, argv[argc]);
     } else {
         nd = na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
-        if (nd) {
-            a = na_aref_main(argc, argv, self, 0, nd, pos);
-            <%=c_func.sub(/_aset/,"_store")%>(a, argv[argc]);
-        } else {
-            x = <%=type_name%>_extract_data(argv[argc]);
-            ptr = na_get_pointer_for_read_write(self) + pos;
-            <%="cumo_#{c_func(-1)}_kernel_launch"%>((dtype*)ptr, x);
-        }
-
+        a = na_aref_main(argc, argv, self, 0, nd, pos);
+        <%=c_func.sub(/_aset/,"_store")%>(a, argv[argc]);
     }
     return argv[argc];
 }
