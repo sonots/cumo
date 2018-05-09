@@ -4,6 +4,7 @@
   @return [Numeric,Cumo::NArray]
   --- Extract element value as Ruby Object if self is a dimensionless NArray,
   otherwise returns self.
+  This method is compatible with Numo NArray's `extract` method.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

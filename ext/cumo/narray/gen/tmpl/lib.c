@@ -9,6 +9,7 @@
 
 #include <ruby.h>
 #include <assert.h>
+#include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/template.h"
 #include "SFMT.h"

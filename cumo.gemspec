@@ -1,11 +1,19 @@
 # coding: utf-8
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require "cumo/version"
+
+open("ext/cumo/include/cumo.h") do |f|
+  f.each_line do |l|
+    if /CUMO_VERSION "([\d.]+)"/ =~ l
+      CUMO_VERSION = $1
+      break
+    end
+  end
+end
 
 Gem::Specification.new do |spec|
   spec.name          = "cumo"
-  spec.version       = Cumo::VERSION
+  spec.version       = CUMO_VERSION
   spec.authors       = ["Naotoshi Seo"]
   spec.email         = ["sonots@gmail.com"]
 

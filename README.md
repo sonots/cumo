@@ -66,7 +66,11 @@ An example:
 
 ### How to switch from Numo to Cumo
 
-Basically, `find . -type f | xargs sed -i -e 's/Numo/Cumo/g' -e 's/numo/cumo/g'` should make it work.
+Basically, following command should make it work with Cumo.
+
+```
+find . -type f | xargs sed -i -e 's/Numo/Cumo/g' -e 's/numo/cumo/g'
+```
 
 If you want to switch Numo and Cumo dynamically, following snippets should work:
 
@@ -81,6 +85,31 @@ end
 
 a = Xumo::DFloat.new(3,5).seq
 ```
+
+### Incompatibility With Numo
+
+Following methods behave incompatibly with Numo.
+
+* `extract`
+* `[]`
+
+Numo returns a Ruby numeric object for 0-dimensional NArray, but Cumo returns the 0-dimensional NArray instead of a Ruby numeric object.
+This is to avoid synchnoziation between CPU and GPU for performance.
+
+You can use following methods which behaves as Numo NArray's methods:
+
+* `extract_cpu`
+* `aref_cpu(*idx)`
+
+Or, you may use
+
+```
+require 'cumo'
+Cumo.enable_compatible_mode
+```
+
+to make Cumo NArray behaves compatibly with Numo NArray.
+Use `Cumo.disable_compatible_mode` to disable, and `Cumo.compatible_mode_enabled?` to check the current state.
 
 ### Select a GPU device ID
 

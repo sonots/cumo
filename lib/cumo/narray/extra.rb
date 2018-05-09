@@ -154,10 +154,6 @@ module Cumo
       end
     end
 
-    def aref_cpu(*idx)
-      self[*idx].extract_cpu
-    end
-
     # Convert the argument to an narray if not an narray.
     def self.cast(a)
       a.kind_of?(NArray) ? a : NArray.array_type(a).cast(a)
