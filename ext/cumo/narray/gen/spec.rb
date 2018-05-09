@@ -131,6 +131,7 @@ def_method "cast_array"
 def_singleton_method "cast"
 
 def_method "aref", op:"[]"
+def_method "aref_cpu"
 def_method "aset", op:"[]="
 
 def_method "coerce_cast"
