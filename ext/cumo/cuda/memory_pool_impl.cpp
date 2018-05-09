@@ -150,7 +150,7 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
                 size_t total = size + GetTotalBytes();
                 throw OutOfMemoryError(size, total);
 #else
-                rb_funcall(rb_intern("GC"), rb_intern("start"), 0);
+                rb_funcall(rb_define_module("GC"), rb_intern("start"), 0);
                 try {
                     mem = std::make_shared<Memory>(size);
                 } catch (const CUDARuntimeError& e) {
