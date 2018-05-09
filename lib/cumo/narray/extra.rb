@@ -129,8 +129,7 @@ module Cumo
 
     def to_i
       if size==1
-        Cumo::CUDA::Runtime.cudaDeviceSynchronize
-        self[0].to_i
+        self.extract_cpu.to_i
       else
         # convert to Int?
         raise TypeError, "can't convert #{self.class} into Integer"
@@ -139,8 +138,7 @@ module Cumo
 
     def to_f
       if size==1
-        Cumo::CUDA::Runtime.cudaDeviceSynchronize
-        self[0].to_f
+        self.extract_cpu.to_f
       else
         # convert to DFloat?
         raise TypeError, "can't convert #{self.class} into Float"
@@ -149,12 +147,15 @@ module Cumo
 
     def to_c
       if size==1
-        Cumo::CUDA::Runtime.cudaDeviceSynchronize
-        Complex(self[0])
+        Complex(self.extract_cpu)
       else
         # convert to DComplex?
         raise TypeError, "can't convert #{self.class} into Complex"
       end
+    end
+
+    def aref_cpu(*idx)
+      self[*idx].extract_cpu
     end
 
     # Convert the argument to an narray if not an narray.

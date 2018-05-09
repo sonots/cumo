@@ -67,6 +67,7 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.eq([1,1,3,3,7,7]) == [1,0,1,0,1,0] }
         assert { a[3..4] == [5,7] }
         assert { a[5] == 11 }
+        assert { a[5].size == 1 }
         assert { a[-1] == 11 }
         assert { a[[4,3,0,1,5,2]] == [7,5,1,2,11,3] }
         assert { a.sum == 29 }

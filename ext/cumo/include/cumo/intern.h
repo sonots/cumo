@@ -125,7 +125,7 @@ void cumo_nary_step_sequence(VALUE self, size_t *plen, double *pbeg, double *pst
 #define na_get_result_dimension cumo_nary_get_result_dimension
 int cumo_nary_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_t *pos_idx);
 #define na_aref_main cumo_nary_aref_main
-VALUE cumo_nary_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int nd);
+VALUE cumo_nary_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, size_t pos);
 
 // defined in array, used in math
 #define na_ary_composition_dtype cumo_na_ary_composition_dtype

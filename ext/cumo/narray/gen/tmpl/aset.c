@@ -54,7 +54,7 @@ static VALUE
     } else {
         nd = na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
         if (nd) {
-            a = na_aref_main(argc, argv, self, 0, nd);
+            a = na_aref_main(argc, argv, self, 0, nd, pos);
             <%=c_func.sub(/_aset/,"_store")%>(a, argv[argc]);
         } else {
             x = <%=type_name%>_extract_data(argv[argc]);
