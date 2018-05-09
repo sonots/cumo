@@ -101,7 +101,7 @@ You can use following methods which behaves as Numo NArray's methods:
 * `extract_cpu`
 * `aref_cpu(*idx)`
 
-Or, you may use
+Or, set `CUMO_COMPATIBLE_MODE=ON` environment variable, or
 
 ```
 require 'cumo'
