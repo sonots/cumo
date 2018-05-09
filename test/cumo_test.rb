@@ -18,4 +18,8 @@ class CumoTest < Test::Unit::TestCase
     Cumo.disable_compatible_mode
     assert { !Cumo.compatible_mode_enabled? }
   end
+
+  def test_version
+    assert_nothing_raised { Cumo::VERSION }
+  end
 end

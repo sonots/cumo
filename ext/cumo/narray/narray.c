@@ -1,6 +1,7 @@
 #define CUMO_NARRAY_C
 #include <ruby.h>
 #include <assert.h>
+#include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
@@ -1839,7 +1840,7 @@ Init_cumo_narray()
     rb_cComplex = rb_const_get(rb_cObject, rb_intern("Complex"));
 #endif
 
-    rb_define_const(cNArray, "VERSION", rb_str_new2(NARRAY_VERSION));
+    rb_define_const(cNArray, "VERSION", rb_str_new2(CUMO_VERSION));
 
     nary_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
     nary_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);

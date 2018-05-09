@@ -8,9 +8,6 @@ extern "C" {
 #endif
 #endif
 
-#define NARRAY_VERSION "0.9.0.9"
-#define NARRAY_VERSION_CODE 909
-
 #include <math.h>
 #include "cumo/compat.h"
 #include "cumo/template.h"
