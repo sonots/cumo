@@ -88,7 +88,7 @@ a = Xumo::DFloat.new(3,5).seq
 
 ### Incompatibility With Numo
 
-Following methods behave incompatible with Numo.
+Following methods behave incompatibly with Numo.
 
 * `extract`
 * `[]`
@@ -108,7 +108,7 @@ require 'cumo'
 Cumo.enable_compatible_mode
 ```
 
-to make Cumo NArray behaves compatbile with Numo NArray.
+to make Cumo NArray behaves compatibly with Numo NArray.
 Use `Cumo.disable_compatible_mode` to disable, and `Cumo.compatible_mode_enabled?` to check the current state.
 
 ### Select a GPU device ID

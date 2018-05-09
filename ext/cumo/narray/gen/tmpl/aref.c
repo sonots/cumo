@@ -16,7 +16,7 @@ static VALUE
   Ruby numeric object as Numo::NArray does to avoid synchronization
   between GPU and CPU for performance.
 
-  Call Cumo.enable_compatible_mode to make ths method behave compatible
+  Call Cumo.enable_compatible_mode to make ths method behave compatibly
   with Numo, or you can use `aref_cpu(*idx)` method instead.
 
   @example
