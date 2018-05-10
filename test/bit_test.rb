@@ -72,5 +72,50 @@ class BitTest < Test::Unit::TestCase
       assert { a.any? }
       assert { !a.none? }
     end
+
+    test "#{dtype},[[0,1,1,0],[1,0,0,1]]#{ref},aset[]=" do
+      src = [[0,1,1,0],[1,0,0,1]]
+      n = src.size
+
+      a = init.call(dtype, src)
+      a[5] = 1
+      assert { a[5] == 1 }
+
+      a = init.call(dtype, src)
+      a[-1] = 0
+      assert { a[-1] == 0 }
+
+      a = init.call(dtype, src)
+      a[1,0] = 0
+      assert { a[1,0] == 0 }
+
+      a = init.call(dtype, src)
+      a[1,1] = 1
+      assert { a[1,1] == 1}
+
+      a = init.call(dtype, src)
+      a[1,2] = 1
+      assert { a[1,2] == 1 }
+
+      a = init.call(dtype, src)
+      a[3..4] = [1,0]
+      assert { a[3..4] == [1,0] }
+
+      a = init.call(dtype, src)
+      a[0,1..2] = [0,0]
+      assert { a[0,1..2] == [0,0] }
+
+      a = init.call(dtype, src)
+      a[0,:*] = [1,0,0,1]
+      assert { a[0,:*] == [1,0,0,1] }
+
+      a = init.call(dtype, src)
+      a[1,:*] = [0,1,1,0]
+      assert { a[1,:*] == [0,1,1,0] }
+
+      a = init.call(dtype, src)
+      a[:*,1] = [0,1]
+      assert { a[:*,1] == [0,1] }
+    end
   end
 end

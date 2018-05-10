@@ -196,6 +196,50 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.swap_byte.swap_byte == src }
       end
 
+      test "#{dtype},[[1,2,3],[5,7,11]]#{ref},aset[]=" do
+        src = [[1,2,3],[5,7,11]]
+
+        a = init.call(dtype, src)
+        a[5] = 13
+        assert { a[5] == 13 }
+
+        a = init.call(dtype, src)
+        a[-1]= 13
+        assert { a[-1] == 13 }
+
+        a = init.call(dtype, src)
+        a[1,0] = 13
+        assert { a[1,0] == 13 }
+
+        a = init.call(dtype, src)
+        a[1,1] = 13
+        assert { a[1,1] == 13 }
+
+        a = init.call(dtype, src)
+        a[1,2] = 13
+        assert { a[1,2] == 13 }
+
+        a = init.call(dtype, src)
+        a[3..4] = [13,13]
+        assert { a[3..4] == [13,13] }
+
+        a = init.call(dtype, src)
+        a[0,1..2] = [13,13]
+        assert { a[0,1..2] == [13,13] }
+
+        a = init.call(dtype, src)
+        a[0,:*] = [13,13,13]
+        assert { a[0,:*] == [13,13,13] }
+
+        a = init.call(dtype, src)
+        a[1,:*] = [13,13,13]
+        assert { a[1,:*] == [13,13,13] }
+
+        a = init.call(dtype, src)
+        a[:*,1] = [13,13]
+        assert { a[:*,1] == [13,13] }
+      end
+
     end
 
     test "#{dtype},[[[1,2],[3,4]],[[5,6],[7,8]]]" do
