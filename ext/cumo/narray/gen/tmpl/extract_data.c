@@ -1,6 +1,7 @@
 /*
   Convert a data value of obj (with a single element) to dtype.
 */
+/*
 static dtype
 <%=c_func(:nodef)%>(VALUE obj)
 {
@@ -17,7 +18,7 @@ static dtype
         GetNArray(obj,na);
         if (na->size != 1) {
             rb_raise(nary_eShapeError,"narray size should be 1");
-        }
+       }
         klass = CLASS_OF(obj);
         ptr = na_get_pointer_for_read(obj);
         pos = na_get_offset(obj);
@@ -49,3 +50,4 @@ static dtype
     }
     return m_num_to_data(obj);
 }
+*/
