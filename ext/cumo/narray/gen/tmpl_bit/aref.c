@@ -1,3 +1,6 @@
+static VALUE
+<%=c_func(-1)%>_cpu(int argc, VALUE *argv, VALUE self);
+
 /*
   Array element referenece or slice view.
   @overload [](dim0,...,dimL)
@@ -39,20 +42,13 @@
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
-    int nd;
-    size_t pos;
-    char *ptr;
-    dtype x;
-
-    nd = na_get_result_dimension(self, argc, argv, 1, &pos);
-    if (nd) {
-        return na_aref_main(argc, argv, self, 0, nd, pos);
+    if (cumo_compatible_mode_enabled_p()) {
+        return <%=c_func(-1)%>_cpu(argc, argv, self);
     } else {
-        // TODO(sonots): Return 0-dimensional narray rather than Synchronize()
-        ptr = na_get_pointer_for_read(self);
-        SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-        LOAD_BIT(ptr,pos,x);
-        return m_data_to_num(x);
+        int result_nd;
+        size_t pos;
+
+        result_nd = na_get_result_dimension(self, argc, argv, 1, &pos);
+        return na_aref_main(argc, argv, self, 0, result_nd, pos);
     }
 }
