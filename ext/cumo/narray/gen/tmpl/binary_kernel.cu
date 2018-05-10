@@ -1,6 +1,6 @@
 <% unless type_name == 'robject' %>
 
-<% ((1..4).to_a << '').each do |idim| %>
+<% ((0..4).to_a << '').each do |idim| %>
 __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(na_iarray_t a1, na_iarray_t a2, na_iarray_t a3, na_indexer_t indexer)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
@@ -18,7 +18,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(na_iarray_t* a1, na_iarray_t* a2, na_ia
     size_t gridDim = get_gridDim(indexer->total_size);
     size_t blockDim = get_blockDim(indexer->total_size);
     switch (indexer->ndim) {
-    <% (1..4).each do |idim| %>
+    <% (0..4).each do |idim| %>
     case <%=idim%>:
         <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<gridDim, blockDim>>>(*a1,*a2,*a3,*indexer);
         break;

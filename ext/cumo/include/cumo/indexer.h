@@ -87,6 +87,7 @@ cumo_na_indexer_set_dim##NDIM(na_indexer_t* indexer, size_t i) { \
 CUMO_NA_INDEXER_SET(4)
 CUMO_NA_INDEXER_SET(3)
 CUMO_NA_INDEXER_SET(2)
+CUMO_NA_INDEXER_SET(0)
 
 __host__ __device__
 static inline void
@@ -119,6 +120,7 @@ cumo_na_iarray_at_dim##NDIM(na_iarray_t* iarray, na_indexer_t* indexer) { \
 CUMO_NA_IARRAY_AT(4)
 CUMO_NA_IARRAY_AT(3)
 CUMO_NA_IARRAY_AT(2)
+CUMO_NA_IARRAY_AT(0)
 
 __host__ __device__
 static inline char*
