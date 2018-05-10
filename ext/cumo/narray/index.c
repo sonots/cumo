@@ -157,6 +157,7 @@ na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, na_index_arg_t *q)
     nidxp   = (ssize_t*)nidx->ptr;
     q->idx  = ALLOC_N(size_t, n);
 
+    // ndixp is cuda memory (cuda narray)
     SHOW_SYNCHRONIZE_WARNING_ONCE("na_parse_narray_index", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
