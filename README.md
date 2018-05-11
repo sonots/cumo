@@ -1,4 +1,4 @@
-**This project is under development. This project received [Ruby Association Grant 2017](http://www.ruby.or.jp/ja/news/20171206).**
+**This project is still under development. This project was granted by [Ruby Association Grant 2017](http://www.ruby.or.jp/ja/news/20171206).**
 
 # Cumo
 
@@ -212,7 +212,7 @@ bundle exec gdb -x run.gdb --args ruby test/narray_test.rb
 
 You may put a breakpoint by calling `cumo_debug_breakpoint()` at C source codes.
 
-### Run program always synchronizes CPU and GPU
+### Run program always synchronizing CPU and GPU
 
 ```
 bundle exec CUDA_LAUNCH_BLOCKING=1
