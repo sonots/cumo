@@ -62,6 +62,8 @@ na_make_iarray(na_loop_args_t* arg)
 }
 #endif  // #ifndef __CUDACC__
 
+#define CUMO_NA_INDEXER_OPTIMIZED_NDIM 4
+
 #ifdef __CUDACC__
 
 __host__ __device__

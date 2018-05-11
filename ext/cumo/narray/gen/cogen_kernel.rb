@@ -41,6 +41,8 @@ code = DefLib.new do
   set type_name: type_name
   set lib_name: "cumo_"+type_name
 
+  set opt_indexer_ndim: File.read(File.expand_path("../../../include/cumo/indexer.h", __FILE__)).match(/CUMO_NA_INDEXER_OPTIMIZED_NDIM (\d+)/)[1].to_i
+
   def_class do
     extend NArrayMethod
     extend NArrayType
