@@ -416,7 +416,6 @@ typedef unsigned int BIT_DIGIT;
 #define IS_INTEGER_CLASS(c) ((c)==rb_cFixnum||(c)==rb_cBignum)
 #endif
 
-#include "cumo/indexer.h"
 #include "cumo/ndloop.h"
 #include "cumo/intern.h"
 

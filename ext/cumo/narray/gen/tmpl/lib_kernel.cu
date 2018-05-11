@@ -1,4 +1,5 @@
 #include "cumo/narray_kernel.h"
+#include "cumo/indexer.h"
 #include <<%="cumo/types/#{type_name}_kernel.h"%>>
 
 #if defined(__cplusplus)
