@@ -112,10 +112,10 @@ static void
     }
     <% else %>
     {
-        na_iarray_t a1 = na_make_iarray(&lp->args[0]);
-        na_iarray_t a2 = na_make_iarray(&lp->args[1]);
-        na_iarray_t a3 = na_make_iarray(&lp->args[2]);
-        na_indexer_t indexer = na_make_indexer(&lp->args[0]);
+        na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+        na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
+        na_iarray_t a3 = cumo_na_make_iarray(&lp->args[2]);
+        na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
         <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer);
     }

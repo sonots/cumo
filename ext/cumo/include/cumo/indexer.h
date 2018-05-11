@@ -4,8 +4,6 @@
 /* Add cumo_ prefix */
 #define na_indexer_t cumo_na_indexer_t
 #define na_iarray_t cumo_na_iarray_t
-#define na_make_indexer cumo_na_make_indexer
-#define na_make_iarray cumo_na_make_iarray
 
 #ifndef __CUDACC__
 #include "cumo/narray.h"
@@ -38,7 +36,7 @@ typedef struct {
 #ifndef __CUDACC__
 // Note that you, then, have to call na_indexer_set to create index[]
 static na_indexer_t
-na_make_indexer(na_loop_args_t* arg)
+cumo_na_make_indexer(na_loop_args_t* arg)
 {
     na_indexer_t indexer;
     indexer.ndim = arg->ndim;
@@ -51,7 +49,7 @@ na_make_indexer(na_loop_args_t* arg)
 }
 
 static na_iarray_t
-na_make_iarray(na_loop_args_t* arg)
+cumo_na_make_iarray(na_loop_args_t* arg)
 {
     na_iarray_t iarray;
     iarray.ptr = arg->ptr + arg->iter[0].pos;
