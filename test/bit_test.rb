@@ -116,6 +116,26 @@ class BitTest < Test::Unit::TestCase
       a = init.call(dtype, src)
       a[:*,1] = [0,1]
       assert { a[:*,1] == [0,1] }
+
+      a = init.call(dtype, src)
+      a[5] = dtype.cast(1)
+      assert { a[5] == 1 }
+      assert { a[5] == dtype.cast(1) }
+
+      a = init.call(dtype, src)
+      a[1,0] = dtype.cast(0)
+      assert { a[1,0] == 0 }
+      assert { a[1,0] == dtype.cast(0) }
+
+      a = init.call(dtype, src)
+      a[3..4] = dtype.cast([1,0])
+      assert { a[3..4] == [1,0] }
+      assert { a[3..4] == dtype.cast([1,0]) }
+
+      a = init.call(dtype, src)
+      a[:*,1] = dtype.cast([0,1])
+      assert { a[:*,1] == [0,1] }
+      assert { a[:*,1] == dtype.cast([0,1]) }
     end
   end
 end
