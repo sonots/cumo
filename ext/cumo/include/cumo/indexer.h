@@ -67,8 +67,8 @@ na_make_iarray(na_loop_args_t* arg)
 #ifdef __CUDACC__
 
 __host__ __device__
-static void
-cumo_na_indexer_set_dim(na_indexer_t* indexer, size_t i) {
+static inline void
+cumo_na_indexer_set_dim(na_indexer_t* indexer, uint64_t i) {
     for (int j = indexer->ndim; --j >= 0;) {
         indexer->index[j] = i % indexer->shape[j];
         i /= indexer->shape[j];
@@ -78,8 +78,8 @@ cumo_na_indexer_set_dim(na_indexer_t* indexer, size_t i) {
 // Let compiler optimize
 #define CUMO_NA_INDEXER_SET(NDIM) \
 __host__ __device__ \
-static void \
-cumo_na_indexer_set_dim##NDIM(na_indexer_t* indexer, size_t i) { \
+static inline void \
+cumo_na_indexer_set_dim##NDIM(na_indexer_t* indexer, uint64_t i) { \
     for (int j = NDIM; --j >= 0;) { \
         indexer->index[j] = i % indexer->shape[j]; \
         i /= indexer->shape[j]; \
@@ -93,12 +93,12 @@ CUMO_NA_INDEXER_SET(0)
 
 __host__ __device__
 static inline void
-cumo_na_indexer_set_dim1(na_indexer_t* indexer, size_t i) {
+cumo_na_indexer_set_dim1(na_indexer_t* indexer, uint64_t i) {
     indexer->index[0] = i;
 }
 
 __host__ __device__
-static char*
+static inline char*
 cumo_na_iarray_at_dim(na_iarray_t* iarray, na_indexer_t* indexer) {
     char* ptr = iarray->ptr;
     for (int idim = 0; idim < indexer->ndim; ++idim) {
@@ -110,7 +110,7 @@ cumo_na_iarray_at_dim(na_iarray_t* iarray, na_indexer_t* indexer) {
 // Let compiler optimize
 #define CUMO_NA_IARRAY_AT(NDIM) \
 __host__ __device__ \
-static char* \
+static inline char* \
 cumo_na_iarray_at_dim##NDIM(na_iarray_t* iarray, na_indexer_t* indexer) { \
     char* ptr = iarray->ptr; \
     for (int idim = 0; idim < NDIM; ++idim) { \
