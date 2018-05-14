@@ -15,7 +15,9 @@
 #include "SFMT.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
+<% unless type_name == 'robject' %>
 #include "cumo/indexer.h"
+<% end %>
 
 #define m_map(x) m_num_to_data(rb_yield(m_data_to_num(x)))
 
