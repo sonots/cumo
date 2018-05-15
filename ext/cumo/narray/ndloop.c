@@ -1392,19 +1392,19 @@ ndloop_run(VALUE vlp)
     if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
         // setup lp->user for INDEXER_LOOP
         ndfunc_set_user_indexer_loop(nf, lp);
-        // if (na_debug_flag) {
-        //     printf("-- ndfunc_set_user_indexer_loop --\n");
-        //     print_ndloop(lp);
-        // }
+        //if (na_debug_flag) {
+        //    printf("-- ndfunc_set_user_indexer_loop --\n");
+        //    print_ndloop(lp);
+        //}
 
         (*(nf->func))(&(lp->user));
     } else {
         // setup objects in which results are stored
         ndfunc_set_user_loop(nf, lp);
-        // if (na_debug_flag) {
-        //     printf("-- ndfunc_set_user_loop --\n");
-        //     print_ndloop(lp);
-        // }
+        //if (na_debug_flag) {
+        //    printf("-- ndfunc_set_user_loop --\n");
+        //    print_ndloop(lp);
+        //}
 
         // setup buffering during loop
         if (lp->loop_func == loop_narray) {
