@@ -21,5 +21,6 @@ else
 end
 
 s << " -arch=sm_35" # TODO(sonots): How to add this nicely?
+s << " -std=c++14" # TODO(sonots): How to add this nicely?
 $stderr.puts "nvcc" + s
 Open3.capture2("nvcc " + s)
