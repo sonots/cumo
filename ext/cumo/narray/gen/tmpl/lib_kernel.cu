@@ -1,6 +1,7 @@
 #include "cumo/narray_kernel.h"
 <% unless type_name == 'robject' %>
 #include "cumo/indexer.h"
+#include "cumo/reduce_kernel.h"
 <% end %>
 #include <<%="cumo/types/#{type_name}_kernel.h"%>>
 

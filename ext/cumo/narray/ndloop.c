@@ -46,10 +46,12 @@ typedef struct NA_MD_LOOP {
     na_loop_xargs_t *xargs;   // extra data for each arg
     int    writeback;         // write back result to i-th arg
     int    init_aidx;         // index of initializer argument
-    int    reduce_dim;        // number of dimensions to be reduced in reduction kernel
+    int    reduce_dim;        // number of dimensions to reduce in reduction kernel, e.g., for an array of shape: [2,3,4],
+                              // 3 for sum(), 1 for sum(axis: 1), 2 for sum(axis: [1,2])
     int   *trans_map;
     VALUE  vargs;
-    VALUE  reduce;
+    VALUE  reduce;            // dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
+                              // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
     VALUE  loop_opt;
     ndfunc_t  *ndfunc;
     void (*loop_func)();
@@ -933,7 +935,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
     int j, ud=0;
 
     if (lp->reduce_dim > 0) {
-        // Increased user.ndim by number of dimensions to be reduced for reduction function.
+        // Increase user.ndim by number of dimensions to reduce for reduction function.
         ud = lp->reduce_dim;
     }
     else if (lp->ndim > 0 && NDF_TEST(nf,NDF_HAS_LOOP)) {
@@ -974,21 +976,44 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
 // In indexer loop, the  loop_narray is not used, user function processes
 // all dimensions with Indexer for performance.
 static void
-ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
+ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 {
     int j;
 
     lp->user.ndim = lp->ndim;
     lp->ndim = 0;
 
-    for (j=0; j<lp->narg; j++) {
-        LARG(lp,j).ndim = lp->user.ndim;
-        LARG(lp,j).shape = &(lp->n[lp->ndim]);
-    }
+    if (NDF_TEST(nf,NDF_FLAT_REDUCE)) {
+        narray_t *na;
 
-    lp->user.n = &(lp->n[lp->ndim]);
-    for (j=0; j<lp->narg; j++) {
-        LARG(lp,j).iter = &LITER(lp,lp->ndim,j);
+        // in
+        LARG(lp,0).ndim = lp->user.ndim;
+        LARG(lp,0).shape = &(lp->n[lp->ndim]);
+        // out: reuse parameters of results created at ndloop_set_output_narray
+        GetNArray(RARRAY_AREF(results, 0), na);
+        LARG(lp,1).ndim = na->ndim;
+        LARG(lp,1).shape = na->shape;
+
+        lp->user.n = &(lp->n[lp->ndim]);
+        for (j=0; j<lp->narg; j++) {
+            LARG(lp,j).iter = &LITER(lp,lp->ndim,j);
+        }
+
+        lp->user.reduce_dim = lp->reduce_dim;
+        lp->user.reduce = lp->reduce;
+    } else { // element-wise
+        for (j=0; j<lp->narg; j++) {
+            LARG(lp,j).ndim = lp->user.ndim;
+            LARG(lp,j).shape = &(lp->n[lp->ndim]);
+        }
+
+        lp->user.n = &(lp->n[lp->ndim]);
+        for (j=0; j<lp->narg; j++) {
+            LARG(lp,j).iter = &LITER(lp,lp->ndim,j);
+        }
+
+        lp->user.reduce_dim = 0;
+        lp->user.reduce = 0;
     }
 }
 
@@ -1373,25 +1398,25 @@ ndloop_run(VALUE vlp)
     // setup ndloop iterator with arguments
     ndloop_init_args(nf, lp, args);
     results = ndloop_set_output(nf, lp, args);
-
     //if (na_debug_flag) {
     //    printf("-- ndloop_set_output --\n");
     //    print_ndloop(lp);
     //}
 
-    // contract loop
-    if (lp->loop_func == loop_narray) {
-        ndfunc_contract_loop(lp);
-        //if (na_debug_flag) {
-        //    printf("-- ndfunc_contract_loop --\n");
-        //    print_ndloop(lp);
-        //}
-    }
-
     // CUMO: Do not use loop_narray, but directly process all dimensions with Indexer in user function for performance.
     if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
+        // TODO(sonots): Support contract_loop (dimesion compressions) in reduction
+        // contract loop
+        if(!NDF_TEST(nf,NDF_FLAT_REDUCE) && lp->loop_func == loop_narray) {
+            ndfunc_contract_loop(lp);
+            //if (na_debug_flag) {
+            //    printf("-- ndfunc_contract_loop --\n");
+            //    print_ndloop(lp);
+            //}
+        }
+
         // setup lp->user for INDEXER_LOOP
-        ndfunc_set_user_indexer_loop(nf, lp);
+        ndfunc_set_user_indexer_loop(nf, lp, results);
         //if (na_debug_flag) {
         //    printf("-- ndfunc_set_user_indexer_loop --\n");
         //    print_ndloop(lp);
@@ -1399,6 +1424,15 @@ ndloop_run(VALUE vlp)
 
         (*(nf->func))(&(lp->user));
     } else {
+        // contract loop
+        if (lp->loop_func == loop_narray) {
+            ndfunc_contract_loop(lp);
+            //if (na_debug_flag) {
+            //    printf("-- ndfunc_contract_loop --\n");
+            //    print_ndloop(lp);
+            //}
+        }
+
         // setup objects in which results are stored
         ndfunc_set_user_loop(nf, lp);
         //if (na_debug_flag) {

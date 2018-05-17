@@ -1,27 +1,48 @@
 <% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>
+//<% unless %w[sum].include?(name) %>
 void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(size_t n, char *p1, ssize_t s1, char *p2);
+<% else %>
+void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(na_reduction_arg_t* arg);
+<% end %>
 <% end %>
 
 static void
 <%=c_iter%><%=nan%>(na_loop_t *const lp)
 {
-    size_t   n;
-    char    *p1, *p2;
-    ssize_t  s1;
-
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, p1, s1);
-    p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
-
-    // TODO(sonots): How to compute Kahan summation algorithm in parallel?
-    // TODO(sonots): Implement nan CUDA version
     <% if type_name == 'robject' || name == 'kahan_sum' || nan == '_nan' %>
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
-    *(<%=dtype%>*)p2 = f_<%=name%><%=nan%>(n,p1,s1);
+    {
+        size_t   n;
+        char    *p1, *p2;
+        ssize_t  s1;
+
+        INIT_COUNTER(lp, n);
+        INIT_PTR(lp, 0, p1, s1);
+        p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
+
+        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        *(<%=dtype%>*)p2 = f_<%=name%><%=nan%>(n,p1,s1);
+    }
+    //<% elsif !%w[sum].include?(name) %>
+    {
+        size_t   n;
+        char    *p1, *p2;
+        ssize_t  s1;
+
+        INIT_COUNTER(lp, n);
+        INIT_PTR(lp, 0, p1, s1);
+        p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
+
+        cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,p1,s1,p2);
+    }
     <% else %>
-    cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,p1,s1,p2);
+    {
+        // TODO(sonots): How to compute Kahan summation algorithm in parallel?
+        // TODO(sonots): Implement nan CUDA version
+        na_reduction_arg_t arg = na_make_reduction_arg(lp);
+        cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(&arg);
+    }
     <% end %>
 }
 <% end %>
@@ -44,7 +65,11 @@ static VALUE
     VALUE v, reduce;
     ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
     ndfunc_arg_out_t aout[1] = {{<%=result_class%>,0}};
+    //<% if type_name == 'robject' || !%w[sum].include?(name) %>
     ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE, 2, 1, ain, aout };
+    <% else %>
+    ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_INDEXER_LOOP, 2, 1, ain, aout };
+    <% end %>
 
   <% if is_float %>
     reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);

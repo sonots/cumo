@@ -27,6 +27,10 @@ typedef struct NA_LOOP {
     VALUE  option;
     void  *opt_ptr;
     VALUE  err_type;
+    int    reduce_dim;     // number of dimensions to reduce in reduction kernel, e.g., for an array of shape: [2,3,4],
+                           // 3 for sum(), 1 for sum(axis: 1), 2 for sum(axis: [1,2])
+    VALUE  reduce;         // dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
+                           // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
 } na_loop_t;
 
 
