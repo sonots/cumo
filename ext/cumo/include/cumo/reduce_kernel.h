@@ -33,8 +33,8 @@ __global__ static void reduction_kernel(na_reduction_arg_t arg, ReductionImpl im
     na_indexer_t& out_indexer = arg.out_indexer;
     na_indexer_t& reduce_indexer = arg.reduce_indexer;
 
-    extern __shared__ TypeReduce sdata_raw[];
-    TypeReduce* sdata = sdata_raw;
+    extern __shared__ __align__(8) char sdata_raw[];
+    TypeReduce* sdata = (TypeReduce*)sdata_raw;
     unsigned int tid = threadIdx.x;
     unsigned int block_size = blockDim.x;  // number of threads
 
