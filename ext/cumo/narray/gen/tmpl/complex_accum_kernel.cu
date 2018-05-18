@@ -67,12 +67,12 @@ extern "C" {
 
 void cumo_<%=type_name%>_sum_kernel_launch(na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, <%=dtype%>, <%=dtype%>, cumo_<%=type_name%>_sum_impl>(*arg, cumo_<%=type_name%>_sum_impl{});
+    cumo_reduce<dtype, <%=dtype%>, cumo_<%=type_name%>_sum_impl>(*arg, cumo_<%=type_name%>_sum_impl{});
 }
 
 void cumo_<%=type_name%>_prod_kernel_launch(na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, <%=dtype%>, <%=dtype%>, cumo_<%=type_name%>_prod_impl>(*arg, cumo_<%=type_name%>_prod_impl{});
+    cumo_reduce<dtype, <%=dtype%>, cumo_<%=type_name%>_prod_impl>(*arg, cumo_<%=type_name%>_prod_impl{});
 }
 
 void cumo_<%=type_name%>_mean_kernel_launch(uint64_t n, char *p1, ssize_t s1, char *p2)

@@ -25,13 +25,15 @@ static inline int64_t round_up_to_power_of_2(int64_t x) {
 
 // reference: cupy reduction kernel
 
-template <typename TypeIn, typename TypeOut, typename TypeReduce, typename ReductionImpl>
+template <typename TypeIn, typename TypeOut, typename ReductionImpl>
 __global__ static void reduction_kernel(na_reduction_arg_t arg, ReductionImpl impl) {
     na_iarray_t& in_iarray = arg.in;
     na_iarray_t& out_iarray = arg.out;
     na_indexer_t& in_indexer = arg.in_indexer;
     na_indexer_t& out_indexer = arg.out_indexer;
     na_indexer_t& reduce_indexer = arg.reduce_indexer;
+
+    using TypeReduce = decltype(impl.Identity());
 
     extern __shared__ __align__(8) char sdata_raw[];
     TypeReduce* sdata = (TypeReduce*)sdata_raw;
@@ -51,7 +53,8 @@ __global__ static void reduction_kernel(na_reduction_arg_t arg, ReductionImpl im
                 in_indexer.index[out_indexer.ndim + i_reduce_dim] = reduce_indexer.index[i_reduce_dim];
             }
             TypeIn* in_ptr = reinterpret_cast<TypeIn*>(cumo_na_iarray_at_dim(&in_iarray, &in_indexer));
-            impl.Reduce(impl.MapIn(*in_ptr, i_reduce), accum);
+            uint64_t i_in = in_ptr - reinterpret_cast<TypeIn*>(in_iarray.ptr);
+            impl.Reduce(impl.MapIn(*in_ptr, i_in), accum);
         }
 
         if (block_size >= 2) {
@@ -105,17 +108,19 @@ __global__ static void reduction_kernel(na_reduction_arg_t arg, ReductionImpl im
 
 static constexpr size_t max_block_size = 512;
 
-template <typename TypeIn, typename TypeOut, typename TypeReduce, typename ReductionImpl>
+template <typename TypeIn, typename TypeOut, typename ReductionImpl>
 void cumo_reduce(na_reduction_arg_t arg, ReductionImpl&& impl) {
     na_indexer_t& out_indexer = arg.out_indexer;
     na_indexer_t& reduce_indexer = arg.reduce_indexer;
+
+    using TypeReduce = decltype(impl.Identity());
 
     size_t block_size = round_up_to_power_of_2(std::max(int64_t{1}, static_cast<int64_t>(reduce_indexer.total_size)));
     block_size = std::min(max_block_size, block_size);
     size_t grid_size = out_indexer.total_size;
     size_t shared_mem_size = sizeof(TypeReduce) * block_size;
 
-    reduction_kernel<TypeIn,TypeOut,TypeReduce,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, impl);
+    reduction_kernel<TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, impl);
 }
 
 #endif // CUMO_REDUCE_KERNEL_H

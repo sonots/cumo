@@ -12,21 +12,35 @@
 }  /* extern "C" { */
 #endif
 
-template<typename Iterator>
-__global__ void cumo_<%=type_name%>_min_index_int<%=i%>_kernel(Iterator begin, Iterator end, char *i_ptr, ssize_t i_step, char *o_ptr)
-{
-    Iterator iter = thrust::min_element(thrust::cuda::par, begin, end);
-    size_t idx = (size_t)(iter - begin);
-    *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
-}
+struct cumo_<%=type_name%>_min_index_int<%=i%>_impl {
+    struct MinAndArgMin {
+        dtype min;
+        idx_t argmin;
+    };
+    __device__ MinAndArgMin Identity() { return {DATA_MAX, 0}; }
+    __device__ MinAndArgMin MapIn(dtype in, idx_t index) { return {in, index}; }
+    __device__ void Reduce(MinAndArgMin next, MinAndArgMin& accum) {
+        if (accum.min > next.min) {
+            accum = next;
+        }
+    }
+    __device__ idx_t MapOut(MinAndArgMin accum) { return accum.argmin; }
+};
 
-template<typename Iterator>
-__global__ void cumo_<%=type_name%>_max_index_int<%=i%>_kernel(Iterator begin, Iterator end, char *i_ptr, ssize_t i_step, char *o_ptr)
-{
-    Iterator iter = thrust::max_element(thrust::cuda::par, begin, end);
-    size_t idx = (size_t)(iter - begin);
-    *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
-}
+struct cumo_<%=type_name%>_max_index_int<%=i%>_impl {
+    struct MaxAndArgMax {
+        dtype max;
+        idx_t argmax;
+    };
+    __device__ MaxAndArgMax Identity() { return {DATA_MIN, 0}; }
+    __device__ MaxAndArgMax MapIn(dtype in, idx_t index) { return {in, index}; }
+    __device__ void Reduce(MaxAndArgMax next, MaxAndArgMax& accum) {
+        if (accum.max < next.max) {
+            accum = next;
+        }
+    }
+    __device__ idx_t MapOut(MaxAndArgMax accum) { return accum.argmax; }
+};
 
 #if defined(__cplusplus)
 extern "C" {
@@ -35,21 +49,16 @@ extern "C" {
 #endif
 #endif
 
-void cumo_<%=type_name%>_min_index_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr)
+void cumo_<%=type_name%>_min_index_int<%=i%>_kernel_launch(na_reduction_arg_t* arg)
 {
-    ssize_t d_step_idx = d_step / sizeof(dtype);
-    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)d_ptr);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)d_ptr) + n * d_step_idx);
-    cumo_<%=type_name%>_min_index_int<%=i%>_kernel<<<1,1>>>(data_begin, data_end, i_ptr, i_step, o_ptr);
+    cumo_reduce<dtype, idx_t, cumo_<%=type_name%>_min_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_min_index_int<%=i%>_impl{});
 }
 
-void cumo_<%=type_name%>_max_index_int<%=i%>_kernel_launch(uint64_t n, char *d_ptr, ssize_t d_step, char *i_ptr, ssize_t i_step, char* o_ptr)
+void cumo_<%=type_name%>_max_index_int<%=i%>_kernel_launch(na_reduction_arg_t* arg)
 {
-    ssize_t d_step_idx = d_step / sizeof(dtype);
-    thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)d_ptr);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)d_ptr) + n * d_step_idx);
-    cumo_<%=type_name%>_max_index_int<%=i%>_kernel<<<1,1>>>(data_begin, data_end, i_ptr, i_step, o_ptr);
+    cumo_reduce<dtype, idx_t, cumo_<%=type_name%>_max_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_max_index_int<%=i%>_impl{});
 }
+
 #undef idx_t
 <% end %>
 
