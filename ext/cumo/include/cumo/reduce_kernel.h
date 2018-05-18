@@ -53,7 +53,8 @@ __global__ static void reduction_kernel(na_reduction_arg_t arg, ReductionImpl im
                 in_indexer.index[out_indexer.ndim + i_reduce_dim] = reduce_indexer.index[i_reduce_dim];
             }
             TypeIn* in_ptr = reinterpret_cast<TypeIn*>(cumo_na_iarray_at_dim(&in_iarray, &in_indexer));
-            impl.Reduce(impl.MapIn(*in_ptr, i_reduce), accum);
+            uint64_t i_in = in_ptr - reinterpret_cast<TypeIn*>(in_iarray.ptr);
+            impl.Reduce(impl.MapIn(*in_ptr, i_in), accum);
         }
 
         if (block_size >= 2) {
