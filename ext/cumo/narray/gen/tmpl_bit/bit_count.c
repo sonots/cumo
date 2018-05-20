@@ -35,17 +35,23 @@ static void
     }
 }
 
+static VALUE
+<%=c_func(-1)%>_cpu(int argc, VALUE *argv, VALUE self);
+
 /*
   Returns the number of bits.
   If argument is supplied, return Int-array counted along the axes.
   @overload <%=op_map%>(axis:nil, keepdims:false)
   @param [Integer,Array,Range] axis (keyword) axes to be counted.
   @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-  @return [Cumo::Int64]
+  @return [Cumo::UInt64]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
+    if (cumo_compatible_mode_enabled_p()) {
+        return <%=c_func(-1)%>_cpu(argc, argv, self);
+    }
     VALUE v, reduce;
     ndfunc_arg_in_t ain[3] = {{cT,0},{sym_reduce,0},{sym_init,0}};
     ndfunc_arg_out_t aout[1] = {{cumo_cUInt64,0}};
@@ -53,5 +59,5 @@ static VALUE
 
     reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     v = na_ndloop(&ndf, 3, self, reduce, INT2FIX(0));
-    return v; // rb_funcall(v,rb_intern("extract_cpu"),0);
+    return v;
 }
