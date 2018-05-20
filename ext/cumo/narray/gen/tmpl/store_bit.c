@@ -23,6 +23,7 @@ static void
     {
         BIT_DIGIT x;
         dtype y;
+        SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         if (idx2) {
             if (idx1) {
