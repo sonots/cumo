@@ -172,9 +172,9 @@ Init_cumo_cuda_memory_pool()
     rb_define_singleton_method(mMemoryPool, "free_bytes", RUBY_METHOD_FUNC(rb_memory_pool_free_bytes), 0);
     rb_define_singleton_method(mMemoryPool, "total_bytes", RUBY_METHOD_FUNC(rb_memory_pool_total_bytes), 0);
 
-    // default is false, yet
+    // default is true
     const char* env = std::getenv("CUMO_MEMORY_POOL");
-    memory_pool_enabled = (env != nullptr && std::string(env) != "OFF" && std::string(env) != "0" && std::string(env) != "NO");
+    memory_pool_enabled = env == nullptr || (std::string(env) != "OFF" && std::string(env) != "0" && std::string(env) != "NO");
 }
 
 #if defined(__cplusplus)

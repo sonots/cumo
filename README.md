@@ -126,14 +126,16 @@ Cumo::CUDA::Runtime.cudaSetDevice(id)
 
 where `id` is an integer.
 
-### Enable GPU Memory Pool
+### Disable GPU Memory Pool
 
-Set `CUMO_MEMORY_POOL=ON` environment variable , or
+Set `CUMO_MEMORY_POOL=OFF` environment variable , or
 
 ```
 require 'cumo'
-Cumo::CUDA::MemoryPool.enable
+Cumo::CUDA::MemoryPool.disable
 ```
+
+if you found GPU memory pool implementation has a bug.
 
 ## Documentation
 
