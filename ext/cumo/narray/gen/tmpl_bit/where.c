@@ -72,7 +72,7 @@ static VALUE
     ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP, 1, 0, ain, 0 };
 
     size = RNARRAY_SIZE(self);
-    n_1 = NUM2SIZET(<%=find_tmpl("count_true").c_func%>(0, NULL, self));
+    n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, self));
     g = ALLOCA_N(where_opt_t,1);
     g->count = 0;
     if (size>4294967295ul) {
