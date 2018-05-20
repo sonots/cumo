@@ -1,4 +1,3 @@
-<% unless c_iter.include? 'robject' %>
 #undef int_t
 #define int_t unsigned long long int
 
@@ -75,5 +74,3 @@ void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(size_t p1, char *p2, BIT_
 }
 
 #undef int_t
-
-<% end %>

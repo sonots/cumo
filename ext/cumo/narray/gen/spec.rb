@@ -160,6 +160,11 @@ if is_bit
   def_alias "count","count_true"
   bit_count "count_false"
   def_alias "count_0","count_false"
+  bit_count_cpu "count_true_cpu"
+  def_alias "count_1_cpu","count_true_cpu"
+  def_alias "count_cpu","count_true_cpu"
+  bit_count_cpu "count_false_cpu"
+  def_alias "count_0_cpu","count_false_cpu"
   bit_reduce "all?", 1
   bit_reduce "any?", 0
   def_method "none?", "none_p"

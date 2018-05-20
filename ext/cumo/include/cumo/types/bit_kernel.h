@@ -27,6 +27,8 @@ typedef BIT_DIGIT rtype;
 #define m_xor(x,y) ((x)^(y))
 #define m_eq(x,y)  (~((x)^(y)))
 #define m_count_true(x)  ((x)!=0)
+#define m_count_true_cpu(x)  m_count_true(x)
 #define m_count_false(x) ((x)==0)
+#define m_count_false_cpu(x) m_count_false(x)
 
 #endif // CUMO_BIT_KERNEL_H
