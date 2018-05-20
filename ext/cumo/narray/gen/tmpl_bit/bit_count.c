@@ -76,6 +76,7 @@ static void
     }
     <% else %>
     {
+        cumo_debug_breakpoint();
         if (s2==0) {
             if (idx1) {
                 <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,p2,a1,idx1,i);
