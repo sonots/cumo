@@ -43,6 +43,7 @@ static void
     dtype *c;
     int    ldc;
     args_t *g;
+    static cublasHandle_t handle = 0;
 
     a = (dtype*)NDL_PTR(lp,0);
     b = (dtype*)NDL_PTR(lp,1);
@@ -65,11 +66,14 @@ static void
     // c^T = b^T * a^T
     //
     // cublasSgemm(handle,transb,transa,n,m,k,&alpha,b,n,a,k,&beta,c,n);
-   
-    cublasHandle_t handle;
-    cublasCreate(&handle);
+
+    // TODO(sonots): Create another handle for another cuda device or cpu thread
+    if (!handle) {
+        cublasCreate(&handle);
+    }
     cublas<%=func_prefix%>gemm(handle, g->transb, g->transa, g->n, g->m, g->k, (<%=cutype%>*)(&g->alpha), (<%=cutype%>*)b, ldb, (<%=cutype%>*)a, lda, (<%=cutype%>*)(&g->beta), (<%=cutype%>*)c, ldc);
-    cublasDestroy(handle);
+    // TODO(sonots): Destroy correctly
+    //cublasDestroy(handle);
 }
 
 /*
