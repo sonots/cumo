@@ -51,13 +51,14 @@ static VALUE
 {
     if (cumo_compatible_mode_enabled_p()) {
         return <%=c_func(-1)%>_cpu(argc, argv, self);
-    }
-    VALUE v, reduce;
-    ndfunc_arg_in_t ain[3] = {{cT,0},{sym_reduce,0},{sym_init,0}};
-    ndfunc_arg_out_t aout[1] = {{cumo_cUInt64,0}};
-    ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 3, 1, ain, aout };
+    } else {
+        VALUE v, reduce;
+        ndfunc_arg_in_t ain[3] = {{cT,0},{sym_reduce,0},{sym_init,0}};
+        ndfunc_arg_out_t aout[1] = {{cumo_cUInt64,0}};
+        ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 3, 1, ain, aout };
 
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
-    v = na_ndloop(&ndf, 3, self, reduce, INT2FIX(0));
-    return v;
+        reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+        v = na_ndloop(&ndf, 3, self, reduce, INT2FIX(0));
+        return v;
+    }
 }
