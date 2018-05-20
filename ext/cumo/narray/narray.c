@@ -30,6 +30,7 @@ static ID id_bracket;
 static ID id_shift_left;
 static ID id_eq;
 static ID id_count_false;
+static ID id_count_false_cpu;
 static ID id_axis;
 static ID id_nan;
 static ID id_keepdims;
@@ -1789,7 +1790,7 @@ na_equal(VALUE self, volatile VALUE other)
         }
     }
     vbool = rb_funcall(self, id_eq, 1, other);
-    return (rb_funcall(vbool, id_count_false, 0)==INT2FIX(0)) ? Qtrue : Qfalse;
+    return (rb_funcall(vbool, id_count_false_cpu, 0)==INT2FIX(0)) ? Qtrue : Qfalse;
 }
 
 /*
@@ -1921,21 +1922,22 @@ Init_cumo_narray()
     //id_element_bit_size = rb_intern(ELEMENT_BIT_SIZE);
     id_element_byte_size = rb_intern(ELEMENT_BYTE_SIZE);
 
-    id_fill        = rb_intern("fill");
-    id_seq         = rb_intern("seq");
-    id_logseq      = rb_intern("logseq");
-    id_eye         = rb_intern("eye");
-    id_UPCAST      = rb_intern("UPCAST");
-    id_cast        = rb_intern("cast");
-    id_dup         = rb_intern("dup");
-    id_to_host     = rb_intern("to_host");
-    id_bracket     = rb_intern("[]");
-    id_shift_left  = rb_intern("<<");
-    id_eq          = rb_intern("eq");
-    id_count_false = rb_intern("count_false");
-    id_axis        = rb_intern("axis");
-    id_nan         = rb_intern("nan");
-    id_keepdims    = rb_intern("keepdims");
+    id_fill            = rb_intern("fill");
+    id_seq             = rb_intern("seq");
+    id_logseq          = rb_intern("logseq");
+    id_eye             = rb_intern("eye");
+    id_UPCAST          = rb_intern("UPCAST");
+    id_cast            = rb_intern("cast");
+    id_dup             = rb_intern("dup");
+    id_to_host         = rb_intern("to_host");
+    id_bracket         = rb_intern("[]");
+    id_shift_left      = rb_intern("<<");
+    id_eq              = rb_intern("eq");
+    id_count_false     = rb_intern("count_false");
+    id_count_false_cpu = rb_intern("count_false_cpu");
+    id_axis            = rb_intern("axis");
+    id_nan             = rb_intern("nan");
+    id_keepdims        = rb_intern("keepdims");
 
     sym_reduce   = ID2SYM(rb_intern("reduce"));
     sym_option   = ID2SYM(rb_intern("option"));

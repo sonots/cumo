@@ -99,7 +99,7 @@ static VALUE
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 2, 0, ain, 0};
 
     // TODO(sonots): bit_count_true synchronizes with CPU. Avoid.
-    n_1 = NUM2SIZET(<%=find_tmpl("count_true").c_func%>(0, NULL, mask));
+    n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, mask));
     idx_1 = nary_new(cIndex, 1, &n_1);
     g.count = 0;
     g.elmsz = SIZEOF_VOIDP;

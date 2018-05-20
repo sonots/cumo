@@ -92,6 +92,8 @@ Following methods behave incompatibly with Numo.
 
 * `extract`
 * `[]`
+* `count_true`
+* `count_false`
 
 Numo returns a Ruby numeric object for 0-dimensional NArray, but Cumo returns the 0-dimensional NArray instead of a Ruby numeric object.
 This is to avoid synchnoziation between CPU and GPU for performance.
@@ -100,6 +102,8 @@ You can use following methods which behaves as Numo NArray's methods:
 
 * `extract_cpu`
 * `aref_cpu(*idx)`
+* `count_true_cpu`
+* `count_false_cpu`
 
 Or, set `CUMO_COMPATIBLE_MODE=ON` environment variable, or
 
