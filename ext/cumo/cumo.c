@@ -104,7 +104,7 @@ Init_cumo()
     rb_define_singleton_method(mCumo, "compatible_mode_enabled?", RUBY_METHOD_FUNC(rb_compatible_mode_enabled_p), 0);
 
     // default is false
-    char* env = getenv("CUMO_NARRAY_COMPATIBLE_MODE");
+    char* env = getenv("CUMO_COMPATIBLE_MODE");
     cumo_compatible_mode_enabled = (env != NULL && strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
 
     Init_cumo_narray();
