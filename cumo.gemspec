@@ -17,10 +17,10 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Naotoshi Seo"]
   spec.email         = ["sonots@gmail.com"]
 
-  spec.summary       = %q{Cumo is CUDA aware numerical library whose interface is highly compatible with Ruby Numo.}
+  spec.summary       = %q{Cumo is CUDA aware numerical library whose interface is highly compatible with Ruby Numo}
   spec.description   = %q{Cumo is CUDA aware numerical library whose interface is highly compatible with Ruby Numo.}
   spec.homepage      = "https://github.com/sonots/cumo"
-  spec.license       = "BSD 3-clause"
+  spec.license       = "BSD-3-Clause"
 
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
     f.match(%r{^(test|spec|features)/})
