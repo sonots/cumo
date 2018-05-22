@@ -11,6 +11,8 @@ open("ext/cumo/include/cumo.h") do |f|
   end
 end
 
+numo_narray_version = File.read(File.join(__dir__, "numo-narray-version")).strip
+
 Gem::Specification.new do |spec|
   spec.name          = "cumo"
   spec.version       = CUMO_VERSION
@@ -31,7 +33,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
   spec.extensions    = ["ext/cumo/extconf.rb"]
 
-  spec.add_runtime_dependency "numo-narray", ">= 0.9.1.1"
+  spec.add_runtime_dependency "numo-narray", numo_narray_version
 
   spec.add_development_dependency "bundler", "~> 1.15"
   spec.add_development_dependency "rake", "~> 10.0"
