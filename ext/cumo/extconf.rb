@@ -7,20 +7,24 @@ if RUBY_VERSION < "2.0.0"
   exit(1)
 end
 
-def find_narray_h
-  $LOAD_PATH.each do |x|
-    if File.exist? File.join(x,'numo/numo/narray.h')
-      $INCFLAGS = "-I#{x}/numo " + $INCFLAGS
-      break
-    end
-  end
-end
+def have_numo_narray!
+  version_path = File.join(__dir__, "..", "..", "numo-narray-version")
+  version = File.read(version_path).strip
+  gem_spec = Gem::Specification.find_by_name("numo-narray", version)
 
-def find_libnarray_a
-  $LOAD_PATH.each do |x|
-    if File.exist? File.join(x,'numo/libnarray.a')
-      $LDFLAGS = "-L#{x}/numo " + $LDFLAGS
-      break
+  $INCFLAGS += " -I#{gem_spec.gem_dir}/ext/numo/narray"
+  if !have_header("numo/narray.h")
+    puts "
+    Header numo/narray.h was not found. Give pathname as follows:
+    % ruby extconf.rb --with-narray-include=narray_h_dir"
+    exit(1)
+  end
+
+  if RUBY_PLATFORM =~ /cygwin|mingw/
+    $LDFLAGS += " -L#{gem_spec.gem_dir}/ext/numo"
+    unless have_library("narray","nary_new")
+      puts "libnarray.a not found"
+      exit(1)
     end
   end
 end
@@ -110,21 +114,7 @@ $objs = srcs.map {|src| "#{src}.o" }
 
 dir_config("narray")
 
-find_narray_h
-if !have_header("numo/narray.h")
-  puts "
-  Header numo/narray.h was not found. Give pathname as follows:
-  % ruby extconf.rb --with-narray-include=narray_h_dir"
-  exit(1)
-end
-
-if RUBY_PLATFORM =~ /cygwin|mingw/
-  find_libnarray_a
-  unless have_library("narray","nary_new")
-    puts "libnarray.a not found"
-    exit(1)
-  end
-end
+have_numo_narray!
 
 if have_header("dlfcn.h")
   exit(1) unless have_library("dl")

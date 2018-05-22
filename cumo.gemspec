@@ -2,18 +2,12 @@
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
-open("ext/cumo/include/cumo.h") do |f|
-  f.each_line do |l|
-    if /CUMO_VERSION "([\d.]+)"/ =~ l
-      CUMO_VERSION = $1
-      break
-    end
-  end
-end
+cumo_version = File.read(File.join(__dir__, "ext/cumo/include/cumo.h")).match(/CUMO_VERSION "([\d.]+)"/)[1]
+numo_narray_version = File.read(File.join(__dir__, "numo-narray-version")).strip
 
 Gem::Specification.new do |spec|
   spec.name          = "cumo"
-  spec.version       = CUMO_VERSION
+  spec.version       = cumo_version
   spec.authors       = ["Naotoshi Seo"]
   spec.email         = ["sonots@gmail.com"]
 
@@ -31,7 +25,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
   spec.extensions    = ["ext/cumo/extconf.rb"]
 
-  spec.add_runtime_dependency "numo-narray", ">= 0.9.1.1"
+  spec.add_runtime_dependency "numo-narray", numo_narray_version
 
   spec.add_development_dependency "bundler", "~> 1.15"
   spec.add_development_dependency "rake", "~> 10.0"
