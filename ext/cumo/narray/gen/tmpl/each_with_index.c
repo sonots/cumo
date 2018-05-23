@@ -43,6 +43,7 @@ static void
         }
     } else {
         for (; i--;) {
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
             GET_DATA_STRIDE(p1,s1,dtype,x);
             yield_each_with_index(x,c,a,nd,md);
             c[nd]++;
