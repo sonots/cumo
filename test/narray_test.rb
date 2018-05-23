@@ -161,6 +161,9 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.sum == 29 }
         assert { a.sum(0) == [6, 9, 14] }
         assert { a.sum(1) == [6, 23] }
+        assert { a.prod == 2310 }
+        assert { a.prod(0) == [5, 14, 33] }
+        assert { a.prod(1) == [6, 385] }
         if float_types.include?(dtype)
           assert { a.mean == 29.0/6 }
           assert { a.mean(0) == [3, 4.5, 7] }
