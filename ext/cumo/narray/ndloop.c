@@ -1419,10 +1419,10 @@ ndloop_run(VALUE vlp)
 
         // setup lp->user for INDEXER_LOOP
         ndfunc_set_user_indexer_loop(nf, lp, results);
-        //if (na_debug_flag) {
-        //    printf("-- ndfunc_set_user_indexer_loop --\n");
-        //    print_ndloop(lp);
-        //}
+        if (na_debug_flag) {
+            printf("-- ndfunc_set_user_indexer_loop --\n");
+            print_ndloop(lp);
+        }
 
         (*(nf->func))(&(lp->user));
     } else {
