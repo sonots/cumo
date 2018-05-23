@@ -25,19 +25,19 @@ module Cumo::CUDA
     end
 
     def test_n_free_blocks
-      assert { MemoryPool.n_free_blocks == 0 }
+      assert_nothing_raised { MemoryPool.n_free_blocks }
     end
 
     def test_used_bytes
-      assert { MemoryPool.used_bytes == 0 }
+      assert_nothing_raised { MemoryPool.used_bytes }
     end
 
     def test_free_bytes
-      assert { MemoryPool.free_bytes == 0 }
+      assert_nothing_raised { MemoryPool.free_bytes }
     end
 
     def test_total_bytes
-      assert { MemoryPool.total_bytes == 0 }
+      assert_nothing_raised { MemoryPool.total_bytes }
     end
   end
 end
