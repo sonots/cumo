@@ -573,6 +573,8 @@ ndloop_set_stepidx(na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rwflag)
                 }
             } else if (n==1) {
                 if (SDX_IS_INDEX(sdx)) {
+                    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_set_stepidx", "any");
+                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     LITER(lp,0,j).pos += SDX_GET_INDEX(sdx)[0];
                 }
             }
