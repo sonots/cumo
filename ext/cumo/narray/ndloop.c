@@ -974,9 +974,6 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
 
 
 // Initialize lp->user for indexer loop.
-//
-// In indexer loop, the  loop_narray is not used, user function processes
-// all dimensions with Indexer for performance.
 static void
 ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
 {
@@ -1015,7 +1012,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
 }
 
 
-// Judge whether a buffer copy is required or not, and malloc if it is required.
+// Judge whether a (contiguous) buffer copy is required or not, and malloc if it is required.
 //
 // CASES TO REQUIRE A BUFFER COPY:
 // 1) ndloop has `idx` but does not support NDF_INDEX_LOOP.
@@ -1392,10 +1389,10 @@ ndloop_run(VALUE vlp)
     //    print_ndloop(lp);
     //}
 
-    // contract loop (compress dimessions)
+    // contract loop (compact dimessions)
     if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE)) {
-        // TODO(sonots): Support contract_loop in reduction indexer loop
         // do nothing
+        // TODO(sonots): support compacting dimensions in reduction indexer loop if it allows speed up.
     } else {
         if (lp->loop_func == loop_narray) {
             ndfunc_contract_loop(lp);
