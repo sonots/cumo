@@ -369,5 +369,24 @@ class NArrayTest < Test::Unit::TestCase
       assert { dtype.eye(3, 1) == [[1],[0],[0]] }
       assert { dtype.eye(1, 3) == [[1,0,0]] }
     end
+
+    test "#{dtype},binary" do
+      x = dtype[[1,2,3],[5,7,11]]
+      assert { x + x == [[2,4,6],[10,14,22]] }
+      assert { x + 1 == [[2,3,4],[6,8,12]] }
+      assert { x + dtype[1] == [[2,3,4],[6,8,12]] }
+      assert { x + dtype[[1],[2]] == [[2,3,4],[7,9,13]] }
+      assert { x + dtype[1,2,3] == [[2,4,6],[6,9,14]] }
+      assert { x + dtype[[1,2],[3,4],[5,6]].transpose == [[2,5,8],[7,11,17]] }
+      assert { x[0,1..2] + x[1,0..1] == [7,10] }
+      unless [Cumo::DComplex, Cumo::SComplex].include?(dtype)
+        y = x[x > 6] # [7,11]
+        assert { y + y == [14,22] }
+        assert { y + 1 == [8,12] }
+        assert { y + dtype[1] == [8,12] }
+        assert { y + dtype[[1,1],[2,2]] == [[8,12],[9,13]] }
+        assert { y.reshape(2,1) + dtype[[1,1],[2,2]] == [[8,8],[13,13]] }
+      end
+    end
   end
 end

@@ -1003,6 +1003,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 
         lp->user.reduce_dim = lp->reduce_dim;
         lp->user.reduce = lp->reduce;
+        lp->ndim = 0;
     } else { // element-wise
         for (j=0; j<lp->narg; j++) {
             LARG(lp,j).ndim = lp->user.ndim;
@@ -1016,6 +1017,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 
         lp->user.reduce_dim = 0;
         lp->user.reduce = 0;
+        lp->ndim = 0;
     }
 }
 
@@ -1199,6 +1201,8 @@ ndloop_copy_to_buffer(na_buffer_copy_t *lp)
         // i-th dimension
         for (; i<nd; i++) {
             if (LITER_SRC(lp,i).idx) {
+                SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_to_buffer", "any");
+                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).idx[c[i]];
             } else {
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).step*c[i];
@@ -1346,41 +1350,6 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
     return results;
 }
 
-// TODO(sonots): Support idx by Indexer.
-/*static bool
-_loop_is_using_idx(na_md_loop_t *lp)
-{
-    size_t c;
-    int  i, j;
-    int  nd = lp->ndim;
-
-    if (nd<0) {
-        rb_bug("bug? lp->ndim = %d\n", lp->ndim);
-    }
-
-    // loop body
-    for (i=0,c=0;;) {
-        // i-th dimension
-        for (; i<nd; i++) {
-            // j-th argument
-            for (j=0; j<lp->narg; j++) {
-                if (LITER(lp,i,j).idx) {
-                    return true;
-                }
-            }
-        }
-        for (;;) {
-            if (i<=0) goto loop_end;
-            i--;
-            if (++c < lp->n[i]) break;
-            c = 0;
-        }
-    }
- loop_end:
-    ;
-    return false;
-}*/
-
 static void
 loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
 
@@ -1405,61 +1374,43 @@ ndloop_run(VALUE vlp)
     //    print_ndloop(lp);
     //}
 
-    // CUMO: Do not use loop_narray, but directly process all dimensions with Indexer in user function for performance.
-    if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
-        // TODO(sonots): Support contract_loop (dimesion compressions) in reduction
-        // contract loop
-        if(!NDF_TEST(nf,NDF_FLAT_REDUCE) && lp->loop_func == loop_narray) {
-            ndfunc_contract_loop(lp);
-            //if (na_debug_flag) {
-            //    printf("-- ndfunc_contract_loop --\n");
-            //    print_ndloop(lp);
-            //}
+    // contract loop (compress dimessions)
+    if (lp->loop_func == loop_narray) {
+        ndfunc_contract_loop(lp);
+        if (na_debug_flag) {
+            printf("-- ndfunc_contract_loop --\n");
+            print_ndloop(lp);
         }
+    }
 
-        // setup lp->user for INDEXER_LOOP
+    // setup lp->user
+    if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
+        // NDF_INDEXER_LOOP is a Cumo customized loop which Numo does not have.
         ndfunc_set_user_indexer_loop(nf, lp, results);
         if (na_debug_flag) {
             printf("-- ndfunc_set_user_indexer_loop --\n");
             print_ndloop(lp);
         }
-
-        (*(nf->func))(&(lp->user));
     } else {
-        // contract loop
-        if (lp->loop_func == loop_narray) {
-            ndfunc_contract_loop(lp);
-            //if (na_debug_flag) {
-            //    printf("-- ndfunc_contract_loop --\n");
-            //    print_ndloop(lp);
-            //}
-        }
-
-        // setup objects in which results are stored
         ndfunc_set_user_loop(nf, lp);
-        //if (na_debug_flag) {
-        //    printf("-- ndfunc_set_user_loop --\n");
-        //    print_ndloop(lp);
-        //}
-
-        // setup buffering during loop
-        if (lp->loop_func == loop_narray) {
-            loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
-            ndfunc_set_bufcp(lp, loop_spec);
-        }
         if (na_debug_flag) {
-            printf("-- ndfunc_set_bufcp --\n");
+            printf("-- ndfunc_set_user_loop --\n");
             print_ndloop(lp);
         }
-
-        // loop
-        (*(lp->loop_func))(nf, lp);
     }
 
-    //if (na_debug_flag) {
-    //    printf("-- after loop --\n");
-    //    print_ndloop(lp);
-    //}
+    // setup buffering during loop
+    if (lp->loop_func == loop_narray) {
+        loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
+        ndfunc_set_bufcp(lp, loop_spec);
+    }
+    if (na_debug_flag) {
+        printf("-- ndfunc_set_bufcp --\n");
+        print_ndloop(lp);
+    }
+
+    // loop
+    (*(lp->loop_func))(nf, lp);
 
     if (RTEST(lp->user.err_type)) {
         rb_raise(lp->user.err_type, "error in NArray operation");
@@ -1486,7 +1437,7 @@ loop_narray(ndfunc_t *nf, na_md_loop_t *lp)
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
     }
 
-    if (nd==0) {
+    if (nd==0 || NDF_TEST(nf,NDF_INDEXER_LOOP)) {
         for (j=0; j<lp->nin; j++) {
             if (lp->xargs[j].bufcp) {
                 //printf("copy_to_buffer j=%d\n",j);
