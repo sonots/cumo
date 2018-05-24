@@ -1409,6 +1409,8 @@ nary_cast_to(VALUE obj, VALUE type)
 
 
 
+// reduce is dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
+// [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
 bool
 na_test_reduce(VALUE reduce, int dim)
 {
