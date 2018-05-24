@@ -383,8 +383,8 @@ class NArrayTest < Test::Unit::TestCase
       assert { y + y == [14,22] }
       assert { y + 1 == [8,12] }
       assert { y + dtype[1] == [8,12] }
-      assert { y + dtype[[1,1],[2,2]] == [[8,8],[12,12]] }
-      assert { y.reshape(2,1) + dtype[[1,1],[2,2]] == [[8,8],[12,12]] }
+      assert { y + dtype[[1,1],[2,2]] == [[8,12],[9,13]] }
+      assert { y.reshape(2,1) + dtype[[1,1],[2,2]] == [[8,8],[13,13]] }
     end
   end
 end

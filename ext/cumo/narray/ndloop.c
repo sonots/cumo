@@ -1003,6 +1003,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 
         lp->user.reduce_dim = lp->reduce_dim;
         lp->user.reduce = lp->reduce;
+        lp->ndim = 0;
     } else { // element-wise
         for (j=0; j<lp->narg; j++) {
             LARG(lp,j).ndim = lp->user.ndim;
@@ -1016,6 +1017,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 
         lp->user.reduce_dim = 0;
         lp->user.reduce = 0;
+        lp->ndim = 0;
     }
 }
 
@@ -1394,69 +1396,48 @@ ndloop_run(VALUE vlp)
     //    print_ndloop(lp);
     //}
 
-    // CUMO: Do not use loop_narray, but directly process all dimensions with
-    // indexer in user function for performance.
-    //if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
-    if (false) {
-        // TODO(sonots): Support contract_loop (dimesion compressions) in reduction
-        // contract loop
-        if(!NDF_TEST(nf,NDF_FLAT_REDUCE) && lp->loop_func == loop_narray) {
+    // contract loop (compress dimessions)
+    if (lp->loop_func == loop_narray) {
+        // TODO(sonots): Support contract loop in reduction with indexer
+        //if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE)) {
+        //    // do nothing
+        //} else {
             ndfunc_contract_loop(lp);
-            //if (na_debug_flag) {
-            //    printf("-- ndfunc_contract_loop --\n");
-            //    print_ndloop(lp);
-            //}
-        }
-
-        // setup lp->user for INDEXER_LOOP
-        ndfunc_set_user_indexer_loop(nf, lp, results);
-        //if (na_debug_flag) {
-        //    printf("-- ndfunc_set_user_indexer_loop --\n");
-        //    print_ndloop(lp);
+            if (na_debug_flag) {
+                printf("-- ndfunc_contract_loop --\n");
+                print_ndloop(lp);
+            }
         //}
-
-        // setup buffering during loop
-        if (lp->loop_func == loop_narray) {
-            loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
-            ndfunc_set_bufcp(lp, loop_spec);
-        }
-        if (na_debug_flag) {
-            printf("-- ndfunc_set_bufcp --\n");
-            print_ndloop(lp);
-        }
-
-        // loop
-        (*(lp->loop_func))(nf, lp);
-    } else {
-        // contract loop
-        if (lp->loop_func == loop_narray) {
-            ndfunc_contract_loop(lp);
-            //if (na_debug_flag) {
-            //    printf("-- ndfunc_contract_loop --\n");
-            //    print_ndloop(lp);
-            //}
-        }
-
-        // setup objects in which results are stored
-        ndfunc_set_user_loop(nf, lp);
-        //if (na_debug_flag) {
-        //    printf("-- ndfunc_set_user_loop --\n");
-        //    print_ndloop(lp);
-        //}
-
-        // setup buffering during loop
-        if (lp->loop_func == loop_narray) {
-            loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
-            ndfunc_set_bufcp(lp, loop_spec);
-        }
-        if (na_debug_flag) {
-            printf("-- ndfunc_set_bufcp --\n");
-            print_ndloop(lp);
-        }
-
-        // loop
-        (*(lp->loop_func))(nf, lp);
     }
+
+    // setup lp->user
+    if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
+        // NDF_INDEXER_LOOP is a Cumo customized loop which Numo does not have.
+        ndfunc_set_user_indexer_loop(nf, lp, results);
+        if (na_debug_flag) {
+            printf("-- ndfunc_set_user_indexer_loop --\n");
+            print_ndloop(lp);
+        }
+    } else {
+        ndfunc_set_user_loop(nf, lp);
+        if (na_debug_flag) {
+            printf("-- ndfunc_set_user_loop --\n");
+            print_ndloop(lp);
+        }
+    }
+
+    // setup buffering during loop
+    if (lp->loop_func == loop_narray) {
+        loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
+        ndfunc_set_bufcp(lp, loop_spec);
+    }
+    if (na_debug_flag) {
+        printf("-- ndfunc_set_bufcp --\n");
+        print_ndloop(lp);
+    }
+
+    // loop
+    (*(lp->loop_func))(nf, lp);
 
     //if (na_debug_flag) {
     //    printf("-- after loop --\n");
