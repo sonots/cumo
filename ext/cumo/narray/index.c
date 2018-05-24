@@ -479,6 +479,8 @@ na_index_aref_naview(narray_view_t *na1, narray_view_t *na2,
             SDX_SET_INDEX(na2->stridx[j], index);
             q[i].idx = NULL;
 
+            SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
             for (k=0; k<size; k++) {
                 index[k] = SDX_GET_INDEX(sdx1)[index[k]];
             }
@@ -499,6 +501,8 @@ na_index_aref_naview(narray_view_t *na1, narray_view_t *na2,
                     rb_raise(rb_eStandardError,"bug: negative offset");
                 }
                 na2->offset -= last * stride1;
+                SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
+                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                 for (k=0; k<size; k++) {
                     index[k] = (last - index[k]) * stride1;
                 }

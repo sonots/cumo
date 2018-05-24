@@ -1,6 +1,7 @@
 #include <ruby.h>
 #include "cumo/narray.h"
 #include "cumo/template.h"
+#include "cumo/cuda/runtime.h"
 
 static VALUE sym_mulsum;
 static ID id_mulsum;
@@ -692,6 +693,9 @@ na_diagonal(int argc, VALUE *argv, VALUE self)
     // new stride
     na_setup_shape((narray_t*)na2, nd-1, shape);
     na2->stridx = ALLOC_N(stridx_t, nd-1);
+
+    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_diagonal", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     switch(na->type) {
     case NARRAY_DATA_T:
