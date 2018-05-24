@@ -978,7 +978,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
 // In indexer loop, the  loop_narray is not used, user function processes
 // all dimensions with Indexer for performance.
 static void
-ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
+ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
 {
     int j;
 
@@ -986,15 +986,10 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
     lp->ndim = 0;
 
     if (NDF_TEST(nf,NDF_FLAT_REDUCE)) {
-        narray_t *na;
-
         // in
         LARG(lp,0).ndim = lp->user.ndim;
         LARG(lp,0).shape = &(lp->n[lp->ndim]);
-        // out: reuse parameters of results created at ndloop_set_output_narray
-        GetNArray(RARRAY_AREF(results, 0), na);
-        LARG(lp,1).ndim = na->ndim;
-        LARG(lp,1).shape = na->shape;
+        // out is contructed at na_make_reduction_arg from in and reduce params
 
         lp->user.n = &(lp->n[lp->ndim]);
         for (j=0; j<lp->narg; j++) {
@@ -1020,10 +1015,13 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 }
 
 
-// Set whether buffer copy is required or not
-// Ndloop not supporting index or stride (step) loop requires buffer copy to make contiguous memory.
+// Judge whether a buffer copy is required or not, and malloc if it is required.
+//
+// CASES TO REQUIRE A BUFFER COPY:
+// 1) ndloop has `idx` but does not support NDF_INDEX_LOOP.
+// 2) ndloop has non-contiguous arrays but does not support NDF_STRIDE_LOOP.
 static void
-ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
+ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
 {
     unsigned int f;
     int i, j;
@@ -1033,6 +1031,7 @@ ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
     size_t *buf_shape;
     na_loop_iter_t *buf_iter=NULL, *src_iter;
 
+    unsigned int loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
     //if (loop_spec==0) return;
 
     n_total = lp->user.n[0];
@@ -1089,7 +1088,8 @@ ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
 
 
         // over loop_spec or reduce_loop is not contiguous
-        if (f & loop_spec || (lp->reduce_dim > 1 && ndim > 0)) {
+        // sonots: NDF_INDEXER_LOOP supports non-contiguous arrays
+        if (f & loop_spec || (lp->reduce_dim > 1 && ndim > 0 && !NDF_TEST(nf, NDF_INDEXER_LOOP))) {
             //printf("(buf,nd=%d)",nd);
             buf_iter = ALLOC_N(na_loop_iter_t,nd+3);
             buf_shape = ALLOC_N(size_t,nd);
@@ -1149,7 +1149,8 @@ ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
 #endif
 
     // flatten reduce dimensions
-    if (lp->reduce_dim > 1) {
+    // TODO(sonots): Support flatten with indexer loop?
+    if (lp->reduce_dim > 1 && !NDF_TEST(nf, NDF_INDEXER_LOOP)) {
 #if 1
         for (j=0; j<lp->narg; j++) {
             ndim = lp->user.ndim;
@@ -1354,7 +1355,6 @@ loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
 static VALUE
 ndloop_run(VALUE vlp)
 {
-    unsigned int loop_spec;
     volatile VALUE args, orig_args, results;
     na_md_loop_t *lp = (na_md_loop_t*)(vlp);
     ndfunc_t *nf;
@@ -1373,18 +1373,21 @@ ndloop_run(VALUE vlp)
     //}
 
     // contract loop (compress dimessions)
-    if (lp->loop_func == loop_narray) {
-        ndfunc_contract_loop(lp);
-        if (na_debug_flag) {
-            printf("-- ndfunc_contract_loop --\n");
-            print_ndloop(lp);
+    if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE)) {
+        // TODO(sonots): Support contract_loop in reduction indexer loop
+    } else {
+        if (lp->loop_func == loop_narray) {
+            ndfunc_contract_loop(lp);
+            if (na_debug_flag) {
+                printf("-- ndfunc_contract_loop --\n");
+                print_ndloop(lp);
+            }
         }
     }
 
     // setup lp->user
     if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
-        // NDF_INDEXER_LOOP is a Cumo customized loop which Numo does not have.
-        ndfunc_set_user_indexer_loop(nf, lp, results);
+        ndfunc_set_user_indexer_loop(nf, lp);
         if (na_debug_flag) {
             printf("-- ndfunc_set_user_indexer_loop --\n");
             print_ndloop(lp);
@@ -1399,8 +1402,7 @@ ndloop_run(VALUE vlp)
 
     // setup buffering during loop
     if (lp->loop_func == loop_narray) {
-        loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
-        ndfunc_set_bufcp(lp, loop_spec);
+        ndfunc_set_bufcp(nf, lp);
     }
     if (na_debug_flag) {
         printf("-- ndfunc_set_bufcp --\n");

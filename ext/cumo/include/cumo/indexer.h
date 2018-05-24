@@ -5,9 +5,6 @@
 #define na_indexer_t cumo_na_indexer_t
 #define na_iarray_t cumo_na_iarray_t
 #define na_reduction_arg_t cumo_na_reduction_arg_t
-#define na_make_indexer cumo_na_make_indexer
-#define na_make_iarray cumo_na_make_iarray
-#define na_make_reduction_arg cumo_na_make_reduction_arg
 
 #ifndef __CUDACC__
 #include "cumo/narray.h"
@@ -75,7 +72,8 @@ print_na_iarray_t(na_iarray_t* iarray, unsigned char ndim)
 }
 
 static void
-print_na_reduction_arg_t(na_reduction_arg_t* arg) {
+print_na_reduction_arg_t(na_reduction_arg_t* arg)
+{
     printf("na_reduction_arg_t = 0x%"SZF"x {\n", (size_t)arg);
     printf("--in--\n");
     print_na_iarray_t(&arg->in, arg->in_indexer.ndim);
@@ -105,14 +103,20 @@ na_make_indexer(na_loop_args_t* arg)
 }
 
 static na_iarray_t
-na_make_iarray(na_loop_args_t* arg)
+na_make_iarray_given_ndim(na_loop_args_t* arg, int ndim)
 {
     na_iarray_t iarray;
     iarray.ptr = arg->ptr + arg->iter[0].pos;
-    for (int idim = arg->ndim; --idim >= 0;) {
+    for (int idim = ndim; --idim >= 0;) {
         iarray.step[idim] = arg->iter[idim].step;
     }
     return iarray;
+}
+
+static na_iarray_t
+na_make_iarray(na_loop_args_t* arg)
+{
+    return na_make_iarray_given_ndim(arg, arg->ndim);
 }
 
 static na_reduction_arg_t
@@ -120,27 +124,34 @@ na_make_reduction_arg(na_loop_t* lp_user)
 {
     na_reduction_arg_t arg;
     int i;
+    int in_ndim = lp_user->args[0].ndim;
 
     arg.in = na_make_iarray(&lp_user->args[0]);
-    arg.out = na_make_iarray(&lp_user->args[1]);
     arg.in_indexer = na_make_indexer(&lp_user->args[0]);
-    arg.out_indexer = na_make_indexer(&lp_user->args[1]);
 
     arg.reduce_indexer.ndim = 0;
     arg.reduce_indexer.total_size = 1;
-    for (i = 0; i < lp_user->ndim; ++i) {
+    arg.out_indexer.ndim = 0;
+    arg.out_indexer.total_size = 1;
+    for (i = 0; i < in_ndim; ++i) {
         if (na_test_reduce(lp_user->reduce, i)) {
             arg.reduce_indexer.shape[arg.reduce_indexer.ndim] = arg.in_indexer.shape[i];
             arg.reduce_indexer.total_size *= arg.in_indexer.shape[i];
             ++arg.reduce_indexer.ndim;
+        } else {
+            arg.out_indexer.shape[arg.out_indexer.ndim] = arg.in_indexer.shape[i];
+            arg.out_indexer.total_size *= arg.in_indexer.shape[i];
+            ++arg.out_indexer.ndim;
         }
     }
+    arg.out = na_make_iarray_given_ndim(&lp_user->args[1], arg.out_indexer.ndim);
 
     if (na_debug_flag) {
         print_na_reduction_arg_t(&arg);
     }
 
     assert(arg.reduce_indexer.ndim == lp_user->reduce_dim);
+    assert(arg.in_indexer.ndim == arg.reduce_indexer.ndim + arg.out_indexer.ndim);
 
     return arg;
 }
