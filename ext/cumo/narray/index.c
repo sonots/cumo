@@ -2,6 +2,7 @@
 #include <ruby.h>
 #include "cumo/narray.h"
 #include "cumo/cuda/runtime.h"
+#include "cumo/cuda/memory_pool.h"
 #include "cumo/template.h"
 
 #if   SIZEOF_VOIDP == 8
@@ -51,7 +52,7 @@ print_index_arg(na_index_arg_t *q, int n)
         printf("  q[%d].n=%"SZF"d\n",i,q[i].n);
         printf("  q[%d].beg=%"SZF"d\n",i,q[i].beg);
         printf("  q[%d].step=%"SZF"d\n",i,q[i].step);
-        printf("  q[%d].idx=0x%"SZF"x\n",i,(size_t)q[i].idx);
+        printf("  q[%d].idx=0x%"SZF"x (cumo:%d)\n",i,(size_t)q[i].idx, cumo_cuda_runtime_is_device_memory(q[i].idx));
         printf("  q[%d].reduce=0x%x\n",i,q[i].reduce);
         printf("  q[%d].orig_dim=%d\n",i,q[i].orig_dim);
     }
@@ -120,15 +121,35 @@ na_range_check(ssize_t pos, ssize_t size, int dim)
     return idx;
 }
 
+static void CUDART_CB
+na_parse_arra_callback(cudaStream_t stream, cudaError_t status, void *data)
+{
+    xfree(data);
+}
+
 static void
 na_parse_array(VALUE ary, int orig_dim, ssize_t size, na_index_arg_t *q)
 {
     int k;
     int n = RARRAY_LEN(ary);
-    q->idx = ALLOC_N(size_t, n);
+    //q->idx = ALLOC_N(size_t, n);
+    //for (k=0; k<n; k++) {
+    //    q->idx[k] = na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
+    //}
+    // make a contiguous data on host => copy to device => release host memory after copy finished on callback
+    q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+    size_t* host_idx = ALLOC_N(size_t, n);
     for (k=0; k<n; k++) {
-        q->idx[k] = na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
+        host_idx[k] = na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
     }
+    cudaError_t status = cudaMemcpyAsync(q->idx,host_idx,sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
+    if (status == 0) {
+        cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,na_parse_arra_callback,host_idx,0));
+    } else {
+        xfree(host_idx);
+    }
+    cumo_cuda_runtime_check_status(status);
+
     q->n    = n;
     q->beg  = 0;
     q->step = 1;
@@ -142,7 +163,7 @@ na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, na_index_arg_t *q)
     VALUE idx;
     narray_t *na;
     narray_data_t *nidx;
-    size_t k, n;
+    size_t n;
     ssize_t *nidxp;
 
     GetNArray(a,na);
@@ -154,16 +175,13 @@ na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, na_index_arg_t *q)
     na_store(idx,a);
 
     GetNArrayData(idx,nidx);
-    nidxp   = (ssize_t*)nidx->ptr;
-    q->idx  = ALLOC_N(size_t, n);
-
-    // ndixp is cuda memory (cuda narray)
-    SHOW_SYNCHRONIZE_WARNING_ONCE("na_parse_narray_index", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-    for (k=0; k<n; k++) {
-        q->idx[k] = na_range_check(nidxp[k], size, orig_dim);
-    }
+    nidxp   = (ssize_t*)nidx->ptr; // Cumo::NArray data resides on GPU
+    //q->idx  = ALLOC_N(size_t, n);
+    //for (k=0; k<n; k++) {
+    //    q->idx[k] = na_range_check(nidxp[k], size, orig_dim);
+    //}
+    q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+    cumo_cuda_runtime_check_status(cudaMemcpyAsync(q->idx,nidxp,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
     q->n    = n;
     q->beg  = 0;
     q->step = 1;
@@ -366,12 +384,14 @@ na_get_strides_nadata(const narray_data_t *na, ssize_t *strides, ssize_t elmsz)
     }
 }
 
+void na_index_aref_nadata_kernel_launch(size_t* idx, ssize_t s1, uint64_t n);
+
 static void
 na_index_aref_nadata(narray_data_t *na1, narray_view_t *na2,
                      na_index_arg_t *q, ssize_t elmsz, int ndim, int keep_dim)
 {
     int i, j;
-    ssize_t size, k, total=1;
+    ssize_t size, total=1;
     ssize_t stride1;
     ssize_t *strides_na1;
     size_t  *index;
@@ -403,9 +423,10 @@ na_index_aref_nadata(narray_data_t *na1, narray_view_t *na2,
             index = q[i].idx;
             SDX_SET_INDEX(na2->stridx[j],index);
             q[i].idx = NULL;
-            for (k=0; k<size; k++) {
-                index[k] = index[k] * stride1;
-            }
+            //for (k=0; k<size; k++) {
+            //    index[k] = index[k] * stride1;
+            //}
+            na_index_aref_nadata_kernel_launch(index, stride1, size);
         } else {
             beg  = q[i].beg;
             step = q[i].step;
@@ -482,10 +503,11 @@ na_index_aref_naview(narray_view_t *na1, narray_view_t *na2,
                     index[k] = (last - index[k]) * stride1;
                 }
             } else {
-                int k;
-                for (k=0; k<size; k++) {
-                    index[k] = index[k] * stride1;
-                }
+                //int k;
+                //for (k=0; k<size; k++) {
+                //    index[k] = index[k] * stride1;
+                //}
+                na_index_aref_nadata_kernel_launch(index, stride1, size);
             }
         }
         else if (q[i].idx == NULL && SDX_IS_INDEX(sdx1)) {
@@ -624,7 +646,11 @@ na_aref_md_ensure(VALUE data_value)
     na_aref_md_data_t *data = (na_aref_md_data_t*)(data_value);
     int i;
     for (i=0; i<data->ndim; i++) {
-        xfree(data->q[i].idx);
+        if (cumo_cuda_runtime_is_device_memory(data->q[i].idx)) {
+            cumo_cuda_runtime_free((char*)(data->q[i].idx));
+        } else {
+            xfree(data->q[i].idx);
+        }
     }
     if (data->q) xfree(data->q);
     return Qnil;
