@@ -123,7 +123,7 @@ extern int na_debug_flag;
 #define NARRAY_FILEMAP_T  0x3
 
 //#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
-#define NA_MAX_DIMENSION 8
+#define NA_MAX_DIMENSION 12
 #define NA_MAX_ELMSZ     65535
 
 typedef unsigned int BIT_DIGIT;
