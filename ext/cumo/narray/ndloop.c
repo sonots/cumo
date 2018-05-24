@@ -1023,7 +1023,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 // Set whether buffer copy is required or not
 // Ndloop not supporting index or stride (step) loop requires buffer copy to make contiguous memory.
 static void
-ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp, unsigned int loop_spec)
+ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
 {
     unsigned int f;
     int i, j;
@@ -1033,6 +1033,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp, unsigned int loop_spec)
     size_t *buf_shape;
     na_loop_iter_t *buf_iter=NULL, *src_iter;
 
+    unsigned int loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
     //if (loop_spec==0) return;
 
     n_total = lp->user.n[0];
@@ -1356,7 +1357,6 @@ loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
 static VALUE
 ndloop_run(VALUE vlp)
 {
-    unsigned int loop_spec;
     volatile VALUE args, orig_args, results;
     na_md_loop_t *lp = (na_md_loop_t*)(vlp);
     ndfunc_t *nf;
@@ -1405,8 +1405,7 @@ ndloop_run(VALUE vlp)
 
     // setup buffering during loop
     if (lp->loop_func == loop_narray) {
-        loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
-        ndfunc_set_bufcp(nf, lp, loop_spec);
+        ndfunc_set_bufcp(nf, lp);
     }
     if (na_debug_flag) {
         printf("-- ndfunc_set_bufcp --\n");
