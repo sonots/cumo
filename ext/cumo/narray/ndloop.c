@@ -1375,11 +1375,15 @@ ndloop_run(VALUE vlp)
     //}
 
     // contract loop (compress dimessions)
-    if (lp->loop_func == loop_narray) {
-        ndfunc_contract_loop(lp);
-        if (na_debug_flag) {
-            printf("-- ndfunc_contract_loop --\n");
-            print_ndloop(lp);
+    if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE)) {
+        // do nothing
+    } else {
+        if (lp->loop_func == loop_narray) {
+            ndfunc_contract_loop(lp);
+            if (na_debug_flag) {
+                printf("-- ndfunc_contract_loop --\n");
+                print_ndloop(lp);
+            }
         }
     }
 
