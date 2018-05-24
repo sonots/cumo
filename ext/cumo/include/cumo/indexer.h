@@ -83,7 +83,7 @@ print_na_reduction_arg_t(na_reduction_arg_t* arg) {
     print_na_iarray_t(&arg->out, arg->out_indexer.ndim);
     printf("--in_indexer--\n");
     print_na_indexer_t(&arg->in_indexer);
-    printf("--out_outdexer--\n");
+    printf("--out_indexer--\n");
     print_na_indexer_t(&arg->out_indexer);
     printf("--reduce_indexer--\n");
     print_na_indexer_t(&arg->reduce_indexer);
