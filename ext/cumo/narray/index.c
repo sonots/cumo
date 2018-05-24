@@ -670,7 +670,23 @@ na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, size_
     data.q = na_allocate_index_args(result_nd);
     data.na1 = na1;
     data.keep_dim = keep_dim;
-    data.pos = pos;
+
+    switch(na1->type) {
+    case NARRAY_DATA_T:
+        data.pos = pos;
+        break;
+    case NARRAY_FILEMAP_T:
+        data.pos = pos; // correct? I have never used..
+        break;
+    case NARRAY_VIEW_T:
+        {
+            narray_view_t *nv;
+            GetNArrayView(self,nv);
+            // pos obtained by na_get_result_dimension adds view->offset.
+            data.pos = pos - nv->offset;
+        }
+        break;
+    }
 
     return rb_ensure(na_aref_md_protected, (VALUE)&data, na_aref_md_ensure, (VALUE)&data);
 }
