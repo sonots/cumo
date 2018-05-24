@@ -1089,6 +1089,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp, unsigned int loop_spec)
 
 
         // over loop_spec or reduce_loop is not contiguous
+        // sonots: NDF_INDEXER_LOOP supports non-contiguous arrays
         if (f & loop_spec || (lp->reduce_dim > 1 && ndim > 0 && !NDF_TEST(nf, NDF_INDEXER_LOOP))) {
             //printf("(buf,nd=%d)",nd);
             buf_iter = ALLOC_N(na_loop_iter_t,nd+3);
@@ -1149,6 +1150,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp, unsigned int loop_spec)
 #endif
 
     // flatten reduce dimensions
+    // TODO(sonots): Support flatten with indexer loop?
     if (lp->reduce_dim > 1 && !NDF_TEST(nf, NDF_INDEXER_LOOP)) {
 #if 1
         for (j=0; j<lp->narg; j++) {
