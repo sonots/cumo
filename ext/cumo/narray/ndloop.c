@@ -1088,8 +1088,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
 
 
         // over loop_spec or reduce_loop is not contiguous
-        // sonots: NDF_INDEXER_LOOP supports non-contiguous arrays
-        if (f & loop_spec || (lp->reduce_dim > 1 && ndim > 0 && !NDF_TEST(nf, NDF_INDEXER_LOOP))) {
+        if (f & loop_spec || (lp->reduce_dim > 1 && ndim > 0)) {
             //printf("(buf,nd=%d)",nd);
             buf_iter = ALLOC_N(na_loop_iter_t,nd+3);
             buf_shape = ALLOC_N(size_t,nd);
@@ -1149,8 +1148,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
 #endif
 
     // flatten reduce dimensions
-    // TODO(sonots): Support flatten with indexer loop?
-    if (lp->reduce_dim > 1 && !NDF_TEST(nf, NDF_INDEXER_LOOP)) {
+    if (lp->reduce_dim > 1) {
 #if 1
         for (j=0; j<lp->narg; j++) {
             ndim = lp->user.ndim;
@@ -1349,6 +1347,28 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
     return results;
 }
 
+static bool
+loop_is_using_idx(na_md_loop_t *lp)
+{
+    int  i, j;
+    int  nd = lp->ndim;
+
+    if (nd<0) {
+        rb_bug("bug? lp->ndim = %d\n", lp->ndim);
+    }
+
+    // i-th dimension
+    for (i=0; i<nd; i++) {
+        // j-th argument
+        for (j=0; j<lp->narg; j++) {
+            if (LITER(lp,i,j).idx) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 static void
 loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
 
@@ -1375,6 +1395,7 @@ ndloop_run(VALUE vlp)
     // contract loop (compress dimessions)
     if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE)) {
         // TODO(sonots): Support contract_loop in reduction indexer loop
+        // do nothing
     } else {
         if (lp->loop_func == loop_narray) {
             ndfunc_contract_loop(lp);
@@ -1401,12 +1422,16 @@ ndloop_run(VALUE vlp)
     }
 
     // setup buffering during loop
-    if (lp->loop_func == loop_narray) {
-        ndfunc_set_bufcp(nf, lp);
-    }
-    if (na_debug_flag) {
-        printf("-- ndfunc_set_bufcp --\n");
-        print_ndloop(lp);
+    if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE) && !loop_is_using_idx(lp)) {
+        // do nothing
+    } else {
+        if (lp->loop_func == loop_narray) {
+            ndfunc_set_bufcp(nf, lp);
+        }
+        if (na_debug_flag) {
+            printf("-- ndfunc_set_bufcp --\n");
+            print_ndloop(lp);
+        }
     }
 
     // loop
