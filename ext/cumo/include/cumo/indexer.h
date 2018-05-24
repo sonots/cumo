@@ -126,6 +126,11 @@ na_make_reduction_arg(na_loop_t* lp_user)
     int i;
     int in_ndim = lp_user->args[0].ndim;
 
+    // in shape = (2, 3, 4, 5, 6)
+    // axis = (1, 3)
+    // out shape = (2, 4, 6)
+    // reduce shape = (3, 5)
+
     arg.in = na_make_iarray(&lp_user->args[0]);
     arg.in_indexer = na_make_indexer(&lp_user->args[0]);
 

@@ -989,7 +989,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
         // in
         LARG(lp,0).ndim = lp->user.ndim;
         LARG(lp,0).shape = &(lp->n[lp->ndim]);
-        // out is contructed at na_make_reduction_arg from in and reduce params
+        // out is constructed at na_make_reduction_arg from in and lp->reduce
 
         lp->user.n = &(lp->n[lp->ndim]);
         for (j=0; j<lp->narg; j++) {
