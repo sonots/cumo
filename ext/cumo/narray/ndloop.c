@@ -1023,7 +1023,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 // Set whether buffer copy is required or not
 // Ndloop not supporting index or stride (step) loop requires buffer copy to make contiguous memory.
 static void
-ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
+ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp, unsigned int loop_spec)
 {
     unsigned int f;
     int i, j;
@@ -1089,7 +1089,7 @@ ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
 
 
         // over loop_spec or reduce_loop is not contiguous
-        if (f & loop_spec || (lp->reduce_dim > 1 && ndim > 0)) {
+        if (f & loop_spec || (lp->reduce_dim > 1 && ndim > 0 && !NDF_TEST(nf, NDF_INDEXER_LOOP))) {
             //printf("(buf,nd=%d)",nd);
             buf_iter = ALLOC_N(na_loop_iter_t,nd+3);
             buf_shape = ALLOC_N(size_t,nd);
@@ -1149,7 +1149,7 @@ ndfunc_set_bufcp(na_md_loop_t *lp, unsigned int loop_spec)
 #endif
 
     // flatten reduce dimensions
-    if (lp->reduce_dim > 1) {
+    if (lp->reduce_dim > 1 && !NDF_TEST(nf, NDF_INDEXER_LOOP)) {
 #if 1
         for (j=0; j<lp->narg; j++) {
             ndim = lp->user.ndim;
@@ -1400,7 +1400,7 @@ ndloop_run(VALUE vlp)
     // setup buffering during loop
     if (lp->loop_func == loop_narray) {
         loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
-        ndfunc_set_bufcp(lp, loop_spec);
+        ndfunc_set_bufcp(nf, lp, loop_spec);
     }
     if (na_debug_flag) {
         printf("-- ndfunc_set_bufcp --\n");
