@@ -1003,7 +1003,6 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 
         lp->user.reduce_dim = lp->reduce_dim;
         lp->user.reduce = lp->reduce;
-        lp->ndim = 0;
     } else { // element-wise
         for (j=0; j<lp->narg; j++) {
             LARG(lp,j).ndim = lp->user.ndim;
@@ -1017,7 +1016,6 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 
         lp->user.reduce_dim = 0;
         lp->user.reduce = 0;
-        lp->ndim = 0;
     }
 }
 
