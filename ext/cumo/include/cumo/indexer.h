@@ -47,6 +47,49 @@ typedef struct {
 } na_reduction_arg_t;
 
 #ifndef __CUDACC__
+extern int na_debug_flag;  // narray.c
+
+static void
+print_na_indexer_t(na_indexer_t* indexer)
+{
+    printf("na_indexer_t = 0x%"SZF"x {\n", (size_t)indexer);
+    printf("  ndim = %d\n", indexer->ndim);
+    printf("  total_size = %ld\n", indexer->total_size);
+    printf("  shape = 0x%"SZF"x\n", (size_t)indexer->shape);
+    for (int i = 0; i < indexer->ndim; ++i) {
+        printf("  shape[%d] = %ld\n", i, indexer->shape[i]);
+    }
+    printf("}\n");
+}
+
+static void
+print_na_iarray_t(na_iarray_t* iarray, unsigned char ndim)
+{
+    printf("na_iarray_t = 0x%"SZF"x {\n", (size_t)iarray);
+    printf("  ptr = 0x%"SZF"x\n", (size_t)iarray->ptr);
+    printf("  step = 0x%"SZF"x\n", (size_t)iarray->step);
+    for (int i = 0; i < ndim; ++i) {
+        printf("  step[%d] = %ld\n", i, iarray->step[i]);
+    }
+    printf("}\n");
+}
+
+static void
+print_na_reduction_arg_t(na_reduction_arg_t* arg) {
+    printf("na_reduction_arg_t = 0x%"SZF"x {\n", (size_t)arg);
+    printf("--in--\n");
+    print_na_iarray_t(&arg->in, arg->in_indexer.ndim);
+    printf("--out--\n");
+    print_na_iarray_t(&arg->out, arg->out_indexer.ndim);
+    printf("--in_indexer--\n");
+    print_na_indexer_t(&arg->in_indexer);
+    printf("--out_outdexer--\n");
+    print_na_indexer_t(&arg->out_indexer);
+    printf("--reduce_indexer--\n");
+    print_na_indexer_t(&arg->reduce_indexer);
+    printf("}\n");
+}
+
 // Note that you, then, have to call na_indexer_set to create index[]
 static na_indexer_t
 na_make_indexer(na_loop_args_t* arg)
@@ -92,10 +135,16 @@ na_make_reduction_arg(na_loop_t* lp)
             ++arg.reduce_indexer.ndim;
         }
     }
+
+    if (na_debug_flag) {
+        print_na_reduction_arg_t(&arg);
+    }
+
     assert(arg.reduce_indexer.ndim == lp->reduce_dim);
 
     return arg;
 }
+
 #endif  // #ifndef __CUDACC__
 
 #define CUMO_NA_INDEXER_OPTIMIZED_NDIM 4
