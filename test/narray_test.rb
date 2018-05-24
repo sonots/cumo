@@ -278,6 +278,21 @@ class NArrayTest < Test::Unit::TestCase
         v[0] = 13
         assert { v == [13,7,11] }
         assert { a == [[1,2,3],[13,7,11]] }
+
+        a = init.call(dtype, src)
+        a[[1,2,3]] = 13
+        assert { a[[1,2,3]] == [13,13,13] }
+        assert { a == [[1,13,13],[13,7,11]] }
+
+        a = init.call(dtype, src)
+        a[1,[0,2]] = [13,13]
+        assert { a[1,[0,2]] == [13,13] }
+        assert { a == [[1,2,3],[13,7,13]] }
+
+        a = init.call(dtype, src)
+        a[1,true] = 13
+        assert { a[1,true] == [13,13,13] }
+        assert { a == [[1,2,3],[13,13,13]] }
       end
 
     end
