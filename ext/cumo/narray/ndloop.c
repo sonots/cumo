@@ -1020,8 +1020,11 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
 }
 
 
-// Set whether buffer copy is required or not
-// Ndloop not supporting index or stride (step) loop requires buffer copy to make contiguous memory.
+// Judge whether a buffer copy is required or not, and malloc if it is required.
+//
+// CASES TO REQUIRE A BUFFER COPY:
+// 1) ndloop has `idx` but does not support NDF_INDEX_LOOP.
+// 2) ndloop has non-contiguous arrays but does not support NDF_STRIDE_LOOP.
 static void
 ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
 {
@@ -1376,7 +1379,7 @@ ndloop_run(VALUE vlp)
 
     // contract loop (compress dimessions)
     if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE)) {
-        // do nothing
+        // TODO(sonots): Support contract_loop in reduction indexer loop
     } else {
         if (lp->loop_func == loop_narray) {
             ndfunc_contract_loop(lp);
@@ -1389,7 +1392,6 @@ ndloop_run(VALUE vlp)
 
     // setup lp->user
     if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
-        // NDF_INDEXER_LOOP is a Cumo customized loop which Numo does not have.
         ndfunc_set_user_indexer_loop(nf, lp, results);
         if (na_debug_flag) {
             printf("-- ndfunc_set_user_indexer_loop --\n");
