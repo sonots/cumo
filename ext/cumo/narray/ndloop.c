@@ -1199,6 +1199,8 @@ ndloop_copy_to_buffer(na_buffer_copy_t *lp)
         // i-th dimension
         for (; i<nd; i++) {
             if (LITER_SRC(lp,i).idx) {
+                SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_to_buffer", "any");
+                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).idx[c[i]];
             } else {
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).step*c[i];
@@ -1346,9 +1348,8 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
     return results;
 }
 
-// TODO(sonots): Support idx by Indexer.
-static bool
-loop_is_using_idx(na_md_loop_t *lp)
+/*static bool
+_loop_is_using_idx(na_md_loop_t *lp)
 {
     int  i, j;
     int  nd = lp->ndim;
@@ -1367,7 +1368,7 @@ loop_is_using_idx(na_md_loop_t *lp)
         }
     }
     return false;
-}
+}*/
 
 static void
 loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
@@ -1393,8 +1394,10 @@ ndloop_run(VALUE vlp)
     //    print_ndloop(lp);
     //}
 
-    // CUMO: Do not use loop_narray, but directly process all dimensions with Indexer in user function for performance.
-    if (NDF_TEST(nf,NDF_INDEXER_LOOP) && !loop_is_using_idx(lp)) {
+    // CUMO: Do not use loop_narray, but directly process all dimensions with
+    // indexer in user function for performance.
+    //if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
+    if (false) {
         // TODO(sonots): Support contract_loop (dimesion compressions) in reduction
         // contract loop
         if(!NDF_TEST(nf,NDF_FLAT_REDUCE) && lp->loop_func == loop_narray) {
@@ -1407,12 +1410,23 @@ ndloop_run(VALUE vlp)
 
         // setup lp->user for INDEXER_LOOP
         ndfunc_set_user_indexer_loop(nf, lp, results);
+        //if (na_debug_flag) {
+        //    printf("-- ndfunc_set_user_indexer_loop --\n");
+        //    print_ndloop(lp);
+        //}
+
+        // setup buffering during loop
+        if (lp->loop_func == loop_narray) {
+            loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
+            ndfunc_set_bufcp(lp, loop_spec);
+        }
         if (na_debug_flag) {
-            printf("-- ndfunc_set_user_indexer_loop --\n");
+            printf("-- ndfunc_set_bufcp --\n");
             print_ndloop(lp);
         }
 
-        (*(nf->func))(&(lp->user));
+        // loop
+        (*(lp->loop_func))(nf, lp);
     } else {
         // contract loop
         if (lp->loop_func == loop_narray) {
@@ -1474,7 +1488,7 @@ loop_narray(ndfunc_t *nf, na_md_loop_t *lp)
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
     }
 
-    if (nd==0) {
+    if (nd==0 || NDF_TEST(nf,NDF_INDEXER_LOOP)) {
         for (j=0; j<lp->nin; j++) {
             if (lp->xargs[j].bufcp) {
                 //printf("copy_to_buffer j=%d\n",j);
