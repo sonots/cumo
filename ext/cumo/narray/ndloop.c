@@ -978,7 +978,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
 // In indexer loop, the  loop_narray is not used, user function processes
 // all dimensions with Indexer for performance.
 static void
-ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
+ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
 {
     int j;
 
@@ -986,15 +986,10 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp, VALUE results)
     lp->ndim = 0;
 
     if (NDF_TEST(nf,NDF_FLAT_REDUCE)) {
-        narray_t *na;
-
         // in
         LARG(lp,0).ndim = lp->user.ndim;
         LARG(lp,0).shape = &(lp->n[lp->ndim]);
-        // out: reuse parameters of results created at ndloop_set_output_narray
-        GetNArray(RARRAY_AREF(results, 0), na);
-        LARG(lp,1).ndim = na->ndim;
-        LARG(lp,1).shape = na->shape;
+        // out is contructed at na_make_reduction_arg from in and reduce params
 
         lp->user.n = &(lp->n[lp->ndim]);
         for (j=0; j<lp->narg; j++) {
@@ -1392,7 +1387,7 @@ ndloop_run(VALUE vlp)
 
     // setup lp->user
     if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
-        ndfunc_set_user_indexer_loop(nf, lp, results);
+        ndfunc_set_user_indexer_loop(nf, lp);
         if (na_debug_flag) {
             printf("-- ndfunc_set_user_indexer_loop --\n");
             print_ndloop(lp);
