@@ -116,20 +116,20 @@ na_make_iarray(na_loop_args_t* arg)
 }
 
 static na_reduction_arg_t
-na_make_reduction_arg(na_loop_t* lp)
+na_make_reduction_arg(na_loop_t* lp_user)
 {
     na_reduction_arg_t arg;
     int i;
 
-    arg.in = na_make_iarray(&lp->args[0]);
-    arg.out = na_make_iarray(&lp->args[1]);
-    arg.in_indexer = na_make_indexer(&lp->args[0]);
-    arg.out_indexer = na_make_indexer(&lp->args[1]);
+    arg.in = na_make_iarray(&lp_user->args[0]);
+    arg.out = na_make_iarray(&lp_user->args[1]);
+    arg.in_indexer = na_make_indexer(&lp_user->args[0]);
+    arg.out_indexer = na_make_indexer(&lp_user->args[1]);
 
     arg.reduce_indexer.ndim = 0;
     arg.reduce_indexer.total_size = 1;
-    for (i = 0; i < lp->ndim; ++i) {
-        if (na_test_reduce(lp->reduce, i)) {
+    for (i = 0; i < lp_user->ndim; ++i) {
+        if (na_test_reduce(lp_user->reduce, i)) {
             arg.reduce_indexer.shape[arg.reduce_indexer.ndim] = arg.in_indexer.shape[i];
             arg.reduce_indexer.total_size *= arg.in_indexer.shape[i];
             ++arg.reduce_indexer.ndim;
@@ -140,7 +140,7 @@ na_make_reduction_arg(na_loop_t* lp)
         print_na_reduction_arg_t(&arg);
     }
 
-    assert(arg.reduce_indexer.ndim == lp->reduce_dim);
+    assert(arg.reduce_indexer.ndim == lp_user->reduce_dim);
 
     return arg;
 }
