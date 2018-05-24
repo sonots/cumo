@@ -404,6 +404,8 @@ class NArrayTest < Test::Unit::TestCase
     test "#{dtype},reduction" do
       assert { dtype.ones(2,2,3,2).sum(axis: [0,2,3]) == [12,12] }
       assert { dtype.ones(5,3,4,2,1).sum(axis: [0,3,4]) == [[10,10,10,10],[10,10,10,10],[10,10,10,10]] }
+      assert { dtype[[1,2,3],[4,5,6]].sum(axis: 1) == [6,15] }
+      assert { dtype[[1,2,3],[4,5,6]].sum(axis: 1, keepdims: true) == [[6],[15]] }
       unless [Cumo::DComplex, Cumo::SComplex].include?(dtype)
         assert_nothing_raised { dtype.ones(2,3,9,4,2).max_index(2) }
       end
