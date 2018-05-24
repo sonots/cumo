@@ -1350,28 +1350,6 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
     return results;
 }
 
-/*static bool
-_loop_is_using_idx(na_md_loop_t *lp)
-{
-    int  i, j;
-    int  nd = lp->ndim;
-
-    if (nd<0) {
-        rb_bug("bug? lp->ndim = %d\n", lp->ndim);
-    }
-
-    // loop body
-    for (i=0; i<nd; ++i) {
-        // j-th argument
-        for (j=0; j<lp->narg; j++) {
-            if (LITER(lp,i,j).idx) {
-                return true;
-            }
-        }
-    }
-    return false;
-}*/
-
 static void
 loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
 
@@ -1398,16 +1376,11 @@ ndloop_run(VALUE vlp)
 
     // contract loop (compress dimessions)
     if (lp->loop_func == loop_narray) {
-        // TODO(sonots): Support contract loop in reduction with indexer
-        //if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE)) {
-        //    // do nothing
-        //} else {
-            ndfunc_contract_loop(lp);
-            if (na_debug_flag) {
-                printf("-- ndfunc_contract_loop --\n");
-                print_ndloop(lp);
-            }
-        //}
+        ndfunc_contract_loop(lp);
+        if (na_debug_flag) {
+            printf("-- ndfunc_contract_loop --\n");
+            print_ndloop(lp);
+        }
     }
 
     // setup lp->user
@@ -1438,11 +1411,6 @@ ndloop_run(VALUE vlp)
 
     // loop
     (*(lp->loop_func))(nf, lp);
-
-    //if (na_debug_flag) {
-    //    printf("-- after loop --\n");
-    //    print_ndloop(lp);
-    //}
 
     if (RTEST(lp->user.err_type)) {
         rb_raise(lp->user.err_type, "error in NArray operation");
