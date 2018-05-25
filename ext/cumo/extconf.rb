@@ -47,6 +47,7 @@ rm_f 'include/cumo/extconf.h'
 if ENV['DEBUG']
   $CFLAGS="-g -O0 -Wall"
 end
+$CXXFLAGS += " -std=c++14 "
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
 $INCFLAGS = "-Iinclude -Inarray -Icuda #{$INCFLAGS}"

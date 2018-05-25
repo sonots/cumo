@@ -3,9 +3,26 @@ require "open3"
 require_relative "../lib/mkmf-cu/opt"
 require_relative "../lib/mkmf-cu/colorize"
 
-opt, opt_h = build_optparser()
-
 argv = ARGV.map{|e| e.dup }
+
+def run!(*args)
+  puts MkmfCu.colorize(:green, args.join(' '))
+  exit system(*args)
+end
+
+src_file = argv.last
+unless src_file.end_with?('.cu')
+  ext = argv.shift
+  if ext.end_with?('=cxx')
+    run!(RbConfig::CONFIG["CXX"], *argv)
+  elsif ext.end_with?('=c')
+    run!(RbConfig::CONFIG["CC"], *argv)
+  else
+    raise 'something wrong'
+  end
+end
+
+opt, opt_h = build_optparser()
 
 puts '[given command line options]: ' + ARGV.join(' ')
 parse_ill_short(argv, opt_h)
@@ -23,5 +40,4 @@ end
 
 s << " -arch=sm_35" # TODO(sonots): How to add this nicely?
 s << " -std=c++14" # TODO(sonots): How to add this nicely?
-puts MkmfCu.colorize(:green, "nvcc" + s)
-Open3.capture2("nvcc " + s)
+run!("nvcc" << s)
