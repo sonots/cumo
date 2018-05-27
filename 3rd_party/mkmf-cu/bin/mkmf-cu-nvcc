@@ -5,18 +5,18 @@ require_relative "../lib/mkmf-cu/colorize"
 
 argv = ARGV.map{|e| e.dup }
 
-def run!(*args)
-  puts MkmfCu.colorize(:green, args.join(' '))
+def run_command!(*args)
+  puts MakeMakefileCuda.colorize(:green, args.join(' '))
   exit system(*args)
 end
 
-src_file = argv.last
-unless src_file.end_with?('.cu')
+target_file = argv.last
+unless target_file.end_with?('.cu')
   ext = argv.shift
   if ext.end_with?('=cxx')
-    run!(RbConfig::CONFIG["CXX"], *argv)
+    run_command!(RbConfig::CONFIG["CXX"], *argv)
   elsif ext.end_with?('=c')
-    run!(RbConfig::CONFIG["CC"], *argv)
+    run_command!(RbConfig::CONFIG["CC"], *argv)
   else
     raise 'something wrong'
   end
@@ -38,6 +38,5 @@ else
   raise
 end
 
-s << " -arch=sm_35" # TODO(sonots): How to add this nicely?
-s << " -std=c++14" # TODO(sonots): How to add this nicely?
-run!("nvcc" << s)
+nvcc_command = "#{MakeMakefileCuda::CONFIG["NVCC"]} #{s}#{MakeMakefileCuda::CONFIG["NVCCFLAGS"]}"
+run_command!(nvcc_command)

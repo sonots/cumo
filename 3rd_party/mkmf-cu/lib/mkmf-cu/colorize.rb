@@ -1,4 +1,4 @@
-module MkmfCu
+module MakeMakefileCuda
   COLOR_CODES = {
     red: 31,
     green: 32,
