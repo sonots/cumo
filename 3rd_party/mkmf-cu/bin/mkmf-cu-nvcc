@@ -1,29 +1,4 @@
 #!/usr/bin/env ruby
-require "open3"
-require_relative "../lib/mkmf-cu/nvcc"
-require_relative "../lib/mkmf-cu/colorize"
+require_relative "../lib/mkmf-cu/cli"
 
-argv = ARGV.map{|e| e.dup }
-
-def run_command!(*args)
-  puts MakeMakefileCuda.colorize(:green, args.join(' '))
-  exit system(*args)
-end
-
-target_file = argv.last
-unless target_file.end_with?('.cu')
-  ext = argv.shift
-  if ext.end_with?('=cxx')
-    run_command!(RbConfig::CONFIG["CXX"], *argv)
-  elsif ext.end_with?('=c')
-    run_command!(RbConfig::CONFIG["CC"], *argv)
-  else
-    raise 'something wrong'
-  end
-end
-
-
-puts '[given command line options]: ' + ARGV.join(' ')
-s = MakeMakefileCuda::Nvcc.generate(argv)
-# TODO(sonots): pass additional arguments nicely
-run_command!("nvcc " << s << " -arch=sm_35")
+MakeMakefileCuda::CLI.new(ARGV).run
