@@ -1,26 +1,4 @@
 #!/usr/bin/env ruby
-require "open3"
-require_relative "../lib/mkmf-cu/opt"
+require_relative "../lib/mkmf-cu/cli"
 
-opt, opt_h = build_optparser()
-
-argv = ARGV.map{|e| e.dup }
-
-$stderr.puts '[given command line options]: ' + ARGV.join(' ')
-parse_ill_short(argv, opt_h)
-parse_ill_short_with_arg(argv, opt_h)
-
-argv = opt.parse(argv)
-
-if opt_h["-c"].size > 0
-  s = generate_compiling_command_line(opt_h)
-elsif opt_h['-dynamic'].size > 0 or opt_h['-shared'].size > 0
-  s = generate_linking_command_line(argv, opt_h)
-else
-  raise
-end
-
-s << " -arch=sm_35" # TODO(sonots): How to add this nicely?
-s << " -std=c++14" # TODO(sonots): How to add this nicely?
-$stderr.puts "nvcc" + s
-Open3.capture2("nvcc " + s)
+MakeMakefileCuda::CLI.new(ARGV).run
