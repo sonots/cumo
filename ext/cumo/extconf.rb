@@ -45,8 +45,6 @@ end
 rm_f 'include/cumo/extconf.h'
 
 MakeMakefileCuda.install!
-MakeMakefileCuda::CONFIG["NVCC"] = "nvcc"
-MakeMakefileCuda::CONFIG["NVCCFLAGS"] = " -arch=sm_35 -std=c++14"
 
 if ENV['DEBUG']
   $CFLAGS="-g -O0 -Wall"
