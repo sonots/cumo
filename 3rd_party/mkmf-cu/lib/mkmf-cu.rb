@@ -5,7 +5,7 @@ module MakeMakefileCuda
 
   class << self
     # @params [cxx] Treat .cu files as C++ files
-    def install!(cxx = false)
+    def install!(cxx: false)
       MakeMakefile::CONFIG["CC"]  = "#{BIN_PATH} --mkmf-cu-ext=c"
       MakeMakefile::CONFIG["CXX"] = "#{BIN_PATH} --mkmf-cu-ext=cxx"
       if cxx

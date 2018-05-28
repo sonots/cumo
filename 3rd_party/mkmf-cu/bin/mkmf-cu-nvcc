@@ -25,4 +25,5 @@ end
 
 puts '[given command line options]: ' + ARGV.join(' ')
 s = MakeMakefileCuda::Nvcc.generate(argv)
-run_command!("nvcc " << s << " -arch=sm_35 -std=c++14")
+# TODO(sonots): pass additional arguments nicely
+run_command!("nvcc " << s << " -arch=sm_35")

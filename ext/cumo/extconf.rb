@@ -44,7 +44,7 @@ end
 
 rm_f 'include/cumo/extconf.h'
 
-MakeMakefileCuda.install!
+MakeMakefileCuda.install!(cxx: true)
 
 if ENV['DEBUG']
   $CFLAGS="-g -O0 -Wall"
