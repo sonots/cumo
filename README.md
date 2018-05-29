@@ -88,7 +88,7 @@ a = Xumo::DFloat.new(3,5).seq
 
 ### Incompatibility With Numo
 
-Following methods behave incompatibly with Numo.
+Following methods behave incompatibly with Numo as default for performance.
 
 * `extract`
 * `[]`
@@ -98,22 +98,24 @@ Following methods behave incompatibly with Numo.
 Numo returns a Ruby numeric object for 0-dimensional NArray, but Cumo returns the 0-dimensional NArray instead of a Ruby numeric object.
 This is to avoid synchnoziation between CPU and GPU for performance.
 
-You can use following methods which behaves as Numo NArray's methods:
+You may set `CUMO_COMPATIBLE_MODE=ON` environment variable to force Cumo NArray behave compatibly with Numo NArray.
+
+You can also use following methods which behaves as Numo NArray's methods:
 
 * `extract_cpu`
 * `aref_cpu(*idx)`
 * `count_true_cpu`
 * `count_false_cpu`
 
-Or, set `CUMO_COMPATIBLE_MODE=ON` environment variable, or
+You may enable or disable `compatible_mode` as:
 
 ```
 require 'cumo'
-Cumo.enable_compatible_mode
+Cumo.enable_compatible_mode # enable
+Cumo.compattible_mode_enabled? #=> true
+Cumo.disable_compatible_mode # disable
+Cumo.compattible_mode_enabled? #=> false
 ```
-
-to make Cumo NArray behaves compatibly with Numo NArray.
-Use `Cumo.disable_compatible_mode` to disable, and `Cumo.compatible_mode_enabled?` to check the current state.
 
 ### Select a GPU device ID
 
