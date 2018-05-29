@@ -1,4 +1,4 @@
-**This project is still under development. This project was granted by [Ruby Association Grant 2017](http://www.ruby.or.jp/ja/news/20171206).**
+**This project is still under development. This project received grant from [Ruby Association Grant 2017](http://www.ruby.or.jp/ja/news/20171206).**
 
 # Cumo
 
