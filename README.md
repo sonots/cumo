@@ -183,8 +183,8 @@ bundle exec rake docs
     * It can use CRuby API.
     * (RULE) It is not allowed to use C++ codes in host files.
 
-Ruby's `mkmf` (or `extconf.rb`) does not support to specify another compiler for another files of extensions like `nvcc` for `.cu` files and `gcc` for `.cu` files.
-Therefore, cumo specify a wrapper command `mkmf-cu.rb` as a compiler and changes its behavor depending on extensions of files to compile.
+Ruby's `mkmf` (or `extconf.rb`) does not support to specify 3rd compiler such as NVCC for another files of extensions `.cu`.
+Therefore, cumo specify a wrapper command `bin/mkmf-cu-nvcc` as a compiler and changes its behavor depending on extensions of files to compile.
 
 ## Advanced Tips on Development
 
