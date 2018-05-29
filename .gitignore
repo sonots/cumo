@@ -24,3 +24,4 @@ t.rb
 .yardoc/
 *.exe
 .DS_Store
+/vendor/
