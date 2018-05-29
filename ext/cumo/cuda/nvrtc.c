@@ -22,12 +22,13 @@ rb_nvrtcVersion(VALUE self)
 {
     int _major, _minor;
     nvrtcResult status;
+    VALUE major, minor;
 
     status = nvrtcVersion(&_major, &_minor);
 
     check_status(status);
-    VALUE major = INT2NUM(_major);
-    VALUE minor = INT2NUM(_minor);
+    major = INT2NUM(_major);
+    minor = INT2NUM(_minor);
     return rb_ary_new3(2, major, minor);
 }
 
@@ -74,8 +75,10 @@ rb_nvrtcCreateProgram(
         _includeNames[i] = StringValueCStr(include_name);
     }
 
-    struct nvrtcCreateProgramParam param = {&_prog, _src, _name, _numHeaders, _headers, _includeNames};
-    status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcCreateProgram_without_gvl_cb, &param, NULL, NULL);
+    {
+        struct nvrtcCreateProgramParam param = {&_prog, _src, _name, _numHeaders, _headers, _includeNames};
+        status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcCreateProgram_without_gvl_cb, &param, NULL, NULL);
+    }
 
     free(_headers);
     free(_includeNames);
@@ -137,8 +140,10 @@ rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
         _options[i] = StringValueCStr(option);
     }
 
-    struct nvrtcCompileProgramParam param = {_prog, _numOptions, _options};
-    status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcCompileProgram_without_gvl_cb, &param, NULL, NULL);
+    {
+        struct nvrtcCompileProgramParam param = {_prog, _numOptions, _options};
+        status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcCompileProgram_without_gvl_cb, &param, NULL, NULL);
+    }
 
     free(_options);
     check_status(status);
