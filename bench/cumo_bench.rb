@@ -8,50 +8,117 @@ b = Cumo::Int32.new(10).seq(10,10)
 c = a + b
 c.free
 
-puts 'element-wise'
-Benchmark.bm do |r|
-  a = Cumo::Int32.new(10000).seq(1)
-  b = Cumo::Int32.new(10000).seq(10,10)
-  r.report('10**4') do
-    NUM.times { (a + b).free }
-    Cumo::CUDA::Runtime.cudaDeviceSynchronize
-  end
+def elementwise
+  puts 'element-wise'
+  Benchmark.bm do |r|
+    a = Cumo::Int32.new(10000).seq(1)
+    b = Cumo::Int32.new(10000).seq(10,10)
+    r.report('10**4') do
+      NUM.times do
+        (a + b).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
 
-  a = Cumo::Int32.new(100000).seq(1)
-  b = Cumo::Int32.new(100000).seq(10,10)
-  r.report('10**5') do
-    NUM.times { (a + b).free }
-    Cumo::CUDA::Runtime.cudaDeviceSynchronize
-  end
+    a = Cumo::Int32.new(100000).seq(1)
+    b = Cumo::Int32.new(100000).seq(10,10)
+    r.report('10**5') do
+      NUM.times do
+        (a + b).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
 
-  a = Cumo::Int32.new(1000000).seq(1)
-  b = Cumo::Int32.new(1000000).seq(10,10)
-  r.report('10**6') do
-    NUM.times { (a + b).free }
-    Cumo::CUDA::Runtime.cudaDeviceSynchronize
-  end
+    a = Cumo::Int32.new(1000000).seq(1)
+    b = Cumo::Int32.new(1000000).seq(10,10)
+    r.report('10**6') do
+      NUM.times do
+        (a + b).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
 
-  a = Cumo::Int32.new(10000000).seq(1)
-  b = Cumo::Int32.new(10000000).seq(10,10)
-  r.report('10**7') do
-    NUM.times { (a + b).free }
-    Cumo::CUDA::Runtime.cudaDeviceSynchronize
-  end
+    a = Cumo::Int32.new(10000000).seq(1)
+    b = Cumo::Int32.new(10000000).seq(10,10)
+    r.report('10**7') do
+      NUM.times do
+        (a + b).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
 
-  a = Cumo::Int32.new(100000000).seq(1)
-  b = Cumo::Int32.new(100000000).seq(10,10)
-  r.report('10**8') do
-    NUM.times { (a + b).free }
-    Cumo::CUDA::Runtime.cudaDeviceSynchronize
+    a = Cumo::Int32.new(100000000).seq(1)
+    b = Cumo::Int32.new(100000000).seq(10,10)
+    r.report('10**8') do
+      NUM.times do
+        (a + b).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
   end
 end
+
+def reduction
+  puts 'reduction'
+  Benchmark.bm do |r|
+    a = Cumo::Int32.new(10000).seq(1)
+    r.report('10**4') do
+      NUM.times do
+        (a.sum).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
+
+    a = Cumo::Int32.new(100000).seq(1)
+    r.report('10**5') do
+      NUM.times do
+        (a.sum).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
+
+    a = Cumo::Int32.new(1000000).seq(1)
+    r.report('10**6') do
+      NUM.times do
+        (a.sum).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
+
+    a = Cumo::Int32.new(10000000).seq(1)
+    r.report('10**7') do
+      NUM.times do
+        (a.sum).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
+
+    a = Cumo::Int32.new(100000000).seq(1)
+    r.report('10**8') do
+      NUM.times do
+        (a.sum).free
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      end
+    end
+  end
+end
+
+elementwise
+reduction
 
 # Tesla V100-SXM2...
 #
 # element-wise
 #        user     system      total        real
-# 10**4  0.000000   0.000000   0.000000 (  0.000805)
-# 10**5  0.000000   0.000000   0.000000 (  0.000959)
-# 10**6  0.010000   0.000000   0.010000 (  0.004781)
-# 10**7  0.030000   0.010000   0.040000 (  0.045121)
-# 10**8  0.290000   0.160000   0.450000 (  0.443958
+# 10**4  0.000000   0.000000   0.000000 (  0.005769)
+# 10**5  0.010000   0.000000   0.010000 (  0.006609)
+# 10**6  0.000000   0.010000   0.010000 (  0.010313)
+# 10**7  0.040000   0.010000   0.050000 (  0.050986)
+# 10**8  0.310000   0.130000   0.440000 (  0.449699)
+# reduction
+#        user     system      total        real
+# 10**4  0.010000   0.000000   0.010000 (  0.009484)
+# 10**5  0.020000   0.010000   0.030000 (  0.022071)
+# 10**6  0.100000   0.050000   0.150000 (  0.152070)
+# 10**7  1.150000   0.600000   1.750000 (  1.754977)
+# 10**8 11.720000   5.750000  17.470000 ( 17.470990)
