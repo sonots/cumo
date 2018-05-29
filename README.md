@@ -100,13 +100,6 @@ This is to avoid synchnoziation between CPU and GPU for performance.
 
 You may set `CUMO_COMPATIBLE_MODE=ON` environment variable to force Cumo NArray behave compatibly with Numo NArray.
 
-You can also use following methods which behaves as Numo NArray's methods:
-
-* `extract_cpu`
-* `aref_cpu(*idx)`
-* `count_true_cpu`
-* `count_false_cpu`
-
 You may enable or disable `compatible_mode` as:
 
 ```
@@ -116,6 +109,13 @@ Cumo.compattible_mode_enabled? #=> true
 Cumo.disable_compatible_mode # disable
 Cumo.compattible_mode_enabled? #=> false
 ```
+
+You can also use following methods which behaves as Numo NArray's methods. Behaviors of these methods do not depend on `compatible_mode`.
+
+* `extract_cpu`
+* `aref_cpu(*idx)`
+* `count_true_cpu`
+* `count_false_cpu`
 
 ### Select a GPU device ID
 
