@@ -337,7 +337,7 @@ ndloop_alloc(na_md_loop_t *lp, ndfunc_t *nf, VALUE args,
     int narg;
     int max_nd;
 
-    void *buf;
+    char *buf;
     size_t n1, n2, n3, n4, n5;
 
     long args_len;

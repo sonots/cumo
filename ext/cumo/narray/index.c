@@ -539,10 +539,11 @@ typedef struct {
 static na_index_arg_t*
 na_allocate_index_args(int ndim)
 {
-    if (ndim == 0) return NULL;
-    na_index_arg_t *q = ALLOC_N(na_index_arg_t, ndim);
+    na_index_arg_t *q;
     int i;
+    if (ndim == 0) return NULL;
 
+    q = ALLOC_N(na_index_arg_t, ndim);
     for (i=0; i<ndim; i++) {
         q[i].idx = NULL;
     }

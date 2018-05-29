@@ -95,7 +95,10 @@ rb_compatible_mode_enabled_p(VALUE self)
 void
 Init_cumo()
 {
-    VALUE mCumo = rb_define_module("Cumo");
+    const char* env;
+    VALUE mCumo;
+
+    mCumo = rb_define_module("Cumo");
 
     rb_define_const(mCumo, "VERSION", rb_str_new2(CUMO_VERSION));
 
@@ -104,7 +107,7 @@ Init_cumo()
     rb_define_singleton_method(mCumo, "compatible_mode_enabled?", RUBY_METHOD_FUNC(rb_compatible_mode_enabled_p), 0);
 
     // default is false
-    char* env = getenv("CUMO_COMPATIBLE_MODE");
+    env = getenv("CUMO_COMPATIBLE_MODE");
     cumo_compatible_mode_enabled = (env != NULL && strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
 
     Init_cumo_narray();
