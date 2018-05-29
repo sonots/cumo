@@ -3,16 +3,17 @@ require 'benchmark'
 
 NUM = (ARGV.first || 100).to_i
 
-a = Cumo::Int32.new(10).seq(1)
-b = Cumo::Int32.new(10).seq(10,10)
+a = Cumo::Float32.new(10).seq(1)
+b = Cumo::Float32.new(10).seq(10,10)
 c = a + b
 c.free
 
 def elementwise
   puts 'element-wise'
   Benchmark.bm do |r|
-    a = Cumo::Int32.new(10000).seq(1)
-    b = Cumo::Int32.new(10000).seq(10,10)
+    a = Cumo::Float32.new(10000).seq(1)
+    b = Cumo::Float32.new(10000).seq(10,10)
+    (a + b).free # warm up
     r.report('10**4') do
       NUM.times do
         (a + b).free
@@ -20,8 +21,9 @@ def elementwise
       end
     end
 
-    a = Cumo::Int32.new(100000).seq(1)
-    b = Cumo::Int32.new(100000).seq(10,10)
+    a = Cumo::Float32.new(100000).seq(1)
+    b = Cumo::Float32.new(100000).seq(10,10)
+    (a + b).free # warm up
     r.report('10**5') do
       NUM.times do
         (a + b).free
@@ -29,8 +31,9 @@ def elementwise
       end
     end
 
-    a = Cumo::Int32.new(1000000).seq(1)
-    b = Cumo::Int32.new(1000000).seq(10,10)
+    a = Cumo::Float32.new(1000000).seq(1)
+    b = Cumo::Float32.new(1000000).seq(10,10)
+    (a + b).free # warm up
     r.report('10**6') do
       NUM.times do
         (a + b).free
@@ -38,8 +41,9 @@ def elementwise
       end
     end
 
-    a = Cumo::Int32.new(10000000).seq(1)
-    b = Cumo::Int32.new(10000000).seq(10,10)
+    a = Cumo::Float32.new(10000000).seq(1)
+    b = Cumo::Float32.new(10000000).seq(10,10)
+    (a + b).free # warm up
     r.report('10**7') do
       NUM.times do
         (a + b).free
@@ -47,8 +51,9 @@ def elementwise
       end
     end
 
-    a = Cumo::Int32.new(100000000).seq(1)
-    b = Cumo::Int32.new(100000000).seq(10,10)
+    a = Cumo::Float32.new(100000000).seq(1)
+    b = Cumo::Float32.new(100000000).seq(10,10)
+    (a + b).free # warm up
     r.report('10**8') do
       NUM.times do
         (a + b).free
@@ -61,7 +66,7 @@ end
 def reduction
   puts 'reduction'
   Benchmark.bm do |r|
-    a = Cumo::Int32.new(10000).seq(1)
+    a = Cumo::Float32.new(10000).seq(1)
     r.report('10**4') do
       NUM.times do
         (a.sum).free
@@ -69,7 +74,7 @@ def reduction
       end
     end
 
-    a = Cumo::Int32.new(100000).seq(1)
+    a = Cumo::Float32.new(100000).seq(1)
     r.report('10**5') do
       NUM.times do
         (a.sum).free
@@ -77,7 +82,7 @@ def reduction
       end
     end
 
-    a = Cumo::Int32.new(1000000).seq(1)
+    a = Cumo::Float32.new(1000000).seq(1)
     r.report('10**6') do
       NUM.times do
         (a.sum).free
@@ -85,7 +90,7 @@ def reduction
       end
     end
 
-    a = Cumo::Int32.new(10000000).seq(1)
+    a = Cumo::Float32.new(10000000).seq(1)
     r.report('10**7') do
       NUM.times do
         (a.sum).free
@@ -93,7 +98,7 @@ def reduction
       end
     end
 
-    a = Cumo::Int32.new(100000000).seq(1)
+    a = Cumo::Float32.new(100000000).seq(1)
     r.report('10**8') do
       NUM.times do
         (a.sum).free
@@ -159,8 +164,8 @@ def dot
   end
 end
 
-# elementwise
-# reduction
+elementwise
+reduction
 dot
 
 # Tesla V100-SXM2...
