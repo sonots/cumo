@@ -479,5 +479,11 @@ class NArrayTest < Test::Unit::TestCase
         assert_nothing_raised { dtype.ones(2,3,9,4,2).max_index(2) }
       end
     end
+
+    test "#{dtype},advanced indexing" do
+      a = dtype[[1,2,3],[4,5,6]]
+      assert { a[[0,1],[0,1]].dup == [[1,2],[4,5]] }
+      assert { a[[0,1],[0,1]].sum == 12 }
+    end
   end
 end
