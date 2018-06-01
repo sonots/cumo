@@ -14,6 +14,7 @@ def elementwise
     a = Cumo::Float32.new(10000).seq(1)
     b = Cumo::Float32.new(10000).seq(10,10)
     (a + b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**4') do
       NUM.times do
         (a + b).free
@@ -24,6 +25,7 @@ def elementwise
     a = Cumo::Float32.new(100000).seq(1)
     b = Cumo::Float32.new(100000).seq(10,10)
     (a + b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**5') do
       NUM.times do
         (a + b).free
@@ -34,6 +36,7 @@ def elementwise
     a = Cumo::Float32.new(1000000).seq(1)
     b = Cumo::Float32.new(1000000).seq(10,10)
     (a + b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**6') do
       NUM.times do
         (a + b).free
@@ -44,6 +47,7 @@ def elementwise
     a = Cumo::Float32.new(10000000).seq(1)
     b = Cumo::Float32.new(10000000).seq(10,10)
     (a + b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**7') do
       NUM.times do
         (a + b).free
@@ -54,6 +58,7 @@ def elementwise
     a = Cumo::Float32.new(100000000).seq(1)
     b = Cumo::Float32.new(100000000).seq(10,10)
     (a + b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**8') do
       NUM.times do
         (a + b).free
@@ -67,6 +72,8 @@ def reduction
   puts 'reduction'
   Benchmark.bm do |r|
     a = Cumo::Float32.new(10000).seq(1)
+    (a.sum).free  # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**4') do
       NUM.times do
         (a.sum).free
@@ -75,6 +82,8 @@ def reduction
     end
 
     a = Cumo::Float32.new(100000).seq(1)
+    (a.sum).free  # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**5') do
       NUM.times do
         (a.sum).free
@@ -83,6 +92,8 @@ def reduction
     end
 
     a = Cumo::Float32.new(1000000).seq(1)
+    (a.sum).free  # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**6') do
       NUM.times do
         (a.sum).free
@@ -91,6 +102,8 @@ def reduction
     end
 
     a = Cumo::Float32.new(10000000).seq(1)
+    (a.sum).free  # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**7') do
       NUM.times do
         (a.sum).free
@@ -99,6 +112,8 @@ def reduction
     end
 
     a = Cumo::Float32.new(100000000).seq(1)
+    (a.sum).free  # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**8') do
       NUM.times do
         (a.sum).free
@@ -109,12 +124,13 @@ def reduction
 end
 
 def dot
-  num = 3
+  num = 1
   puts 'dot'
   Benchmark.bm do |r|
     a = Cumo::Float32.new(100,100).seq(1)
     b = Cumo::Float32.new(100,100).seq(10,10)
     a.dot(b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**4') do
       num.times do
         a.dot(b).free
@@ -125,6 +141,7 @@ def dot
     a = Cumo::Float32.new(100,1000).seq(1)
     b = Cumo::Float32.new(1000,100).seq(10,10)
     a.dot(b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**5') do
       num.times do
         a.dot(b).free
@@ -135,6 +152,7 @@ def dot
     a = Cumo::Float32.new(100,10000).seq(1)
     b = Cumo::Float32.new(10000,100).seq(10,10)
     a.dot(b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**6') do
       num.times do
         a.dot(b).free
@@ -145,6 +163,7 @@ def dot
     a = Cumo::Float32.new(100,100000).seq(1)
     b = Cumo::Float32.new(100000,100).seq(10,10)
     a.dot(b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**7') do
       num.times do
         a.dot(b).free
@@ -155,6 +174,7 @@ def dot
     a = Cumo::Float32.new(100,1000000).seq(1)
     b = Cumo::Float32.new(1000000,100).seq(10,10)
     a.dot(b).free # warm up
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**8') do
       num.times do
         a.dot(b).free
