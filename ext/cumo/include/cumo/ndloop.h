@@ -9,7 +9,7 @@ typedef struct NA_LOOP_ITER {
 
 typedef struct NA_LOOP_ARGS {
     VALUE    value;
-    ssize_t  elmsz;
+    ssize_t  elmsz;      // element size in bytes, e.g., 4 for int, 8 for double
     char    *ptr;
     //char    *buf_ptr;  //
     int      ndim;       // required for each argument.
