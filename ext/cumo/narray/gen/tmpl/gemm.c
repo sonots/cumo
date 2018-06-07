@@ -146,9 +146,8 @@ static void
     int stridec = ROW_SIZE(nc) * COL_SIZE(nc);
     int batch_count = NA_SIZE(nc) / stridec;
 
-    // TODO(sonots): Cache cublas handle for each cuda device and cpu thread
-    cublasCreate(&handle);
     if (na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
+    handle = cumo_cuda_cublas_handle();
     status = cublas<%=func_prefix%>gemmStridedBatched(
             handle,
             b_layout.trans,
@@ -168,7 +167,6 @@ static void
             g->n,
             stridec,
             batch_count);
-    cublasDestroy(handle);
     cumo_cuda_cublas_check_status(status);
 }
 

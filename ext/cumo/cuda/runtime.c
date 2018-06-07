@@ -64,13 +64,7 @@ rb_cudaRuntimeGetVersion(VALUE self)
 static VALUE
 rb_cudaGetDevice(VALUE self)
 {
-    int _device;
-    cudaError_t status;
-
-    status = cudaGetDevice(&_device);
-
-    check_status(status);
-    return INT2NUM(_device);
+    return INT2NUM(cumo_cuda_runtime_get_device());
 }
 
 /*
@@ -106,13 +100,7 @@ rb_cudaDeviceGetAttributes(VALUE self, VALUE attrib, VALUE device)
 static VALUE
 rb_cudaGetDeviceCount(VALUE self)
 {
-    int _count;
-    cudaError_t status;
-
-    status = cudaGetDeviceCount(&_count);
-
-    check_status(status);
-    return INT2NUM(_count);
+    return INT2NUM(cumo_cuda_runtime_get_device_count());
 }
 
 /*

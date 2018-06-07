@@ -4,6 +4,7 @@
 #include <ruby.h>
 #include "cumo/narray.h"
 #include "cumo/template.h"
+#include "cumo/cuda/runtime.h"
 
 //static void *blas_handle = 0;
 //static char *blas_prefix = 0;
@@ -32,6 +33,7 @@ static char* get_cublas_error_msg(cublasStatus_t error) {
 
 #undef RETURN_MSG
     }
+    abort(); // never reach
 }
 
 void
@@ -42,6 +44,25 @@ cumo_cuda_cublas_check_status(cublasStatus_t status)
     }
 }
 
+// Lazily initialize cublas handle, and cache it
+cublasHandle_t
+cumo_cuda_cublas_handle()
+{
+    static cublasHandle_t *handles = 0;  // handle is never destroyed
+    if (handles == 0) {
+        int i;
+        int device_count = cumo_cuda_runtime_get_device_count();
+        handles = malloc(sizeof(cublasHandle_t) * device_count);
+        for (i = 0; i < device_count; ++i) {
+            handles[i] = 0;
+        }
+    }
+    int device = cumo_cuda_runtime_get_device();
+    if (handles[device] == 0) {
+        cublasCreate(&handles[device]);
+    }
+    return handles[device];
+}
 
 VALUE
 cumo_cuda_cublas_option_value(VALUE value, VALUE default_value)

@@ -14,6 +14,9 @@ extern "C" {
 void
 cumo_cuda_cublas_check_status(cublasStatus_t status);
 
+cublasHandle_t
+cumo_cuda_cublas_handle();
+
 #define option_value cumo_cuda_cublas_option_value
 extern VALUE cumo_cuda_cublas_option_value(VALUE value, VALUE default_value);
 
