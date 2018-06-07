@@ -242,18 +242,10 @@ static VALUE
 
     if (c == Qnil) { // c is not given.
         int ndim = NA_NDIM(na);
-        if (ndim > 2) {
-            size_t *shape = ALLOCA_N(size_t, ndim);
-            memcpy(shape, NA_SHAPE(na), sizeof(size_t) * ndim);
-            // shape[ndim - 2] = g.m;
-            shape[ndim - 1] = g.n;
-            c = nary_new(cT, ndim, shape);
-        } else {
-            size_t shape[2];
-            shape[0] = g.m;
-            shape[1] = g.n;
-            c = nary_new(cT, 2, shape);
-        }
+        size_t *shape = ALLOCA_N(size_t, ndim);
+        memcpy(shape, NA_SHAPE(na), sizeof(size_t) * (ndim - 1)); // ... x m x k
+        shape[ndim - 1] = g.n; // ... x m x n
+        c = nary_new(cT, ndim, shape);
     } else {
         narray_t *nc;
         COPY_OR_CAST_TO(c, cT);
