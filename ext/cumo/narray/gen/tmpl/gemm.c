@@ -30,6 +30,7 @@ typedef struct {
 
 typedef struct {
     int ld;
+    int stride; // in element count
     cublasOperation_t trans;
     VALUE a;
 } gemm_layout_t;
@@ -75,14 +76,16 @@ is_c_contiguous(VALUE a)
 static gemm_layout_t
 make_gemm_layout(VALUE a)
 {
-    assert(RNARRAY_NDIM(a) == 2);
+    narray_t *na;
     gemm_layout_t layout;
+
+    GetNArray(a, na);
     if (is_f_contiguous(a)) {
-        layout.ld = RNARRAY_SHAPE(a)[0];
+        layout.ld = ROW_SIZE(na);
         layout.trans = CUBLAS_OP_T;
         layout.a = a;
     } else {
-        layout.ld = RNARRAY_SHAPE(a)[1];
+        layout.ld = COL_SIZE(na);
         layout.trans = CUBLAS_OP_N;  // transposed
         // force c-contiguous
         if (is_c_contiguous(a)) {
@@ -92,15 +95,16 @@ make_gemm_layout(VALUE a)
             layout.a = rb_funcall(a, rb_intern("dup"), 0);
         }
     }
+    layout.stride = ROW_SIZE(na) * COL_SIZE(na);
     return layout;
 }
 
 extern int na_debug_flag;  // narray.c
 
 static void
-print_gemm_args(gemm_args_t* g, gemm_layout_t* a_layout, gemm_layout_t* b_layout)
+print_gemm_args(gemm_args_t* g, gemm_layout_t* a_layout, gemm_layout_t* b_layout, int stridec, int batch_count)
 {
-    printf("transb=%d transa=%d, n=%d, m=%d, k=%d, ldb=%d, lda=%d, ldc=n=%d\n",
+    printf("transb=%d transa=%d, n=%d, m=%d, k=%d, ldb=%d, lda=%d, ldc=n=%d, strideb=%d, stridea=%d stridec=%d batch_count=%d\n",
             (int)b_layout->trans,
             (int)a_layout->trans,
             (int)g->n,
@@ -108,7 +112,11 @@ print_gemm_args(gemm_args_t* g, gemm_layout_t* a_layout, gemm_layout_t* b_layout
             (int)g->k,
             (int)b_layout->ld,
             (int)a_layout->ld,
-            (int)g->n);
+            (int)g->n,
+            (int)b_layout->stride,
+            (int)a_layout->stride,
+            (int)stridec,
+            (int)batch_count);
 }
 
 static void
@@ -117,11 +125,7 @@ static void
     gemm_layout_t a_layout, b_layout;
     cublasHandle_t handle = 0;
     cublasStatus_t status = 0;
-
-    // TODO(sonots): Use gemmStridedBatched to support ndim >= 2 in batch
-
-    a_layout = make_gemm_layout(a);
-    b_layout = make_gemm_layout(b);
+    narray_t* nc;
 
     // Note that cuBLAS uses the column major matrix representation.
     // We use technic which following site describes:
@@ -134,10 +138,17 @@ static void
     //
     // cublasSgemm(handle,transb,transa,n,m,k,&alpha,b,ldb,a,lda,&beta,c,ldc=n);
 
+    a_layout = make_gemm_layout(a);
+    b_layout = make_gemm_layout(b);
+
+    GetNArray(c, nc);
+    int stridec = ROW_SIZE(nc) * COL_SIZE(nc);
+    int batch_count = NA_SIZE(nc) / stridec;
+
     // TODO(sonots): Cache cublas handle for each cuda device and cpu thread
     cublasCreate(&handle);
-    if (na_debug_flag) print_gemm_args(g, &a_layout, &b_layout);
-    status = cublas<%=func_prefix%>gemm(
+    if (na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
+    status = cublas<%=func_prefix%>gemmStridedBatched(
             handle,
             b_layout.trans,
             a_layout.trans,
@@ -147,11 +158,15 @@ static void
             (<%=cutype%>*)(&g->alpha),
             (<%=cutype%>*)(na_get_pointer_for_read(b_layout.a) + na_get_offset(b_layout.a)),
             b_layout.ld,
+            b_layout.stride,
             (<%=cutype%>*)(na_get_pointer_for_read(a_layout.a) + na_get_offset(a_layout.a)),
             a_layout.ld,
+            a_layout.stride,
             (<%=cutype%>*)(&g->beta),
             (<%=cutype%>*)(na_get_pointer_for_write(c) + na_get_offset(c)),
-            g->n);
+            g->n,
+            stridec,
+            batch_count);
     cublasDestroy(handle);
     cumo_cuda_cublas_check_status(status);
 }
@@ -199,7 +214,6 @@ static VALUE
 {
     VALUE     a=self, b, c=Qnil, alpha, beta;
     narray_t *na, *nb;
-    size_t    out_shape[2];
 
     gemm_args_t g;
     VALUE kw_hash = Qnil;
@@ -215,33 +229,41 @@ static VALUE
 
     GetNArray(a, na);
     GetNArray(b, nb);
+    CHECK_DIM_GE(na, 2);
+    CHECK_DIM_GE(nb, 2);
 
-    // TODO(sonots): support ndim > 2
-    CHECK_DIM_EQ(na, 2);
-    CHECK_DIM_EQ(nb, 2);
+    if (ROW_SIZE(nb) != COL_SIZE(na)) {
+        rb_raise(nary_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d", (int)ROW_SIZE(nb), (int)COL_SIZE(na));
+    }
 
     g.m = ROW_SIZE(na);
     g.k = COL_SIZE(na);
     g.n = COL_SIZE(nb);
 
-    if (ROW_SIZE(nb) != g.k) {
-        rb_raise(nary_eShapeError,"row size of b %d must equal to col size of a %d", (int)ROW_SIZE(nb), g.k);
-    }
-
     if (c == Qnil) { // c is not given.
-        out_shape[0] = g.m;
-        out_shape[1] = g.n;
-        c = nary_new(cT, 2, out_shape);
+        int ndim = NA_NDIM(na);
+        if (ndim > 2) {
+            size_t *shape = ALLOCA_N(size_t, ndim);
+            memcpy(shape, NA_SHAPE(na), sizeof(size_t) * ndim);
+            // shape[ndim - 2] = g.m;
+            shape[ndim - 1] = g.n;
+            c = nary_new(cT, ndim, shape);
+        } else {
+            size_t shape[2];
+            shape[0] = g.m;
+            shape[1] = g.n;
+            c = nary_new(cT, 2, shape);
+        }
     } else {
         narray_t *nc;
         COPY_OR_CAST_TO(c, cT);
         GetNArray(c, nc);
-        CHECK_DIM_EQ(nc, 2);
-        if ((int)ROW_SIZE(nc) != g.m) {
-            rb_raise(nary_eShapeError,"row size of c %d must equal to row size of a %d", (int)ROW_SIZE(nc), g.m);
+        CHECK_DIM_GE(nc, 2);
+        if (ROW_SIZE(nc) != ROW_SIZE(na)) {
+            rb_raise(nary_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d", (int)ROW_SIZE(nc), (int)ROW_SIZE(na));
         }
-        if ((int)COL_SIZE(nc) != g.n) {
-            rb_raise(nary_eShapeError,"col size of c %d must equal to col size of b %d", (int)COL_SIZE(nc), g.n);
+        if (COL_SIZE(nc) != COL_SIZE(nb)) {
+            rb_raise(nary_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d", (int)COL_SIZE(nc), (int)COL_SIZE(nc));
         }
     }
 
