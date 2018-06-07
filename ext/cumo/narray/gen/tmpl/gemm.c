@@ -79,12 +79,14 @@ make_gemm_layout(VALUE a)
     narray_t *na;
     gemm_layout_t layout;
 
+    GetNArray(a, na);
+
     if (na_debug_flag) {
-        printf("f_contiguous:%d, c_contiguous:%d\n", is_f_contiguous(a), is_c_contiguous(a));
+        printf("ndim==2 && f_contiguous:%d, c_contiguous:%d\n",
+                NA_NDIM(na) == 2 && is_f_contiguous(a), is_c_contiguous(a));
     }
 
-    GetNArray(a, na);
-    if (is_f_contiguous(a)) {
+    if (NA_NDIM(na) == 2 && is_f_contiguous(a)) {
         layout.ld = ROW_SIZE(na);
         layout.trans = CUBLAS_OP_T;
         layout.a = a;

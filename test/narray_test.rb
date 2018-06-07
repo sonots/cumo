@@ -363,6 +363,22 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.dot(b) == [[[9, 12, 15], [19, 26, 33], [29, 40, 51]],[[129, 144, 159],[163, 182, 201],[197, 220, 243]]] }
         assert { b.dot(a) == [[[22, 28], [49, 64]],[[220, 244],[301, 334]]] }
       end
+      test "matrix.dot(matrix.transpose) >= 3 dimensions" do
+        a = dtype[1..6*2].reshape(2,3,2)
+        b = dtype[1..6*2].reshape(3,2,2).transpose
+        assert { a.dot(b) ==
+                 [[[7, 19, 31],
+                   [15, 43, 71],
+                   [23, 67, 111]],
+                  [[46, 106, 166],
+                   [58, 134, 210],
+                   [70, 162, 254]]] }
+        assert { b.dot(a) ==
+                  [[[61, 76],
+                    [79, 100]],
+                   [[178, 196],
+                    [232, 256]]] }
+      end
       test "matrix.dot(matrix) with incorrect shape" do
         a = dtype[1..6].reshape(3,2)
         b = dtype[1..9].reshape(3,3)
