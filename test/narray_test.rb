@@ -339,6 +339,12 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.dot(b) == [[9, 12, 15], [19, 26, 33], [29, 40, 51]] }
         assert { b.dot(a) == [[22, 28], [49, 64]] }
       end
+      test "matrix.dot(matrix.transpose)" do
+        a = dtype[1..6].reshape(3,2)
+        b = dtype[1..6].reshape(3,2).transpose
+        assert { a.dot(b) == [[5, 11, 17], [11, 25, 39], [17, 39, 61]] }
+        assert { b.dot(a) == [[35, 44], [44, 56]] }
+      end
       test "matrix.dot(matrix) >= 3 dimensions" do
         a = dtype[1..6*2].reshape(2,3,2)
         b = dtype[1..6*2].reshape(2,2,3)
@@ -354,17 +360,11 @@ class NArrayTest < Test::Unit::TestCase
 
     if [Cumo::DComplex, Cumo::SComplex, Cumo::DFloat, Cumo::SFloat].include?(dtype)
       sub_test_case "#{dtype}, #gemm" do
-        test "matrix.gemm(matrix) with trans options" do
-          a = dtype[1..6].reshape(2,3)
-          b = dtype[1..6].reshape(2,3)
-          assert { a.gemm(b.transpose) == a.gemm(b, transb: true) } # trans option is faster
-          assert { a.transpose.gemm(b) == a.gemm(b, transa: true) }
-        end
         test "matrix.gemm(matrix) with alpha" do
           a = dtype[1..6].reshape(2,3)
           b = dtype[1..6].reshape(2,3)
           alpha = [Cumo::DComplex, Cumo::SComplex].include?(dtype) ? Complex(3) : 3
-          assert { a.gemm(b.transpose) * alpha == a.gemm(b, transb: true, alpha: alpha) }
+          assert { a.gemm(b.transpose) * alpha == a.gemm(b.transpose, alpha: alpha) }
         end
       end
     end
