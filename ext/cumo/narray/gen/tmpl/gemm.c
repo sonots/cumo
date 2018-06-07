@@ -96,6 +96,22 @@ make_gemm_layout(na_loop_args_t* arg)
     return layout;
 }
 
+extern int na_debug_flag;  // narray.c
+
+static void
+print_gemm_args(args_t* g, gemm_layout_t* a_layout, gemm_layout_t* b_layout)
+{
+    printf("transb=%d transa=%d, n=%d, m=%d, k=%d, ldb=%d, lda=%d, ldc=n=%d\n",
+            (int)b_layout->trans,
+            (int)a_layout->trans,
+            (int)g->n,
+            (int)g->m,
+            (int)g->k,
+            (int)b_layout->ld,
+            (int)a_layout->ld,
+            (int)g->n);
+}
+
 static void
 <%=c_iter%>(na_loop_t *const lp)
 {
@@ -129,7 +145,24 @@ static void
 
     // TODO(sonots): Cache cublas handle for each cuda device and cpu thread
     cublasCreate(&handle);
-    status = cublas<%=func_prefix%>gemm(handle, b_layout.trans, a_layout.trans, g->n, g->m, g->k, (<%=cutype%>*)(&g->alpha), (<%=cutype%>*)b, b_layout.ld, (<%=cutype%>*)a, a_layout.ld, (<%=cutype%>*)(&g->beta), (<%=cutype%>*)c, g->n);
+    if (na_debug_flag) {
+        print_gemm_args(g, &a_layout, &b_layout);
+    }
+    status = cublas<%=func_prefix%>gemm(
+            handle,
+            b_layout.trans,
+            a_layout.trans,
+            g->n,
+            g->m,
+            g->k,
+            (<%=cutype%>*)(&g->alpha),
+            (<%=cutype%>*)b,
+            b_layout.ld,
+            (<%=cutype%>*)a,
+            a_layout.ld,
+            (<%=cutype%>*)(&g->beta),
+            (<%=cutype%>*)c,
+            g->n);
     cublasDestroy(handle);
     cumo_cuda_cublas_check_status(status);
 }
@@ -148,9 +181,6 @@ static void
   def opt(v,tp=nil,*a)
     tp ||= "String or Symbol"
     case v
-    when /^trans(\w+)?$/
-      b = a[0] || $1
-      "@param #{v} [#{tp}]  if 'N': Not transpose #{b}, if 'T': Transpose #{b}. (default='N')"
     when "alpha"
       "@param #{v} [Float]  (default=1.0)"
     when "beta"
@@ -180,7 +210,6 @@ static VALUE
 {
     VALUE     a=self, b, c=Qnil, alpha, beta;
     narray_t *na1, *na2;
-    int   ma, ka, kb, nb;
     size_t    out_shape[2];
     ndfunc_arg_in_t ain[3] = {{cT,2},{cT,2},{OVERWRITE,2}};
     ndfunc_arg_out_t aout[1] = {{cT,2,out_shape}};
@@ -200,19 +229,17 @@ static VALUE
 
     GetNArray(a,na1);
     GetNArray(b,na2);
-
     CHECK_DIM_GE(na1,2);
     CHECK_DIM_GE(na2,2);
 
-    ma = ROW_SIZE(na1); // m
-    ka = COL_SIZE(na1); // k
-    kb = ROW_SIZE(na2); // k
-    nb = COL_SIZE(na2); // n
+    g.m = ROW_SIZE(na1);
+    g.k = COL_SIZE(na1);
+    g.n = COL_SIZE(na2);
 
-    CHECK_INT_EQ("ka",ka,"kb",kb);
-    g.m = ma;
-    g.n = nb;
-    g.k = ka;
+    if (ROW_SIZE(na2) != g.k) {
+        rb_raise(nary_eShapeError,"row size of b %d must equal to col size of a %d", ROW_SIZE(na2), g.k);
+    }
+
     if (c == Qnil) { // c is not given.
         ndfunc_arg_in_t ain_init = {sym_init,0};
         ain[2] = ain_init;
@@ -222,13 +249,14 @@ static VALUE
         out_shape[1] = g.n;
     } else {
         narray_t *na3;
-        int nc;
         COPY_OR_CAST_TO(c,cT);
         GetNArray(c,na3);
         CHECK_DIM_GE(na3,2);
-        nc = ROW_SIZE(na3);
-        if (nc < nb) {
-            rb_raise(nary_eShapeError,"nc=%d must be >= nb=%d",nc,nb);
+        if (ROW_SIZE(na3) != g.m) {
+            rb_raise(nary_eShapeError,"row size of c %d must equal to row size of a %d", ROW_SIZE(na3), g.m);
+        }
+        if (COL_SIZE(na3) != g.n) {
+            rb_raise(nary_eShapeError,"col size of c %d must equal to col size of b %d", COL_SIZE(na3), g.n);
         }
     }
     {
