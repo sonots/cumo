@@ -21,6 +21,22 @@ cumo_cuda_runtime_check_status(cudaError_t status)
     }
 }
 
+static inline int
+cumo_cuda_runtime_get_device_count()
+{
+    int device_count;
+    cumo_cuda_runtime_check_status(cudaGetDeviceCount(&device_count));
+    return device_count;
+}
+
+static inline int
+cumo_cuda_runtime_get_device()
+{
+    int device;
+    cumo_cuda_runtime_check_status(cudaGetDevice(&device));
+    return device;
+}
+
 static inline bool
 cumo_cuda_runtime_is_device_memory(void* ptr)
 {
