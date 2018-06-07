@@ -85,7 +85,12 @@ make_gemm_layout(VALUE a)
         layout.ld = RNARRAY_SHAPE(a)[1];
         layout.trans = CUBLAS_OP_N;  // transposed
         // force c-contiguous
-        layout.a = is_c_contiguous(a) ? a : rb_funcall(a, rb_intern("dup"), 0);
+        if (is_c_contiguous(a)) {
+            layout.a = a;
+        } else {
+            if (na_debug_flag) printf("gemm: dup\n");
+            layout.a = rb_funcall(a, rb_intern("dup"), 0);
+        }
     }
     return layout;
 }
@@ -131,9 +136,7 @@ static void
 
     // TODO(sonots): Cache cublas handle for each cuda device and cpu thread
     cublasCreate(&handle);
-    if (na_debug_flag) {
-        print_gemm_args(g, &a_layout, &b_layout);
-    }
+    if (na_debug_flag) print_gemm_args(g, &a_layout, &b_layout);
     status = cublas<%=func_prefix%>gemm(
             handle,
             b_layout.trans,
@@ -142,12 +145,12 @@ static void
             g->m,
             g->k,
             (<%=cutype%>*)(&g->alpha),
-            (<%=cutype%>*)na_get_pointer_for_read(b_layout.a),
+            (<%=cutype%>*)(na_get_pointer_for_read(b_layout.a) + na_get_offset(b_layout.a)),
             b_layout.ld,
-            (<%=cutype%>*)na_get_pointer_for_read(a_layout.a),
+            (<%=cutype%>*)(na_get_pointer_for_read(a_layout.a) + na_get_offset(a_layout.a)),
             a_layout.ld,
             (<%=cutype%>*)(&g->beta),
-            (<%=cutype%>*)na_get_pointer_for_write(c),
+            (<%=cutype%>*)(na_get_pointer_for_write(c) + na_get_offset(c)),
             g->n);
     cublasDestroy(handle);
     cumo_cuda_cublas_check_status(status);

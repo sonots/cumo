@@ -345,12 +345,24 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.dot(b) == [[5, 11, 17], [11, 25, 39], [17, 39, 61]] }
         assert { b.dot(a) == [[35, 44], [44, 56]] }
       end
-      test "matrix.dot(matrix) >= 3 dimensions" do
-        a = dtype[1..6*2].reshape(2,3,2)
-        b = dtype[1..6*2].reshape(2,2,3)
-        assert { a.dot(b) == [[[9, 12, 15], [19, 26, 33], [29, 40, 51]],[[129, 144, 159],[163, 182, 201],[197, 220, 243]]] }
-        assert { b.dot(a) == [[[22, 28], [49, 64]],[[220, 244],[301, 334]]] }
+      test "matrix.dot(matrix) of contiguous view" do
+        a = dtype.new(4, 3).seq(0)[1..2, 0..2] # 2x3
+        b = dtype.new(3, 2).seq(0)
+        assert { a.dot(b) == [[28, 40], [46, 67]] }
+        assert { b.dot(a) == [[6, 7, 8], [24, 29, 34], [42, 51, 60]] }
       end
+      test "matrix.dot(matrix) of non-contiguous view" do
+        a = dtype.new(4, 4).seq(0)[1..2, 0..2] # 2x3
+        b = dtype.new(3, 2).seq(0)
+        assert { a.dot(b) == [[34, 49], [58, 85]] }
+        assert { b.dot(a) == [[8, 9, 10], [32, 37, 42], [56, 65, 74]] }
+      end
+      # test "matrix.dot(matrix) >= 3 dimensions" do
+      #   a = dtype[1..6*2].reshape(2,3,2)
+      #   b = dtype[1..6*2].reshape(2,2,3)
+      #   assert { a.dot(b) == [[[9, 12, 15], [19, 26, 33], [29, 40, 51]],[[129, 144, 159],[163, 182, 201],[197, 220, 243]]] }
+      #   assert { b.dot(a) == [[[22, 28], [49, 64]],[[220, 244],[301, 334]]] }
+      # end
       test "matrix.dot(matrix) with incorrect shape" do
         a = dtype[1..6].reshape(3,2)
         b = dtype[1..9].reshape(3,3)
