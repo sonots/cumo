@@ -104,6 +104,7 @@ static void
     dtype *c;
     args_t *g;
     cublasHandle_t handle = 0;
+    cublasStatus_t status = 0;
 
     a = (dtype*)NDL_PTR(lp,0);
     b = (dtype*)NDL_PTR(lp,1);
@@ -128,8 +129,9 @@ static void
 
     // TODO(sonots): Cache cublas handle for each cuda device and cpu thread
     cublasCreate(&handle);
-    cublas<%=func_prefix%>gemm(handle, b_layout.trans, a_layout.trans, g->n, g->m, g->k, (<%=cutype%>*)(&g->alpha), (<%=cutype%>*)b, b_layout.ld, (<%=cutype%>*)a, a_layout.ld, (<%=cutype%>*)(&g->beta), (<%=cutype%>*)c, g->n);
+    status = cublas<%=func_prefix%>gemm(handle, b_layout.trans, a_layout.trans, g->n, g->m, g->k, (<%=cutype%>*)(&g->alpha), (<%=cutype%>*)b, b_layout.ld, (<%=cutype%>*)a, a_layout.ld, (<%=cutype%>*)(&g->beta), (<%=cutype%>*)c, g->n);
     cublasDestroy(handle);
+    cumo_cuda_cublas_check_status(status);
 }
 
 /*
@@ -198,22 +200,19 @@ static VALUE
 
     GetNArray(a,na1);
     GetNArray(b,na2);
+
     CHECK_DIM_GE(na1,2);
     CHECK_DIM_GE(na2,2);
+
     ma = ROW_SIZE(na1); // m
     ka = COL_SIZE(na1); // k
     kb = ROW_SIZE(na2); // k
     nb = COL_SIZE(na2); // n
 
-    //SWAP_IFTR(g.transa, ma, ka, tmp);
-    //SWAP_IFTR(g.transb, kb, nb, tmp);
     CHECK_INT_EQ("ka",ka,"kb",kb);
     g.m = ma;
     g.n = nb;
     g.k = ka;
-
-    //SWAP_IFROW(ma, nb, tmp);
-
     if (c == Qnil) { // c is not given.
         ndfunc_arg_in_t ain_init = {sym_init,0};
         ain[2] = ain_init;
@@ -231,7 +230,6 @@ static VALUE
         if (nc < nb) {
             rb_raise(nary_eShapeError,"nc=%d must be >= nb=%d",nc,nb);
         }
-        //CHECK_LEADING_GE("ldc",g.ldc,"m",ma);
     }
     {
         VALUE ans = na_ndloop3(&ndf, &g, 3, a, b, c);

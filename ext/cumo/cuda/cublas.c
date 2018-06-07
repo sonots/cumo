@@ -8,8 +8,43 @@
 //static void *blas_handle = 0;
 //static char *blas_prefix = 0;
 
+VALUE cumo_cuda_eCublasError;
+VALUE cumo_cuda_mCublas;
+#define eCublasError cumo_cuda_eCublasError
+#define mCublas cumo_cuda_mCublas
+
+static char* get_cublas_error_msg(cublasStatus_t error) {
+    switch (error) {
+#define RETURN_MSG(msg) \
+    case msg:                              \
+        return #msg
+
+        RETURN_MSG(CUBLAS_STATUS_SUCCESS);
+        RETURN_MSG(CUBLAS_STATUS_NOT_INITIALIZED);
+        RETURN_MSG(CUBLAS_STATUS_ALLOC_FAILED);
+        RETURN_MSG(CUBLAS_STATUS_INVALID_VALUE);
+        RETURN_MSG(CUBLAS_STATUS_ARCH_MISMATCH);
+        RETURN_MSG(CUBLAS_STATUS_MAPPING_ERROR);
+        RETURN_MSG(CUBLAS_STATUS_EXECUTION_FAILED);
+        RETURN_MSG(CUBLAS_STATUS_INTERNAL_ERROR);
+        RETURN_MSG(CUBLAS_STATUS_NOT_SUPPORTED);
+        RETURN_MSG(CUBLAS_STATUS_LICENSE_ERROR);
+
+#undef RETURN_MSG
+    }
+}
+
+void
+cumo_cuda_cublas_check_status(cublasStatus_t status)
+{
+    if (status != 0) {
+        rb_raise(cumo_cuda_eCublasError, "%s (error=%d)", get_cublas_error_msg(status), status);
+    }
+}
+
+
 VALUE
-cumo_cublas_option_value(VALUE value, VALUE default_value)
+cumo_cuda_cublas_option_value(VALUE value, VALUE default_value)
 {
     switch(TYPE(value)) {
     case T_NIL:
@@ -20,7 +55,7 @@ cumo_cublas_option_value(VALUE value, VALUE default_value)
 }
 
 //enum CBLAS_ORDER
-//cumo_cublas_option_order(VALUE order)
+//cumo_cuda_cublas_option_order(VALUE order)
 //{
 //    int opt;
 //    char *ptr;
@@ -57,7 +92,7 @@ cumo_cublas_option_value(VALUE value, VALUE default_value)
 //}
 
 cublasOperation_t
-cumo_cublas_option_trans(VALUE trans)
+cumo_cuda_cublas_option_trans(VALUE trans)
 {
     int opt;
     char *ptr;
@@ -96,7 +131,7 @@ cumo_cublas_option_trans(VALUE trans)
 }
 
 cublasFillMode_t
-cumo_cublas_option_uplo(VALUE uplo)
+cumo_cuda_cublas_option_uplo(VALUE uplo)
 {
     int opt;
     char *ptr;
@@ -135,7 +170,7 @@ cumo_cublas_option_uplo(VALUE uplo)
 }
 
 cublasDiagType_t
-cumo_cublas_option_diag(VALUE diag)
+cumo_cuda_cublas_option_diag(VALUE diag)
 {
     int opt;
     char *ptr;
@@ -174,7 +209,7 @@ cumo_cublas_option_diag(VALUE diag)
 }
 
 cublasSideMode_t
-cumo_cublas_option_side(VALUE side)
+cumo_cuda_cublas_option_side(VALUE side)
 {
     int opt;
     char *ptr;
@@ -213,7 +248,7 @@ cumo_cublas_option_side(VALUE side)
 }
 
 //void
-//cumo_cublas_check_func(void **func, const char *name)
+//cumo_cuda_cublas_check_func(void **func, const char *name)
 //{
 //    char *s, *error;
 //
@@ -253,26 +288,26 @@ cumo_cublas_option_side(VALUE side)
 //    return prefix;
 //}
 
-//void
-//Init_blas(void)
-//{
-//    VALUE mN;
-//
-//    mN = rb_define_module("Numo");
-//    /*
-//      Document-module: Numo::Linalg
-//    */
-//    mLinalg = rb_define_module_under(mN, "Linalg");
-//    mBlas = rb_define_module_under(mLinalg, "Blas");
-//
-//    rb_define_module_function(mBlas, "dlopen", blas_s_dlopen, -1);
-//    rb_define_module_function(mBlas, "prefix=", blas_s_prefix_set, 1);
-//
-//    blas_prefix = malloc(strlen("cublas_")+1); // default prefix
-//    strcpy(blas_prefix,"cublas_");
-//
-//    Init_cumo_linalg_blas_s();
-//    Init_cumo_linalg_blas_d();
-//    Init_cumo_linalg_blas_c();
-//    Init_cumo_linalg_blas_z();
-//}
+void
+Init_cumo_cuda_cublas(void)
+{
+    VALUE mCumo = rb_define_module("Cumo");
+    VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
+
+    /*
+      Document-module: Cumo::Cublas
+    */
+    mCublas = rb_define_module_under(mCUDA, "Cublas");
+    eCublasError = rb_define_class_under(mCUDA, "CublasError", rb_eStandardError);
+
+    // rb_define_module_function(mBlas, "dlopen", blas_s_dlopen, -1);
+    // rb_define_module_function(mBlas, "prefix=", blas_s_prefix_set, 1);
+
+    // blas_prefix = malloc(strlen("cublas_")+1); // default prefix
+    // strcpy(blas_prefix,"cublas_");
+
+    // Init_cumo_linalg_blas_s();
+    // Init_cumo_linalg_blas_d();
+    // Init_cumo_linalg_blas_c();
+    // Init_cumo_linalg_blas_z();
+}
