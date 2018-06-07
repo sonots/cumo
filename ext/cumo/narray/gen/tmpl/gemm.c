@@ -31,6 +31,7 @@ typedef struct {
 typedef struct {
     int ld;
     cublasOperation_t trans;
+    VALUE a;
 } gemm_layout_t;
 
 static bool
@@ -79,12 +80,12 @@ make_gemm_layout(VALUE a)
     if (is_f_contiguous(a)) {
         layout.ld = RNARRAY_SHAPE(a)[0];
         layout.trans = CUBLAS_OP_T;
-    } else if (is_c_contiguous(a)) {
+        layout.a = a;
+    } else {
         layout.ld = RNARRAY_SHAPE(a)[1];
         layout.trans = CUBLAS_OP_N;  // transposed
-    } else {
-        // TODO(sonots): Make contiguous array and compute with it
-        rb_raise(nary_eOperationError, "Gemm does not support non-contiguous NArray yet");
+        // force c-contiguous
+        layout.a = is_c_contiguous(a) ? a : rb_funcall(a, rb_intern("dup"), 0);
     }
     return layout;
 }
@@ -141,9 +142,9 @@ static void
             g->m,
             g->k,
             (<%=cutype%>*)(&g->alpha),
-            (<%=cutype%>*)na_get_pointer_for_read(b),
+            (<%=cutype%>*)na_get_pointer_for_read(b_layout.a),
             b_layout.ld,
-            (<%=cutype%>*)na_get_pointer_for_read(a),
+            (<%=cutype%>*)na_get_pointer_for_read(a_layout.a),
             a_layout.ld,
             (<%=cutype%>*)(&g->beta),
             (<%=cutype%>*)na_get_pointer_for_write(c),
