@@ -360,8 +360,34 @@ class NArrayTest < Test::Unit::TestCase
       test "matrix.dot(matrix) >= 3 dimensions" do
         a = dtype[1..6*2].reshape(2,3,2)
         b = dtype[1..6*2].reshape(2,2,3)
-        assert { a.dot(b) == [[[9, 12, 15], [19, 26, 33], [29, 40, 51]],[[129, 144, 159],[163, 182, 201],[197, 220, 243]]] }
-        assert { b.dot(a) == [[[22, 28], [49, 64]],[[220, 244],[301, 334]]] }
+        assert { a.dot(b) ==
+                 [[[9, 12, 15],
+                   [19, 26, 33],
+                   [29, 40, 51]],
+                  [[129, 144, 159],
+                   [163, 182, 201],
+                   [197, 220, 243]]] }
+        assert { b.dot(a) ==
+                 [[[22, 28],
+                   [49, 64]],
+                  [[220, 244],
+                   [301, 334]]] }
+      end
+      test "matrix.dot(matrix) >= 4 dimensions" do
+        a = dtype[1..6*2].reshape(1,2,3,2)
+        b = dtype[1..6*2].reshape(1,2,2,3)
+        assert { a.dot(b) ==
+                 [[[[9, 12, 15],
+                    [19, 26, 33],
+                    [29, 40, 51]],
+                   [[129, 144, 159],
+                    [163, 182, 201],
+                    [197, 220, 243]]]] }
+        assert { b.dot(a) ==
+                 [[[[22, 28],
+                    [49, 64]],
+                   [[220, 244],
+                    [301, 334]]]] }
       end
       test "matrix.dot(matrix.transpose) >= 3 dimensions" do
         a = dtype[1..6*2].reshape(2,3,2)
