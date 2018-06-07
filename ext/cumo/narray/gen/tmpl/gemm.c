@@ -79,6 +79,10 @@ make_gemm_layout(VALUE a)
     narray_t *na;
     gemm_layout_t layout;
 
+    if (na_debug_flag) {
+        printf("f_contiguous:%d, c_contiguous:%d\n", is_f_contiguous(a), is_c_contiguous(a));
+    }
+
     GetNArray(a, na);
     if (is_f_contiguous(a)) {
         layout.ld = ROW_SIZE(na);
@@ -88,12 +92,7 @@ make_gemm_layout(VALUE a)
         layout.ld = COL_SIZE(na);
         layout.trans = CUBLAS_OP_N;  // transposed
         // force c-contiguous
-        if (is_c_contiguous(a)) {
-            layout.a = a;
-        } else {
-            if (na_debug_flag) printf("gemm: dup\n");
-            layout.a = rb_funcall(a, rb_intern("dup"), 0);
-        }
+        layout.a = is_c_contiguous(a) ? a : rb_funcall(a, rb_intern("dup"), 0);
     }
     layout.stride = ROW_SIZE(na) * COL_SIZE(na);
     return layout;
@@ -212,7 +211,7 @@ static void
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
-    VALUE     a=self, b, c=Qnil, alpha, beta;
+    VALUE a=self, b, c=Qnil, alpha, beta;
     narray_t *na, *nb;
 
     gemm_args_t g;
@@ -222,10 +221,10 @@ static VALUE
 
     rb_scan_args(argc, argv, "11:", &b, &c, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 2, opts);
-    alpha   = option_value(opts[0],Qnil);
+    alpha = option_value(opts[0],Qnil);
     g.alpha = RTEST(alpha) ? m_num_to_data(alpha) : m_one;
-    beta    = option_value(opts[1],Qnil);
-    g.beta  = RTEST(beta)  ? m_num_to_data(beta)  : m_zero;
+    beta = option_value(opts[1],Qnil);
+    g.beta = RTEST(beta) ? m_num_to_data(beta) : m_zero;
 
     GetNArray(a, na);
     GetNArray(b, nb);
@@ -233,7 +232,8 @@ static VALUE
     CHECK_DIM_GE(nb, 2);
 
     if (ROW_SIZE(nb) != COL_SIZE(na)) {
-        rb_raise(nary_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d", (int)ROW_SIZE(nb), (int)COL_SIZE(na));
+        rb_raise(nary_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d",
+                (int)ROW_SIZE(nb), (int)COL_SIZE(na));
     }
 
     g.m = ROW_SIZE(na);
@@ -260,10 +260,12 @@ static VALUE
         GetNArray(c, nc);
         CHECK_DIM_GE(nc, 2);
         if (ROW_SIZE(nc) != ROW_SIZE(na)) {
-            rb_raise(nary_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d", (int)ROW_SIZE(nc), (int)ROW_SIZE(na));
+            rb_raise(nary_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d",
+                    (int)ROW_SIZE(nc), (int)ROW_SIZE(na));
         }
         if (COL_SIZE(nc) != COL_SIZE(nb)) {
-            rb_raise(nary_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d", (int)COL_SIZE(nc), (int)COL_SIZE(nc));
+            rb_raise(nary_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d",
+                    (int)COL_SIZE(nc), (int)COL_SIZE(nc));
         }
     }
 
