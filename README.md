@@ -249,4 +249,6 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/sonots
 
 ## License
 
-[LICENSE.txt](./LICENSE.txt)
+* [LICENSE.txt](./LICENSE.txt)
+* [3rd_party/LICENSE.txt](./3rd_party/LICENSE.txt)
+
