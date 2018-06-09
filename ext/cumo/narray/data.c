@@ -11,6 +11,7 @@ static ID id_swap_byte;
 
 // ---------------------------------------------------------------------
 
+/*
 #define LOOP_UNARY_PTR(lp,proc)                    \
 {                                                  \
     size_t  i;                                     \
@@ -50,15 +51,25 @@ static ID id_swap_byte;
         }                                          \
     }                                              \
 }
+*/
 
-#define m_memcpy(src,dst) memcpy(dst,src,e)
+void cumo_iter_copy_bytes_kernel_launch(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t *idx1, size_t *idx2, size_t n, int elmsz);
+
+// #define m_memcpy(src,dst) memcpy(dst,src,e)
 static void
 iter_copy_bytes(na_loop_t *const lp)
 {
-    size_t e;
-    e = lp->args[0].elmsz;
-    // TODO(sonots): CUDA kernelize
-    LOOP_UNARY_PTR(lp,m_memcpy);
+    size_t  n; 
+    ssize_t s1, s2;
+    char   *p1, *p2;
+    size_t *idx1, *idx2;
+    INIT_COUNTER(lp, n);                           
+    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    INIT_PTR_IDX(lp, 1, p2, s2, idx2);
+    cumo_iter_copy_bytes_kernel_launch(p1, p2, s1, s2, idx1, idx2, n, lp->args[0].elmsz);
+    // size_t e;
+    // e = lp->args[0].elmsz;
+    // LOOP_UNARY_PTR(lp,m_memcpy);
 }
 
 VALUE
@@ -81,6 +92,7 @@ na_store(VALUE self, VALUE src)
 
 // ---------------------------------------------------------------------
 
+/*
 #define m_swap_byte(q1,q2)       \
     {                            \
         size_t j;                \
@@ -90,17 +102,28 @@ na_store(VALUE self, VALUE src)
         }                        \
         memcpy(q2,b2,e);         \
     }
+*/
+
+void cumo_iter_swap_bytes_kernel_launch(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t *idx1, size_t *idx2, uint64_t n, int elmsz);
 
 static void
 iter_swap_byte(na_loop_t *const lp)
 {
-    char   *b1, *b2;
-    size_t  e;
+    //char   *b1, *b2;
+    //size_t  e;
 
-    e = lp->args[0].elmsz;
-    b1 = ALLOCA_N(char, e);
-    b2 = ALLOCA_N(char, e);
-    LOOP_UNARY_PTR(lp,m_swap_byte);
+    //e = lp->args[0].elmsz;
+    //b1 = ALLOCA_N(char, e);
+    //b2 = ALLOCA_N(char, e);
+    //LOOP_UNARY_PTR(lp,m_swap_byte);
+    size_t  n; 
+    ssize_t s1, s2;
+    char   *p1, *p2;
+    size_t *idx1, *idx2;
+    INIT_COUNTER(lp, n);                           
+    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    INIT_PTR_IDX(lp, 1, p2, s2, idx2);
+    cumo_iter_swap_bytes_kernel_launch(p1, p2, s1, s2, idx1, idx2, n, lp->args[0].elmsz);
 }
 
 static VALUE
