@@ -12,7 +12,6 @@ extern "C" {
 #include "cumo/compat.h"
 #include "cumo/template.h"
 #include "cumo/extconf.h"
-#include "cumo/intern_fwd.h"
 
 #ifdef HAVE_STDBOOL_H
 # include <stdbool.h>
