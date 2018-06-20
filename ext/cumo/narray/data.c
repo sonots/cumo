@@ -52,7 +52,7 @@ static ID id_swap_byte;
 
 #define m_memcpy(src,dst) memcpy(dst,src,e)
 static void
-iter_copy_bytes(na_loop_t *const lp)
+iter_copy_bytes(cumo_na_loop_t *const lp)
 {
     size_t e;
     e = lp->args[0].elmsz;
@@ -68,7 +68,7 @@ cumo_na_copy(VALUE self)
     ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
     ndfunc_t ndf = { iter_copy_bytes, FULL_LOOP, 1, 1, ain, aout };
 
-    v = na_ndloop(&ndf, 1, self);
+    v = cumo_na_ndloop(&ndf, 1, self);
     return v;
 }
 
@@ -91,7 +91,7 @@ cumo_na_store(VALUE self, VALUE src)
     }
 
 static void
-iter_swap_byte(na_loop_t *const lp)
+iter_swap_byte(cumo_na_loop_t *const lp)
 {
     char   *b1, *b2;
     size_t  e;
@@ -103,7 +103,7 @@ iter_swap_byte(na_loop_t *const lp)
 }
 
 static VALUE
-na_swap_byte(VALUE self)
+cumo_na_swap_byte(VALUE self)
 {
     VALUE v;
     ndfunc_arg_in_t ain[1] = {{Qnil,0}};
@@ -111,9 +111,9 @@ na_swap_byte(VALUE self)
     ndfunc_t ndf = { iter_swap_byte, FULL_LOOP|NDF_ACCEPT_BYTESWAP,
                      1, 1, ain, aout };
 
-    v = na_ndloop(&ndf, 1, self);
+    v = cumo_na_ndloop(&ndf, 1, self);
     if (self!=v) {
-        na_copy_flags(self, v);
+        cumo_na_copy_flags(self, v);
     }
     REVERSE_ENDIAN(v);
     return v;
@@ -121,7 +121,7 @@ na_swap_byte(VALUE self)
 
 
 static VALUE
-na_to_network(VALUE self)
+cumo_na_to_network(VALUE self)
 {
     if (TEST_BIG_ENDIAN(self)) {
         return self;
@@ -130,7 +130,7 @@ na_to_network(VALUE self)
 }
 
 static VALUE
-na_to_vacs(VALUE self)
+cumo_na_to_vacs(VALUE self)
 {
     if (TEST_LITTLE_ENDIAN(self)) {
         return self;
@@ -139,7 +139,7 @@ na_to_vacs(VALUE self)
 }
 
 static VALUE
-na_to_host(VALUE self)
+cumo_na_to_host(VALUE self)
 {
     if (TEST_HOST_ORDER(self)) {
         return self;
@@ -148,7 +148,7 @@ na_to_host(VALUE self)
 }
 
 static VALUE
-na_to_swapped(VALUE self)
+cumo_na_to_swapped(VALUE self)
 {
     if (TEST_BYTE_SWAPPED(self)) {
         return self;
@@ -163,7 +163,7 @@ static inline int
 check_axis(int axis, int ndim)
 {
     if (axis < -ndim || axis >= ndim) {
-        rb_raise(na_eDimensionError,"invalid axis (%d for %d-dimension)",
+        rb_raise(cumo_na_eDimensionError,"invalid axis (%d for %d-dimension)",
                  axis, ndim);
     }
     if (axis < 0) {
@@ -202,7 +202,7 @@ check_axis(int axis, int ndim)
     #   [3, 7]]]
 */
 static VALUE
-na_swapaxes(VALUE self, VALUE a1, VALUE a2)
+cumo_na_swapaxes(VALUE self, VALUE a1, VALUE a2)
 {
     int  i, j, ndim;
     size_t tmp_shape;
@@ -210,7 +210,7 @@ na_swapaxes(VALUE self, VALUE a1, VALUE a2)
     narray_view_t *na;
     volatile VALUE view;
 
-    view = na_make_view(self);
+    view = cumo_na_make_view(self);
     GetNArrayView(view,na);
 
     ndim = na->base.ndim;
@@ -228,7 +228,7 @@ na_swapaxes(VALUE self, VALUE a1, VALUE a2)
 }
 
 static VALUE
-na_transpose_map(VALUE self, int *map)
+cumo_na_transpose_map(VALUE self, int *map)
 {
     int  i, ndim;
     size_t *shape;
@@ -236,7 +236,7 @@ na_transpose_map(VALUE self, int *map)
     narray_view_t *na;
     volatile VALUE view;
 
-    view = na_make_view(self);
+    view = cumo_na_make_view(self);
     GetNArrayView(view,na);
 
     ndim = na->base.ndim;
@@ -258,7 +258,7 @@ na_transpose_map(VALUE self, int *map)
 #define SWAP(a,b,tmp) {tmp=a;a=b;b=tmp;}
 
 static VALUE
-na_transpose(int argc, VALUE *argv, VALUE self)
+cumo_na_transpose(int argc, VALUE *argv, VALUE self)
 {
     int ndim, *map, *permute;
     int i, d;
@@ -271,14 +271,14 @@ na_transpose(int argc, VALUE *argv, VALUE self)
         if (argc > 0) {
             rb_raise(rb_eArgError, "unnecessary argument for 1-d array");
         }
-        return na_make_view(self);
+        return cumo_na_make_view(self);
     }
     map = ALLOCA_N(int,ndim);
     if (argc == 0) {
         for (i=0; i < ndim; i++) {
             map[i] = ndim-1-i;
         }
-        return na_transpose_map(self,map);
+        return cumo_na_transpose_map(self,map);
     }
     // with argument
     if (argc > ndim) {
@@ -325,13 +325,13 @@ na_transpose(int argc, VALUE *argv, VALUE self)
             is_negative = 1;
         }
     }
-    return na_transpose_map(self,map);
+    return cumo_na_transpose_map(self,map);
 }
 
 //----------------------------------------------------------------------
 
 static void
-na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
+cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
 {
     int    i, unfixed=-1;
     size_t total=1;
@@ -384,19 +384,19 @@ na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
   @example
 */
 static VALUE
-na_reshape_bang(int argc, VALUE *argv, VALUE self)
+cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
 {
     size_t *shape;
     narray_t *na;
 
-    if (na_check_contiguous(self)==Qfalse) {
+    if (cumo_na_check_contiguous(self)==Qfalse) {
         rb_raise(rb_eStandardError, "cannot change shape of non-contiguous NArray");
     }
     shape = ALLOCA_N(size_t, argc);
-    na_check_reshape(argc, argv, self, shape);
+    cumo_na_check_reshape(argc, argv, self, shape);
 
     GetNArray(self, na);
-    na_setup_shape(na, argc, shape);
+    cumo_na_setup_shape(na, argc, shape);
     return self;
 }
 
@@ -410,18 +410,18 @@ na_reshape_bang(int argc, VALUE *argv, VALUE self)
   @example
 */
 static VALUE
-na_reshape(int argc, VALUE *argv, VALUE self)
+cumo_na_reshape(int argc, VALUE *argv, VALUE self)
 {
     size_t *shape;
     narray_t *na;
     VALUE    copy;
 
     shape = ALLOCA_N(size_t, argc);
-    na_check_reshape(argc, argv, self, shape);
+    cumo_na_check_reshape(argc, argv, self, shape);
 
     copy = rb_funcall(self, rb_intern("dup"), 0);
     GetNArray(copy, na);
-    na_setup_shape(na, argc, shape);
+    cumo_na_setup_shape(na, argc, shape);
     return copy;
 }
 
@@ -444,10 +444,10 @@ cumo_na_flatten_dim(VALUE self, int sd)
     nd = na->ndim;
 
     if (nd==0) {
-        return na_make_view(self);
+        return cumo_na_make_view(self);
     }
     if (sd<0 || sd>=nd) {
-        rb_bug("na_flaten_dim: start_dim (%d) out of range",sd);
+        rb_bug("cumo_na_flaten_dim: start_dim (%d) out of range",sd);
     }
 
     // new shape
@@ -462,18 +462,18 @@ cumo_na_flatten_dim(VALUE self, int sd)
     shape[sd] = size;
 
     // new object
-    view = na_s_allocate_view(CLASS_OF(self));
-    na_copy_flags(self, view);
+    view = cumo_na_s_allocate_view(CLASS_OF(self));
+    cumo_na_copy_flags(self, view);
     GetNArrayView(view, na2);
 
     // new stride
-    na_setup_shape((narray_t*)na2, sd+1, shape);
+    cumo_na_setup_shape((narray_t*)na2, sd+1, shape);
     na2->stridx = ALLOC_N(stridx_t,sd+1);
 
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        stride = na_element_stride(self);
+        stride = cumo_na_element_stride(self);
         for (i=sd+1; i--; ) {
             //printf("data: i=%d shpae[i]=%ld stride=%ld\n",i,shape[i],stride);
             SDX_SET_STRIDE(na2->stridx[i],stride);
@@ -500,7 +500,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
             }
         }
         // flat dimenion == last dimension
-        if (RTEST(na_check_ladder(self,sd))) {
+        if (RTEST(cumo_na_check_ladder(self,sd))) {
         //if (0) {
             na2->stridx[sd] = na1->stridx[nd-1];
         } else {
@@ -544,7 +544,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
 VALUE
 cumo_na_flatten(VALUE self)
 {
-    return na_flatten_dim(self,0);
+    return cumo_na_flatten_dim(self,0);
 }
 
 //----------------------------------------------------------------------
@@ -587,7 +587,7 @@ cumo_na_flatten(VALUE self)
      [15, 16, 17, 18, 4]]
  */
 static VALUE
-na_diagonal(int argc, VALUE *argv, VALUE self)
+cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
 {
     int  i, k, nd;
     size_t  j;
@@ -634,7 +634,7 @@ na_diagonal(int argc, VALUE *argv, VALUE self)
     GetNArray(self,na);
     nd = na->ndim;
     if (nd < 2) {
-        rb_raise(na_eDimensionError,"less than 2-d array");
+        rb_raise(cumo_na_eDimensionError,"less than 2-d array");
     }
 
     if (vaxes) {
@@ -685,12 +685,12 @@ na_diagonal(int argc, VALUE *argv, VALUE self)
     shape[k] = diag_size;
 
     // new object
-    view = na_s_allocate_view(CLASS_OF(self));
-    na_copy_flags(self, view);
+    view = cumo_na_s_allocate_view(CLASS_OF(self));
+    cumo_na_copy_flags(self, view);
     GetNArrayView(view, na2);
 
     // new stride
-    na_setup_shape((narray_t*)na2, nd-1, shape);
+    cumo_na_setup_shape((narray_t*)na2, nd-1, shape);
     na2->stridx = ALLOC_N(stridx_t, nd-1);
 
     switch(na->type) {
@@ -698,7 +698,7 @@ na_diagonal(int argc, VALUE *argv, VALUE self)
     case NARRAY_FILEMAP_T:
         na2->offset = 0;
         na2->data = self;
-        stride = stride0 = stride1 = na_element_stride(self);
+        stride = stride0 = stride1 = cumo_na_element_stride(self);
         for (i=nd,k=nd-2; i--; ) {
             if (i==ax[1]) {
                 stride1 = stride;
@@ -782,7 +782,7 @@ na_diagonal(int argc, VALUE *argv, VALUE self)
 #define SWAP(a,b,t) {t=a;a=b;b=t;}
 
 static VALUE
-na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
+cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
 {
     int i, k, l, nd;
     size_t  j;
@@ -798,9 +798,9 @@ na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     GetNArray(self,na);
     nd = na->ndim;
 
-    view = na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(CLASS_OF(self));
 
-    na_copy_flags(self, view);
+    cumo_na_copy_flags(self, view);
     GetNArrayView(view, na2);
 
     // new dimension
@@ -825,8 +825,8 @@ na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
                 shape[i++] = na->shape[k++];
             }
         }
-        na_setup_shape((narray_t*)na2, nd, shape);
-        stride = na_element_stride(self);
+        cumo_na_setup_shape((narray_t*)na2, nd, shape);
+        stride = cumo_na_element_stride(self);
         for (i=nd; i--;) {
             SDX_SET_STRIDE(na2->stridx[i], stride);
             stride *= shape[i];
@@ -864,7 +864,7 @@ na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
                 i++; k++;
             }
         }
-        na_setup_shape((narray_t*)na2, nd, shape);
+        cumo_na_setup_shape((narray_t*)na2, nd, shape);
         na2->offset = na1->offset;
         na2->data = na1->data;
         break;
@@ -903,17 +903,17 @@ cumo_na_dot(VALUE self, VALUE other)
     GetNArray(a1,na1);
     GetNArray(a2,na2);
     if (na1->ndim==0 || na2->ndim==0) {
-        rb_raise(na_eDimensionError,"zero dimensional narray");
+        rb_raise(cumo_na_eDimensionError,"zero dimensional narray");
     }
     if (na2->ndim > 1) {
         if (na1->shape[na1->ndim-1] != na2->shape[na2->ndim-2]) {
-            rb_raise(na_eShapeError,"shape mismatch: self.shape[-1](=%"SZF"d) != other.shape[-2](=%"SZF"d)",
+            rb_raise(cumo_na_eShapeError,"shape mismatch: self.shape[-1](=%"SZF"d) != other.shape[-2](=%"SZF"d)",
                      na1->shape[na1->ndim-1], na2->shape[na2->ndim-2]);
         }
         // insert new axis [ ..., last-1-dim, newaxis*other.ndim, last-dim ]
-        a1 = na_new_dimension_for_dot(a1, na1->ndim-1, na2->ndim-1, 0);
+        a1 = cumo_na_new_dimension_for_dot(a1, na1->ndim-1, na2->ndim-1, 0);
         // insert & transpose [ newaxis*self.ndim, ..., last-dim, last-1-dim ]
-        a2 = na_new_dimension_for_dot(a2, 0, na1->ndim-1, 1);
+        a2 = cumo_na_new_dimension_for_dot(a2, 0, na1->ndim-1, 1);
     }
     return rb_funcall(a1,id_mulsum,2,a2,INT2FIX(-1));
 }
@@ -922,20 +922,20 @@ cumo_na_dot(VALUE self, VALUE other)
 void
 Init_cumo_na_data()
 {
-    rb_define_method(cNArray, "copy", na_copy, 0); // deprecated
+    rb_define_method(cNArray, "copy", cumo_na_copy, 0); // deprecated
 
-    rb_define_method(cNArray, "flatten", na_flatten, 0);
-    rb_define_method(cNArray, "swapaxes", na_swapaxes, 2);
-    rb_define_method(cNArray, "transpose", na_transpose, -1);
+    rb_define_method(cNArray, "flatten", cumo_na_flatten, 0);
+    rb_define_method(cNArray, "swapaxes", cumo_na_swapaxes, 2);
+    rb_define_method(cNArray, "transpose", cumo_na_transpose, -1);
 
-    rb_define_method(cNArray, "reshape", na_reshape,-1);
-    rb_define_method(cNArray, "reshape!", na_reshape_bang,-1);
+    rb_define_method(cNArray, "reshape", cumo_na_reshape,-1);
+    rb_define_method(cNArray, "reshape!", cumo_na_reshape_bang,-1);
     /*
     rb_define_alias(cNArray,  "shape=","reshape!");
     */
-    rb_define_method(cNArray, "diagonal", na_diagonal,-1);
+    rb_define_method(cNArray, "diagonal", cumo_na_diagonal,-1);
 
-    rb_define_method(cNArray, "swap_byte", na_swap_byte, 0);
+    rb_define_method(cNArray, "swap_byte", cumo_na_swap_byte, 0);
 #ifdef DYNAMIC_ENDIAN
 #else
 #ifdef WORDS_BIGENDIAN
@@ -946,10 +946,10 @@ Init_cumo_na_data()
     rb_define_alias(cNArray, "vacs_order?", "host_order?");
 #endif
 #endif
-    rb_define_method(cNArray, "to_network", na_to_network, 0);
-    rb_define_method(cNArray, "to_vacs", na_to_vacs, 0);
-    rb_define_method(cNArray, "to_host", na_to_host, 0);
-    rb_define_method(cNArray, "to_swapped", na_to_swapped, 0);
+    rb_define_method(cNArray, "to_network", cumo_na_to_network, 0);
+    rb_define_method(cNArray, "to_vacs", cumo_na_to_vacs, 0);
+    rb_define_method(cNArray, "to_host", cumo_na_to_host, 0);
+    rb_define_method(cNArray, "to_swapped", cumo_na_to_swapped, 0);
 
     //rb_define_method(cNArray, "dot", cumo_na_dot, 1);
 

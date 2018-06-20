@@ -17,11 +17,11 @@ static dtype
     if (IsNArray(obj)) {
         GetNArray(obj,na);
         if (na->size != 1) {
-            rb_raise(na_eShapeError,"narray size should be 1");
+            rb_raise(cumo_na_eShapeError,"narray size should be 1");
        }
         klass = CLASS_OF(obj);
-        ptr = na_get_pointer_for_read(obj);
-        pos = na_get_offset(obj);
+        ptr = cumo_na_get_pointer_for_read(obj);
+        pos = cumo_na_get_offset(obj);
         <% find_tmpl("store").definitions.select{|x| x.class==Store}.each do |x| %>
         if (<%=x.condition("klass")%>) {
             <%=x.extract_data("ptr","pos","x")%>;
@@ -37,14 +37,14 @@ static dtype
         <% if is_object %>
         return obj;
         <% else %>
-        rb_raise(na_eCastError, "unknown conversion from %s to %s",
+        rb_raise(cumo_na_eCastError, "unknown conversion from %s to %s",
                  rb_class2name(CLASS_OF(obj)),
                  rb_class2name(cT));
         <% end %>
     }
     if (TYPE(obj)==T_ARRAY) {
         if (RARRAY_LEN(obj) != 1) {
-            rb_raise(na_eShapeError,"array size should be 1");
+            rb_raise(cumo_na_eShapeError,"array size should be 1");
         }
         return m_num_to_data(RARRAY_AREF(obj,0));
     }

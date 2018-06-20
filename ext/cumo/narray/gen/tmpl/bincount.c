@@ -5,7 +5,7 @@
    cnt_type = "u_int#{bits}_t"
 %>
 static void
-<%=c_iter%>_<%=bits%>(na_loop_t *const lp)
+<%=c_iter%>_<%=bits%>(cumo_na_loop_t *const lp)
 {
     size_t   i, x, n;
     char    *p1, *p2;
@@ -45,7 +45,7 @@ static VALUE
     ndfunc_t ndf = {<%=c_iter%>_<%=bits%>, NO_LOOP|NDF_STRIDE_LOOP|NDF_INDEX_LOOP,
                     1, 1, ain, aout};
 
-    return na_ndloop(&ndf, 1, self);
+    return cumo_na_ndloop(&ndf, 1, self);
 }
 <% end %>
 // ------- end of Integer count without weights -------
@@ -58,7 +58,7 @@ static VALUE
   fn = fn.downcase
 %>
 static void
-<%=c_iter%>_<%=fn%>(na_loop_t *const lp)
+<%=c_iter%>_<%=fn%>(cumo_na_loop_t *const lp)
 {
     <%=cnt_type%> w;
     size_t   i, x, n, m;
@@ -73,7 +73,7 @@ static void
     n = lp->args[2].shape[0];
 
     if (i != m) {
-        rb_raise(na_eShapeError,
+        rb_raise(cumo_na_eShapeError,
                  "size mismatch along last axis between self and weight");
     }
 
@@ -97,7 +97,7 @@ static VALUE
     ndfunc_t ndf = {<%=c_iter%>_<%=fn%>, NO_LOOP|NDF_STRIDE_LOOP,
                     2, 1, ain, aout};
 
-    return na_ndloop(&ndf, 2, self, weight);
+    return cumo_na_ndloop(&ndf, 2, self, weight);
 }
 <% end %>
 // ------- end of Float count with weights -------

@@ -21,7 +21,7 @@ random_seed()
 }
 
 static VALUE
-na_s_srand(int argc, VALUE *argv, VALUE obj)
+cumo_na_s_srand(int argc, VALUE *argv, VALUE obj)
 {
     VALUE vseed;
     u_int64_t seed;
@@ -40,6 +40,6 @@ na_s_srand(int argc, VALUE *argv, VALUE obj)
 
 void
 Init_cumo_na_rand() {
-    rb_define_singleton_method(cNArray, "srand", na_s_srand, -1);
+    rb_define_singleton_method(cNArray, "srand", cumo_na_s_srand, -1);
     init_gen_rand(0);
 }

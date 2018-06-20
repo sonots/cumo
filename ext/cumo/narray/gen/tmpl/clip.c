@@ -1,5 +1,5 @@
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     char   *p1, *p2, *p3, *p4;
@@ -15,7 +15,7 @@ static void
         GET_DATA_STRIDE(p1,s1,dtype,x);
         GET_DATA_STRIDE(p2,s2,dtype,min);
         GET_DATA_STRIDE(p3,s3,dtype,max);
-        if (m_gt(min,max)) {rb_raise(na_eOperationError,"min is greater than max");}
+        if (m_gt(min,max)) {rb_raise(cumo_na_eOperationError,"min is greater than max");}
         if (m_lt(x,min)) {x=min;}
         if (m_gt(x,max)) {x=max;}
         SET_DATA_STRIDE(p4,s4,dtype,x);
@@ -23,7 +23,7 @@ static void
 }
 
 static void
-<%=c_iter%>_min(na_loop_t *const lp)
+<%=c_iter%>_min(cumo_na_loop_t *const lp)
 {
     size_t  i;
     char   *p1, *p2, *p3;
@@ -43,7 +43,7 @@ static void
 }
 
 static void
-<%=c_iter%>_max(na_loop_t *const lp)
+<%=c_iter%>_max(cumo_na_loop_t *const lp)
 {
     size_t  i;
     char   *p1, *p2, *p3;
@@ -107,13 +107,13 @@ static VALUE
 
     if (RTEST(min)) {
         if (RTEST(max)) {
-            return na_ndloop(&ndf_both, 3, self, min, max);
+            return cumo_na_ndloop(&ndf_both, 3, self, min, max);
         } else {
-            return na_ndloop(&ndf_min, 2, self, min);
+            return cumo_na_ndloop(&ndf_min, 2, self, min);
         }
     } else {
         if (RTEST(max)) {
-            return na_ndloop(&ndf_max, 2, self, max);
+            return cumo_na_ndloop(&ndf_max, 2, self, max);
         }
     }
     rb_raise(rb_eArgError,"min and max are not given");

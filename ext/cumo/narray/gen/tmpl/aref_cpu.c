@@ -38,11 +38,11 @@ static VALUE
     size_t pos;
     char *ptr;
 
-    result_nd = na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
+    result_nd = cumo_na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
     if (result_nd) {
-        return na_aref_main(argc, argv, self, 0, result_nd, pos);
+        return cumo_na_aref_main(argc, argv, self, 0, result_nd, pos);
     } else {
-        ptr = na_get_pointer_for_read(self) + pos;
+        ptr = cumo_na_get_pointer_for_read(self) + pos;
         SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         return m_extract(ptr);

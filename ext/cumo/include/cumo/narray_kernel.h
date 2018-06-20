@@ -116,7 +116,7 @@ typedef int fortran_integer;
 #define REAL(x) ((x).dat[0])
 #define IMAG(x) ((x).dat[1])
 
-extern int na_debug_flag;
+extern int cumo_na_debug_flag;
 
 #define NARRAY_DATA_T     0x1
 #define NARRAY_VIEW_T     0x2

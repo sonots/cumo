@@ -1,5 +1,5 @@
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     BIT_DIGIT *a;
@@ -100,16 +100,16 @@ static VALUE
 
     // TODO(sonots): bit_count_true synchronizes with CPU. Avoid.
     n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, mask));
-    idx_1 = na_new(cIndex, 1, &n_1);
+    idx_1 = cumo_na_new(cIndex, 1, &n_1);
     g.count = 0;
     g.elmsz = SIZEOF_VOIDP;
-    g.idx1 = na_get_pointer_for_write(idx_1);
+    g.idx1 = cumo_na_get_pointer_for_write(idx_1);
     g.idx0 = NULL;
-    na_ndloop3(&ndf, &g, 2, mask, val);
+    cumo_na_ndloop3(&ndf, &g, 2, mask, val);
 
-    view = na_s_allocate_view(CLASS_OF(val));
+    view = cumo_na_s_allocate_view(CLASS_OF(val));
     GetNArrayView(view, nv);
-    na_setup_shape((narray_t*)nv, 1, &n_1);
+    cumo_na_setup_shape((narray_t*)nv, 1, &n_1);
 
     GetNArrayData(idx_1,nidx);
     SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);

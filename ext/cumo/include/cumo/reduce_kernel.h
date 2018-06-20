@@ -26,12 +26,12 @@ static inline int64_t round_up_to_power_of_2(int64_t x) {
 // reference: cupy reduction kernel
 
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-__global__ static void reduction_kernel(na_reduction_arg_t arg, ReductionImpl impl) {
-    na_iarray_t& in_iarray = arg.in;
-    na_iarray_t& out_iarray = arg.out;
-    na_indexer_t& in_indexer = arg.in_indexer;
-    na_indexer_t& out_indexer = arg.out_indexer;
-    na_indexer_t& reduce_indexer = arg.reduce_indexer;
+__global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, ReductionImpl impl) {
+    cumo_na_iarray_t& in_iarray = arg.in;
+    cumo_na_iarray_t& out_iarray = arg.out;
+    cumo_na_indexer_t& in_indexer = arg.in_indexer;
+    cumo_na_indexer_t& out_indexer = arg.out_indexer;
+    cumo_na_indexer_t& reduce_indexer = arg.reduce_indexer;
 
     using TypeReduce = decltype(impl.Identity());
 
@@ -109,9 +109,9 @@ __global__ static void reduction_kernel(na_reduction_arg_t arg, ReductionImpl im
 static constexpr size_t max_block_size = 512;
 
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce(na_reduction_arg_t arg, ReductionImpl&& impl) {
-    na_indexer_t& out_indexer = arg.out_indexer;
-    na_indexer_t& reduce_indexer = arg.reduce_indexer;
+void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
+    cumo_na_indexer_t& out_indexer = arg.out_indexer;
+    cumo_na_indexer_t& reduce_indexer = arg.reduce_indexer;
 
     using TypeReduce = decltype(impl.Identity());
 

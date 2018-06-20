@@ -11,7 +11,7 @@ format_<%=type_name%>(VALUE fmt, dtype x)
 }
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     BIT_DIGIT *a1, x=0;
@@ -60,5 +60,5 @@ static VALUE
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 2,1, ain,aout};
 
     rb_scan_args(argc, argv, "01", &fmt);
-    return na_ndloop(&ndf, 2, self, fmt);
+    return cumo_na_ndloop(&ndf, 2, self, fmt);
 }

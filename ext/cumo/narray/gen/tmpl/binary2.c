@@ -3,7 +3,7 @@ void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ch
 <% end %>
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t   i, n;
     char    *p1, *p2, *p3, *p4;
@@ -43,7 +43,7 @@ static VALUE
     ndfunc_arg_out_t aout[2] = {{cT,0},{cT,0}};
     ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 2, 2, ain, aout };
 
-    return na_ndloop(&ndf, 2, self, other);
+    return cumo_na_ndloop(&ndf, 2, self, other);
 }
 
 /*
@@ -59,7 +59,7 @@ static VALUE
     return <%=c_func%>_self(self, other);
     <% else %>
     VALUE klass, v;
-    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    klass = cumo_na_upcast(CLASS_OF(self),CLASS_OF(other));
     if (klass==cT) {
         return <%=c_func%>_self(self, other);
     } else {

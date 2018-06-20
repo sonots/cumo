@@ -5,7 +5,7 @@ void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t s0, ssize_t s
 #include <cuda_runtime.h>
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t   n0, n1;
     ssize_t  s0, s1;
@@ -80,7 +80,7 @@ static VALUE
     GetNArray(self,na);
     nd = na->ndim;
     if (nd < 2) {
-        rb_raise(na_eDimensionError,"less than 2-d array");
+        rb_raise(cumo_na_eDimensionError,"less than 2-d array");
     }
 
     // Diagonal offset from the main diagonal.
@@ -100,6 +100,6 @@ static VALUE
     *(ssize_t*)g = kofs;
     *(dtype*)(g+sizeof(ssize_t)) = data;
 
-    na_ndloop3(&ndf, g, 1, self);
+    cumo_na_ndloop3(&ndf, g, 1, self);
     return self;
 }

@@ -73,7 +73,7 @@ static void
 static const rb_data_type_t <%=type_name%>_data_type = {
     "<%=full_class_name%>",
     {<%=type_name%>_gc_mark, <%=type_name%>_free, <%=type_name%>_memsize,},
-    &na_data_type,
+    &cumo_na_data_type,
     &<%=type_name%>_info,
     0, // flags
 };
@@ -83,7 +83,7 @@ static const rb_data_type_t <%=type_name%>_data_type = {
 static const rb_data_type_t <%=type_name%>_data_type = {
     "<%=full_class_name%>",
     {0, <%=type_name%>_free, <%=type_name%>_memsize,},
-    &na_data_type,
+    &cumo_na_data_type,
     &<%=type_name%>_info,
     0, // flags
 };

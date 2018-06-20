@@ -6,7 +6,7 @@ void <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(char *p1, char *p2, ch
 <% end %>
 
 static void
-<%=c_iter%><%=nan%>(na_loop_t *const lp)
+<%=c_iter%><%=nan%>(cumo_na_loop_t *const lp)
 {
     size_t   n;
     char    *p1, *p2, *p3;
@@ -73,12 +73,12 @@ static VALUE
     naryv[0] = self;
     naryv[1] = argv[0];
     //<% if is_float %>
-    reduce = na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, <%=c_iter%>_nan);
+    reduce = cumo_na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, <%=c_iter%>_nan);
     //<% else %>
-    reduce = na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, 0);
+    reduce = cumo_na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, 0);
     //<% end %>
 
-    v =  na_ndloop(&ndf, 4, self, argv[0], reduce, m_<%=name%>_init);
+    v =  cumo_na_ndloop(&ndf, 4, self, argv[0], reduce, m_<%=name%>_init);
     return <%=type_name%>_extract(v);
 }
 
@@ -110,7 +110,7 @@ static VALUE
     //<% if is_object %>
     return <%=c_func%>_self(argc, argv, self);
     //<% else %>
-    klass = na_upcast(CLASS_OF(self),CLASS_OF(argv[0]));
+    klass = cumo_na_upcast(CLASS_OF(self),CLASS_OF(argv[0]));
     if (klass==cT) {
         return <%=c_func%>_self(argc, argv, self);
     } else {

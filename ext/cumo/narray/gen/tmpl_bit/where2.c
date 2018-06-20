@@ -1,5 +1,5 @@
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     BIT_DIGIT *a;
@@ -78,18 +78,18 @@ static VALUE
     g = ALLOCA_N(where_opt_t,1);
     g->count = 0;
     if (size>4294967295ul) {
-        idx_1 = na_new(cumo_cInt64, 1, &n_1);
-        idx_0 = na_new(cumo_cInt64, 1, &n_0);
+        idx_1 = cumo_na_new(cumo_cInt64, 1, &n_1);
+        idx_0 = cumo_na_new(cumo_cInt64, 1, &n_0);
         g->elmsz = 8;
     } else {
-        idx_1 = na_new(cumo_cInt32, 1, &n_1);
-        idx_0 = na_new(cumo_cInt32, 1, &n_0);
+        idx_1 = cumo_na_new(cumo_cInt32, 1, &n_1);
+        idx_0 = cumo_na_new(cumo_cInt32, 1, &n_0);
         g->elmsz = 4;
     }
-    g->idx1 = na_get_pointer_for_write(idx_1);
-    g->idx0 = na_get_pointer_for_write(idx_0);
-    na_ndloop3(&ndf, g, 1, self);
-    na_release_lock(idx_0);
-    na_release_lock(idx_1);
+    g->idx1 = cumo_na_get_pointer_for_write(idx_1);
+    g->idx0 = cumo_na_get_pointer_for_write(idx_0);
+    cumo_na_ndloop3(&ndf, g, 1, self);
+    cumo_na_release_lock(idx_0);
+    cumo_na_release_lock(idx_1);
     return rb_assoc_new(idx_1,idx_0);
 }

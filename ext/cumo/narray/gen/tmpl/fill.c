@@ -4,7 +4,7 @@ void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype v
 <% end %>
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t   i;
     char    *p1;
@@ -47,6 +47,6 @@ static VALUE
     ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{sym_option}};
     ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP, 2, 0, ain, 0 };
 
-    na_ndloop(&ndf, 2, self, val);
+    cumo_na_ndloop(&ndf, 2, self, val);
     return self;
 }

@@ -55,7 +55,7 @@ is_f_contiguous(VALUE a)
         }
 
         // check f-contiguous
-        s0 = na_element_stride(a);
+        s0 = cumo_na_element_stride(a);
         for (i = 0; i < NA_NDIM(na); ++i) {
             if (NA_SHAPE(na)[i] == 1) continue;
             if (NA_STRIDE_AT(na, i) != s0) return false;
@@ -70,7 +70,7 @@ is_f_contiguous(VALUE a)
 static bool
 is_c_contiguous(VALUE a)
 {
-    return na_check_contiguous(a) == Qtrue;
+    return cumo_na_check_contiguous(a) == Qtrue;
 }
 
 static gemm_layout_t
@@ -81,7 +81,7 @@ make_gemm_layout(VALUE a)
 
     GetNArray(a, na);
 
-    if (na_debug_flag) {
+    if (cumo_na_debug_flag) {
         printf("ndim==2 && f_contiguous:%d, c_contiguous:%d\n",
                 NA_NDIM(na) == 2 && is_f_contiguous(a), is_c_contiguous(a));
     }
@@ -100,7 +100,7 @@ make_gemm_layout(VALUE a)
     return layout;
 }
 
-extern int na_debug_flag;  // narray.c
+extern int cumo_na_debug_flag;  // narray.c
 
 static void
 print_gemm_args(gemm_args_t* g, gemm_layout_t* a_layout, gemm_layout_t* b_layout, int stridec, int batch_count)
@@ -146,7 +146,7 @@ static void
     int stridec = ROW_SIZE(nc) * COL_SIZE(nc);
     int batch_count = NA_SIZE(nc) / stridec;
 
-    if (na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
+    if (cumo_na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
     handle = cumo_cuda_cublas_handle();
     status = cublas<%=func_prefix%>gemmStridedBatched(
             handle,
@@ -156,14 +156,14 @@ static void
             g->m,
             g->k,
             (<%=cutype%>*)(&g->alpha),
-            (<%=cutype%>*)(na_get_pointer_for_read(b_layout.a) + na_get_offset(b_layout.a)),
+            (<%=cutype%>*)(cumo_na_get_pointer_for_read(b_layout.a) + cumo_na_get_offset(b_layout.a)),
             b_layout.ld,
             b_layout.stride,
-            (<%=cutype%>*)(na_get_pointer_for_read(a_layout.a) + na_get_offset(a_layout.a)),
+            (<%=cutype%>*)(cumo_na_get_pointer_for_read(a_layout.a) + cumo_na_get_offset(a_layout.a)),
             a_layout.ld,
             a_layout.stride,
             (<%=cutype%>*)(&g->beta),
-            (<%=cutype%>*)(na_get_pointer_for_write(c) + na_get_offset(c)),
+            (<%=cutype%>*)(cumo_na_get_pointer_for_write(c) + cumo_na_get_offset(c)),
             g->n,
             stridec,
             batch_count);
@@ -232,7 +232,7 @@ static VALUE
     CHECK_DIM_GE(nb, 2);
 
     if (ROW_SIZE(nb) != COL_SIZE(na)) {
-        rb_raise(na_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d",
+        rb_raise(cumo_na_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d",
                 (int)ROW_SIZE(nb), (int)COL_SIZE(na));
     }
 
@@ -245,18 +245,18 @@ static VALUE
         size_t *shape = ALLOCA_N(size_t, ndim);
         memcpy(shape, NA_SHAPE(na), sizeof(size_t) * (ndim - 1)); // ... x m x k
         shape[ndim - 1] = g.n; // ... x m x n
-        c = na_new(cT, ndim, shape);
+        c = cumo_na_new(cT, ndim, shape);
     } else {
         narray_t *nc;
         COPY_OR_CAST_TO(c, cT);
         GetNArray(c, nc);
         CHECK_DIM_GE(nc, 2);
         if (ROW_SIZE(nc) != ROW_SIZE(na)) {
-            rb_raise(na_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d",
+            rb_raise(cumo_na_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d",
                     (int)ROW_SIZE(nc), (int)ROW_SIZE(na));
         }
         if (COL_SIZE(nc) != COL_SIZE(nb)) {
-            rb_raise(na_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d",
+            rb_raise(cumo_na_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d",
                     (int)COL_SIZE(nc), (int)COL_SIZE(nc));
         }
     }

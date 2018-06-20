@@ -72,7 +72,7 @@ typedef struct {
 } rand_opt_t;
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t   i;
     char    *p1;
@@ -163,6 +163,6 @@ static VALUE
         rb_raise(rb_eArgError,"high must be larger than low");
     }
     <% end %>
-    na_ndloop3(&ndf, &g, 1, self);
+    cumo_na_ndloop3(&ndf, &g, 1, self);
     return self;
 }

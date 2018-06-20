@@ -49,12 +49,12 @@ extern "C" {
 #endif
 #endif
 
-void cumo_<%=type_name%>_min_index_int<%=i%>_kernel_launch(na_reduction_arg_t* arg)
+void cumo_<%=type_name%>_min_index_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce<dtype, idx_t, cumo_<%=type_name%>_min_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_min_index_int<%=i%>_impl{});
 }
 
-void cumo_<%=type_name%>_max_index_int<%=i%>_kernel_launch(na_reduction_arg_t* arg)
+void cumo_<%=type_name%>_max_index_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce<dtype, idx_t, cumo_<%=type_name%>_max_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_max_index_int<%=i%>_impl{});
 }

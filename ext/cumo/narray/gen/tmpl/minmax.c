@@ -1,6 +1,6 @@
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
 static void
-<%=c_iter%><%=j%>(na_loop_t *const lp)
+<%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
 {
     size_t   n;
     char    *p1;
@@ -39,9 +39,9 @@ static VALUE
     ndfunc_t ndf = {<%=c_iter%>, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 2,2, ain,aout};
 
   <% if is_float %>
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);
   <% else %>
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    return na_ndloop(&ndf, 2, self, reduce);
+    return cumo_na_ndloop(&ndf, 2, self, reduce);
 }

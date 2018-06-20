@@ -8,7 +8,7 @@ void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, uint64_t
 <% end %>
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  n;
     char   *p1, *p2;
@@ -128,5 +128,5 @@ static VALUE
     <% if name == 'map' %>
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     <% end %>
-    return na_ndloop(&ndf, 1, self);
+    return cumo_na_ndloop(&ndf, 1, self);
 }

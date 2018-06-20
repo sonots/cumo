@@ -4,7 +4,7 @@
 
 static inline dtype m_abs(dtype x) {
     if (x==DATA_MIN) {
-        rb_raise(na_eValueError, "cannot convert the minimum integer");
+        rb_raise(cumo_na_eValueError, "cannot convert the minimum integer");
     }
     return (x<0)?-x:x;
 }

@@ -60,7 +60,7 @@ static VALUE
         int result_nd;
         size_t pos;
 
-        result_nd = na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
-        return na_aref_main(argc, argv, self, 0, result_nd, pos);
+        result_nd = cumo_na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
+        return cumo_na_aref_main(argc, argv, self, 0, result_nd, pos);
     }
 }

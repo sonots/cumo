@@ -1,6 +1,6 @@
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
 static void
-<%=c_iter%><%=j%>(na_loop_t *const lp)
+<%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
 {
     size_t   i;
     char    *p1, *p2;
@@ -42,9 +42,9 @@ static VALUE
                      2, 1, ain, aout };
 
   <% if is_float %>
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);
   <% else %>
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    return na_ndloop(&ndf, 2, self, reduce);
+    return cumo_na_ndloop(&ndf, 2, self, reduce);
 }

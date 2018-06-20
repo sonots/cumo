@@ -1,5 +1,5 @@
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t     i;
     BIT_DIGIT *a1, *a2;
@@ -115,8 +115,8 @@ static VALUE
     ndfunc_arg_out_t aout[1] = {{cumo_cBit,0}};
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 3,1, ain,aout};
 
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
-    v = na_ndloop(&ndf, 3, self, reduce, INT2FIX(<%=init_bit%>));
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    v = cumo_na_ndloop(&ndf, 3, self, reduce, INT2FIX(<%=init_bit%>));
     if (argc > 0) {
         return v;
     }

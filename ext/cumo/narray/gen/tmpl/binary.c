@@ -12,11 +12,11 @@
 //<% end %>
 
 <% unless type_name == 'robject' %>
-void <%="cumo_#{c_iter}_kernel_launch"%>(na_iarray_t* a1, na_iarray_t* a2, na_iarray_t* a3, na_indexer_t* indexer);
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
 <% end %>
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     <% if type_name == 'robject' %>
     {
@@ -112,10 +112,10 @@ static void
     }
     <% else %>
     {
-        na_iarray_t a1 = na_make_iarray(&lp->args[0]);
-        na_iarray_t a2 = na_make_iarray(&lp->args[1]);
-        na_iarray_t a3 = na_make_iarray(&lp->args[2]);
-        na_indexer_t indexer = na_make_indexer(&lp->args[0]);
+        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+        cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
+        cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[2]);
+        cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
         <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer);
     }
@@ -134,7 +134,7 @@ static VALUE
     ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP|NDF_INDEXER_LOOP, 2, 1, ain, aout };
     <% end %>
 
-    return na_ndloop(&ndf, 2, self, other);
+    return cumo_na_ndloop(&ndf, 2, self, other);
 }
 
 /*
@@ -151,7 +151,7 @@ static VALUE
     <% else %>
     VALUE klass, v;
 
-    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    klass = cumo_na_upcast(CLASS_OF(self),CLASS_OF(other));
     if (klass==cT) {
         return <%=c_func%>_self(self, other);
     } else {

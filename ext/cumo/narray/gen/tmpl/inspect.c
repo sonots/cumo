@@ -17,5 +17,5 @@ static VALUE
 <%=c_func(0)%>(VALUE ary)
 {
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    return na_ndloop_inspect(ary, <%=c_iter%>, Qnil);
+    return cumo_na_ndloop_inspect(ary, <%=c_iter%>, Qnil);
 }

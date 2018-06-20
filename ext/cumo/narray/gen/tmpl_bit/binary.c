@@ -1,5 +1,5 @@
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  n;
     size_t  p1, p2, p3;
@@ -94,5 +94,5 @@ static VALUE
     ndfunc_arg_out_t aout[1] = {{cT,0}};
     ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP, 2, 1, ain, aout };
 
-    return na_ndloop(&ndf, 2, self, other);
+    return cumo_na_ndloop(&ndf, 2, self, other);
 }

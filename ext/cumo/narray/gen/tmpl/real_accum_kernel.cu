@@ -34,7 +34,7 @@ struct cumo_<%=type_name%>_max_impl {
 };
 
 // TODO(sonots): Implement minmax
-__global__ void cumo_<%=type_name%>_ptp_kernel(na_reduction_arg_t arg)
+__global__ void cumo_<%=type_name%>_ptp_kernel(cumo_na_reduction_arg_t arg)
 {
     dtype min=0,max=1;
     //<%=type_name%>_minmax_kernel<<<1,1>>>(n,p1,s1,&min,&max);
@@ -49,27 +49,27 @@ extern "C" {
 #endif
 #endif
 
-void cumo_<%=type_name%>_sum_kernel_launch(na_reduction_arg_t* arg)
+void cumo_<%=type_name%>_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce<dtype, <%=dtype%>, cumo_<%=type_name%>_sum_impl>(*arg, cumo_<%=type_name%>_sum_impl{});
 }
 
-void cumo_<%=type_name%>_prod_kernel_launch(na_reduction_arg_t* arg)
+void cumo_<%=type_name%>_prod_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce<dtype, <%=dtype%>, cumo_<%=type_name%>_prod_impl>(*arg, cumo_<%=type_name%>_prod_impl{});
 }
 
-void cumo_<%=type_name%>_min_kernel_launch(na_reduction_arg_t* arg)
+void cumo_<%=type_name%>_min_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce<dtype, dtype, cumo_<%=type_name%>_min_impl>(*arg, cumo_<%=type_name%>_min_impl{});
 }
 
-void cumo_<%=type_name%>_max_kernel_launch(na_reduction_arg_t* arg)
+void cumo_<%=type_name%>_max_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce<dtype, dtype, cumo_<%=type_name%>_max_impl>(*arg, cumo_<%=type_name%>_max_impl{});
 }
 
-void cumo_<%=type_name%>_ptp_kernel_launch(na_reduction_arg_t* arg)
+void cumo_<%=type_name%>_ptp_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_<%=type_name%>_ptp_kernel<<<1,1>>>(*arg);
 }

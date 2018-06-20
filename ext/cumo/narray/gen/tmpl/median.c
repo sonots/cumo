@@ -1,6 +1,6 @@
 <% (is_float ? ["_ignan","_prnan"] : [""]).each do |j| %>
 static void
-<%=c_iter%><%=j%>(na_loop_t *const lp)
+<%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
 {
     size_t n;
     char *p1, *p2;
@@ -53,14 +53,14 @@ static VALUE
     ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
     ndfunc_t ndf = {0, NDF_HAS_LOOP|NDF_FLAT_REDUCE, 2,1, ain,aout};
 
-    self = na_copy(self); // as temporary buffer
+    self = cumo_na_copy(self); // as temporary buffer
   <% if is_float %>
     ndf.func = <%=c_iter%>_ignan;
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_prnan);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_prnan);
   <% else %>
     ndf.func = <%=c_iter%>;
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    v = na_ndloop(&ndf, 2, self, reduce);
+    v = cumo_na_ndloop(&ndf, 2, self, reduce);
     return <%=type_name%>_extract(v);
 }

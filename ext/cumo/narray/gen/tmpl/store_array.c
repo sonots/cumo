@@ -12,7 +12,7 @@ static void CUDART_CB
 //<% end %>
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t i, n;
     size_t i1, n1;
@@ -65,8 +65,8 @@ static void
         if (idx1) {
             for (i=i1=0; i1<n1 && i<n; i++,i1++) {
                 x = ptr[i1];
-                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
-                    na_step_sequence(x,&len,&beg,&step);
+                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, cumo_na_cStep)) {
+                    cumo_na_step_sequence(x,&len,&beg,&step);
                     for (c=0; c<len && i<n; c++,i++) {
                         y = beg + step * c;
                         z = m_from_double(y);
@@ -81,8 +81,8 @@ static void
         } else {
             for (i=i1=0; i1<n1 && i<n; i++,i1++) {
                 x = ptr[i1];
-                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
-                    na_step_sequence(x,&len,&beg,&step);
+                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, cumo_na_cStep)) {
+                    cumo_na_step_sequence(x,&len,&beg,&step);
                     for (c=0; c<len && i<n; c++,i++) {
                         y = beg + step * c;
                         z = m_from_double(y);
@@ -110,8 +110,8 @@ static void
         dtype* host_z = ALLOC_N(dtype, n);
         for (i=i1=0; i1<n1 && i<n; i1++) {
             x = ptr[i1];
-            if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
-                na_step_sequence(x,&len,&beg,&step);
+            if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, cumo_na_cStep)) {
+                cumo_na_step_sequence(x,&len,&beg,&step);
                 for (c=0; c<len && i<n; c++,i++) {
                     y = beg + step * c;
                     host_z[i] = m_from_double(y);
@@ -182,6 +182,6 @@ static VALUE
     ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{rb_cArray,0}};
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 2, 0, ain, 0};
 
-    na_ndloop_store_rarray(&ndf, self, rary);
+    cumo_na_ndloop_store_rarray(&ndf, self, rary);
     return self;
 }

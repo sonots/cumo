@@ -5,7 +5,7 @@ typedef struct NA_LOOP_ITER {
     ssize_t    pos; // - required for each dimension.
     ssize_t    step;
     size_t    *idx;
-} na_loop_iter_t;
+} cumo_na_loop_iter_t;
 
 typedef struct NA_LOOP_ARGS {
     VALUE    value;
@@ -15,15 +15,15 @@ typedef struct NA_LOOP_ARGS {
     int      ndim;       // required for each argument.
     // ssize_t pos; - not required here.
     size_t  *shape;
-    na_loop_iter_t *iter;  // moved from na_loop_t
-} na_loop_args_t;
+    cumo_na_loop_iter_t *iter;  // moved from cumo_na_loop_t
+} cumo_na_loop_args_t;
 
 // pass this structure to user iterator
 typedef struct NA_LOOP {
     int  narg;
     int  ndim;             // n of user dimention used at user function.
     size_t *n;             // n of elements for each dim (=shape)
-    na_loop_args_t *args;  // for each arg
+    cumo_na_loop_args_t *args;  // for each arg
     VALUE  option;
     void  *opt_ptr;
     VALUE  err_type;
@@ -31,7 +31,7 @@ typedef struct NA_LOOP {
                            // 3 for sum(), 1 for sum(axis: 1), 2 for sum(axis: [1,2])
     VALUE  reduce;         // dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
                            // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
-} na_loop_t;
+} cumo_na_loop_t;
 
 
 // ------------------ ndfunc -------------------------------------------
@@ -65,9 +65,9 @@ typedef struct NA_LOOP {
 #define NDF_ARG_READ_WRITE  3
 
 // type of user function
-typedef void (*na_iter_func_t) _((na_loop_t *const));
-typedef VALUE (*na_text_func_t) _((char *ptr, size_t pos, VALUE opt));
-//typedef void (*) void (*loop_func)(ndfunc_t*, na_md_loop_t*))
+typedef void (*cumo_na_iter_func_t) _((cumo_na_loop_t *const));
+typedef VALUE (*cumo_na_text_func_t) _((char *ptr, size_t pos, VALUE opt));
+//typedef void (*) void (*loop_func)(ndfunc_t*, cumo_na_md_loop_t*))
 
 
 typedef struct NDF_ARG_IN {
@@ -84,7 +84,7 @@ typedef struct NDF_ARG_OUT {
 
 // spec of user function
 typedef struct NDFUNCTION {
-    na_iter_func_t func;    // user function
+    cumo_na_iter_func_t func;    // user function
     unsigned int flag;      // what kind of loop user function supports
     int nin;                // # of arguments
     int nout;               // # of results

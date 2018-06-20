@@ -11,7 +11,7 @@ void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, seq_data_t
 <% end %>
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     char   *p1;
@@ -97,6 +97,6 @@ static VALUE
     } else {
         g->base = m_num_to_data(vbase);
     }
-    na_ndloop3(&ndf, g, 1, self);
+    cumo_na_ndloop3(&ndf, g, 1, self);
     return self;
 }
