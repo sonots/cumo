@@ -6,7 +6,7 @@ static VALUE
     VALUE v;
     dtype *ptr;
 
-    v = nary_new(cT, 0, NULL);
+    v = na_new(cT, 0, NULL);
     ptr = (dtype*)na_get_pointer_for_write(v);
     <%="cumo_#{c_func(:nodef)}_kernel_launch"%>(ptr, x);
 

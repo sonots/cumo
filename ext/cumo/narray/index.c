@@ -150,7 +150,7 @@ na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, na_index_arg_t *q)
         rb_raise(rb_eIndexError, "should be 1-d NArray");
     }
     n = NA_SIZE(na);
-    idx = nary_new(cIndex,1,&n);
+    idx = na_new(cIndex,1,&n);
     na_store(idx,a);
 
     GetNArrayData(idx,nidx);
@@ -296,7 +296,7 @@ na_index_parse_each(volatile VALUE a, ssize_t size, int i, na_index_arg_t *q)
         }
         else if (rb_obj_is_kind_of(a, na_cStep)) {
             ssize_t beg, step, n;
-            nary_step_array_index(a, size, (size_t*)(&n), &beg, &step);
+            na_step_array_index(a, size, (size_t*)(&n), &beg, &step);
             na_index_set_step(q,i,n,beg,step);
         }
         // NArray index
@@ -585,7 +585,7 @@ VALUE na_aref_md_protected(VALUE data_value)
 
     na2->stridx = ALLOC_N(stridx_t,ndim_new);
 
-    elmsz = nary_element_stride(self);
+    elmsz = na_element_stride(self);
 
     switch(na1->type) {
     case NARRAY_DATA_T:
@@ -652,7 +652,7 @@ na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, size_
         if (rb_obj_is_kind_of(idx, cumo_cNArray)) {
             GetNArray(idx,nidx);
             if (NA_NDIM(nidx)>1) {
-                store = nary_new(CLASS_OF(self),NA_NDIM(nidx),NA_SHAPE(nidx));
+                store = na_new(CLASS_OF(self),NA_NDIM(nidx),NA_SHAPE(nidx));
                 idx = na_flatten(idx);
                 RARRAY_ASET(args,0,idx);
             }
@@ -831,7 +831,7 @@ na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_
         break;
     default:
         if (!stride) {
-            stride = nary_element_stride(self);
+            stride = na_element_stride(self);
         }
         if (argc==1 && j==1) {
             x = na_range_check(idx[0], na->size, 0);
@@ -854,7 +854,7 @@ na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_
 
 
 void
-Init_cumo_nary_index()
+Init_cumo_na_index()
 {
     rb_define_method(cNArray, "slice", na_slice, -1);
 

@@ -73,7 +73,7 @@ static void
     n = lp->args[2].shape[0];
 
     if (i != m) {
-        rb_raise(nary_eShapeError,
+        rb_raise(na_eShapeError,
                  "size mismatch along last axis between self and weight");
     }
 

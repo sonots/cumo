@@ -65,7 +65,7 @@ static VALUE
         }
         if (na->size > (~(u_int32_t)0)) {
             aout[0].type = cumo_cInt64;
-            idx = nary_new(cumo_cInt64, na->ndim, na->shape);
+            idx = na_new(cumo_cInt64, na->ndim, na->shape);
             ndf.func = <%=c_iter%>_index64;
             <% if is_float %>
             reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index64_nan);
@@ -74,7 +74,7 @@ static VALUE
             <% end %>
         } else {
             aout[0].type = cumo_cInt32;
-            idx = nary_new(cumo_cInt32, na->ndim, na->shape);
+            idx = na_new(cumo_cInt32, na->ndim, na->shape);
             ndf.func = <%=c_iter%>_index32;
             <% if is_float %>
             reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index32_nan);

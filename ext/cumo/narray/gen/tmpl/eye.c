@@ -80,7 +80,7 @@ static VALUE
     GetNArray(self,na);
     nd = na->ndim;
     if (nd < 2) {
-        rb_raise(nary_eDimensionError,"less than 2-d array");
+        rb_raise(na_eDimensionError,"less than 2-d array");
     }
 
     // Diagonal offset from the main diagonal.

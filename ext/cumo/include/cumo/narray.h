@@ -129,11 +129,11 @@ extern int na_debug_flag;
 #ifndef CUMO_NARRAY_C
 extern VALUE cumo_cNArray;
 extern VALUE rb_mCumo;
-extern VALUE nary_eCastError;
-extern VALUE nary_eShapeError;
-extern VALUE nary_eOperationError;
-extern VALUE nary_eDimensionError;
-extern VALUE nary_eValueError;
+extern VALUE na_eCastError;
+extern VALUE na_eShapeError;
+extern VALUE na_eOperationError;
+extern VALUE na_eDimensionError;
+extern VALUE na_eValueError;
 extern const rb_data_type_t na_data_type;
 
 //EXTERN const int na_sizeof[NA_NTYPES+1];

@@ -10,7 +10,7 @@ static ID id_DISPATCH;
 static ID id_extract;
 
 static VALUE
-nary_type_s_upcast(VALUE type1, VALUE type2)
+na_type_s_upcast(VALUE type1, VALUE type2)
 {
     VALUE upcast_hash;
     VALUE result_type;
@@ -30,13 +30,13 @@ nary_type_s_upcast(VALUE type1, VALUE type2)
 }
 
 
-static VALUE nary_math_cast2(VALUE type1, VALUE type2)
+static VALUE na_math_cast2(VALUE type1, VALUE type2)
 {
     if ( RTEST(rb_class_inherited_p( type1, cNArray )) ){
-	return nary_type_s_upcast( type1, type2 );
+	return na_type_s_upcast( type1, type2 );
     }
     if ( RTEST(rb_class_inherited_p( type2, cNArray )) ){
-	return nary_type_s_upcast( type2, type1 );
+	return na_type_s_upcast( type2, type1 );
     }
     if ( RTEST(rb_class_inherited_p( type1, rb_cNumeric )) &&
 	 RTEST(rb_class_inherited_p( type2, rb_cNumeric )) ){
@@ -52,7 +52,7 @@ static VALUE nary_math_cast2(VALUE type1, VALUE type2)
 
 VALUE na_ary_composition_dtype(VALUE);
 
-static VALUE nary_mathcast(int argc, VALUE *argv)
+static VALUE na_mathcast(int argc, VALUE *argv)
 {
     VALUE type, type2;
     int i;
@@ -60,7 +60,7 @@ static VALUE nary_mathcast(int argc, VALUE *argv)
     type = na_ary_composition_dtype(argv[0]);
     for (i=1; i<argc; i++) {
         type2 = na_ary_composition_dtype(argv[i]);
-        type = nary_math_cast2(type, type2);
+        type = na_math_cast2(type, type2);
         if (NIL_P(type)) {
             rb_raise(rb_eTypeError,"includes unknown DataType for upcast");
         }
@@ -77,11 +77,11 @@ static VALUE nary_mathcast(int argc, VALUE *argv)
   @param [NArray,Numeric] x  input array.
   @return [NArray] result.
 */
-static VALUE nary_math_method_missing(int argc, VALUE *argv, VALUE mod)
+static VALUE na_math_method_missing(int argc, VALUE *argv, VALUE mod)
 {
     VALUE type, ans, typemod, hash;
     if (argc>1) {
-	type = nary_mathcast(argc-1,argv+1);
+	type = na_mathcast(argc-1,argv+1);
 
 	hash = rb_const_get(mod, id_DISPATCH);
 	typemod = rb_hash_aref( hash, type );
@@ -104,12 +104,12 @@ static VALUE nary_math_method_missing(int argc, VALUE *argv, VALUE mod)
 
 
 void
-Init_cumo_nary_math()
+Init_cumo_na_math()
 {
     VALUE hCast;
 
     cumo_mNMath = rb_define_module_under(mCumo, "NMath");
-    rb_define_singleton_method(cumo_mNMath, "method_missing", nary_math_method_missing, -1);
+    rb_define_singleton_method(cumo_mNMath, "method_missing", na_math_method_missing, -1);
 
     hCast = rb_hash_new();
     rb_define_const(cumo_mNMath, "DISPATCH", hCast);

@@ -103,7 +103,7 @@ iter_swap_byte(na_loop_t *const lp)
 }
 
 static VALUE
-nary_swap_byte(VALUE self)
+na_swap_byte(VALUE self)
 {
     VALUE v;
     ndfunc_arg_in_t ain[1] = {{Qnil,0}};
@@ -121,7 +121,7 @@ nary_swap_byte(VALUE self)
 
 
 static VALUE
-nary_to_network(VALUE self)
+na_to_network(VALUE self)
 {
     if (TEST_BIG_ENDIAN(self)) {
         return self;
@@ -130,7 +130,7 @@ nary_to_network(VALUE self)
 }
 
 static VALUE
-nary_to_vacs(VALUE self)
+na_to_vacs(VALUE self)
 {
     if (TEST_LITTLE_ENDIAN(self)) {
         return self;
@@ -139,7 +139,7 @@ nary_to_vacs(VALUE self)
 }
 
 static VALUE
-nary_to_host(VALUE self)
+na_to_host(VALUE self)
 {
     if (TEST_HOST_ORDER(self)) {
         return self;
@@ -148,7 +148,7 @@ nary_to_host(VALUE self)
 }
 
 static VALUE
-nary_to_swapped(VALUE self)
+na_to_swapped(VALUE self)
 {
     if (TEST_BYTE_SWAPPED(self)) {
         return self;
@@ -163,7 +163,7 @@ static inline int
 check_axis(int axis, int ndim)
 {
     if (axis < -ndim || axis >= ndim) {
-        rb_raise(nary_eDimensionError,"invalid axis (%d for %d-dimension)",
+        rb_raise(na_eDimensionError,"invalid axis (%d for %d-dimension)",
                  axis, ndim);
     }
     if (axis < 0) {
@@ -473,7 +473,7 @@ na_flatten_dim(VALUE self, int sd)
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        stride = nary_element_stride(self);
+        stride = na_element_stride(self);
         for (i=sd+1; i--; ) {
             //printf("data: i=%d shpae[i]=%ld stride=%ld\n",i,shape[i],stride);
             SDX_SET_STRIDE(na2->stridx[i],stride);
@@ -634,7 +634,7 @@ na_diagonal(int argc, VALUE *argv, VALUE self)
     GetNArray(self,na);
     nd = na->ndim;
     if (nd < 2) {
-        rb_raise(nary_eDimensionError,"less than 2-d array");
+        rb_raise(na_eDimensionError,"less than 2-d array");
     }
 
     if (vaxes) {
@@ -698,7 +698,7 @@ na_diagonal(int argc, VALUE *argv, VALUE self)
     case NARRAY_FILEMAP_T:
         na2->offset = 0;
         na2->data = self;
-        stride = stride0 = stride1 = nary_element_stride(self);
+        stride = stride0 = stride1 = na_element_stride(self);
         for (i=nd,k=nd-2; i--; ) {
             if (i==ax[1]) {
                 stride1 = stride;
@@ -826,7 +826,7 @@ na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
             }
         }
         na_setup_shape((narray_t*)na2, nd, shape);
-        stride = nary_element_stride(self);
+        stride = na_element_stride(self);
         for (i=nd; i--;) {
             SDX_SET_STRIDE(na2->stridx[i], stride);
             stride *= shape[i];
@@ -903,11 +903,11 @@ cumo_na_dot(VALUE self, VALUE other)
     GetNArray(a1,na1);
     GetNArray(a2,na2);
     if (na1->ndim==0 || na2->ndim==0) {
-        rb_raise(nary_eDimensionError,"zero dimensional narray");
+        rb_raise(na_eDimensionError,"zero dimensional narray");
     }
     if (na2->ndim > 1) {
         if (na1->shape[na1->ndim-1] != na2->shape[na2->ndim-2]) {
-            rb_raise(nary_eShapeError,"shape mismatch: self.shape[-1](=%"SZF"d) != other.shape[-2](=%"SZF"d)",
+            rb_raise(na_eShapeError,"shape mismatch: self.shape[-1](=%"SZF"d) != other.shape[-2](=%"SZF"d)",
                      na1->shape[na1->ndim-1], na2->shape[na2->ndim-2]);
         }
         // insert new axis [ ..., last-1-dim, newaxis*other.ndim, last-dim ]
@@ -920,7 +920,7 @@ cumo_na_dot(VALUE self, VALUE other)
 #endif
 
 void
-Init_cumo_nary_data()
+Init_cumo_na_data()
 {
     rb_define_method(cNArray, "copy", na_copy, 0); // deprecated
 
@@ -935,7 +935,7 @@ Init_cumo_nary_data()
     */
     rb_define_method(cNArray, "diagonal", na_diagonal,-1);
 
-    rb_define_method(cNArray, "swap_byte", nary_swap_byte, 0);
+    rb_define_method(cNArray, "swap_byte", na_swap_byte, 0);
 #ifdef DYNAMIC_ENDIAN
 #else
 #ifdef WORDS_BIGENDIAN
@@ -946,10 +946,10 @@ Init_cumo_nary_data()
     rb_define_alias(cNArray, "vacs_order?", "host_order?");
 #endif
 #endif
-    rb_define_method(cNArray, "to_network", nary_to_network, 0);
-    rb_define_method(cNArray, "to_vacs", nary_to_vacs, 0);
-    rb_define_method(cNArray, "to_host", nary_to_host, 0);
-    rb_define_method(cNArray, "to_swapped", nary_to_swapped, 0);
+    rb_define_method(cNArray, "to_network", na_to_network, 0);
+    rb_define_method(cNArray, "to_vacs", na_to_vacs, 0);
+    rb_define_method(cNArray, "to_host", na_to_host, 0);
+    rb_define_method(cNArray, "to_swapped", na_to_swapped, 0);
 
     //rb_define_method(cNArray, "dot", cumo_na_dot, 1);
 

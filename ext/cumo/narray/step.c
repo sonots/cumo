@@ -57,7 +57,7 @@ step_init(
 }
 
 static VALUE
-nary_step_new2(
+na_step_new2(
   VALUE range,
   VALUE step,
   VALUE len
@@ -192,7 +192,7 @@ step_exclude_end_p(VALUE self)
  */
 
 void
-nary_step_array_index(VALUE self, size_t ary_size,
+na_step_array_index(VALUE self, size_t ary_size,
                       size_t *plen, ssize_t *pbeg, ssize_t *pstep)
 {
     size_t len;
@@ -329,7 +329,7 @@ nary_step_array_index(VALUE self, size_t ary_size,
 
 
 void
-nary_step_sequence( VALUE self, size_t *plen, double *pbeg, double *pstep )
+na_step_sequence( VALUE self, size_t *plen, double *pbeg, double *pstep )
 {
     VALUE vbeg, vend, vstep, vlen;
     double dbeg, dend, dstep=1, dsize, err;
@@ -406,7 +406,7 @@ step_each( VALUE self )
     double beg, step;
     size_t i, size;
 
-    a = nary_step_parameters( self, Qnil );
+    a = na_step_parameters( self, Qnil );
     beg  = NUM2DBL(RARRAY_PTR(a)[0]);
     step = NUM2DBL(RARRAY_PTR(a)[1]);
     size = NUM2SIZET(RARRAY_PTR(a)[2]);
@@ -421,18 +421,18 @@ step_each( VALUE self )
 static VALUE
 range_with_step( VALUE range, VALUE step )
 {
-    return nary_step_new2( range, step, Qnil );
+    return na_step_new2( range, step, Qnil );
 }
 
 static VALUE
 range_with_length( VALUE range, VALUE len )
 {
-    return nary_step_new2( range, Qnil, len );
+    return na_step_new2( range, Qnil, len );
 }
 
 
 static VALUE
-nary_s_step( int argc, VALUE *argv, VALUE mod )
+na_s_step( int argc, VALUE *argv, VALUE mod )
 {
     VALUE self = rb_obj_alloc(na_cStep);
     step_initialize(argc, argv, self);
@@ -441,7 +441,7 @@ nary_s_step( int argc, VALUE *argv, VALUE mod )
 
 
 void
-Init_cumo_nary_step()
+Init_cumo_na_step()
 {
     na_cStep = rb_define_class_under(cNArray, "Step", rb_cObject);
     rb_include_module(na_cStep, rb_mEnumerable);
@@ -459,12 +459,12 @@ Init_cumo_nary_step()
     rb_define_method(na_cStep, "exclude_end?", step_exclude_end_p, 0);
     //rb_define_method(na_cStep, "to_s", step_to_s, 0);
     //rb_define_method(na_cStep, "inspect", step_inspect, 0);
-    //rb_define_method(na_cStep, "parameters", nary_step_parameters, 1);
+    //rb_define_method(na_cStep, "parameters", na_step_parameters, 1);
 
     rb_define_method(rb_cRange, "%", range_with_step, 1);
     rb_define_method(rb_cRange, "*", range_with_length, 1);
 
-    rb_define_singleton_method(cNArray, "step", nary_s_step, -1);
+    rb_define_singleton_method(cNArray, "step", na_s_step, -1);
 
     id_beg  = rb_intern("begin");
     id_end  = rb_intern("end");

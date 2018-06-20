@@ -72,7 +72,7 @@ static ID id_cast;
 static ID id_extract;
 
 static inline VALUE
-nary_type_s_cast(VALUE type, VALUE obj)
+na_type_s_cast(VALUE type, VALUE obj)
 {
     return rb_funcall(type,id_cast,1,obj);
 }
@@ -253,7 +253,7 @@ ndloop_cast_args(ndfunc_t *nf, VALUE args)
             continue;
 
         if (ndloop_castable_type(type)) {
-            RARRAY_ASET(args,j,nary_type_s_cast(type, value));
+            RARRAY_ASET(args,j,na_type_s_cast(type, value));
             copy_flag |= 1<<j;
         } else {
             ndloop_cast_error(type, value);
@@ -500,7 +500,7 @@ ndloop_check_shape(na_md_loop_t *lp, int nf_dim, narray_t *na)
                 lp->n[i] = n;
             } else if (lp->n[i] != n) {
                 // inconsistent array shape
-                rb_raise(nary_eShapeError,"shape1[%d](=%"SZF"u) != shape2[%d](=%"SZF"u)",
+                rb_raise(na_eShapeError,"shape1[%d](=%"SZF"u) != shape2[%d](=%"SZF"u)",
                          i, lp->n[i], k, n);
             }
         }
@@ -520,7 +520,7 @@ ndloop_set_stepidx(na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rwflag)
     narray_t *na;
 
     LARG(lp,j).value = vna;
-    LARG(lp,j).elmsz = nary_element_stride(vna);
+    LARG(lp,j).elmsz = na_element_stride(vna);
     if (rwflag == NDL_READ) {
         LARG(lp,j).ptr = na_get_pointer_for_read(vna);
     } else
@@ -617,7 +617,7 @@ na->shape[i] == lp->n[ dim_map[i] ]
             GetNArray(v,na);
             nf_dim = nf->ain[j].dim;
             if (nf_dim > na->ndim) {
-                rb_raise(nary_eDimensionError,"requires >= %d-dimensioal array "
+                rb_raise(na_eDimensionError,"requires >= %d-dimensioal array "
                          "while %d-dimensional array is given",nf_dim,na->ndim);
             }
             ndloop_check_shape(lp, nf_dim, na);
@@ -792,7 +792,7 @@ ndloop_set_output_narray(ndfunc_t *nf, na_md_loop_t *lp, int k,
     }
     if (!RTEST(v)) {
         // new object
-        v = nary_new(type, na_ndim, na_shape);
+        v = na_new(type, na_ndim, na_shape);
         flag = NDL_WRITE;
     }
 
@@ -1783,7 +1783,7 @@ loop_store_subnarray(ndfunc_t *nf, na_md_loop_t *lp, int i0, size_t *c, VALUE a)
     }
     GetNArray(a,na);
     if (na->ndim != nd-i0+1) {
-        rb_raise(nary_eShapeError, "mismatched dimension of sub-narray: "
+        rb_raise(na_eShapeError, "mismatched dimension of sub-narray: "
                  "nd_src=%d, nd_dst=%d", na->ndim, nd-i0+1);
     }
     dim_map = ALLOCA_N(int, na->ndim);
@@ -2098,7 +2098,7 @@ na_ndloop_with_index(nf, argc, va_alist)
 
 
 void
-Init_cumo_nary_ndloop()
+Init_cumo_na_ndloop()
 {
     id_cast    = rb_intern("cast");
     id_extract = rb_intern("extract");

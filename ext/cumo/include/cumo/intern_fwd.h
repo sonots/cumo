@@ -10,16 +10,16 @@ extern int cumo_na_debug_flag;
 extern VALUE rb_mCumo;
 #define cNArray cumo_cNArray
 extern VALUE cumo_cNArray;
-#define nary_eCastError cumo_nary_eCastError
-extern VALUE cumo_nary_eCastError;
-#define nary_eShapeError cumo_nary_eShapeError
-extern VALUE cumo_nary_eShapeError;
-#define nary_eOperationError cumo_nary_eOperationError
-extern VALUE cumo_nary_eOperationError;
-#define nary_eDimensionError cumo_nary_eDimensionError
-extern VALUE cumo_nary_eDimensionError;
-#define nary_eValueError cumo_nary_eValueError
-extern VALUE cumo_nary_eValueError;
+#define na_eCastError cumo_na_eCastError
+extern VALUE cumo_na_eCastError;
+#define na_eShapeError cumo_na_eShapeError
+extern VALUE cumo_na_eShapeError;
+#define na_eOperationError cumo_na_eOperationError
+extern VALUE cumo_na_eOperationError;
+#define na_eDimensionError cumo_na_eDimensionError
+extern VALUE cumo_na_eDimensionError;
+#define na_eValueError cumo_na_eValueError
+extern VALUE cumo_na_eValueError;
 #define na_data_type cumo_na_data_type
 extern const rb_data_type_t cumo_na_data_type;
 

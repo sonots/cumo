@@ -206,7 +206,7 @@ na_mdai_investigate(na_mdai_t *mdai, int ndim)
         }
         else
         if (rb_obj_is_kind_of(v, rb_cRange) || rb_obj_is_kind_of(v, na_cStep)) {
-            nary_step_sequence(v,&length,&dbeg,&dstep);
+            na_step_sequence(v,&length,&dbeg,&dstep);
             len += length-1;
             mdai->type = na_mdai_object_type(mdai->type, v);
         }
@@ -331,7 +331,7 @@ check_subclass_of_narray(VALUE dtype)
             return;
         }
     }
-    rb_raise(nary_eCastError, "cannot convert to NArray");
+    rb_raise(na_eCastError, "cannot convert to NArray");
 }
 
 
@@ -371,7 +371,7 @@ na_composition3_ary(VALUE ary, VALUE *ptype, VALUE *pshape, VALUE *pnary)
             check_subclass_of_narray(dtype);
             shape = ALLOCA_N(size_t, 1);
             shape[0] = 0;
-            *pnary = nary_new(dtype, 1, shape);
+            *pnary = na_new(dtype, 1, shape);
         }
     } else {
         ndim = na_mdai_ndim(mdai);
@@ -387,7 +387,7 @@ na_composition3_ary(VALUE ary, VALUE *ptype, VALUE *pshape, VALUE *pnary)
         }
         if (pnary) {
             check_subclass_of_narray(dtype);
-            *pnary = nary_new(dtype, ndim, shape);
+            *pnary = na_new(dtype, ndim, shape);
         }
     }
     RB_GC_GUARD(vmdai);
@@ -410,7 +410,7 @@ na_composition3(VALUE obj, VALUE *ptype, VALUE *pshape, VALUE *pnary)
         }
         if (pnary) {
             check_subclass_of_narray(dtype);
-            *pnary = nary_new(dtype, 0, 0);
+            *pnary = na_new(dtype, 0, 0);
         }
     }
     else if (IsNArray(obj)) {
@@ -427,7 +427,7 @@ na_composition3(VALUE obj, VALUE *ptype, VALUE *pshape, VALUE *pnary)
             *pshape = dshape;
         }
         if (pnary) {
-            *pnary = nary_new(dtype, ndim, na->shape);
+            *pnary = na_new(dtype, ndim, na->shape);
         }
     } else {
         rb_raise(rb_eTypeError,"invalid type for NArray: %s",
@@ -499,7 +499,7 @@ na_s_array_type(VALUE mod, VALUE ary)
   @return [NArray]
 */
 static VALUE
-nary_s_bracket(VALUE klass, VALUE ary)
+na_s_bracket(VALUE klass, VALUE ary)
 {
     VALUE dtype=Qnil;
 
@@ -620,13 +620,13 @@ na_ary_composition_for_struct(VALUE nstruct, VALUE ary)
 
 
 void
-Init_cumo_nary_array()
+Init_cumo_na_array()
 {
     rb_define_singleton_method(cNArray, "array_shape", na_s_array_shape, 1);
     rb_define_singleton_method(cNArray, "array_type", na_s_array_type, 1);
     rb_define_singleton_method(cNArray, "new_like", na_s_new_like, 1);
 
-    rb_define_singleton_method(cNArray, "[]", nary_s_bracket, -2);
+    rb_define_singleton_method(cNArray, "[]", na_s_bracket, -2);
 
     id_begin   = rb_intern("begin");
     id_end     = rb_intern("end");

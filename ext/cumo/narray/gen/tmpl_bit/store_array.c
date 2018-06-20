@@ -53,7 +53,7 @@ static void
         for (i=i1=0; i1<n1 && i<n; i++,i1++) {
             x = ptr[i1];
             if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
-                nary_step_sequence(x,&len,&beg,&step);
+                na_step_sequence(x,&len,&beg,&step);
                 for (c=0; c<len && i<n; c++,i++) {
                     y = beg + step * c;
                     z = m_from_double(y);
@@ -70,7 +70,7 @@ static void
         for (i=i1=0; i1<n1 && i<n; i++,i1++) {
             x = ptr[i1];
             if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, na_cStep)) {
-                nary_step_sequence(x,&len,&beg,&step);
+                na_step_sequence(x,&len,&beg,&step);
                 for (c=0; c<len && i<n; c++,i++) {
                     y = beg + step * c;
                     z = m_from_double(y);

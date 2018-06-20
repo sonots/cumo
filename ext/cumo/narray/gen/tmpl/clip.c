@@ -15,7 +15,7 @@ static void
         GET_DATA_STRIDE(p1,s1,dtype,x);
         GET_DATA_STRIDE(p2,s2,dtype,min);
         GET_DATA_STRIDE(p3,s3,dtype,max);
-        if (m_gt(min,max)) {rb_raise(nary_eOperationError,"min is greater than max");}
+        if (m_gt(min,max)) {rb_raise(na_eOperationError,"min is greater than max");}
         if (m_lt(x,min)) {x=min;}
         if (m_gt(x,max)) {x=max;}
         SET_DATA_STRIDE(p4,s4,dtype,x);

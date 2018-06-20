@@ -7,10 +7,10 @@
 
 void Init_cumo();
 void Init_cumo_narray();
-void Init_cumo_nary_data();
-void Init_cumo_nary_ndloop();
-void Init_cumo_nary_step();
-void Init_cumo_nary_index();
+void Init_cumo_na_data();
+void Init_cumo_na_ndloop();
+void Init_cumo_na_step();
+void Init_cumo_na_index();
 void Init_cumo_bit();
 void Init_cumo_int8();
 void Init_cumo_int16();
@@ -25,10 +25,10 @@ void Init_cumo_scomplex();
 void Init_cumo_dfloat();
 void Init_cumo_dcomplex();
 void Init_cumo_robject();
-void Init_cumo_nary_math();
-void Init_cumo_nary_rand();
-void Init_cumo_nary_array();
-void Init_cumo_nary_struct();
+void Init_cumo_na_math();
+void Init_cumo_na_rand();
+void Init_cumo_na_array();
+void Init_cumo_na_struct();
 void Init_cumo_cuda_driver();
 void Init_cumo_cuda_memory_pool();
 void Init_cumo_cuda_runtime();
@@ -112,11 +112,11 @@ Init_cumo()
 
     Init_cumo_narray();
 
-    Init_cumo_nary_step();
-    Init_cumo_nary_index();
+    Init_cumo_na_step();
+    Init_cumo_na_index();
 
-    Init_cumo_nary_data();
-    Init_cumo_nary_ndloop();
+    Init_cumo_na_data();
+    Init_cumo_na_ndloop();
 
     Init_cumo_dcomplex();
     Init_cumo_dfloat();
@@ -135,11 +135,11 @@ Init_cumo()
     Init_cumo_bit();
     Init_cumo_robject();
 
-    Init_cumo_nary_math();
+    Init_cumo_na_math();
 
-    Init_cumo_nary_rand();
-    Init_cumo_nary_array();
-    Init_cumo_nary_struct();
+    Init_cumo_na_rand();
+    Init_cumo_na_array();
+    Init_cumo_na_struct();
 
     Init_cumo_cuda_driver();
     Init_cumo_cuda_memory_pool();

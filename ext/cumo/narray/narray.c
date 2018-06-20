@@ -9,11 +9,11 @@
 /* global variables within this module */
 VALUE cumo_cNArray;
 VALUE rb_mCumo;
-VALUE nary_eCastError;
-VALUE nary_eShapeError;
-VALUE nary_eOperationError;
-VALUE nary_eDimensionError;
-VALUE nary_eValueError;
+VALUE na_eCastError;
+VALUE na_eShapeError;
+VALUE na_eOperationError;
+VALUE na_eDimensionError;
+VALUE na_eValueError;
 
 static ID id_contiguous_stride;
 static ID id_allocate;
@@ -54,7 +54,7 @@ const rb_data_type_t na_data_type = {
 };
 
 static void
-nary_debug_info_nadata(VALUE self)
+na_debug_info_nadata(VALUE self)
 {
     narray_data_t *na;
     GetNArrayData(self,na);
@@ -64,7 +64,7 @@ nary_debug_info_nadata(VALUE self)
 
 
 static VALUE
-nary_debug_info_naview(VALUE self)
+na_debug_info_naview(VALUE self)
 {
     int i;
     narray_view_t *na;
@@ -99,7 +99,7 @@ nary_debug_info_naview(VALUE self)
 
 
 VALUE
-nary_debug_info(VALUE self)
+na_debug_info(VALUE self)
 {
     int i;
     narray_t *na;
@@ -122,10 +122,10 @@ nary_debug_info(VALUE self)
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        nary_debug_info_nadata(self);
+        na_debug_info_nadata(self);
         break;
     case NARRAY_VIEW_T:
-        nary_debug_info_naview(self);
+        na_debug_info_naview(self);
         break;
     }
     return Qnil;
@@ -268,10 +268,10 @@ na_alloc_shape(narray_t *na, int ndim)
         break;
     default:
         if (ndim < 0) {
-            rb_raise(nary_eDimensionError,"ndim=%d is negative", ndim);
+            rb_raise(na_eDimensionError,"ndim=%d is negative", ndim);
         }
         if (ndim > NA_MAX_DIMENSION) {
-            rb_raise(nary_eDimensionError,"ndim=%d is too many", ndim);
+            rb_raise(na_eDimensionError,"ndim=%d is too many", ndim);
         }
         na->shape = ALLOC_N(size_t, ndim);
     }
@@ -371,7 +371,7 @@ na_initialize(VALUE self, VALUE args)
 
 
 VALUE
-nary_new(VALUE klass, int ndim, size_t *shape)
+na_new(VALUE klass, int ndim, size_t *shape)
 {
     volatile VALUE obj;
 
@@ -382,7 +382,7 @@ nary_new(VALUE klass, int ndim, size_t *shape)
 
 
 VALUE
-nary_view_new(VALUE klass, int ndim, size_t *shape)
+na_view_new(VALUE klass, int ndim, size_t *shape)
 {
     volatile VALUE obj;
 
@@ -733,7 +733,7 @@ static VALUE
 
 
 unsigned int
-nary_element_stride(VALUE v)
+na_element_stride(VALUE v)
 {
     narray_type_info_t *info;
     narray_t *na;
@@ -859,7 +859,7 @@ na_check_contiguous(VALUE self)
             return Qtrue;
         }
         if (na_check_ladder(self,0)==Qtrue) {
-            elmsz = nary_element_stride(self);
+            elmsz = na_element_stride(self);
             if (elmsz == NA_STRIDE_AT(na,NA_NDIM(na)-1)) {
                 return Qtrue;
             }
@@ -901,7 +901,7 @@ na_make_view(VALUE self)
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        stride = nary_element_stride(self);
+        stride = na_element_stride(self);
         for (i=nd; i--;) {
             SDX_SET_STRIDE(na2->stridx[i],stride);
             stride *= na->shape[i];
@@ -958,7 +958,7 @@ na_expand_dims(VALUE self, VALUE vdim)
 
     dim = NUM2INT(vdim);
     if (dim < -nd-1 || dim > nd) {
-        rb_raise(nary_eDimensionError,"invalid axis (%d for %dD NArray)",
+        rb_raise(na_eDimensionError,"invalid axis (%d for %dD NArray)",
                  dim,nd);
     }
     if (dim < 0) {
@@ -1003,7 +1003,7 @@ na_expand_dims(VALUE self, VALUE vdim)
  *  Return reversed view along specified dimeinsion
  */
 static VALUE
-nary_reverse(int argc, VALUE *argv, VALUE self)
+na_reverse(int argc, VALUE *argv, VALUE self)
 {
     int i, nd;
     size_t  j, n;
@@ -1032,7 +1032,7 @@ nary_reverse(int argc, VALUE *argv, VALUE self)
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        stride = nary_element_stride(self);
+        stride = na_element_stride(self);
         offset = 0;
         for (i=nd; i--;) {
             if (na_test_reduce(reduce,i)) {
@@ -1117,7 +1117,7 @@ cumo_na_upcast(VALUE type1, VALUE type2)
   @return [Array]  NArray-casted [other,self]
 */
 static VALUE
-nary_coerce(VALUE x, VALUE y)
+na_coerce(VALUE x, VALUE y)
 {
     VALUE type;
 
@@ -1132,7 +1132,7 @@ nary_coerce(VALUE x, VALUE y)
   @return [Integer] byte size.
  */
 static VALUE
-nary_byte_size(VALUE self)
+na_byte_size(VALUE self)
 {
     VALUE velmsz;
     narray_t *na;
@@ -1150,7 +1150,7 @@ nary_byte_size(VALUE self)
   @return [Numeric] byte size.
  */
 static VALUE
-nary_s_byte_size(VALUE type)
+na_s_byte_size(VALUE type)
 {
     return rb_const_get(type, id_element_byte_size);
 }
@@ -1164,7 +1164,7 @@ nary_s_byte_size(VALUE type)
   @return [Cumo::NArray] NArray containing binary data.
  */
 static VALUE
-nary_s_from_binary(int argc, VALUE *argv, VALUE type)
+na_s_from_binary(int argc, VALUE *argv, VALUE type)
 {
     size_t len, str_len, byte_size;
     size_t *shape;
@@ -1187,7 +1187,7 @@ nary_s_from_binary(int argc, VALUE *argv, VALUE type)
         case T_ARRAY:
             nd = RARRAY_LEN(vshape);
             if (nd == 0 || nd > NA_MAX_DIMENSION) {
-                rb_raise(nary_eDimensionError,"too long or empty shape (%d)", nd);
+                rb_raise(na_eDimensionError,"too long or empty shape (%d)", nd);
             }
             shape = ALLOCA_N(size_t,nd);
             len = 1;
@@ -1222,7 +1222,7 @@ nary_s_from_binary(int argc, VALUE *argv, VALUE type)
         shape[0] = len;
     }
 
-    vna = nary_new(type, nd, shape);
+    vna = na_new(type, nd, shape);
     ptr = na_get_pointer_for_write(vna);
 
     memcpy(ptr, RSTRING_PTR(vstr), byte_size);
@@ -1238,7 +1238,7 @@ nary_s_from_binary(int argc, VALUE *argv, VALUE type)
   @return [Integer] stored length.
  */
 static VALUE
-nary_store_binary(int argc, VALUE *argv, VALUE self)
+na_store_binary(int argc, VALUE *argv, VALUE self)
 {
     size_t size, str_len, byte_size, offset;
     char *ptr;
@@ -1283,14 +1283,14 @@ nary_store_binary(int argc, VALUE *argv, VALUE self)
   @return [String] String object containing binary raw data.
  */
 static VALUE
-nary_to_binary(VALUE self)
+na_to_binary(VALUE self)
 {
     size_t len, offset=0;
     char *ptr;
     VALUE str;
     narray_t *na;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("nary_to_binary", "any");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("na_to_binary", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     GetNArray(self,na);
@@ -1301,7 +1301,7 @@ nary_to_binary(VALUE self)
             self = rb_funcall(self,id_dup,0);
         }
     }
-    len = NUM2SIZET(nary_byte_size(self));
+    len = NUM2SIZET(na_byte_size(self));
     ptr = na_get_pointer_for_read(self);
     str = rb_usascii_str_new(ptr+offset,len);
     RB_GC_GUARD(self);
@@ -1314,11 +1314,11 @@ nary_to_binary(VALUE self)
   @return [Array] Array containing marshal data.
  */
 static VALUE
-nary_marshal_dump(VALUE self)
+na_marshal_dump(VALUE self)
 {
     VALUE a;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("nary_marshal_dump", "any");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("na_marshal_dump", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     a = rb_ary_new();
@@ -1340,7 +1340,7 @@ nary_marshal_dump(VALUE self)
         ptr = (VALUE*)na_get_pointer_for_read(self);
         rb_ary_push(a, rb_ary_new4(NA_SIZE(na), ptr+offset));
     } else {
-        rb_ary_push(a, nary_to_binary(self));
+        rb_ary_push(a, na_to_binary(self));
     }
     RB_GC_GUARD(self);
     return a;
@@ -1354,7 +1354,7 @@ static VALUE na_inplace( VALUE self );
   @return [nil]
  */
 static VALUE
-nary_marshal_load(VALUE self, VALUE a)
+na_marshal_load(VALUE self, VALUE a)
 {
     VALUE v;
 
@@ -1384,7 +1384,7 @@ nary_marshal_load(VALUE self, VALUE a)
         ptr = na_get_pointer_for_write(self);
         memcpy(ptr, RARRAY_PTR(v), NA_SIZE(na)*sizeof(VALUE));
     } else {
-        nary_store_binary(1,&v,self);
+        na_store_binary(1,&v,self);
         if (TEST_BYTE_SWAPPED(self)) {
             rb_funcall(na_inplace(self),id_to_host,0);
             REVERSE_ENDIAN(self); // correct behavior??
@@ -1402,7 +1402,7 @@ nary_marshal_load(VALUE self, VALUE a)
   @return [Cumo::NArray]
  */
 static VALUE
-nary_cast_to(VALUE obj, VALUE type)
+na_cast_to(VALUE obj, VALUE type)
 {
     return rb_funcall(type, id_cast, 1, obj);
 }
@@ -1444,7 +1444,7 @@ na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
     }
     GetNArray(naryv[0],na);
     if (na->size==0) {
-        rb_raise(nary_eShapeError,"cannot reduce empty NArray");
+        rb_raise(na_eShapeError,"cannot reduce empty NArray");
     }
     reduce = na->reduce;
     ndim = ndim0 = na->ndim;
@@ -1453,10 +1453,10 @@ na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
     for (i=0; i<naryc; i++) {
         GetNArray(naryv[i],na);
         if (na->size==0) {
-            rb_raise(nary_eShapeError,"cannot reduce empty NArray");
+            rb_raise(na_eShapeError,"cannot reduce empty NArray");
         }
         if (TEST_COLUMN_MAJOR(naryv[i]) != rowmaj) {
-            rb_raise(nary_eDimensionError,"dimension order is different");
+            rb_raise(na_eDimensionError,"dimension order is different");
         }
         if (na->ndim > ndim) { // maximum dimension
             ndim = na->ndim;
@@ -1499,16 +1499,16 @@ na_get_reduce_flag_from_axes(VALUE na_obj, VALUE axes)
             beg = FIX2INT(v);
             if (beg<0) beg+=ndim;
             if (beg>=ndim || beg<0) {
-                rb_raise(nary_eDimensionError,"dimension is out of range");
+                rb_raise(na_eDimensionError,"dimension is out of range");
             }
             len = 1;
             step = 0;
             //printf("beg=%d step=%d len=%d\n",beg,step,len);
         } else if (rb_obj_is_kind_of(v,rb_cRange) ||
                    rb_obj_is_kind_of(v,na_cStep)) {
-            nary_step_array_index( v, ndim, &len, &beg, &step );
+            na_step_array_index( v, ndim, &len, &beg, &step );
         } else {
-            rb_raise(nary_eDimensionError, "invalid dimension argument %s",
+            rb_raise(na_eDimensionError, "invalid dimension argument %s",
                      rb_obj_classname(v));
         }
         for (j=0; j<len; j++) {
@@ -1534,7 +1534,7 @@ na_get_reduce_flag_from_axes(VALUE na_obj, VALUE axes)
 
 
 VALUE
-nary_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
+na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
                     ndfunc_t *ndf)
 {
     int  max_arg;
@@ -1569,7 +1569,7 @@ nary_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
 
 
 VALUE
-nary_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
+na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
                       ndfunc_t *ndf, na_iter_func_t iter_nan)
 {
     long narg;
@@ -1845,11 +1845,11 @@ Init_cumo_narray()
 
     rb_define_const(cNArray, "VERSION", rb_str_new2(CUMO_VERSION));
 
-    nary_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
-    nary_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);
-    nary_eOperationError = rb_define_class_under(cNArray, "OperationError", rb_eStandardError);
-    nary_eDimensionError = rb_define_class_under(cNArray, "DimensionError", rb_eStandardError);
-    nary_eValueError = rb_define_class_under(cNArray, "ValueError", rb_eStandardError);
+    na_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
+    na_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);
+    na_eOperationError = rb_define_class_under(cNArray, "OperationError", rb_eStandardError);
+    na_eDimensionError = rb_define_class_under(cNArray, "DimensionError", rb_eStandardError);
+    na_eValueError = rb_define_class_under(cNArray, "ValueError", rb_eStandardError);
 
     rb_define_singleton_method(cNArray, "debug=", na_debug_set, 1);
     rb_define_singleton_method(cNArray, "profile", na_profile, 0);
@@ -1881,30 +1881,30 @@ Init_cumo_narray()
     rb_define_alias (cNArray, "rank","ndim");
     rb_define_method(cNArray, "empty?", na_empty_p, 0);
 
-    rb_define_method(cNArray, "debug_info", nary_debug_info, 0);
+    rb_define_method(cNArray, "debug_info", na_debug_info, 0);
 
     rb_define_method(cNArray, "contiguous?", na_check_contiguous, 0);
 
     rb_define_method(cNArray, "view", na_make_view, 0);
     rb_define_method(cNArray, "expand_dims", na_expand_dims, 1);
-    rb_define_method(cNArray, "reverse", nary_reverse, -1);
+    rb_define_method(cNArray, "reverse", na_reverse, -1);
 
     rb_define_singleton_method(cNArray, "upcast", cumo_na_upcast, 1);
-    rb_define_singleton_method(cNArray, "byte_size", nary_s_byte_size, 0);
+    rb_define_singleton_method(cNArray, "byte_size", na_s_byte_size, 0);
 
-    rb_define_singleton_method(cNArray, "from_binary", nary_s_from_binary, -1);
+    rb_define_singleton_method(cNArray, "from_binary", na_s_from_binary, -1);
     rb_define_alias (rb_singleton_class(cNArray), "from_string", "from_binary");
-    rb_define_method(cNArray, "store_binary",  nary_store_binary, -1);
-    rb_define_method(cNArray, "to_binary",  nary_to_binary, 0);
+    rb_define_method(cNArray, "store_binary",  na_store_binary, -1);
+    rb_define_method(cNArray, "to_binary",  na_to_binary, 0);
     rb_define_alias (cNArray, "to_string", "to_binary");
-    rb_define_method(cNArray, "marshal_dump",  nary_marshal_dump, 0);
-    rb_define_method(cNArray, "marshal_load",  nary_marshal_load, 1);
+    rb_define_method(cNArray, "marshal_dump",  na_marshal_dump, 0);
+    rb_define_method(cNArray, "marshal_load",  na_marshal_load, 1);
 
-    rb_define_method(cNArray, "byte_size",  nary_byte_size, 0);
+    rb_define_method(cNArray, "byte_size",  na_byte_size, 0);
 
-    rb_define_method(cNArray, "cast_to", nary_cast_to, 1);
+    rb_define_method(cNArray, "cast_to", na_cast_to, 1);
 
-    rb_define_method(cNArray, "coerce", nary_coerce, 1);
+    rb_define_method(cNArray, "coerce", na_coerce, 1);
 
     rb_define_method(cNArray, "column_major?", na_column_major_p, 0);
     rb_define_method(cNArray, "row_major?", na_row_major_p, 0);

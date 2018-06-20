@@ -55,7 +55,7 @@ is_f_contiguous(VALUE a)
         }
 
         // check f-contiguous
-        s0 = nary_element_stride(a);
+        s0 = na_element_stride(a);
         for (i = 0; i < NA_NDIM(na); ++i) {
             if (NA_SHAPE(na)[i] == 1) continue;
             if (NA_STRIDE_AT(na, i) != s0) return false;
@@ -232,7 +232,7 @@ static VALUE
     CHECK_DIM_GE(nb, 2);
 
     if (ROW_SIZE(nb) != COL_SIZE(na)) {
-        rb_raise(nary_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d",
+        rb_raise(na_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d",
                 (int)ROW_SIZE(nb), (int)COL_SIZE(na));
     }
 
@@ -245,18 +245,18 @@ static VALUE
         size_t *shape = ALLOCA_N(size_t, ndim);
         memcpy(shape, NA_SHAPE(na), sizeof(size_t) * (ndim - 1)); // ... x m x k
         shape[ndim - 1] = g.n; // ... x m x n
-        c = nary_new(cT, ndim, shape);
+        c = na_new(cT, ndim, shape);
     } else {
         narray_t *nc;
         COPY_OR_CAST_TO(c, cT);
         GetNArray(c, nc);
         CHECK_DIM_GE(nc, 2);
         if (ROW_SIZE(nc) != ROW_SIZE(na)) {
-            rb_raise(nary_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d",
+            rb_raise(na_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d",
                     (int)ROW_SIZE(nc), (int)ROW_SIZE(na));
         }
         if (COL_SIZE(nc) != COL_SIZE(nb)) {
-            rb_raise(nary_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d",
+            rb_raise(na_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d",
                     (int)COL_SIZE(nc), (int)COL_SIZE(nc));
         }
     }

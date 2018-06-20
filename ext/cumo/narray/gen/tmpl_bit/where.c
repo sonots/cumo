@@ -76,10 +76,10 @@ static VALUE
     g = ALLOCA_N(where_opt_t,1);
     g->count = 0;
     if (size>4294967295ul) {
-        idx_1 = nary_new(cumo_cInt64, 1, &n_1);
+        idx_1 = na_new(cumo_cInt64, 1, &n_1);
         g->elmsz = 8;
     } else {
-        idx_1 = nary_new(cumo_cInt32, 1, &n_1);
+        idx_1 = na_new(cumo_cInt32, 1, &n_1);
         g->elmsz = 4;
     }
     g->idx1 = na_get_pointer_for_write(idx_1);

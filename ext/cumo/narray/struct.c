@@ -133,7 +133,7 @@ na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        stride = nary_element_stride(self);
+        stride = na_element_stride(self);
         for (j=na->ndim; j--;) {
             SDX_SET_STRIDE(na2->stridx[j], stride);
             stride *= na->shape[j];
@@ -354,7 +354,7 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
         ndim = na->ndim;
         shape = na->shape;
     }
-    type = nary_view_new(type,ndim,shape);
+    type = na_view_new(type,ndim,shape);
     GetNArrayView(type,nt);
 
     nt->stridx = ALLOC_N(stridx_t,ndim);
@@ -456,7 +456,7 @@ nst_create_member_views(VALUE self)
 }
 
 static VALUE
-nary_struct_to_a(VALUE self)
+na_struct_to_a(VALUE self)
 {
     volatile VALUE opt;
     ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
@@ -619,7 +619,7 @@ iter_nstruct_from_a(na_loop_t *const lp)
 }
 
 static VALUE
-nary_struct_cast_array(VALUE klass, VALUE rary)
+na_struct_cast_array(VALUE klass, VALUE rary)
 {
     //volatile VALUE vnc, nary;
     VALUE nary;
@@ -634,7 +634,7 @@ nary_struct_cast_array(VALUE klass, VALUE rary)
 
     //vnc = na_ary_composition_for_struct(klass, rary);
     //Data_Get_Struct(vnc, na_compose_t, nc);
-    //nary = nary_new(klass, nc->ndim, nc->shape);
+    //nary = na_new(klass, nc->ndim, nc->shape);
     nary = na_s_new_like(klass, rary);
     GetNArray(nary,na);
     //fprintf(stderr,"na->size=%lu\n",na->size);
@@ -648,9 +648,9 @@ nary_struct_cast_array(VALUE klass, VALUE rary)
 }
 
 static inline VALUE
-nary_struct_s_cast(VALUE klass, VALUE rary)
+na_struct_s_cast(VALUE klass, VALUE rary)
 {
-    return nary_struct_cast_array(klass, rary);
+    return na_struct_cast_array(klass, rary);
 }
 
 
@@ -701,7 +701,7 @@ iter_struct_store_struct(na_loop_t *const lp)
 
 
 static VALUE
-nary_struct_store_struct(VALUE self, VALUE obj)
+na_struct_store_struct(VALUE self, VALUE obj)
 {
     ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{Qnil,0}};
     ndfunc_t ndf = {iter_struct_store_struct, FULL_LOOP, 2, 0, ain, 0};
@@ -714,9 +714,9 @@ nary_struct_store_struct(VALUE self, VALUE obj)
 
 
 static inline VALUE
-nary_struct_store_array(VALUE self, VALUE obj)
+na_struct_store_array(VALUE self, VALUE obj)
 {
-    return nary_struct_store_struct(self, nary_struct_cast_array(CLASS_OF(self),obj));
+    return na_struct_store_struct(self, na_struct_cast_array(CLASS_OF(self),obj));
 }
 
 /*
@@ -726,17 +726,17 @@ nary_struct_store_array(VALUE self, VALUE obj)
   @return [Cumo::Struct] self
 */
 static VALUE
-nary_struct_store(VALUE self, VALUE obj)
+na_struct_store(VALUE self, VALUE obj)
 {
     if (TYPE(obj)==T_ARRAY) {
-        nary_struct_store_array(self,obj);
+        na_struct_store_array(self,obj);
         return self;
     }
     if (CLASS_OF(self) == CLASS_OF(obj)) {
-        nary_struct_store_struct(self,obj);
+        na_struct_store_struct(self,obj);
         return self;
     }
-    rb_raise(nary_eCastError, "unknown conversion from %s to %s",
+    rb_raise(na_eCastError, "unknown conversion from %s to %s",
              rb_class2name(CLASS_OF(obj)),
              rb_class2name(CLASS_OF(self)));
     return self;
@@ -787,7 +787,7 @@ iter_struct_inspect(char *ptr, size_t pos, VALUE opt)
   @return [String]
 */
 static VALUE
-nary_struct_inspect(VALUE ary)
+na_struct_inspect(VALUE ary)
 {
     VALUE opt;
     opt = nst_create_member_views(ary);
@@ -833,7 +833,7 @@ NST_TYPEDEF(scomplex,cumo_cSComplex)
     rb_define_alias(rb_singleton_class(klass),name1,name2)
 
 void
-Init_cumo_nary_struct()
+Init_cumo_na_struct()
 {
     cT = rb_define_class_under(mCumo, "Struct", cumo_cNArray);
     //cNStMember = rb_define_class_under(cT, "Member", rb_cObject);
@@ -868,18 +868,18 @@ Init_cumo_nary_struct()
     rb_define_method(cT, "extract", nst_extract, 0);
     rb_define_method(cT, "method_missing", nst_method_missing, -1);
 
-    //rb_define_method(cT, "fill", nary_nstruct_fill, 1);
+    //rb_define_method(cT, "fill", na_nstruct_fill, 1);
 
-    //rb_define_method(cT, "debug_print", nary_nstruct_debug_print, 0);
+    //rb_define_method(cT, "debug_print", na_nstruct_debug_print, 0);
 
-    rb_define_method(cT, "to_a", nary_struct_to_a, 0);
+    rb_define_method(cT, "to_a", na_struct_to_a, 0);
 
-    rb_define_method(cT, "store", nary_struct_store, 1);
+    rb_define_method(cT, "store", na_struct_store, 1);
 
-    rb_define_method(cT, "inspect", nary_struct_inspect, 0);
+    rb_define_method(cT, "inspect", na_struct_inspect, 0);
 
-    rb_define_singleton_method(cT, "cast", nary_struct_s_cast, 1);
-    rb_define_singleton_method(cT, "[]", nary_struct_s_cast, -2);
+    rb_define_singleton_method(cT, "cast", na_struct_s_cast, 1);
+    rb_define_singleton_method(cT, "[]", na_struct_s_cast, -2);
 
     //rb_define_method(cT, "initialize", rb_struct_initialize, -2);
     //rb_define_method(cT, "initialize_copy", rb_struct_init_copy, 1);
