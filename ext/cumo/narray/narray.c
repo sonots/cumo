@@ -99,7 +99,7 @@ na_debug_info_naview(VALUE self)
 
 
 VALUE
-na_debug_info(VALUE self)
+cumo_na_debug_info(VALUE self)
 {
     int i;
     narray_t *na;
@@ -203,7 +203,7 @@ const rb_data_type_t na_data_type_view = {
 };
 
 VALUE
-na_s_allocate_view(VALUE klass)
+cumo_na_s_allocate_view(VALUE klass)
 {
     narray_view_t *na = ALLOC(narray_view_t);
 
@@ -224,7 +224,7 @@ na_s_allocate_view(VALUE klass)
 //static const size_t zero=0;
 
 void
-na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape)
+cumo_na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape)
 {
     size_t    i, n, c, s;
     ssize_t   x;
@@ -257,7 +257,7 @@ na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape)
 
 
 void
-na_alloc_shape(narray_t *na, int ndim)
+cumo_na_alloc_shape(narray_t *na, int ndim)
 {
     na->ndim = ndim;
     na->size = 0;
@@ -278,7 +278,7 @@ na_alloc_shape(narray_t *na, int ndim)
 }
 
 void
-na_setup_shape(narray_t *na, int ndim, size_t *shape)
+cumo_na_setup_shape(narray_t *na, int ndim, size_t *shape)
 {
     int i;
     size_t size;
@@ -371,7 +371,7 @@ na_initialize(VALUE self, VALUE args)
 
 
 VALUE
-na_new(VALUE klass, int ndim, size_t *shape)
+cumo_na_new(VALUE klass, int ndim, size_t *shape)
 {
     volatile VALUE obj;
 
@@ -382,7 +382,7 @@ na_new(VALUE klass, int ndim, size_t *shape)
 
 
 VALUE
-na_view_new(VALUE klass, int ndim, size_t *shape)
+cumo_na_view_new(VALUE klass, int ndim, size_t *shape)
 {
     volatile VALUE obj;
 
@@ -630,32 +630,32 @@ na_get_pointer_for_rw(VALUE self, int flag)
 }
 
 char *
-na_get_pointer_for_read(VALUE self)
+cumo_na_get_pointer_for_read(VALUE self)
 {
     return na_get_pointer_for_rw(self, READ);
 }
 
 char *
-na_get_pointer_for_write(VALUE self)
+cumo_na_get_pointer_for_write(VALUE self)
 {
     return na_get_pointer_for_rw(self, WRITE);
 }
 
 char *
-na_get_pointer_for_read_write(VALUE self)
+cumo_na_get_pointer_for_read_write(VALUE self)
 {
     return na_get_pointer_for_rw(self, READ|WRITE);
 }
 
 char *
-na_get_pointer(VALUE self)
+cumo_na_get_pointer(VALUE self)
 {
     return na_get_pointer_for_rw(self, 0);
 }
 
 
 void
-na_release_lock(VALUE self)
+cumo_na_release_lock(VALUE self)
 {
     narray_t *na;
 
@@ -733,7 +733,7 @@ static VALUE
 
 
 unsigned int
-na_element_stride(VALUE v)
+cumo_na_element_stride(VALUE v)
 {
     narray_type_info_t *info;
     narray_t *na;
@@ -750,13 +750,13 @@ na_element_stride(VALUE v)
 }
 
 size_t
-na_dtype_elmsz(VALUE klass)
+cumo_na_dtype_element_stride(VALUE klass)
 {
     return NUM2SIZET(rb_const_get(klass, id_contiguous_stride));
 }
 
 size_t
-na_get_offset(VALUE self)
+cumo_na_get_offset(VALUE self)
 {
     narray_t *na;
     GetNArray(self,na);
@@ -773,7 +773,7 @@ na_get_offset(VALUE self)
 
 
 void
-na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
+cumo_na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
 {
     int i,j;
     VALUE tmp;
@@ -788,7 +788,7 @@ na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
 }
 
 void
-na_copy_flags(VALUE src, VALUE dst)
+cumo_na_copy_flags(VALUE src, VALUE dst)
 {
     narray_t *na1, *na2;
 
@@ -805,7 +805,7 @@ na_copy_flags(VALUE src, VALUE dst)
 
 // fix name, ex, allow_stride_for_flatten_view
 VALUE
-na_check_ladder(VALUE self, int start_dim)
+cumo_na_check_ladder(VALUE self, int start_dim)
 {
     int i;
     ssize_t st0, st1;
@@ -844,7 +844,7 @@ na_check_ladder(VALUE self, int start_dim)
 }
 
 VALUE
-na_check_contiguous(VALUE self)
+cumo_na_check_contiguous(VALUE self)
 {
     ssize_t elmsz;
     narray_t *na;
@@ -877,7 +877,7 @@ na_check_contiguous(VALUE self)
  *  Return view of NArray
  */
 VALUE
-na_make_view(VALUE self)
+cumo_na_make_view(VALUE self)
 {
     int i, nd;
     size_t  j;
@@ -1412,7 +1412,7 @@ na_cast_to(VALUE obj, VALUE type)
 // reduce is dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
 // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
 bool
-na_test_reduce(VALUE reduce, int dim)
+cumo_na_test_reduce(VALUE reduce, int dim)
 {
     size_t m;
 
@@ -1534,7 +1534,7 @@ na_get_reduce_flag_from_axes(VALUE na_obj, VALUE axes)
 
 
 VALUE
-na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
+cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
                     ndfunc_t *ndf)
 {
     int  max_arg;
@@ -1569,7 +1569,7 @@ na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
 
 
 VALUE
-na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
+cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
                       ndfunc_t *ndf, na_iter_func_t iter_nan)
 {
     long narg;

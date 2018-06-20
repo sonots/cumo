@@ -467,7 +467,7 @@ na_s_array_shape(VALUE mod, VALUE ary)
     => Cumo::DComplex#shape=[3](empty)
 */
 VALUE
-na_s_new_like(VALUE type, VALUE obj)
+cumo_na_s_new_like(VALUE type, VALUE obj)
 {
     VALUE newary;
 
@@ -477,7 +477,7 @@ na_s_new_like(VALUE type, VALUE obj)
 
 
 VALUE
-na_ary_composition_dtype(VALUE ary)
+cumo_na_ary_composition_dtype(VALUE ary)
 {
     VALUE type = Qnil;
 

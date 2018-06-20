@@ -1545,9 +1545,9 @@ na_ndloop_main(ndfunc_t *nf, VALUE args, void *opt_ptr)
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-na_ndloop(ndfunc_t *nf, int argc, ...)
+cumo_na_ndloop(ndfunc_t *nf, int argc, ...)
 #else
-na_ndloop(nf, argc, va_alist)
+cumo_na_ndloop(nf, argc, va_alist)
   ndfunc_t *nf;
   int argc;
   va_dcl
@@ -1574,16 +1574,16 @@ na_ndloop(nf, argc, va_alist)
 
 
 VALUE
-na_ndloop2(ndfunc_t *nf, VALUE args)
+cumo_na_ndloop2(ndfunc_t *nf, VALUE args)
 {
     return na_ndloop_main(nf, args, NULL);
 }
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-na_ndloop3(ndfunc_t *nf, void *ptr, int argc, ...)
+cumo_na_ndloop3(ndfunc_t *nf, void *ptr, int argc, ...)
 #else
-na_ndloop3(nf, ptr, argc, va_alist)
+cumo_na_ndloop3(nf, ptr, argc, va_alist)
   ndfunc_t *nf;
   void *ptr;
   int argc;
@@ -1610,7 +1610,7 @@ na_ndloop3(nf, ptr, argc, va_alist)
 }
 
 VALUE
-na_ndloop4(ndfunc_t *nf, void *ptr, VALUE args)
+cumo_na_ndloop4(ndfunc_t *nf, void *ptr, VALUE args)
 {
     return na_ndloop_main(nf, args, ptr);
 }
@@ -1618,7 +1618,7 @@ na_ndloop4(ndfunc_t *nf, void *ptr, VALUE args)
 //----------------------------------------------------------------------
 
 VALUE
-na_info_str(VALUE ary)
+cumo_na_info_str(VALUE ary)
 {
     int nd, i;
     char tmp[32];
@@ -1734,7 +1734,7 @@ loop_inspect(ndfunc_t *nf, na_md_loop_t *lp)
 
 
 VALUE
-na_ndloop_inspect(VALUE nary, na_text_func_t func, VALUE opt)
+cumo_na_ndloop_inspect(VALUE nary, na_text_func_t func, VALUE opt)
 {
     volatile VALUE args;
     na_md_loop_t lp;
@@ -1891,7 +1891,7 @@ loop_store_rarray(ndfunc_t *nf, na_md_loop_t *lp)
 }
 
 VALUE
-na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary)
+cumo_na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary)
 {
     na_md_loop_t lp;
     VALUE args;
@@ -1912,7 +1912,7 @@ na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary)
 
 
 VALUE
-na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
+cumo_na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
 {
     na_md_loop_t lp;
     VALUE args;
@@ -1984,7 +1984,7 @@ loop_narray_to_rarray(ndfunc_t *nf, na_md_loop_t *lp)
 }
 
 VALUE
-na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
+cumo_na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
 {
     na_md_loop_t lp;
     VALUE args, a0;
@@ -2059,9 +2059,9 @@ loop_narray_with_index(ndfunc_t *nf, na_md_loop_t *lp)
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-na_ndloop_with_index(ndfunc_t *nf, int argc, ...)
+cumo_na_ndloop_with_index(ndfunc_t *nf, int argc, ...)
 #else
-na_ndloop_with_index(nf, argc, va_alist)
+cumo_na_ndloop_with_index(nf, argc, va_alist)
   ndfunc_t *nf;
   int argc;
   va_dcl

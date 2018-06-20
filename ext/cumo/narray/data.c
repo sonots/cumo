@@ -61,7 +61,7 @@ iter_copy_bytes(na_loop_t *const lp)
 }
 
 VALUE
-na_copy(VALUE self)
+cumo_na_copy(VALUE self)
 {
     VALUE v;
     ndfunc_arg_in_t ain[1] = {{Qnil,0}};
@@ -73,7 +73,7 @@ na_copy(VALUE self)
 }
 
 VALUE
-na_store(VALUE self, VALUE src)
+cumo_na_store(VALUE self, VALUE src)
 {
     return rb_funcall(self,id_store,1,src);
 }
@@ -428,7 +428,7 @@ na_reshape(int argc, VALUE *argv, VALUE self)
 //----------------------------------------------------------------------
 
 VALUE
-na_flatten_dim(VALUE self, int sd)
+cumo_na_flatten_dim(VALUE self, int sd)
 {
     int i, nd, fd;
     size_t j;
@@ -542,7 +542,7 @@ na_flatten_dim(VALUE self, int sd)
 }
 
 VALUE
-na_flatten(VALUE self)
+cumo_na_flatten(VALUE self)
 {
     return na_flatten_dim(self,0);
 }

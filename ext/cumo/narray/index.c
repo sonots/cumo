@@ -695,7 +695,7 @@ na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, size_
 
 /* method: [](idx1,idx2,...,idxN) */
 VALUE
-na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, size_t pos)
+cumo_na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, size_t pos)
 {
     na_index_arg_to_internal_order(nidx, idx, self);
 
@@ -744,7 +744,7 @@ check_index_count(int argc, int na_ndim, int count_new, int count_rest)
 }
 
 int
-na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_t *pos_idx)
+cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_t *pos_idx)
 {
     int i, j;
     int count_new=0;

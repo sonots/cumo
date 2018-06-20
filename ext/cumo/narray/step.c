@@ -192,7 +192,7 @@ step_exclude_end_p(VALUE self)
  */
 
 void
-na_step_array_index(VALUE self, size_t ary_size,
+cumo_na_step_array_index(VALUE self, size_t ary_size,
                       size_t *plen, ssize_t *pbeg, ssize_t *pstep)
 {
     size_t len;
@@ -329,7 +329,7 @@ na_step_array_index(VALUE self, size_t ary_size,
 
 
 void
-na_step_sequence( VALUE self, size_t *plen, double *pbeg, double *pstep )
+cumo_na_step_sequence( VALUE self, size_t *plen, double *pbeg, double *pstep )
 {
     VALUE vbeg, vend, vstep, vlen;
     double dbeg, dend, dstep=1, dsize, err;
