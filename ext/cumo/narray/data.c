@@ -3,10 +3,10 @@
 #include "cumo/template.h"
 
 static VALUE cumo_sym_mulsum;
-static ID id_mulsum;
-static ID id_respond_to_p;
-static ID id_store;
-static ID id_swap_byte;
+static ID cumo_id_mulsum;
+static ID cumo_id_respond_to_p;
+static ID cumo_id_store;
+static ID cumo_id_swap_byte;
 
 // ---------------------------------------------------------------------
 
@@ -75,7 +75,7 @@ cumo_na_copy(VALUE self)
 VALUE
 cumo_na_store(VALUE self, VALUE src)
 {
-    return rb_funcall(self,id_store,1,src);
+    return rb_funcall(self,cumo_id_store,1,src);
 }
 
 // ---------------------------------------------------------------------
@@ -126,7 +126,7 @@ cumo_na_to_network(VALUE self)
     if (TEST_BIG_ENDIAN(self)) {
         return self;
     }
-    return rb_funcall(self, id_swap_byte, 0);
+    return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
 static VALUE
@@ -135,7 +135,7 @@ cumo_na_to_vacs(VALUE self)
     if (TEST_LITTLE_ENDIAN(self)) {
         return self;
     }
-    return rb_funcall(self, id_swap_byte, 0);
+    return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
 static VALUE
@@ -144,7 +144,7 @@ cumo_na_to_host(VALUE self)
     if (TEST_HOST_ORDER(self)) {
         return self;
     }
-    return rb_funcall(self, id_swap_byte, 0);
+    return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
 static VALUE
@@ -153,7 +153,7 @@ cumo_na_to_swapped(VALUE self)
     if (TEST_BYTE_SWAPPED(self)) {
         return self;
     }
-    return rb_funcall(self, id_swap_byte, 0);
+    return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
 
@@ -896,7 +896,7 @@ cumo_na_dot(VALUE self, VALUE other)
     volatile VALUE a1=self, a2=other;
     narray_t *na1, *na2;
 
-    test = rb_funcall(a1, id_respond_to_p, 1, cumo_sym_mulsum);
+    test = rb_funcall(a1, cumo_id_respond_to_p, 1, cumo_sym_mulsum);
     if (!RTEST(test)) {
         rb_raise(rb_eNoMethodError,"requires mulsum method for dot method");
     }
@@ -915,7 +915,7 @@ cumo_na_dot(VALUE self, VALUE other)
         // insert & transpose [ newaxis*self.ndim, ..., last-dim, last-1-dim ]
         a2 = cumo_na_new_dimension_for_dot(a2, 0, na1->ndim-1, 1);
     }
-    return rb_funcall(a1,id_mulsum,2,a2,INT2FIX(-1));
+    return rb_funcall(a1,cumo_id_mulsum,2,a2,INT2FIX(-1));
 }
 #endif
 
@@ -953,9 +953,9 @@ Init_cumo_na_data()
 
     //rb_define_method(cNArray, "dot", cumo_na_dot, 1);
 
-    id_mulsum       = rb_intern("mulsum");
-    cumo_sym_mulsum      = ID2SYM(id_mulsum);
-    id_respond_to_p = rb_intern("respond_to?");
-    id_store        = rb_intern("store");
-    id_swap_byte    = rb_intern("swap_byte");
+    cumo_id_mulsum       = rb_intern("mulsum");
+    cumo_sym_mulsum      = ID2SYM(cumo_id_mulsum);
+    cumo_id_respond_to_p = rb_intern("respond_to?");
+    cumo_id_store        = rb_intern("store");
+    cumo_id_swap_byte    = rb_intern("swap_byte");
 }

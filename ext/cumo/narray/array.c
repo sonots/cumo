@@ -19,13 +19,13 @@ typedef struct {
 enum { NA_NONE, NA_BIT, NA_INT32, NA_INT64, NA_RATIONAL,
        NA_DFLOAT, NA_DCOMPLEX, NA_ROBJ, NA_NTYPES };
 
-static ID id_begin;
-static ID id_end;
-static ID id_step;
-static ID id_abs;
-static ID id_cast;
-static ID id_le;
-static ID id_Complex;
+static ID cumo_id_begin;
+static ID cumo_id_end;
+static ID cumo_id_step;
+static ID cumo_id_abs;
+static ID cumo_id_cast;
+static ID cumo_id_le;
+static ID cumo_id_Complex;
 
 
 static VALUE
@@ -50,8 +50,8 @@ static VALUE
         return type;
     case T_BIGNUM:
         if (type<NA_INT64) {
-            v = rb_funcall(v,id_abs,0);
-            if (RTEST(rb_funcall(v,id_le,1,int32_max))) {
+            v = rb_funcall(v,cumo_id_abs,0);
+            if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max))) {
                 if (type<NA_INT32)
                     return NA_INT32;
             } else {
@@ -81,8 +81,8 @@ static VALUE
     case T_FIXNUM:
     case T_BIGNUM:
         if (type<NA_INT64) {
-            v = rb_funcall(v,id_abs,0);
-            if (RTEST(rb_funcall(v,id_le,1,int32_max))) {
+            v = rb_funcall(v,cumo_id_abs,0);
+            if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max))) {
                 if (type<NA_INT32)
                     return NA_INT32;
             } else {
@@ -101,7 +101,7 @@ static VALUE
         return type;
 
     default:
-        if (CLASS_OF(v) == rb_const_get( rb_cObject, id_Complex )) {
+        if (CLASS_OF(v) == rb_const_get( rb_cObject, cumo_id_Complex )) {
             return NA_DCOMPLEX;
         }
     }
@@ -110,7 +110,7 @@ static VALUE
 
 
 #define MDAI_ATTR_TYPE(tp,v,attr)                               \
-    {tp = cumo_na_object_type(tp,rb_funcall(v,id_##attr,0));}
+    {tp = cumo_na_object_type(tp,rb_funcall(v,cumo_id_##attr,0));}
 
 static int cumo_na_mdai_object_type(int type, VALUE v)
 {
@@ -327,7 +327,7 @@ static inline void
 check_subclass_of_narray(VALUE dtype)
 {
     if (RTEST(rb_obj_is_kind_of(dtype, rb_cClass))) {
-        if (RTEST(rb_funcall(dtype, id_le, 1, cNArray))) {
+        if (RTEST(rb_funcall(dtype, cumo_id_le, 1, cNArray))) {
             return;
         }
     }
@@ -508,7 +508,7 @@ cumo_na_s_bracket(VALUE klass, VALUE ary)
     }
     dtype = cumo_na_ary_composition_dtype(ary);
     check_subclass_of_narray(dtype);
-    return rb_funcall(dtype, id_cast, 1, ary);
+    return rb_funcall(dtype, cumo_id_cast, 1, ary);
 }
 
 
@@ -628,11 +628,11 @@ Init_cumo_na_array()
 
     rb_define_singleton_method(cNArray, "[]", cumo_na_s_bracket, -2);
 
-    id_begin   = rb_intern("begin");
-    id_end     = rb_intern("end");
-    id_step    = rb_intern("step");
-    id_cast    = rb_intern("cast");
-    id_abs     = rb_intern("abs");
-    id_le      = rb_intern("<=");
-    id_Complex = rb_intern("Complex");
+    cumo_id_begin   = rb_intern("begin");
+    cumo_id_end     = rb_intern("end");
+    cumo_id_step    = rb_intern("step");
+    cumo_id_cast    = rb_intern("cast");
+    cumo_id_abs     = rb_intern("abs");
+    cumo_id_le      = rb_intern("<=");
+    cumo_id_Complex = rb_intern("Complex");
 }

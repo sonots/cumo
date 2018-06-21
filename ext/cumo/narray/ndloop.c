@@ -68,13 +68,13 @@ typedef struct NA_MD_LOOP {
 #define NDL_WRITE 2
 #define NDL_READ_WRITE (NDL_READ|NDL_WRITE)
 
-static ID id_cast;
-static ID id_extract;
+static ID cumo_id_cast;
+static ID cumo_id_extract;
 
 static inline VALUE
 cumo_na_type_s_cast(VALUE type, VALUE obj)
 {
-    return rb_funcall(type,id_cast,1,obj);
+    return rb_funcall(type,cumo_id_cast,1,obj);
 }
 
 static void
@@ -1322,7 +1322,7 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
         //     if (IsNArray(x)){
         //         GetNArray(x,na);
         //         if (NA_NDIM(na)==0) {
-        //             x = rb_funcall(x, id_extract, 0);
+        //             x = rb_funcall(x, cumo_id_extract, 0);
         //         }
         //     }
         // }
@@ -1335,7 +1335,7 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
     //         if (IsNArray(x)){
     //             GetNArray(x,na);
     //             if (NA_NDIM(na)==0) {
-    //                 y = rb_funcall(x, id_extract, 0);
+    //                 y = rb_funcall(x, cumo_id_extract, 0);
     //                 RARRAY_ASET(results,i,y);
     //             }
     //         }
@@ -1780,7 +1780,7 @@ loop_store_subnarray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VAL
 
     a_type = CLASS_OF(LARG(lp,0).value);
     if (CLASS_OF(a) != a_type) {
-        a = rb_funcall(a_type, id_cast, 1, a);
+        a = rb_funcall(a_type, cumo_id_cast, 1, a);
     }
     GetNArray(a,na);
     if (na->ndim != nd-i0+1) {
@@ -2101,6 +2101,6 @@ cumo_na_ndloop_with_index(nf, argc, va_alist)
 void
 Init_cumo_na_ndloop()
 {
-    id_cast    = rb_intern("cast");
-    id_extract = rb_intern("extract");
+    cumo_id_cast    = rb_intern("cast");
+    cumo_id_extract = rb_intern("extract");
 }

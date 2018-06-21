@@ -68,15 +68,15 @@ static VALUE cumo_sym_plus;
 static VALUE cumo_sym_sum;
 static VALUE cumo_sym_tilde;
 static VALUE cumo_sym_rest;
-static ID id_beg;
-static ID id_end;
-static ID id_exclude_end;
-static ID id_each;
-static ID id_step;
-static ID id_dup;
-static ID id_bracket;
-static ID id_shift_left;
-static ID id_mask;
+static ID cumo_id_beg;
+static ID cumo_id_end;
+static ID cumo_id_exclude_end;
+static ID cumo_id_each;
+static ID cumo_id_step;
+static ID cumo_id_dup;
+static ID cumo_id_bracket;
+static ID cumo_id_shift_left;
+static ID cumo_id_mask;
 
 
 static void
@@ -179,15 +179,15 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
     ssize_t beg, end, beg_orig, end_orig;
     const char *dot = "..", *edot = "...";
 
-    beg = beg_orig = NUM2SSIZET(rb_funcall(range,id_beg,0));
+    beg = beg_orig = NUM2SSIZET(rb_funcall(range,cumo_id_beg,0));
     if (beg < 0) {
         beg += size;
     }
-    end = end_orig = NUM2SSIZET(rb_funcall(range,id_end,0));
+    end = end_orig = NUM2SSIZET(rb_funcall(range,cumo_id_end,0));
     if (end < 0) {
         end += size;
     }
-    excl_end = rb_funcall(range,id_exclude_end,0);
+    excl_end = rb_funcall(range,cumo_id_exclude_end,0);
     if (RTEST(excl_end)) {
         end--;
         dot = edot;
@@ -216,10 +216,10 @@ cumo_na_parse_enumerator(VALUE enum_obj, int orig_dim, ssize_t size, cumo_na_ind
     e = (struct enumerator *)DATA_PTR(enum_obj);
 
     if (rb_obj_is_kind_of(e->obj, rb_cRange)) {
-        if (e->meth == id_each) {
+        if (e->meth == cumo_id_each) {
             cumo_na_parse_range(e->obj, 1, orig_dim, size, q);
         }
-        else if (e->meth == id_step) {
+        else if (e->meth == cumo_id_step) {
             if (TYPE(e->args) != T_ARRAY) {
                 rb_raise(rb_eArgError,"no argument for step");
             }
@@ -394,7 +394,7 @@ cumo_na_index_aref_nadata(narray_data_t *na1, narray_view_t *na2,
         na2->base.shape[j] = size = q[i].n;
 
         if (q[i].reduce != 0) {
-            m = rb_funcall(INT2FIX(1),id_shift_left,1,INT2FIX(j));
+            m = rb_funcall(INT2FIX(1),cumo_id_shift_left,1,INT2FIX(j));
             na2->base.reduce = rb_funcall(m,'|',1,na2->base.reduce);
         }
 
@@ -443,7 +443,7 @@ cumo_na_index_aref_naview(narray_view_t *na1, narray_view_t *na2,
         na2->base.shape[j] = size = q[i].n;
 
         if (q[i].reduce != 0) {
-            VALUE m = rb_funcall(INT2FIX(1),id_shift_left,1,INT2FIX(j));
+            VALUE m = rb_funcall(INT2FIX(1),cumo_id_shift_left,1,INT2FIX(j));
             na2->base.reduce = rb_funcall(m,'|',1,na2->base.reduce);
         }
 
@@ -647,7 +647,7 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
     if (argc == 1 && result_nd == 1) {
         idx = argv[0];
         if (rb_obj_is_kind_of(idx, rb_cArray)) {
-            idx = rb_apply(cumo_cNArray,id_bracket,idx);
+            idx = rb_apply(cumo_cNArray,cumo_id_bracket,idx);
         }
         if (rb_obj_is_kind_of(idx, cumo_cNArray)) {
             GetNArray(idx,nidx);
@@ -700,11 +700,11 @@ cumo_na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd,
     cumo_na_index_arg_to_internal_order(nidx, idx, self);
 
     if (nidx==0) {
-        return rb_funcall(self,id_dup,0);
+        return rb_funcall(self,cumo_id_dup,0);
     }
     if (nidx==1) {
         if (CLASS_OF(*idx)==cumo_cBit) {
-            return rb_funcall(*idx,id_mask,1,self);
+            return rb_funcall(*idx,cumo_id_mask,1,self);
         }
     }
     return cumo_na_aref_md(nidx, idx, self, keep_dim, result_nd, pos);
@@ -868,13 +868,13 @@ Init_cumo_na_index()
     cumo_sym_sum        = ID2SYM(rb_intern("sum"));
     cumo_sym_tilde      = ID2SYM(rb_intern("~"));
     cumo_sym_rest       = ID2SYM(rb_intern("rest"));
-    id_beg         = rb_intern("begin");
-    id_end         = rb_intern("end");
-    id_exclude_end = rb_intern("exclude_end?");
-    id_each        = rb_intern("each");
-    id_step        = rb_intern("step");
-    id_dup         = rb_intern("dup");
-    id_bracket     = rb_intern("[]");
-    id_shift_left  = rb_intern("<<");
-    id_mask        = rb_intern("mask");
+    cumo_id_beg         = rb_intern("begin");
+    cumo_id_end         = rb_intern("end");
+    cumo_id_exclude_end = rb_intern("exclude_end?");
+    cumo_id_each        = rb_intern("each");
+    cumo_id_step        = rb_intern("step");
+    cumo_id_dup         = rb_intern("dup");
+    cumo_id_bracket     = rb_intern("[]");
+    cumo_id_shift_left  = rb_intern("<<");
+    cumo_id_mask        = rb_intern("mask");
 }

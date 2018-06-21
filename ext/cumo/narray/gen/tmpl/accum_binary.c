@@ -114,7 +114,7 @@ static VALUE
     if (klass==cT) {
         return <%=c_func%>_self(argc, argv, self);
     } else {
-        v = rb_funcall(klass, id_cast, 1, self);
+        v = rb_funcall(klass, cumo_id_cast, 1, self);
         return rb_funcall2(v, rb_intern("<%=name%>"), argc, argv);
     }
     //<% end %>

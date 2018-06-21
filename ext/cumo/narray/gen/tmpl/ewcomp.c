@@ -63,7 +63,7 @@ static VALUE
 
     <% if is_float %>
     VALUE kw_hash = Qnil;
-    ID kw_table[1] = {id_nan};
+    ID kw_table[1] = {cumo_id_nan};
     VALUE opts[1] = {Qundef};
 
     rb_scan_args(argc, argv, "20:", &a1, &a2, &kw_hash);

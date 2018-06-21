@@ -140,7 +140,7 @@ static VALUE
     VALUE weight=Qnil, kw=Qnil;
     VALUE opts[1] = {Qundef};
     VALUE v, wclass;
-    ID table[1] = {id_minlength};
+    ID table[1] = {cumo_id_minlength};
     size_t length, minlength;
 
     rb_scan_args(argc, argv, "01:", &weight, &kw);
