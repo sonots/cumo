@@ -35,10 +35,10 @@ static ID id_axis;
 static ID id_nan;
 static ID id_keepdims;
 
-VALUE sym_reduce;
-VALUE sym_option;
-VALUE sym_loop_opt;
-VALUE sym_init;
+VALUE cumo_sym_reduce;
+VALUE cumo_sym_option;
+VALUE cumo_sym_loop_opt;
+VALUE cumo_sym_init;
 
 VALUE cumo_na_cStep;
 #ifndef HAVE_RB_CCOMPLEX
@@ -1941,8 +1941,8 @@ Init_cumo_narray()
     id_nan             = rb_intern("nan");
     id_keepdims        = rb_intern("keepdims");
 
-    sym_reduce   = ID2SYM(rb_intern("reduce"));
-    sym_option   = ID2SYM(rb_intern("option"));
-    sym_loop_opt = ID2SYM(rb_intern("loop_opt"));
-    sym_init     = ID2SYM(rb_intern("init"));
+    cumo_sym_reduce   = ID2SYM(rb_intern("reduce"));
+    cumo_sym_option   = ID2SYM(rb_intern("option"));
+    cumo_sym_loop_opt = ID2SYM(rb_intern("loop_opt"));
+    cumo_sym_init     = ID2SYM(rb_intern("init"));
 }

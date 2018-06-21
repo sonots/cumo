@@ -53,7 +53,7 @@ static VALUE
         return <%=c_func(-1)%>_cpu(argc, argv, self);
     } else {
         VALUE v, reduce;
-        ndfunc_arg_in_t ain[3] = {{cT,0},{sym_reduce,0},{sym_init,0}};
+        ndfunc_arg_in_t ain[3] = {{cT,0},{cumo_sym_reduce,0},{cumo_sym_init,0}};
         ndfunc_arg_out_t aout[1] = {{cumo_cUInt64,0}};
         ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 3, 1, ain, aout };
 

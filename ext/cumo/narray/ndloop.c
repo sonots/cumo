@@ -268,16 +268,16 @@ ndloop_cast_args(ndfunc_t *nf, VALUE args)
 static void
 ndloop_handle_symbol_in_ain(VALUE type, VALUE value, int at, cumo_na_md_loop_t *lp)
 {
-    if (type==sym_reduce) {
+    if (type==cumo_sym_reduce) {
         lp->reduce = value;
     }
-    else if (type==sym_option) {
+    else if (type==cumo_sym_option) {
         lp->user.option = value;
     }
-    else if (type==sym_loop_opt) {
+    else if (type==cumo_sym_loop_opt) {
         lp->loop_opt = value;
     }
-    else if (type==sym_init) {
+    else if (type==cumo_sym_init) {
         lp->init_aidx = at;
     }
     else {
@@ -1740,7 +1740,7 @@ cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
     volatile VALUE args;
     cumo_na_md_loop_t lp;
     VALUE buf;
-    ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
     ndfunc_t nf = { (cumo_na_iter_func_t)func, NO_LOOP, 3, 0, ain, 0 };
     //nf = ndfunc_alloc(NULL, NO_LOOP, 1, 0, Qnil);
 

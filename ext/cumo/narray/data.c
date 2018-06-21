@@ -2,7 +2,7 @@
 #include "cumo/narray.h"
 #include "cumo/template.h"
 
-static VALUE sym_mulsum;
+static VALUE cumo_sym_mulsum;
 static ID id_mulsum;
 static ID id_respond_to_p;
 static ID id_store;
@@ -896,7 +896,7 @@ cumo_na_dot(VALUE self, VALUE other)
     volatile VALUE a1=self, a2=other;
     narray_t *na1, *na2;
 
-    test = rb_funcall(a1, id_respond_to_p, 1, sym_mulsum);
+    test = rb_funcall(a1, id_respond_to_p, 1, cumo_sym_mulsum);
     if (!RTEST(test)) {
         rb_raise(rb_eNoMethodError,"requires mulsum method for dot method");
     }
@@ -954,7 +954,7 @@ Init_cumo_na_data()
     //rb_define_method(cNArray, "dot", cumo_na_dot, 1);
 
     id_mulsum       = rb_intern("mulsum");
-    sym_mulsum      = ID2SYM(id_mulsum);
+    cumo_sym_mulsum      = ID2SYM(id_mulsum);
     id_respond_to_p = rb_intern("respond_to?");
     id_store        = rb_intern("store");
     id_swap_byte    = rb_intern("swap_byte");

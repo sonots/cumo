@@ -39,7 +39,7 @@ static void
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {
-    ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
     ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 3,1, ain,aout};
 

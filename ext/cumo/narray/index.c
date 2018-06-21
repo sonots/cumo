@@ -58,16 +58,16 @@ print_index_arg(cumo_na_index_arg_t *q, int n)
     printf("}\n");
 }
 
-static VALUE sym_ast;
-static VALUE sym_all;
-//static VALUE sym_reduce;
-static VALUE sym_minus;
-static VALUE sym_new;
-static VALUE sym_reverse;
-static VALUE sym_plus;
-static VALUE sym_sum;
-static VALUE sym_tilde;
-static VALUE sym_rest;
+static VALUE cumo_sym_ast;
+static VALUE cumo_sym_all;
+//static VALUE cumo_sym_reduce;
+static VALUE cumo_sym_minus;
+static VALUE cumo_sym_new;
+static VALUE cumo_sym_reverse;
+static VALUE cumo_sym_plus;
+static VALUE cumo_sym_sum;
+static VALUE cumo_sym_tilde;
+static VALUE cumo_sym_rest;
 static ID id_beg;
 static ID id_end;
 static ID id_exclude_end;
@@ -266,16 +266,16 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
         break;
 
     case T_SYMBOL:
-        if (a==sym_all || a==sym_ast) {
+        if (a==cumo_sym_all || a==cumo_sym_ast) {
             cumo_na_index_set_step(q,i,size,0,1);
         }
-        else if (a==sym_reverse) {
+        else if (a==cumo_sym_reverse) {
             cumo_na_index_set_step(q,i,size,size-1,-1);
         }
-        else if (a==sym_new) {
+        else if (a==cumo_sym_new) {
             cumo_na_index_set_step(q,i,1,0,1);
         }
-        else if (a==sym_reduce || a==sym_sum || a==sym_plus) {
+        else if (a==cumo_sym_reduce || a==cumo_sym_sum || a==cumo_sym_plus) {
             cumo_na_index_set_step(q,i,size,0,1);
             q->reduce = 1;
         } else {
@@ -338,7 +338,7 @@ cumo_na_index_parse_args(VALUE args, narray_t *na, cumo_na_index_arg_t *q, int n
             }
         }
         // new dimension
-        else if (v==sym_new) {
+        else if (v==cumo_sym_new) {
             cumo_na_index_parse_each(v, 1, k, &q[j]);
             j++;
         }
@@ -774,12 +774,12 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
             break;
         case T_FALSE:
         case T_SYMBOL:
-            if (a==sym_rest || a==sym_tilde || a==Qfalse) {
+            if (a==cumo_sym_rest || a==cumo_sym_tilde || a==Qfalse) {
                 argv[i] = Qfalse;
                 count_rest++;
                 break;
-            } else if (a==sym_new || a==sym_minus) {
-                argv[i] = sym_new;
+            } else if (a==cumo_sym_new || a==cumo_sym_minus) {
+                argv[i] = cumo_sym_new;
                 count_new++;
             }
             // not break
@@ -858,16 +858,16 @@ Init_cumo_na_index()
 {
     rb_define_method(cNArray, "slice", cumo_na_slice, -1);
 
-    sym_ast        = ID2SYM(rb_intern("*"));
-    sym_all        = ID2SYM(rb_intern("all"));
-    sym_minus      = ID2SYM(rb_intern("-"));
-    sym_new        = ID2SYM(rb_intern("new"));
-    sym_reverse    = ID2SYM(rb_intern("reverse"));
-    sym_plus       = ID2SYM(rb_intern("+"));
-    //sym_reduce   = ID2SYM(rb_intern("reduce"));
-    sym_sum        = ID2SYM(rb_intern("sum"));
-    sym_tilde      = ID2SYM(rb_intern("~"));
-    sym_rest       = ID2SYM(rb_intern("rest"));
+    cumo_sym_ast        = ID2SYM(rb_intern("*"));
+    cumo_sym_all        = ID2SYM(rb_intern("all"));
+    cumo_sym_minus      = ID2SYM(rb_intern("-"));
+    cumo_sym_new        = ID2SYM(rb_intern("new"));
+    cumo_sym_reverse    = ID2SYM(rb_intern("reverse"));
+    cumo_sym_plus       = ID2SYM(rb_intern("+"));
+    //cumo_sym_reduce   = ID2SYM(rb_intern("reduce"));
+    cumo_sym_sum        = ID2SYM(rb_intern("sum"));
+    cumo_sym_tilde      = ID2SYM(rb_intern("~"));
+    cumo_sym_rest       = ID2SYM(rb_intern("rest"));
     id_beg         = rb_intern("begin");
     id_end         = rb_intern("end");
     id_exclude_end = rb_intern("exclude_end?");

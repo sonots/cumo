@@ -34,7 +34,7 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     VALUE reduce;
-    ndfunc_arg_in_t ain[2] = {{cT,0},{sym_reduce,0}};
+    ndfunc_arg_in_t ain[2] = {{cT,0},{cumo_sym_reduce,0}};
     ndfunc_arg_out_t aout[2] = {{cT,0},{cT,0}};
     ndfunc_t ndf = {<%=c_iter%>, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 2,2, ain,aout};
 
