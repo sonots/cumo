@@ -1,11 +1,6 @@
 #ifndef CUMO_INDEXER_H
 #define CUMO_INDEXER_H
 
-/* Add cumo_ prefix */
-#define cumo_na_indexer_t cumo_na_indexer_t
-#define cumo_na_iarray_t cumo_na_iarray_t
-#define cumo_na_reduction_arg_t cumo_na_reduction_arg_t
-
 #ifndef __CUDACC__
 #include "cumo/narray.h"
 #include "cumo/ndloop.h"
