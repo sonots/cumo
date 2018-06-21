@@ -1648,9 +1648,10 @@ cumo_na_info_str(VALUE ary)
 
 //----------------------------------------------------------------------
 
-#define ncol cumo_na_inspect_cols
-#define nrow cumo_na_inspect_rows
-extern int ncol, nrow;
+extern int cumo_na_inspect_cols_;
+extern int cumo_na_inspect_rows_;
+#define ncol cumo_na_inspect_cols_
+#define nrow cumo_na_inspect_rows_
 
 static void
 loop_inspect(ndfunc_t *nf, cumo_na_md_loop_t *lp)

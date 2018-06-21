@@ -125,9 +125,10 @@ typedef int fortran_integer;
 
 extern int cumo_na_debug_flag;
 
-#ifndef CUMO_NARRAY_C
-extern VALUE cumo_cNArray;
+#define mCumo rb_mCumo
 extern VALUE rb_mCumo;
+#define cNArray cumo_cNArray
+extern VALUE cumo_cNArray;
 extern VALUE cumo_na_eCastError;
 extern VALUE cumo_na_eShapeError;
 extern VALUE cumo_na_eOperationError;
@@ -136,7 +137,6 @@ extern VALUE cumo_na_eValueError;
 extern const rb_data_type_t cumo_na_data_type;
 
 //EXTERN const int cumo_na_sizeof[NA_NTYPES+1];
-#endif
 
 //#define cumo_na_upcast(x,y) cumo_na_upcast(x,y)
 

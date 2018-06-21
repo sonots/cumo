@@ -11,7 +11,7 @@ typedef struct {
     int   capa;
     cumo_na_mdai_item_t *item;
     int   type;    // Ruby numeric type - investigated separately
-    VALUE cumo_na_type;  // NArray type
+    VALUE na_type;  // NArray type
     VALUE int_max;
 } cumo_na_mdai_t;
 
@@ -143,7 +143,7 @@ cumo_na_mdai_alloc(VALUE ary)
     }
     mdai->item[0].val = ary;
     mdai->type = NA_NONE;
-    mdai->cumo_na_type = Qnil;
+    mdai->na_type = Qnil;
 
     return mdai;
 }
@@ -226,10 +226,10 @@ cumo_na_mdai_investigate(cumo_na_mdai_t *mdai, int ndim)
                 }
             }
             // type
-            if (NIL_P(mdai->cumo_na_type)) {
-                mdai->cumo_na_type = CLASS_OF(v);
+            if (NIL_P(mdai->na_type)) {
+                mdai->na_type = CLASS_OF(v);
             } else {
-                mdai->cumo_na_type = cumo_na_upcast(CLASS_OF(v), mdai->cumo_na_type);
+                mdai->na_type = cumo_na_upcast(CLASS_OF(v), mdai->na_type);
             }
         } else {
             mdai->type = cumo_na_mdai_object_type(mdai->type, v);
@@ -299,11 +299,11 @@ cumo_na_mdai_dtype(cumo_na_mdai_t *mdai)
 
     tp = cumo_na_mdai_dtype_numeric(mdai->type);
 
-    if (!NIL_P(mdai->cumo_na_type)) {
+    if (!NIL_P(mdai->na_type)) {
         if (NIL_P(tp)) {
-            tp = mdai->cumo_na_type;
+            tp = mdai->na_type;
         } else {
-            tp = cumo_na_upcast(mdai->cumo_na_type,tp);
+            tp = cumo_na_upcast(mdai->na_type,tp);
         }
     }
     return tp;
@@ -528,13 +528,13 @@ cumo_na_mdai_for_struct(cumo_na_mdai_t *mdai, int ndim)
     VALUE  val;
     narray_t *na;
 
-    //fprintf(stderr,"ndim=%d\n",ndim);    rb_p(mdai->cumo_na_type);
+    //fprintf(stderr,"ndim=%d\n",ndim);    rb_p(mdai->na_type);
     if (ndim>4) { abort(); }
     val = mdai->item[ndim].val;
 
     //fpintf(stderr,"val = ");    rb_p(val);
 
-    if (CLASS_OF(val) == mdai->cumo_na_type) {
+    if (CLASS_OF(val) == mdai->na_type) {
         GetNArray(val,na);
         if ( ndim+na->ndim > mdai->capa ) {
             abort();
@@ -556,7 +556,7 @@ cumo_na_mdai_for_struct(cumo_na_mdai_t *mdai, int ndim)
         }
         //fprintf(stderr,"check:");        rb_p(val);
         // val is a Struct recort
-        if (RTEST( nst_check_compatibility(mdai->cumo_na_type, val) )) {
+        if (RTEST( nst_check_compatibility(mdai->na_type, val) )) {
             //fputs("compati\n",stderr);
             return 1;
         }
@@ -605,7 +605,7 @@ cumo_na_ary_composition_for_struct(VALUE nstruct, VALUE ary)
     cumo_na_compose_t *nc;
 
     mdai = cumo_na_mdai_alloc(ary);
-    mdai->cumo_na_type = nstruct;
+    mdai->na_type = nstruct;
     vmdai = TypedData_Wrap_Struct(rb_cData, &mdai_data_type, (void*)mdai);
     cumo_na_mdai_for_struct(mdai, 0);
     nc = cumo_na_compose_alloc();
