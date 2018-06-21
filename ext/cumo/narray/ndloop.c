@@ -53,7 +53,7 @@ typedef struct NA_MD_LOOP {
     VALUE  reduce;            // dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
                               // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
     VALUE  loop_opt;
-    ndfunc_t  *ndfunc;
+    cumo_ndfunc_t  *ndfunc;
     void (*loop_func)();
 } cumo_na_md_loop_t;
 
@@ -78,10 +78,10 @@ cumo_na_type_s_cast(VALUE type, VALUE obj)
 }
 
 static void
-print_ndfunc(ndfunc_t *nf) {
+print_ndfunc(cumo_ndfunc_t *nf) {
     volatile VALUE t;
     int i, k;
-    printf("ndfunc_t = 0x%"SZF"x {\n",(size_t)nf);
+    printf("cumo_ndfunc_t = 0x%"SZF"x {\n",(size_t)nf);
     printf("  func  = 0x%"SZF"x\n", (size_t)nf->func);
     printf("  flag  = 0x%"SZF"x\n", (size_t)nf->flag);
     printf("  nin   = %d\n", nf->nin);
@@ -193,7 +193,7 @@ print_ndloop(cumo_na_md_loop_t *lp) {
 // returns 0x01 if NDF_HAS_LOOP, but not supporting NDF_STRIDE_LOOP
 // returns 0x02 if NDF_HAS_LOOP, but not supporting NDF_INDEX_LOOP
 static unsigned int
-ndloop_func_loop_spec(ndfunc_t *nf, int user_ndim)
+ndloop_func_loop_spec(cumo_ndfunc_t *nf, int user_ndim)
 {
     unsigned int f=0;
     // If user function supports LOOP
@@ -237,7 +237,7 @@ ndloop_cast_error(VALUE type, VALUE value)
 //              to type specified by nf->args[j].type
 // returns copy_flag where nth-bit is set if nth argument is converted.
 static unsigned int
-ndloop_cast_args(ndfunc_t *nf, VALUE args)
+ndloop_cast_args(cumo_ndfunc_t *nf, VALUE args)
 {
     int j;
     unsigned int copy_flag=0;
@@ -292,7 +292,7 @@ max2(int x, int y)
 }
 
 static void
-ndloop_find_max_dimension(cumo_na_md_loop_t *lp, ndfunc_t *nf, VALUE args)
+ndloop_find_max_dimension(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args)
 {
     int j;
     int nin=0; // number of input objects (except for symbols)
@@ -329,9 +329,9 @@ ndloop_find_max_dimension(cumo_na_md_loop_t *lp, ndfunc_t *nf, VALUE args)
 */
 
 static void
-ndloop_alloc(cumo_na_md_loop_t *lp, ndfunc_t *nf, VALUE args,
+ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
              void *opt_ptr, unsigned int copy_flag,
-             void (*loop_func)(ndfunc_t*, cumo_na_md_loop_t*))
+             void (*loop_func)(cumo_ndfunc_t*, cumo_na_md_loop_t*))
 {
     int i,j;
     int narg;
@@ -589,7 +589,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
 
 
 static void
-ndloop_init_args(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
+ndloop_init_args(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
 {
     int i, j;
     VALUE v;
@@ -682,7 +682,7 @@ ndloop_check_inplace(VALUE type, int cumo_na_ndim, size_t *cumo_na_shape, VALUE 
 }
 
 static VALUE
-ndloop_find_inplace(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE type,
+ndloop_find_inplace(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE type,
                     int cumo_na_ndim, size_t *cumo_na_shape, VALUE args)
 {
     int j;
@@ -718,7 +718,7 @@ ndloop_find_inplace(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE type,
 
 
 static VALUE
-ndloop_get_arg_type(ndfunc_t *nf, VALUE args, VALUE t)
+ndloop_get_arg_type(cumo_ndfunc_t *nf, VALUE args, VALUE t)
 {
     int i;
 
@@ -739,7 +739,7 @@ ndloop_get_arg_type(ndfunc_t *nf, VALUE args, VALUE t)
 
 
 static VALUE
-ndloop_set_output_narray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
+ndloop_set_output_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
                          VALUE type, VALUE args)
 {
     int i, j;
@@ -807,7 +807,7 @@ ndloop_set_output_narray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
 }
 
 static VALUE
-ndloop_set_output(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
+ndloop_set_output(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
 {
     int i, j, k, idx;
     volatile VALUE v, t, results;
@@ -860,7 +860,7 @@ ndloop_set_output(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
 // For example, compressing [2,3] shape into [6] so that we can process
 // all elements with one user loop.
 static void
-ndfunc_contract_loop(cumo_na_md_loop_t *lp)
+cumo_ndfunc_contract_loop(cumo_na_md_loop_t *lp)
 {
     int i,j,k,success,cnt=0;
     int red0, redi;
@@ -932,7 +932,7 @@ ndfunc_contract_loop(cumo_na_md_loop_t *lp)
 //
 // For example, for element-wise function, lp->user.ndim is 1, and lp->ndim -= 1.
 static void
-ndfunc_set_user_loop(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+cumo_ndfunc_set_user_loop(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     int j, ud=0;
 
@@ -968,14 +968,14 @@ ndfunc_set_user_loop(ndfunc_t *nf, cumo_na_md_loop_t *lp)
     lp->user.n = &(lp->n[lp->ndim]);
     for (j=0; j<lp->narg; j++) {
         LARG(lp,j).iter = &LITER(lp,lp->ndim,j);
-        //printf("in ndfunc_set_user_loop: lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
+        //printf("in cumo_ndfunc_set_user_loop: lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
     }
 }
 
 
 // Initialize lp->user for indexer loop.
 static void
-ndfunc_set_user_indexer_loop(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+cumo_ndfunc_set_user_indexer_loop(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     int j;
 
@@ -1018,7 +1018,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 // 1) ndloop has `idx` but does not support NDF_INDEX_LOOP.
 // 2) ndloop has non-contiguous arrays but does not support NDF_STRIDE_LOOP.
 static void
-ndfunc_set_bufcp(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+cumo_ndfunc_set_bufcp(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     unsigned int f;
     int i, j;
@@ -1111,7 +1111,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, cumo_na_md_loop_t *lp)
             LBUFCP(lp,j)->src_iter = src_iter;
             LBUFCP(lp,j)->buf_iter = buf_iter;
             LARG(lp,j).iter = buf_iter;
-            //printf("in ndfunc_set_bufcp(1): lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
+            //printf("in cumo_ndfunc_set_bufcp(1): lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
             LBUFCP(lp,j)->src_ptr = LARG(lp,j).ptr;
             if (cumo_cuda_runtime_is_device_memory(LARG(lp,j).ptr)) {
                 LARG(lp,j).ptr = LBUFCP(lp,j)->buf_ptr = cumo_cuda_runtime_malloc(sz);
@@ -1138,7 +1138,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, cumo_na_md_loop_t *lp)
             buf_iter[1].step = 0;
             buf_iter[1].idx = NULL;
             LARG(lp,j).iter = buf_iter;
-            //printf("in ndfunc_set_bufcp(2): lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
+            //printf("in cumo_ndfunc_set_bufcp(2): lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
             lp->xargs[j].free_user_iter = 1;
         }
     }
@@ -1291,7 +1291,7 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
 
 
 static void
-ndfunc_write_back(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE orig_args, VALUE results)
+cumo_ndfunc_write_back(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE orig_args, VALUE results)
 {
     VALUE src, dst;
 
@@ -1305,7 +1305,7 @@ ndfunc_write_back(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE orig_args, VALUE re
 
 
 static VALUE
-ndloop_extract(VALUE results, ndfunc_t *nf)
+ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
 {
     // long n, i;
     // VALUE x, y;
@@ -1367,14 +1367,14 @@ loop_is_using_idx(cumo_na_md_loop_t *lp)
 }
 
 static void
-loop_narray(ndfunc_t *nf, cumo_na_md_loop_t *lp);
+loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp);
 
 static VALUE
 ndloop_run(VALUE vlp)
 {
     volatile VALUE args, orig_args, results;
     cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)(vlp);
-    ndfunc_t *nf;
+    cumo_ndfunc_t *nf;
 
     orig_args = lp->vargs;
     nf = lp->ndfunc;
@@ -1395,9 +1395,9 @@ ndloop_run(VALUE vlp)
         // TODO(sonots): support compacting dimensions in reduction indexer loop if it allows speed up.
     } else {
         if (lp->loop_func == loop_narray) {
-            ndfunc_contract_loop(lp);
+            cumo_ndfunc_contract_loop(lp);
             if (cumo_na_debug_flag) {
-                printf("-- ndfunc_contract_loop --\n");
+                printf("-- cumo_ndfunc_contract_loop --\n");
                 print_ndloop(lp);
             }
         }
@@ -1405,15 +1405,15 @@ ndloop_run(VALUE vlp)
 
     // setup lp->user
     if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
-        ndfunc_set_user_indexer_loop(nf, lp);
+        cumo_ndfunc_set_user_indexer_loop(nf, lp);
         if (cumo_na_debug_flag) {
-            printf("-- ndfunc_set_user_indexer_loop --\n");
+            printf("-- cumo_ndfunc_set_user_indexer_loop --\n");
             print_ndloop(lp);
         }
     } else {
-        ndfunc_set_user_loop(nf, lp);
+        cumo_ndfunc_set_user_loop(nf, lp);
         if (cumo_na_debug_flag) {
-            printf("-- ndfunc_set_user_loop --\n");
+            printf("-- cumo_ndfunc_set_user_loop --\n");
             print_ndloop(lp);
         }
     }
@@ -1423,10 +1423,10 @@ ndloop_run(VALUE vlp)
         // do nothing
     } else {
         if (lp->loop_func == loop_narray) {
-            ndfunc_set_bufcp(nf, lp);
+            cumo_ndfunc_set_bufcp(nf, lp);
         }
         if (cumo_na_debug_flag) {
-            printf("-- ndfunc_set_bufcp --\n");
+            printf("-- cumo_ndfunc_set_bufcp --\n");
             print_ndloop(lp);
         }
     }
@@ -1439,7 +1439,7 @@ ndloop_run(VALUE vlp)
     }
 
     // write-back will be placed here
-    ndfunc_write_back(nf, lp, orig_args, results);
+    cumo_ndfunc_write_back(nf, lp, orig_args, results);
 
     // extract result objects
     return ndloop_extract(results, nf);
@@ -1449,7 +1449,7 @@ ndloop_run(VALUE vlp)
 // ---------------------------------------------------------------------------
 
 static void
-loop_narray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int  i, j;
@@ -1526,7 +1526,7 @@ loop_narray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 
 
 static VALUE
-cumo_na_ndloop_main(ndfunc_t *nf, VALUE args, void *opt_ptr)
+cumo_na_ndloop_main(cumo_ndfunc_t *nf, VALUE args, void *opt_ptr)
 {
     unsigned int copy_flag;
     cumo_na_md_loop_t lp;
@@ -1545,10 +1545,10 @@ cumo_na_ndloop_main(ndfunc_t *nf, VALUE args, void *opt_ptr)
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-cumo_na_ndloop(ndfunc_t *nf, int argc, ...)
+cumo_na_ndloop(cumo_ndfunc_t *nf, int argc, ...)
 #else
 cumo_na_ndloop(nf, argc, va_alist)
-  ndfunc_t *nf;
+  cumo_ndfunc_t *nf;
   int argc;
   va_dcl
 #endif
@@ -1574,17 +1574,17 @@ cumo_na_ndloop(nf, argc, va_alist)
 
 
 VALUE
-cumo_na_ndloop2(ndfunc_t *nf, VALUE args)
+cumo_na_ndloop2(cumo_ndfunc_t *nf, VALUE args)
 {
     return cumo_na_ndloop_main(nf, args, NULL);
 }
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-cumo_na_ndloop3(ndfunc_t *nf, void *ptr, int argc, ...)
+cumo_na_ndloop3(cumo_ndfunc_t *nf, void *ptr, int argc, ...)
 #else
 cumo_na_ndloop3(nf, ptr, argc, va_alist)
-  ndfunc_t *nf;
+  cumo_ndfunc_t *nf;
   void *ptr;
   int argc;
   va_dcl
@@ -1610,7 +1610,7 @@ cumo_na_ndloop3(nf, ptr, argc, va_alist)
 }
 
 VALUE
-cumo_na_ndloop4(ndfunc_t *nf, void *ptr, VALUE args)
+cumo_na_ndloop4(cumo_ndfunc_t *nf, void *ptr, VALUE args)
 {
     return cumo_na_ndloop_main(nf, args, ptr);
 }
@@ -1654,7 +1654,7 @@ extern int cumo_na_inspect_rows_;
 #define nrow cumo_na_inspect_rows_
 
 static void
-loop_inspect(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+loop_inspect(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     int nd, i, ii;
     size_t *c;
@@ -1740,9 +1740,9 @@ cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
     volatile VALUE args;
     cumo_na_md_loop_t lp;
     VALUE buf;
-    ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
-    ndfunc_t nf = { (cumo_na_iter_func_t)func, NO_LOOP, 3, 0, ain, 0 };
-    //nf = ndfunc_alloc(NULL, NO_LOOP, 1, 0, Qnil);
+    cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
+    cumo_ndfunc_t nf = { (cumo_na_iter_func_t)func, NO_LOOP, 3, 0, ain, 0 };
+    //nf = cumo_ndfunc_alloc(NULL, NO_LOOP, 1, 0, Qnil);
 
     buf = cumo_na_info_str(nary);
 
@@ -1770,7 +1770,7 @@ cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
 //----------------------------------------------------------------------
 
 static void
-loop_store_subnarray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VALUE a)
+loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VALUE a)
 {
     int nd = lp->ndim;
     int i, j;
@@ -1826,7 +1826,7 @@ loop_store_subnarray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VAL
 
 
 static void
-loop_store_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+loop_store_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int     i;
@@ -1892,7 +1892,7 @@ loop_store_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 }
 
 VALUE
-cumo_na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary)
+cumo_na_ndloop_store_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE rary)
 {
     cumo_na_md_loop_t lp;
     VALUE args;
@@ -1913,7 +1913,7 @@ cumo_na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary)
 
 
 VALUE
-cumo_na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
+cumo_na_ndloop_store_rarray2(cumo_ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
 {
     cumo_na_md_loop_t lp;
     VALUE args;
@@ -1937,7 +1937,7 @@ cumo_na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
 //----------------------------------------------------------------------
 
 static void
-loop_narray_to_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+loop_narray_to_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int i;
@@ -1985,7 +1985,7 @@ loop_narray_to_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 }
 
 VALUE
-cumo_na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
+cumo_na_ndloop_cast_narray_to_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE fmt)
 {
     cumo_na_md_loop_t lp;
     VALUE args, a0;
@@ -2010,7 +2010,7 @@ cumo_na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
 //----------------------------------------------------------------------
 
 static void
-loop_narray_with_index(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+loop_narray_with_index(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int i,j;
@@ -2060,10 +2060,10 @@ loop_narray_with_index(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-cumo_na_ndloop_with_index(ndfunc_t *nf, int argc, ...)
+cumo_na_ndloop_with_index(cumo_ndfunc_t *nf, int argc, ...)
 #else
 cumo_na_ndloop_with_index(nf, argc, va_alist)
-  ndfunc_t *nf;
+  cumo_ndfunc_t *nf;
   int argc;
   va_dcl
 #endif

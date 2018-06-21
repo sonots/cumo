@@ -52,9 +52,9 @@ static VALUE
 {
     VALUE fmt=Qnil;
 
-    ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_option}};
-    ndfunc_arg_out_t aout[1] = {{cumo_cRObject,0}};
-    ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 2, 1, ain, aout };
+    cumo_ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_option}};
+    cumo_ndfunc_arg_out_t aout[1] = {{cumo_cRObject,0}};
+    cumo_ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 2, 1, ain, aout };
 
     rb_scan_args(argc, argv, "01", &fmt);
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());

@@ -99,11 +99,11 @@ static void
 static VALUE
 <%=c_func(2)%>(VALUE self, VALUE min, VALUE max)
 {
-    ndfunc_arg_in_t ain[3] = {{Qnil,0},{cT,0},{cT,0}};
-    ndfunc_arg_out_t aout[1] = {{cT,0}};
-    ndfunc_t ndf_min = { <%=c_iter%>_min, STRIDE_LOOP, 2, 1, ain, aout };
-    ndfunc_t ndf_max = { <%=c_iter%>_max, STRIDE_LOOP, 2, 1, ain, aout };
-    ndfunc_t ndf_both = { <%=c_iter%>, STRIDE_LOOP, 3, 1, ain, aout };
+    cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cT,0},{cT,0}};
+    cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
+    cumo_ndfunc_t ndf_min = { <%=c_iter%>_min, STRIDE_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf_max = { <%=c_iter%>_max, STRIDE_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf_both = { <%=c_iter%>, STRIDE_LOOP, 3, 1, ain, aout };
 
     if (RTEST(min)) {
         if (RTEST(max)) {

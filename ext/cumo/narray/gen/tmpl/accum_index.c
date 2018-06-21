@@ -55,9 +55,9 @@ static VALUE
     {
         cumo_narray_t *na;
         VALUE idx, reduce;
-        ndfunc_arg_in_t ain[3] = {{Qnil,0},{Qnil,0},{cumo_sym_reduce,0}};
-        ndfunc_arg_out_t aout[1] = {{0,0,0}};
-        ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 3,1, ain,aout};
+        cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{Qnil,0},{cumo_sym_reduce,0}};
+        cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
+        cumo_ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 3,1, ain,aout};
 
         GetNArray(self,na);
         if (na->ndim==0) {
@@ -90,9 +90,9 @@ static VALUE
     {
         cumo_narray_t *na;
         VALUE reduce;
-        ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_reduce,0}};
-        ndfunc_arg_out_t aout[1] = {{0,0,0}};
-        ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT|NDF_INDEXER_LOOP, 2,1, ain,aout};
+        cumo_ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_reduce,0}};
+        cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
+        cumo_ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT|NDF_INDEXER_LOOP, 2,1, ain,aout};
 
         GetNArray(self,na);
         if (na->size > (~(u_int32_t)0)) {

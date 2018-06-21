@@ -55,8 +55,8 @@ static void
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
-    ndfunc_arg_in_t ain[1] = {{OVERWRITE,2}};
-    ndfunc_t ndf = {<%=c_iter%>, NO_LOOP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{OVERWRITE,2}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, NO_LOOP, 1,0, ain,0};
     ssize_t kofs;
     dtype data;
     char *g;

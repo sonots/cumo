@@ -1535,7 +1535,7 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
 
 VALUE
 cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
-                    ndfunc_t *ndf)
+                    cumo_ndfunc_t *ndf)
 {
     int  max_arg;
     VALUE reduce;
@@ -1570,7 +1570,7 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
 
 VALUE
 cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
-                      ndfunc_t *ndf, cumo_na_iter_func_t iter_nan)
+                      cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan)
 {
     long narg;
     VALUE axes;

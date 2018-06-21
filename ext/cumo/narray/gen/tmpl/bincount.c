@@ -40,9 +40,9 @@ static VALUE
 <%=c_func%>_<%=bits%>(VALUE self, size_t length)
 {
     size_t shape_out[1] = {length};
-    ndfunc_arg_in_t ain[1] = {{cT,1}};
-    ndfunc_arg_out_t aout[1] = {{<%=cnt_cT%>,1,shape_out}};
-    ndfunc_t ndf = {<%=c_iter%>_<%=bits%>, NO_LOOP|NDF_STRIDE_LOOP|NDF_INDEX_LOOP,
+    cumo_ndfunc_arg_in_t ain[1] = {{cT,1}};
+    cumo_ndfunc_arg_out_t aout[1] = {{<%=cnt_cT%>,1,shape_out}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>_<%=bits%>, NO_LOOP|NDF_STRIDE_LOOP|NDF_INDEX_LOOP,
                     1, 1, ain, aout};
 
     return cumo_na_ndloop(&ndf, 1, self);
@@ -92,9 +92,9 @@ static VALUE
 <%=c_func%>_<%=fn%>(VALUE self, VALUE weight, size_t length)
 {
     size_t shape_out[1] = {length};
-    ndfunc_arg_in_t ain[2] = {{cT,1},{<%=cnt_cT%>,1}};
-    ndfunc_arg_out_t aout[1] = {{<%=cnt_cT%>,1,shape_out}};
-    ndfunc_t ndf = {<%=c_iter%>_<%=fn%>, NO_LOOP|NDF_STRIDE_LOOP,
+    cumo_ndfunc_arg_in_t ain[2] = {{cT,1},{<%=cnt_cT%>,1}};
+    cumo_ndfunc_arg_out_t aout[1] = {{<%=cnt_cT%>,1,shape_out}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>_<%=fn%>, NO_LOOP|NDF_STRIDE_LOOP,
                     2, 1, ain, aout};
 
     return cumo_na_ndloop(&ndf, 2, self, weight);
