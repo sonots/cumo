@@ -23,6 +23,85 @@
     end
 %>
 
+#define ROW_SIZE(na) ((na)->shape[(na)->ndim-2])
+#define COL_SIZE(na) ((na)->shape[(na)->ndim-1])
+
+#define CHECK_NARRAY_TYPE(x,t)                                 \
+    if (CLASS_OF(x)!=(t)) {                                    \
+        rb_raise(rb_eTypeError,"invalid NArray type (class)"); \
+    }
+
+// Error Class ??
+#define CHECK_DIM_GE(na,nd)                                     \
+    if ((na)->ndim<(nd)) {                                      \
+        rb_raise(cumo_na_eShapeError,                           \
+                 "n-dimension=%d, but >=%d is expected",        \
+                 (na)->ndim, (nd));                             \
+    }
+
+#define CHECK_DIM_EQ(na1,nd)                                    \
+    if ((na1)->ndim != (nd)) {                                  \
+        rb_raise(cumo_na_eShapeError,                           \
+                 "dimention mismatch: %d != %d",                \
+                 (na1)->ndim, (nd));                            \
+    }
+
+#define CHECK_SQUARE(name,na)                                           \
+    if ((na)->shape[(na)->ndim-1] != (na)->shape[(na)->ndim-2]) {       \
+        rb_raise(cumo_na_eShapeError,"%s is not square matrix",name);   \
+    }
+
+#define CHECK_SIZE_GE(na,sz)                                       \
+    if ((na)->size < (size_t)(sz)) {                               \
+        rb_raise(cumo_na_eShapeError,                              \
+                 "NArray size must be >= %"SZF"u",(size_t)(sz));\
+    }
+#define CHECK_NON_EMPTY(na)                                     \
+    if ((na)->size==0) {                                        \
+        rb_raise(cumo_na_eShapeError,"empty NArray");           \
+    }
+
+#define CHECK_SIZE_EQ(n,m)                                      \
+    if ((n)!=(m)) {                                             \
+        rb_raise(cumo_na_eShapeError,                           \
+                 "size mismatch: %"SZF"d != %"SZF"d",           \
+                 (size_t)(n),(size_t)(m));                      \
+    }
+
+#define CHECK_SAME_SHAPE(na1,na2)                                \
+    {   int i;                                                   \
+        CHECK_DIM_EQ(na1,na2->ndim);                             \
+        for (i=0; i<na1->ndim; i++) {                            \
+            CHECK_SIZE_EQ(na1->shape[i],na2->shape[i]);          \
+        }                                                        \
+    }
+
+#define CHECK_INT_EQ(sm,m,sn,n)                          \
+    if ((m) != (n)) {                                    \
+        rb_raise(cumo_na_eShapeError,                    \
+                 "%s must be == %s: %s=%d %s=%d",        \
+                 sm,sn,sm,m,sn,n);                       \
+    }
+
+// Error Class ??
+#define CHECK_LEADING_GE(sld,ld,sn,n)                    \
+    if ((ld) < (n)) {                                    \
+        rb_raise(cumo_na_eShapeError,                    \
+                 "%s must be >= max(%s,1): %s=%d %s=%d", \
+                 sld,sn,sld,ld,sn,n);                    \
+    }
+
+#define COPY_OR_CAST_TO(a,T)                            \
+    {                                                   \
+        if (CLASS_OF(a) == (T)) {                       \
+            if (!TEST_INPLACE(a)) {                     \
+                a = cumo_na_copy(a);                    \
+            }                                           \
+        } else {                                        \
+            a = rb_funcall(T,rb_intern("cast"),1,a);    \
+        }                                               \
+    }
+
 typedef struct {
     dtype alpha, beta;
     int m, n, k;
@@ -221,9 +300,9 @@ static VALUE
 
     rb_scan_args(argc, argv, "11:", &b, &c, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 2, opts);
-    alpha = option_value(opts[0],Qnil);
+    alpha = cumo_cuda_cublas_option_value(opts[0],Qnil);
     g.alpha = RTEST(alpha) ? m_num_to_data(alpha) : m_one;
-    beta = option_value(opts[1],Qnil);
+    beta = cumo_cuda_cublas_option_value(opts[1],Qnil);
     g.beta = RTEST(beta) ? m_num_to_data(beta) : m_zero;
 
     GetNArray(a, na);
