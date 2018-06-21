@@ -57,9 +57,9 @@ static VALUE
 {
     VALUE a1 = Qnil;
     VALUE a2 = Qnil;
-    ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
-    ndfunc_arg_out_t aout[1] = {{cT,0}};
-    ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP, 2, 1, ain, aout };
+    cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
+    cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
+    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP, 2, 1, ain, aout };
 
     <% if is_float %>
     VALUE kw_hash = Qnil;

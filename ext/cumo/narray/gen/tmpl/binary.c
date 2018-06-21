@@ -126,12 +126,12 @@ static void
 static VALUE
 <%=c_func%>_self(VALUE self, VALUE other)
 {
-    ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
-    ndfunc_arg_out_t aout[1] = {{cT,0}};
+    cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
+    cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
     <% if type_name == 'robject' %>
-    ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 2, 1, ain, aout };
     <% else %>
-    ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP|NDF_INDEXER_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP|NDF_INDEXER_LOOP, 2, 1, ain, aout };
     <% end %>
 
     return cumo_na_ndloop(&ndf, 2, self, other);

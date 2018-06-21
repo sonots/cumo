@@ -30,8 +30,8 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     VALUE reduce;
-    ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{cumo_sym_reduce,0}};
-    ndfunc_t ndf = {0, STRIDE_LOOP|NDF_FLAT_REDUCE, 2,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{cumo_sym_reduce,0}};
+    cumo_ndfunc_t ndf = {0, STRIDE_LOOP|NDF_FLAT_REDUCE, 2,0, ain,0};
 
     if (!TEST_INPLACE(self)) {
         self = cumo_na_copy(self);

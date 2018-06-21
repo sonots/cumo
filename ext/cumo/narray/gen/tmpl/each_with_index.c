@@ -62,8 +62,8 @@ static void
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {
-    ndfunc_arg_in_t ain[1] = {{Qnil,0}};
-    ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 1,0, ain,0};
 
     cumo_na_ndloop_with_index(&ndf, 1, self);
     return self;

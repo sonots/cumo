@@ -62,9 +62,9 @@ static VALUE
 {
     VALUE v, reduce;
     VALUE naryv[2];
-    ndfunc_arg_in_t ain[4] = {{cT,0},{cT,0},{cumo_sym_reduce,0},{cumo_sym_init,0}};
-    ndfunc_arg_out_t aout[1] = {{cT,0}};
-    ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP, 4, 1, ain, aout };
+    cumo_ndfunc_arg_in_t ain[4] = {{cT,0},{cT,0},{cumo_sym_reduce,0},{cumo_sym_init,0}};
+    cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
+    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP, 4, 1, ain, aout };
 
     if (argc < 1) {
         rb_raise(rb_eArgError,"wrong number of arguments (%d for >=1)",argc);

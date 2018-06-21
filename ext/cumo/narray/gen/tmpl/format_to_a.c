@@ -39,9 +39,9 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     VALUE fmt=Qnil;
-    ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
-    ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
-    ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 3, 1, ain, aout };
+    cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
+    cumo_ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
+    cumo_ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 3, 1, ain, aout };
 
     rb_scan_args(argc, argv, "01", &fmt);
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());

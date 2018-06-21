@@ -46,22 +46,22 @@ void cumo_na_release_lock(VALUE); // currently do nothing
 
 // used in reduce methods
 VALUE cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
-                            ndfunc_t *ndf, cumo_na_iter_func_t nan_iter);
+                            cumo_ndfunc_t *ndf, cumo_na_iter_func_t nan_iter);
 
 VALUE cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
-                          ndfunc_t *ndf);
+                          cumo_ndfunc_t *ndf);
 
 // ndloop
-VALUE cumo_na_ndloop(ndfunc_t *nf, int argc, ...);
-VALUE cumo_na_ndloop2(ndfunc_t *nf, VALUE args);
-VALUE cumo_na_ndloop3(ndfunc_t *nf, void *ptr, int argc, ...);
-VALUE cumo_na_ndloop4(ndfunc_t *nf, void *ptr, VALUE args);
+VALUE cumo_na_ndloop(cumo_ndfunc_t *nf, int argc, ...);
+VALUE cumo_na_ndloop2(cumo_ndfunc_t *nf, VALUE args);
+VALUE cumo_na_ndloop3(cumo_ndfunc_t *nf, void *ptr, int argc, ...);
+VALUE cumo_na_ndloop4(cumo_ndfunc_t *nf, void *ptr, VALUE args);
 
-VALUE cumo_na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt);
-VALUE cumo_na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary);
-VALUE cumo_na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt);
+VALUE cumo_na_ndloop_cast_narray_to_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE fmt);
+VALUE cumo_na_ndloop_store_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE rary);
+VALUE cumo_na_ndloop_store_rarray2(cumo_ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt);
 VALUE cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt);
-VALUE cumo_na_ndloop_with_index(ndfunc_t *nf, int argc, ...);
+VALUE cumo_na_ndloop_with_index(cumo_ndfunc_t *nf, int argc, ...);
 
 VALUE cumo_na_info_str(VALUE);
 

@@ -85,8 +85,8 @@ static VALUE
 {
     logseq_opt_t *g;
     VALUE vbeg, vstep, vbase;
-    ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
-    ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,0, ain,0};
 
     g = ALLOCA_N(logseq_opt_t,1);
     rb_scan_args(argc, args, "21", &vbeg, &vstep, &vbase);

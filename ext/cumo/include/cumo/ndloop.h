@@ -67,20 +67,20 @@ typedef struct NA_LOOP {
 // type of user function
 typedef void (*cumo_na_iter_func_t) _((cumo_na_loop_t *const));
 typedef VALUE (*cumo_na_text_func_t) _((char *ptr, size_t pos, VALUE opt));
-//typedef void (*) void (*loop_func)(ndfunc_t*, cumo_na_md_loop_t*))
+//typedef void (*) void (*loop_func)(cumo_ndfunc_t*, cumo_na_md_loop_t*))
 
 
 typedef struct NDF_ARG_IN {
     VALUE   type;    // argument types
     int     dim;     // # of dimension of argument handled by user function
                      // if dim==-1, reduce dimension
-} ndfunc_arg_in_t;
+} cumo_ndfunc_arg_in_t;
 
 typedef struct NDF_ARG_OUT {
     VALUE   type;    // argument types
     int     dim;     // # of dimension of argument handled by user function
     size_t *shape;
-} ndfunc_arg_out_t;
+} cumo_ndfunc_arg_out_t;
 
 // spec of user function
 typedef struct NDFUNCTION {
@@ -88,8 +88,8 @@ typedef struct NDFUNCTION {
     unsigned int flag;      // what kind of loop user function supports
     int nin;                // # of arguments
     int nout;               // # of results
-    ndfunc_arg_in_t *ain;   // spec of input arguments
-    ndfunc_arg_out_t *aout; // spec of output result
-} ndfunc_t;
+    cumo_ndfunc_arg_in_t *ain;   // spec of input arguments
+    cumo_ndfunc_arg_out_t *aout; // spec of output result
+} cumo_ndfunc_t;
 
 #endif /* CUMO_NDLOOP_H */
