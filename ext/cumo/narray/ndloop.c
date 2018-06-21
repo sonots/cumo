@@ -483,7 +483,7 @@ ndloop_release(VALUE vlp)
   set lp->n[i] (shape of n-d iteration) here
 */
 static void
-ndloop_check_shape(cumo_na_md_loop_t *lp, int nf_dim, narray_t *na)
+ndloop_check_shape(cumo_na_md_loop_t *lp, int nf_dim, cumo_narray_t *na)
 {
     int i, k;
     size_t n;
@@ -517,7 +517,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
     size_t n, s;
     int i, k, nd;
     stridx_t sdx;
-    narray_t *na;
+    cumo_narray_t *na;
 
     LARG(lp,j).value = vna;
     LARG(lp,j).elmsz = cumo_na_element_stride(vna);
@@ -593,7 +593,7 @@ ndloop_init_args(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
 {
     int i, j;
     VALUE v;
-    narray_t *na;
+    cumo_narray_t *na;
     int nf_dim;
     int dim_beg;
     int *dim_map;
@@ -661,7 +661,7 @@ static int
 ndloop_check_inplace(VALUE type, int cumo_na_ndim, size_t *cumo_na_shape, VALUE v)
 {
     int i;
-    narray_t *na;
+    cumo_narray_t *na;
 
     // type check
     if (type != CLASS_OF(v)) {
@@ -1309,7 +1309,7 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
 {
     // long n, i;
     // VALUE x, y;
-    // narray_t *na;
+    // cumo_narray_t *na;
 
     // extract result objects
     switch(nf->nout) {
@@ -1623,7 +1623,7 @@ cumo_na_info_str(VALUE ary)
     int nd, i;
     char tmp[32];
     VALUE buf;
-    narray_t *na;
+    cumo_narray_t *na;
 
     GetNArray(ary,na);
     nd = na->ndim;
@@ -1774,7 +1774,7 @@ loop_store_subnarray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VAL
 {
     int nd = lp->ndim;
     int i, j;
-    narray_t *na;
+    cumo_narray_t *na;
     int *dim_map;
     VALUE a_type;
 

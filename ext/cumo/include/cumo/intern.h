@@ -13,10 +13,10 @@ VALUE cumo_na_s_allocate(VALUE klass);
 VALUE cumo_na_s_allocate_view(VALUE klass);
 VALUE cumo_na_s_new_like(VALUE type, VALUE obj);
 
-void cumo_na_alloc_shape(narray_t *na, int ndim);
+void cumo_na_alloc_shape(cumo_narray_t *na, int ndim);
 void cumo_na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape);
 void cumo_na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self);
-void cumo_na_setup_shape(narray_t *na, int ndim, size_t *shape);
+void cumo_na_setup_shape(cumo_narray_t *na, int ndim, size_t *shape);
 
 unsigned int cumo_na_element_stride(VALUE nary);
 size_t cumo_na_dtype_element_stride(VALUE klass);

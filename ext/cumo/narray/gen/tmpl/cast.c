@@ -14,7 +14,7 @@ static VALUE
 <%=c_func(1)%>(VALUE type, VALUE obj)
 {
     VALUE v;
-    narray_t *na;
+    cumo_narray_t *na;
     dtype x;
 
     if (CLASS_OF(obj)==cT) {

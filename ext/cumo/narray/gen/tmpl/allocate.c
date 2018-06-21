@@ -1,7 +1,7 @@
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {
-    narray_t *na;
+    cumo_narray_t *na;
     void *ptr;
 
     GetNArray(self,na);
@@ -28,7 +28,7 @@ static VALUE
         rb_funcall(NA_VIEW_DATA(na), rb_intern("allocate"), 0);
         break;
     case NARRAY_FILEMAP_T:
-        //ptr = ((narray_filemap_t*)na)->ptr;
+        //ptr = ((cumo_narray_filemap_t*)na)->ptr;
         // to be implemented
     default:
         rb_bug("invalid narray type : %d",NA_TYPE(na));

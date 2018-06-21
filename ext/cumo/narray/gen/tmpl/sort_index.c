@@ -61,7 +61,7 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     size_t size;
-    narray_t *na;
+    cumo_narray_t *na;
     VALUE idx, tmp, reduce, res;
     char *buf;
     ndfunc_arg_in_t ain[3] = {{cT,0},{0,0},{cumo_sym_reduce,0}};

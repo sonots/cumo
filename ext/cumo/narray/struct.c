@@ -10,7 +10,7 @@ VALUE cT;
 static VALUE
 nst_allocate(VALUE self)
 {
-    narray_t *na;
+    cumo_narray_t *na;
     void *ptr;
     VALUE velmsz;
 
@@ -29,7 +29,7 @@ nst_allocate(VALUE self)
         rb_funcall(NA_VIEW_DATA(na), rb_intern("allocate"), 0);
         break;
     case NARRAY_FILEMAP_T:
-        //ptr = ((narray_filemap_t*)na)->ptr;
+        //ptr = ((cumo_narray_filemap_t*)na)->ptr;
         // to be implemented
     default:
         rb_bug("invalid narray type : %d",NA_TYPE(na));
@@ -82,8 +82,8 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     size_t *idx1, *idx2;
     ssize_t stride;
     stridx_t *stridx;
-    narray_t *na, *nt;
-    narray_view_t *na1, *na2;
+    cumo_narray_t *na, *nt;
+    cumo_narray_view_t *na1, *na2;
     VALUE klass;
     volatile VALUE view;
 
@@ -127,7 +127,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     view = cumo_na_s_allocate_view(klass);
     cumo_na_copy_flags(self, view);
     GetNArrayView(view, na2);
-    cumo_na_setup_shape((narray_t*)na2, ndim, shape);
+    cumo_na_setup_shape((cumo_narray_t*)na2, ndim, shape);
     na2->stridx = stridx;
 
     switch(na->type) {
@@ -189,7 +189,7 @@ static VALUE
 nst_field(VALUE self, VALUE idx)
 {
     VALUE obj;
-    narray_view_t *nv;
+    cumo_narray_view_t *nv;
 
     obj = nst_field_view(self,idx);
     GetNArrayView(obj,nv);
@@ -316,7 +316,7 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
     size_t *shape=NULL;
     int ndim=0;
     ssize_t stride;
-    narray_view_t *nt;
+    cumo_narray_view_t *nt;
     int j;
 
     for (i=0; i<argc; i++) {
@@ -348,7 +348,7 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
     id = rb_to_id(name);
     name = ID2SYM(id);
     if (rb_obj_is_kind_of(type,cNArray)) {
-        narray_t *na;
+        cumo_narray_t *na;
         GetNArray(type,na);
         type = CLASS_OF(type);
         ndim = na->ndim;
@@ -389,7 +389,7 @@ iter_nstruct_to_a(cumo_na_loop_t *const lp)
     VALUE   opt, types, defs, def;
     VALUE   elmt, velm, vary;
     size_t  ofs, pos;
-    narray_view_t *ne;
+    cumo_narray_view_t *ne;
 
     opt = lp->option;
     types = RARRAY_AREF(opt,0);
@@ -419,8 +419,8 @@ iter_nstruct_to_a(cumo_na_loop_t *const lp)
 static VALUE
 cumo_na_original_data(VALUE self)
 {
-    narray_t *na;
-    narray_view_t *nv;
+    cumo_narray_t *na;
+    cumo_narray_view_t *nv;
 
     GetNArray(self,na);
     switch(na->type) {
@@ -436,7 +436,7 @@ nst_create_member_views(VALUE self)
 {
     VALUE defs, def, types, type, elmt;
     long  i, len;
-    narray_view_t *ne;
+    cumo_narray_view_t *ne;
 
     defs = nst_definitions(CLASS_OF(self));
     len = RARRAY_LEN(defs);
@@ -472,7 +472,7 @@ cumo_na_struct_to_a(VALUE self)
 /*
 static size_t
 check_array(VALUE item) {
-    narray_t *na;
+    cumo_narray_t *na;
 
     if (TYPE(item) == T_ARRAY) {
         return 1;
@@ -492,7 +492,7 @@ check_array(VALUE item) {
 /*
 static size_t
 check_array_1d(VALUE item, size_t size) {
-    narray_t *na;
+    cumo_narray_t *na;
     size_t i, len;
 
     if (TYPE(item) == T_ARRAY) {
@@ -525,7 +525,7 @@ nst_check_compatibility(VALUE nst, VALUE ary)
 {
     VALUE defs, def, type, item;
     long len, i;
-    narray_t *nt;
+    cumo_narray_t *nt;
 
     if (TYPE(ary) != T_ARRAY) {
         if (nst==CLASS_OF(ary)) { // same Struct
@@ -560,7 +560,7 @@ nst_check_compatibility(VALUE nst, VALUE ary)
             //volatile VALUE vnc;
             //cumo_na_compose_t *nc;
             VALUE vnc;
-            narray_t *nc;
+            cumo_narray_t *nc;
             int j;
 
             //vnc = cumo_na_ary_composition(item);
@@ -594,7 +594,7 @@ iter_nstruct_from_a(cumo_na_loop_t *const lp)
     VALUE types, defs, def;
     VALUE elmt, item;
     size_t ofs;
-    narray_view_t *ne;
+    cumo_narray_view_t *ne;
 
     types = RARRAY_AREF(lp->option,0);
     defs = RARRAY_AREF(lp->option,1);
@@ -623,7 +623,7 @@ cumo_na_struct_cast_array(VALUE klass, VALUE rary)
 {
     //volatile VALUE vnc, nary;
     VALUE nary;
-    narray_t *na;
+    cumo_narray_t *na;
     //cumo_na_compose_t *nc;
     VALUE opt;
     ndfunc_arg_in_t ain[3] = {{OVERWRITE,0},{rb_cArray,0},{cumo_sym_option}};
@@ -751,7 +751,7 @@ iter_struct_inspect(char *ptr, size_t pos, VALUE opt)
     VALUE   types, defs, def, name, elmt, vary, v, x;
     size_t  ofs;
     long    i, len;
-    narray_view_t *ne;
+    cumo_narray_view_t *ne;
 
     types = RARRAY_AREF(opt,0);
     defs = RARRAY_AREF(opt,1);

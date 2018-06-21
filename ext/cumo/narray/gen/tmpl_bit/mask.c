@@ -88,10 +88,10 @@ static VALUE
 <%=c_func(1)%>(VALUE mask, VALUE val)
 {
     volatile VALUE idx_1, view;
-    narray_data_t *nidx;
-    narray_view_t *nv;
-    narray_t      *na;
-    narray_view_t *na1;
+    cumo_narray_data_t *nidx;
+    cumo_narray_view_t *nv;
+    cumo_narray_t      *na;
+    cumo_narray_view_t *na1;
     stridx_t stridx0;
     size_t n_1;
     where_opt_t g;
@@ -109,7 +109,7 @@ static VALUE
 
     view = cumo_na_s_allocate_view(CLASS_OF(val));
     GetNArrayView(view, nv);
-    cumo_na_setup_shape((narray_t*)nv, 1, &n_1);
+    cumo_na_setup_shape((cumo_narray_t*)nv, 1, &n_1);
 
     GetNArrayData(idx_1,nidx);
     SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);

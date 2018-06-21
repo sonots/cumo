@@ -11,7 +11,7 @@ static VALUE
 {
     volatile VALUE v;
     char *ptr;
-    narray_t *na;
+    cumo_narray_t *na;
     GetNArray(self,na);
 
     if (na->ndim==0) {

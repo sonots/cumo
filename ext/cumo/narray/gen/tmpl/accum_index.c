@@ -53,7 +53,7 @@ static VALUE
 {
     //<% if type_name == 'robject' %>
     {
-        narray_t *na;
+        cumo_narray_t *na;
         VALUE idx, reduce;
         ndfunc_arg_in_t ain[3] = {{Qnil,0},{Qnil,0},{cumo_sym_reduce,0}};
         ndfunc_arg_out_t aout[1] = {{0,0,0}};
@@ -88,7 +88,7 @@ static VALUE
     }
     <% else %>
     {
-        narray_t *na;
+        cumo_narray_t *na;
         VALUE reduce;
         ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_reduce,0}};
         ndfunc_arg_out_t aout[1] = {{0,0,0}};
