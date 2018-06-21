@@ -25,3 +25,4 @@ t.rb
 *.exe
 .DS_Store
 /vendor/
+.kernel_cache/
