@@ -5,7 +5,7 @@
 static dtype
 <%=c_func(:nodef)%>(VALUE obj)
 {
-    narray_t *na;
+    cumo_narray_t *na;
     dtype  x;
     char  *ptr;
     size_t pos;

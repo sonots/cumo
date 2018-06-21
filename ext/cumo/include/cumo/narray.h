@@ -177,13 +177,13 @@ typedef struct RNArray {
     size_t   size;          // # of total elements
     size_t  *shape;         // # of elements for each dimension
     VALUE    reduce;
-} narray_t;
+} cumo_narray_t;
 
 
 typedef struct RNArrayData {
-    narray_t base;
+    cumo_narray_t base;
     char    *ptr;
-} narray_data_t;
+} cumo_narray_data_t;
 
 
 typedef union {
@@ -192,7 +192,7 @@ typedef union {
 } stridx_t;
 
 typedef struct RNArrayView {
-    narray_t base;
+    cumo_narray_t base;
     VALUE    data;       // data object
     size_t   offset;     // offset of start point from data pointer
                          // :in units of elm.unit_bits
@@ -200,12 +200,12 @@ typedef struct RNArrayView {
                          // elm.step_unit = elm.bit_size / elm.access_unit
                          // elm.step_unit = elm.size_bits / elm.unit_bits
     stridx_t *stridx;    // stride or indices of data pointer for each dimension
-} narray_view_t;
+} cumo_narray_view_t;
 
 
 // filemap is unimplemented
 typedef struct RNArrayFileMap {
-    narray_t base;
+    cumo_narray_t base;
     char    *ptr;
 #ifdef WIN32
     HANDLE hFile;
@@ -214,7 +214,7 @@ typedef struct RNArrayFileMap {
     int prot;
     int flag;
 #endif
-} narray_filemap_t;
+} cumo_narray_filemap_t;
 
 
 // this will be revised in future.
@@ -222,39 +222,39 @@ typedef struct {
     unsigned int element_bits;
     unsigned int element_bytes;
     unsigned int element_stride;
-} narray_type_info_t;
+} cumo_narray_type_info_t;
 
 
-static inline narray_t *
-cumo_na_get_narray_t(VALUE obj)
+static inline cumo_narray_t *
+cumo_na_get_cumo_narray_t(VALUE obj)
 {
-    narray_t *na;
+    cumo_narray_t *na;
 
     Check_TypedStruct(obj,&cumo_na_data_type);
-    na = (narray_t*)DATA_PTR(obj);
+    na = (cumo_narray_t*)DATA_PTR(obj);
     return na;
 }
 
-static inline narray_t *
-_cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
+static inline cumo_narray_t *
+_cumo_na_get_cumo_narray_t(VALUE obj, unsigned char cumo_na_type)
 {
-    narray_t *na;
+    cumo_narray_t *na;
 
     Check_TypedStruct(obj,&cumo_na_data_type);
-    na = (narray_t*)DATA_PTR(obj);
+    na = (cumo_narray_t*)DATA_PTR(obj);
     if (na->type != cumo_na_type) {
         rb_bug("unknown type 0x%x (0x%x given)", cumo_na_type, na->type);
     }
     return na;
 }
 
-#define cumo_na_get_narray_data_t(obj) (narray_data_t*)_cumo_na_get_narray_t(obj,NARRAY_DATA_T)
-#define cumo_na_get_narray_view_t(obj) (narray_view_t*)_cumo_na_get_narray_t(obj,NARRAY_VIEW_T)
-#define cumo_na_get_narray_filemap_t(obj) (narray_filemap_t*)_cumo_na_get_narray_t(obj,NARRAY_FILEMAP_T)
+#define cumo_na_get_cumo_narray_data_t(obj) (cumo_narray_data_t*)_cumo_na_get_cumo_narray_t(obj,NARRAY_DATA_T)
+#define cumo_na_get_cumo_narray_view_t(obj) (cumo_narray_view_t*)_cumo_na_get_cumo_narray_t(obj,NARRAY_VIEW_T)
+#define cumo_na_get_cumo_narray_filemap_t(obj) (cumo_narray_filemap_t*)_cumo_na_get_cumo_narray_t(obj,NARRAY_FILEMAP_T)
 
-#define GetNArray(obj,var)      TypedData_Get_Struct(obj, narray_t, &cumo_na_data_type, var)
-#define GetNArrayView(obj,var)  TypedData_Get_Struct(obj, narray_view_t, &cumo_na_data_type, var)
-#define GetNArrayData(obj,var)  TypedData_Get_Struct(obj, narray_data_t, &cumo_na_data_type, var)
+#define GetNArray(obj,var)      TypedData_Get_Struct(obj, cumo_narray_t, &cumo_na_data_type, var)
+#define GetNArrayView(obj,var)  TypedData_Get_Struct(obj, cumo_narray_view_t, &cumo_na_data_type, var)
+#define GetNArrayData(obj,var)  TypedData_Get_Struct(obj, cumo_narray_data_t, &cumo_na_data_type, var)
 
 #define SDX_IS_STRIDE(x) ((x).stride&0x1)
 #define SDX_IS_INDEX(x)  (!SDX_IS_STRIDE(x))
@@ -264,10 +264,10 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define SDX_SET_STRIDE(x,s) ((x).stride=((s)<<1)|0x1)
 #define SDX_SET_INDEX(x,idx) ((x).index=idx)
 
-#define RNARRAY(val)            ((narray_t*)DATA_PTR(val))
-#define RNARRAY_DATA(val)       ((narray_data_t*)DATA_PTR(val))
-#define RNARRAY_VIEW(val)       ((narray_view_t*)DATA_PTR(val))
-#define RNARRAY_FILEMAP(val)    ((narray_filemap_t*)DATA_PTR(val))
+#define RNARRAY(val)            ((cumo_narray_t*)DATA_PTR(val))
+#define RNARRAY_DATA(val)       ((cumo_narray_data_t*)DATA_PTR(val))
+#define RNARRAY_VIEW(val)       ((cumo_narray_view_t*)DATA_PTR(val))
+#define RNARRAY_FILEMAP(val)    ((cumo_narray_filemap_t*)DATA_PTR(val))
 
 #define RNARRAY_NDIM(val)       (RNARRAY(val)->ndim)
 #define RNARRAY_TYPE(val)       (RNARRAY(val)->type)
@@ -281,18 +281,18 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define RNARRAY_VIEW_OFFSET(val) (RNARRAY_VIEW(val)->offset)
 #define RNARRAY_VIEW_STRIDX(val) (RNARRAY_VIEW(val)->stridx)
 
-#define NA_NDIM(na)     (((narray_t*)na)->ndim)
-#define NA_TYPE(na)     (((narray_t*)na)->type)
-#define NA_SIZE(na)     (((narray_t*)na)->size)
-#define NA_SHAPE(na)    (((narray_t*)na)->shape)
-#define NA_REDUCE(na)   (((narray_t*)na)->reduce)
+#define NA_NDIM(na)     (((cumo_narray_t*)na)->ndim)
+#define NA_TYPE(na)     (((cumo_narray_t*)na)->type)
+#define NA_SIZE(na)     (((cumo_narray_t*)na)->size)
+#define NA_SHAPE(na)    (((cumo_narray_t*)na)->shape)
+#define NA_REDUCE(na)   (((cumo_narray_t*)na)->reduce)
 
-#define NA_FLAG(obj)    (cumo_na_get_narray_t(obj)->flag)
+#define NA_FLAG(obj)    (cumo_na_get_cumo_narray_t(obj)->flag)
 #define NA_FLAG0(obj)   (NA_FLAG(obj)[0])
 #define NA_FLAG1(obj)   (NA_FLAG(obj)[1])
 
-#define NA_DATA(na)             ((narray_data_t*)(na))
-#define NA_VIEW(na)             ((narray_view_t*)(na))
+#define NA_DATA(na)             ((cumo_narray_data_t*)(na))
+#define NA_VIEW(na)             ((cumo_narray_view_t*)(na))
 #define NA_DATA_PTR(na)         (NA_DATA(na)->ptr)
 #define NA_VIEW_DATA(na)        (NA_VIEW(na)->data)
 #define NA_VIEW_OFFSET(na)      (NA_VIEW(na)->offset)
@@ -303,7 +303,7 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define NA_INDEX_AT(na,i)       (SDX_GET_INDEX(NA_VIEW_STRIDX(na)[i]))
 #define NA_STRIDE_AT(na,i)      (SDX_GET_STRIDE(NA_VIEW_STRIDX(na)[i]))
 
-#define NA_FILEMAP_PTR(na)      (((narray_filemap_t*)na)->ptr)
+#define NA_FILEMAP_PTR(na)      (((cumo_narray_filemap_t*)na)->ptr)
 
 
 #define NA_FL0_TEST(x,f) (NA_FLAG0(x)&(f))

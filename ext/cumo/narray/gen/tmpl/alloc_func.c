@@ -1,8 +1,8 @@
 static size_t
 <%=type_name%>_memsize(const void* ptr)
 {
-    size_t size = sizeof(narray_data_t);
-    const narray_data_t *na = (const narray_data_t*)ptr;
+    size_t size = sizeof(cumo_narray_data_t);
+    const cumo_narray_data_t *na = (const cumo_narray_data_t*)ptr;
 
     assert(na->base.type == NARRAY_DATA_T);
 
@@ -24,7 +24,7 @@ static size_t
 static void
 <%=type_name%>_free(void* ptr)
 {
-    narray_data_t *na = (narray_data_t*)ptr;
+    cumo_narray_data_t *na = (cumo_narray_data_t*)ptr;
 
     assert(na->base.type == NARRAY_DATA_T);
 
@@ -41,7 +41,7 @@ static void
     xfree(na);
 }
 
-static narray_type_info_t <%=type_name%>_info = {
+static cumo_narray_type_info_t <%=type_name%>_info = {
   <% if is_bit %>
     1,             // element_bits
     0,             // element_bytes
@@ -59,7 +59,7 @@ static void
 {
     size_t n, i;
     VALUE *a;
-    narray_data_t *na = ptr;
+    cumo_narray_data_t *na = ptr;
 
     if (na->ptr) {
         a = (VALUE*)(na->ptr);
@@ -93,7 +93,7 @@ static const rb_data_type_t <%=type_name%>_data_type = {
 static VALUE
 <%=c_func(0)%>(VALUE klass)
 {
-    narray_data_t *na = ALLOC(narray_data_t);
+    cumo_narray_data_t *na = ALLOC(cumo_narray_data_t);
 
     na->base.ndim = 0;
     na->base.type = NARRAY_DATA_T;

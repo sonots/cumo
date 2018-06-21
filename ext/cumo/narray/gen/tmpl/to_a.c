@@ -39,5 +39,5 @@ static VALUE
     ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
     ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 3, 1, ain, aout };
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, Qnil);
+    return cumo_na_ndloop_cast_cumo_narray_to_rarray(&ndf, self, Qnil);
 }

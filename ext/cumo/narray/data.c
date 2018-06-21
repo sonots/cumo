@@ -207,7 +207,7 @@ cumo_na_swapaxes(VALUE self, VALUE a1, VALUE a2)
     int  i, j, ndim;
     size_t tmp_shape;
     stridx_t tmp_stridx;
-    narray_view_t *na;
+    cumo_narray_view_t *na;
     volatile VALUE view;
 
     view = cumo_na_make_view(self);
@@ -233,7 +233,7 @@ cumo_na_transpose_map(VALUE self, int *map)
     int  i, ndim;
     size_t *shape;
     stridx_t *stridx;
-    narray_view_t *na;
+    cumo_narray_view_t *na;
     volatile VALUE view;
 
     view = cumo_na_make_view(self);
@@ -263,7 +263,7 @@ cumo_na_transpose(int argc, VALUE *argv, VALUE self)
     int ndim, *map, *permute;
     int i, d;
     bool is_positive, is_negative;
-    narray_t *na1;
+    cumo_narray_t *na1;
 
     GetNArray(self,na1);
     ndim = na1->ndim;
@@ -335,7 +335,7 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
 {
     int    i, unfixed=-1;
     size_t total=1;
-    narray_t *na;
+    cumo_narray_t *na;
 
     if (argc == 0) {
         rb_raise(rb_eArgError, "No argrument");
@@ -387,7 +387,7 @@ static VALUE
 cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
 {
     size_t *shape;
-    narray_t *na;
+    cumo_narray_t *na;
 
     if (cumo_na_check_contiguous(self)==Qfalse) {
         rb_raise(rb_eStandardError, "cannot change shape of non-contiguous NArray");
@@ -413,7 +413,7 @@ static VALUE
 cumo_na_reshape(int argc, VALUE *argv, VALUE self)
 {
     size_t *shape;
-    narray_t *na;
+    cumo_narray_t *na;
     VALUE    copy;
 
     shape = ALLOCA_N(size_t, argc);
@@ -436,8 +436,8 @@ cumo_na_flatten_dim(VALUE self, int sd)
     size_t stride;
     size_t  *shape, size;
     stridx_t sdx;
-    narray_t *na;
-    narray_view_t *na1, *na2;
+    cumo_narray_t *na;
+    cumo_narray_view_t *na1, *na2;
     volatile VALUE view;
 
     GetNArray(self,na);
@@ -467,7 +467,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
     GetNArrayView(view, na2);
 
     // new stride
-    cumo_na_setup_shape((narray_t*)na2, sd+1, shape);
+    cumo_na_setup_shape((cumo_narray_t*)na2, sd+1, shape);
     na2->stridx = ALLOC_N(stridx_t,sd+1);
 
     switch(na->type) {
@@ -595,8 +595,8 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
     size_t *shape;
     size_t  diag_size;
     ssize_t stride, stride0, stride1;
-    narray_t *na;
-    narray_view_t *na1, *na2;
+    cumo_narray_t *na;
+    cumo_narray_view_t *na1, *na2;
     VALUE view;
     VALUE vofs=0, vaxes=0;
     ssize_t kofs;
@@ -690,7 +690,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
     GetNArrayView(view, na2);
 
     // new stride
-    cumo_na_setup_shape((narray_t*)na2, nd-1, shape);
+    cumo_na_setup_shape((cumo_narray_t*)na2, nd-1, shape);
     na2->stridx = ALLOC_N(stridx_t, nd-1);
 
     switch(na->type) {
@@ -789,8 +789,8 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     size_t *idx1, *idx2;
     size_t *shape;
     ssize_t stride;
-    narray_t *na;
-    narray_view_t *na1, *na2;
+    cumo_narray_t *na;
+    cumo_narray_view_t *na1, *na2;
     size_t shape_n;
     stridx_t stridx_n;
     volatile VALUE view;
@@ -825,7 +825,7 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
                 shape[i++] = na->shape[k++];
             }
         }
-        cumo_na_setup_shape((narray_t*)na2, nd, shape);
+        cumo_na_setup_shape((cumo_narray_t*)na2, nd, shape);
         stride = cumo_na_element_stride(self);
         for (i=nd; i--;) {
             SDX_SET_STRIDE(na2->stridx[i], stride);
@@ -864,7 +864,7 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
                 i++; k++;
             }
         }
-        cumo_na_setup_shape((narray_t*)na2, nd, shape);
+        cumo_na_setup_shape((cumo_narray_t*)na2, nd, shape);
         na2->offset = na1->offset;
         na2->data = na1->data;
         break;
@@ -894,7 +894,7 @@ cumo_na_dot(VALUE self, VALUE other)
 {
     VALUE test;
     volatile VALUE a1=self, a2=other;
-    narray_t *na1, *na2;
+    cumo_narray_t *na1, *na2;
 
     test = rb_funcall(a1, cumo_id_respond_to_p, 1, cumo_sym_mulsum);
     if (!RTEST(test)) {

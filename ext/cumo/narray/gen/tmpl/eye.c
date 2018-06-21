@@ -61,7 +61,7 @@ static VALUE
     dtype data;
     char *g;
     int nd;
-    narray_t *na;
+    cumo_narray_t *na;
 
     // check arguments
     if (argc > 2) {

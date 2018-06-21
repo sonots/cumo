@@ -137,11 +137,11 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
 }
 
 static void
-cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
+cumo_na_parse_cumo_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
     VALUE idx;
-    narray_t *na;
-    narray_data_t *nidx;
+    cumo_narray_t *na;
+    cumo_narray_data_t *nidx;
     size_t k, n;
     ssize_t *nidxp;
 
@@ -158,7 +158,7 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     q->idx  = ALLOC_N(size_t, n);
 
     // ndixp is cuda memory (cuda narray)
-    SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_cumo_narray_index", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     for (k=0; k<n; k++) {
@@ -301,7 +301,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
         }
         // NArray index
         else if (NA_IsNArray(a)) {
-            cumo_na_parse_narray_index(a, i, size, q);
+            cumo_na_parse_cumo_narray_index(a, i, size, q);
         }
         else {
             rb_raise(rb_eIndexError, "not allowed type");
@@ -311,7 +311,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
 
 
 static size_t
-cumo_na_index_parse_args(VALUE args, narray_t *na, cumo_na_index_arg_t *q, int ndim)
+cumo_na_index_parse_args(VALUE args, cumo_narray_t *na, cumo_na_index_arg_t *q, int ndim)
 {
     int i, j, k, l, nidx;
     size_t total=1;
@@ -357,7 +357,7 @@ cumo_na_index_parse_args(VALUE args, narray_t *na, cumo_na_index_arg_t *q, int n
 
 
 static void
-cumo_na_get_strides_nadata(const narray_data_t *na, ssize_t *strides, ssize_t elmsz)
+cumo_na_get_strides_nadata(const cumo_narray_data_t *na, ssize_t *strides, ssize_t elmsz)
 {
     int i = na->base.ndim - 1;
     strides[i] = elmsz;
@@ -367,7 +367,7 @@ cumo_na_get_strides_nadata(const narray_data_t *na, ssize_t *strides, ssize_t el
 }
 
 static void
-cumo_na_index_aref_nadata(narray_data_t *na1, narray_view_t *na2,
+cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
                      cumo_na_index_arg_t *q, ssize_t elmsz, int ndim, int keep_dim)
 {
     int i, j;
@@ -420,7 +420,7 @@ cumo_na_index_aref_nadata(narray_data_t *na1, narray_view_t *na2,
 
 
 static void
-cumo_na_index_aref_naview(narray_view_t *na1, narray_view_t *na2,
+cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
                      cumo_na_index_arg_t *q, ssize_t elmsz, int ndim, int keep_dim)
 {
     int i, j;
@@ -531,7 +531,7 @@ typedef struct {
     VALUE args, self, store;
     int ndim;
     cumo_na_index_arg_t *q; // multi-dimensional index args
-    narray_t *na1;
+    cumo_narray_t *na1;
     int keep_dim;
     size_t pos; // offset position for 0-dimensional narray. 0-dimensional array does not use q.
 } cumo_na_aref_md_data_t;
@@ -559,12 +559,12 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
     VALUE store = data->store;
     int ndim = data->ndim;
     cumo_na_index_arg_t *q = data->q;
-    narray_t *na1 = data->na1;
+    cumo_narray_t *na1 = data->na1;
     int keep_dim = data->keep_dim;
 
     int ndim_new;
     VALUE view;
-    narray_view_t *na2;
+    cumo_narray_view_t *na2;
     ssize_t elmsz;
 
     cumo_na_index_parse_args(args, na1, q, ndim);
@@ -581,7 +581,7 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
     cumo_na_copy_flags(self, view);
     GetNArrayView(view,na2);
 
-    cumo_na_alloc_shape((narray_t*)na2, ndim_new);
+    cumo_na_alloc_shape((cumo_narray_t*)na2, ndim_new);
 
     na2->stridx = ALLOC_N(stridx_t,ndim_new);
 
@@ -594,19 +594,19 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
             na2->offset = data->pos;
             na2->base.size = 1;
         } else {
-            cumo_na_index_aref_nadata((narray_data_t *)na1,na2,q,elmsz,ndim,keep_dim);
+            cumo_na_index_aref_nadata((cumo_narray_data_t *)na1,na2,q,elmsz,ndim,keep_dim);
         }
         na2->data = self;
         break;
     case NARRAY_VIEW_T:
         if (ndim == 0) {
-            na2->offset = ((narray_view_t *)na1)->offset + data->pos;
-            na2->data = ((narray_view_t *)na1)->data;
+            na2->offset = ((cumo_narray_view_t *)na1)->offset + data->pos;
+            na2->data = ((cumo_narray_view_t *)na1)->data;
             na2->base.size = 1;
         } else {
-            na2->offset = ((narray_view_t *)na1)->offset;
-            na2->data = ((narray_view_t *)na1)->data;
-            cumo_na_index_aref_naview((narray_view_t *)na1,na2,q,elmsz,ndim,keep_dim);
+            na2->offset = ((cumo_narray_view_t *)na1)->offset;
+            na2->data = ((cumo_narray_view_t *)na1)->data;
+            cumo_na_index_aref_naview((cumo_narray_view_t *)na1,na2,q,elmsz,ndim,keep_dim);
         }
         break;
     }
@@ -634,11 +634,11 @@ static VALUE
 cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, size_t pos)
 {
     VALUE args; // should be GC protected
-    narray_t *na1;
+    cumo_narray_t *na1;
     cumo_na_aref_md_data_t data;
     VALUE store = 0;
     VALUE idx;
-    narray_t *nidx;
+    cumo_narray_t *nidx;
 
     GetNArray(self,na1);
 
@@ -681,7 +681,7 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
         break;
     case NARRAY_VIEW_T:
         {
-            narray_view_t *nv;
+            cumo_narray_view_t *nv;
             GetNArrayView(self,nv);
             // pos obtained by cumo_na_get_result_dimension adds view->offset.
             data.pos = pos - nv->offset;
@@ -751,8 +751,8 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
     int count_rest=0;
     int count_else=0;
     ssize_t x, s, m, pos, *idx;
-    narray_t *na;
-    narray_view_t *nv;
+    cumo_narray_t *na;
+    cumo_narray_view_t *nv;
     stridx_t sdx;
     VALUE a;
 

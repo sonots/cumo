@@ -1,7 +1,7 @@
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {
-    narray_t *na;
+    cumo_narray_t *na;
     char *ptr;
 
     GetNArray(self,na);

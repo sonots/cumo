@@ -119,7 +119,7 @@ is_f_contiguous(VALUE a)
 {
     int i;
     ssize_t s0;
-    narray_t *na;
+    cumo_narray_t *na;
 
     switch(RNARRAY_TYPE(a)) {
     case NARRAY_DATA_T:
@@ -155,7 +155,7 @@ is_c_contiguous(VALUE a)
 static gemm_layout_t
 make_gemm_layout(VALUE a)
 {
-    narray_t *na;
+    cumo_narray_t *na;
     gemm_layout_t layout;
 
     GetNArray(a, na);
@@ -205,7 +205,7 @@ static void
     gemm_layout_t a_layout, b_layout;
     cublasHandle_t handle = 0;
     cublasStatus_t status = 0;
-    narray_t* nc;
+    cumo_narray_t* nc;
 
     // Note that cuBLAS uses the column major matrix representation.
     // We use technic which following site describes:
@@ -291,7 +291,7 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
     VALUE a=self, b, c=Qnil, alpha, beta;
-    narray_t *na, *nb;
+    cumo_narray_t *na, *nb;
 
     gemm_args_t g;
     VALUE kw_hash = Qnil;
@@ -326,7 +326,7 @@ static VALUE
         shape[ndim - 1] = g.n; // ... x m x n
         c = cumo_na_new(cT, ndim, shape);
     } else {
-        narray_t *nc;
+        cumo_narray_t *nc;
         COPY_OR_CAST_TO(c, cT);
         GetNArray(c, nc);
         CHECK_DIM_GE(nc, 2);
