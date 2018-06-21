@@ -4,10 +4,10 @@
 VALUE cumo_mNMath;
 extern VALUE cumo_mDFloatMath, cumo_mDComplexMath;
 extern VALUE cumo_mSFloatMath, cumo_mSComplexMath;
-static ID id_send;
-static ID id_UPCAST;
-static ID id_DISPATCH;
-static ID id_extract;
+static ID cumo_id_send;
+static ID cumo_id_UPCAST;
+static ID cumo_id_DISPATCH;
+static ID cumo_id_extract;
 
 static VALUE
 cumo_na_type_s_upcast(VALUE type1, VALUE type2)
@@ -16,12 +16,12 @@ cumo_na_type_s_upcast(VALUE type1, VALUE type2)
     VALUE result_type;
 
     if (type1==type2) return type1;
-    upcast_hash = rb_const_get(type1, id_UPCAST);
+    upcast_hash = rb_const_get(type1, cumo_id_UPCAST);
     result_type = rb_hash_aref(upcast_hash, type2);
     if (NIL_P(result_type)) {
         if (TYPE(type2)==T_CLASS) {
             if ( RTEST(rb_class_inherited_p(type2,cNArray)) ) {
-                upcast_hash = rb_const_get(type2, id_UPCAST);
+                upcast_hash = rb_const_get(type2, cumo_id_UPCAST);
                 result_type = rb_hash_aref(upcast_hash, type1);
             }
         }
@@ -83,18 +83,18 @@ static VALUE cumo_na_math_method_missing(int argc, VALUE *argv, VALUE mod)
     if (argc>1) {
 	type = cumo_na_mathcast(argc-1,argv+1);
 
-	hash = rb_const_get(mod, id_DISPATCH);
+	hash = rb_const_get(mod, cumo_id_DISPATCH);
 	typemod = rb_hash_aref( hash, type );
 	if (NIL_P(typemod)) {
 	    rb_raise(rb_eTypeError,"%s is unknown for Cumo::NMath",
 		     rb_class2name(type));
 	}
 
-	ans = rb_funcall2(typemod,id_send,argc,argv);
+	ans = rb_funcall2(typemod,cumo_id_send,argc,argv);
 
 	if (!RTEST(rb_class_inherited_p(type,cNArray)) &&
 	    IsNArray(ans) ) {
-	    ans = rb_funcall(ans,id_extract,0);
+	    ans = rb_funcall(ans,cumo_id_extract,0);
 	}
 	return ans;
     }
@@ -135,8 +135,8 @@ Init_cumo_na_math()
     rb_hash_aset(hCast, rb_cFloat,   rb_mMath);
     rb_hash_aset(hCast, rb_cComplex, cumo_mDComplexMath);
 
-    id_send     = rb_intern("send");
-    id_UPCAST   = rb_intern("UPCAST");
-    id_DISPATCH = rb_intern("DISPATCH");
-    id_extract  = rb_intern("extract");
+    cumo_id_send     = rb_intern("send");
+    cumo_id_UPCAST   = rb_intern("UPCAST");
+    cumo_id_DISPATCH = rb_intern("DISPATCH");
+    cumo_id_extract  = rb_intern("extract");
 }

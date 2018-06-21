@@ -119,15 +119,15 @@ class DefLib < ErbPP
     opts[:include_files] ||= []
     super(parent, **opts, &block)
   end
-  def id_assign
+  def cumo_id_assign
     ids = []
-    @children.each{|c| a=c.get(:id_list); ids.concat(a) if a}
-    ids.sort.uniq.map{|x| "id_#{x[1]} = rb_intern(\"#{x[0]}\");"}
+    @children.each{|c| a=c.get(:cumo_id_list); ids.concat(a) if a}
+    ids.sort.uniq.map{|x| "cumo_id_#{x[1]} = rb_intern(\"#{x[0]}\");"}
   end
-  def id_decl
+  def cumo_id_decl
     ids = []
-    @children.each{|c| a=c.get(:id_list); ids.concat(a) if a}
-    ids.sort.uniq.map{|x| "static ID id_#{x[1]};\n"}
+    @children.each{|c| a=c.get(:cumo_id_list); ids.concat(a) if a}
+    ids.sort.uniq.map{|x| "static ID cumo_id_#{x[1]};\n"}
   end
   def def_class(**opts, &block)
     DefClass.new(self, **opts, &block)
@@ -173,12 +173,12 @@ class DefModule < ErbPP
     eb = opts[:erb_base] || 'module'
     super(parent, erb_base:eb, **opts, &block)
   end
-  def id_list
-    @id_list ||= []
+  def cumo_id_list
+    @cumo_id_list ||= []
   end
   def def_id(name,var=nil)
     var = name.gsub(/\?/,"_p").gsub(/\!/,"_bang") if var.nil?
-    id_list << [name,var]
+    cumo_id_list << [name,var]
   end
   def init_def
     load_erb(init_erb).result(binding)
@@ -221,11 +221,11 @@ class DefMethod < ErbPP
     set erb_base: erb_base
   end
 
-  def id_op
+  def cumo_id_op
     if op.size == 1
       "'#{op}'"
     else
-      "id_#{c_name}"
+      "cumo_id_#{c_name}"
     end
   end
 

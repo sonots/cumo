@@ -62,7 +62,7 @@ static VALUE
 {
     VALUE v, reduce;
     VALUE naryv[2];
-    ndfunc_arg_in_t ain[4] = {{cT,0},{cT,0},{sym_reduce,0},{sym_init,0}};
+    ndfunc_arg_in_t ain[4] = {{cT,0},{cT,0},{cumo_sym_reduce,0},{cumo_sym_init,0}};
     ndfunc_arg_out_t aout[1] = {{cT,0}};
     ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP, 4, 1, ain, aout };
 
@@ -114,7 +114,7 @@ static VALUE
     if (klass==cT) {
         return <%=c_func%>_self(argc, argv, self);
     } else {
-        v = rb_funcall(klass, id_cast, 1, self);
+        v = rb_funcall(klass, cumo_id_cast, 1, self);
         return rb_funcall2(v, rb_intern("<%=name%>"), argc, argv);
     }
     //<% end %>

@@ -160,10 +160,10 @@ extern VALUE cumo_na_cStep;
 extern VALUE rb_cComplex;
 #endif
 
-extern VALUE sym_reduce;
-extern VALUE sym_option;
-extern VALUE sym_loop_opt;
-extern VALUE sym_init;
+extern VALUE cumo_sym_reduce;
+extern VALUE cumo_sym_option;
+extern VALUE cumo_sym_loop_opt;
+extern VALUE cumo_sym_init;
 
 #define NARRAY_DATA_T     0x1
 #define NARRAY_VIEW_T     0x2

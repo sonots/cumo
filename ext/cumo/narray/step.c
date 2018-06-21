@@ -24,12 +24,12 @@
 #define DBL_EPSILON 2.2204460492503131e-16
 #endif
 
-static ID id_beg, id_end, id_len, id_step, id_excl;
+static ID cumo_id_beg, cumo_id_end, cumo_id_len, cumo_id_step, cumo_id_excl;
 
-//#define EXCL(r) RTEST(rb_ivar_get((r), id_excl))
+//#define EXCL(r) RTEST(rb_ivar_get((r), cumo_id_excl))
 #define EXCL(r) RTEST(rb_funcall((r), rb_intern("exclude_end?"), 0))
 
-#define SET_EXCL(r,v) rb_ivar_set((r), id_excl, (v) ? Qtrue : Qfalse)
+#define SET_EXCL(r,v) rb_ivar_set((r), cumo_id_excl, (v) ? Qtrue : Qfalse)
 
 static void
 step_init(
@@ -49,10 +49,10 @@ step_init(
             rb_raise(rb_eRangeError,"length must be non negative");
         }
     }
-    rb_ivar_set(self, id_beg, beg);
-    rb_ivar_set(self, id_end, end);
-    rb_ivar_set(self, id_len, len);
-    rb_ivar_set(self, id_step, step);
+    rb_ivar_set(self, cumo_id_beg, beg);
+    rb_ivar_set(self, cumo_id_end, end);
+    rb_ivar_set(self, cumo_id_len, len);
+    rb_ivar_set(self, cumo_id_step, step);
     SET_EXCL(self, excl);
 }
 
@@ -66,10 +66,10 @@ cumo_na_step_new2(
     VALUE beg, end, excl;
     VALUE self = rb_obj_alloc(cumo_na_cStep);
 
-    //beg = rb_ivar_get(range, id_beg);
-    beg = rb_funcall(range, id_beg, 0);
-    //end = rb_ivar_get(range, id_end);
-    end = rb_funcall(range, id_end, 0);
+    //beg = rb_ivar_get(range, cumo_id_beg);
+    beg = rb_funcall(range, cumo_id_beg, 0);
+    //end = rb_ivar_get(range, cumo_id_end);
+    end = rb_funcall(range, cumo_id_end, 0);
     excl = rb_funcall(range, rb_intern("exclude_end?"), 0);
 
     step_init(self, beg, end, step, len, excl);
@@ -96,7 +96,7 @@ step_initialize( int argc, VALUE *argv, VALUE self )
 
     rb_scan_args(argc, argv, "13", &a, &b, &c, &d);
     /* Selfs are immutable, so that they should be initialized only once. */
-    if (rb_ivar_defined(self, id_beg)) {
+    if (rb_ivar_defined(self, cumo_id_beg)) {
         rb_name_error(rb_intern("initialize"), "`initialize' called twice");
     }
     if (rb_obj_is_kind_of(a,rb_cRange)) {
@@ -106,10 +106,10 @@ step_initialize( int argc, VALUE *argv, VALUE self )
         d = c;
         c = b;
         e = rb_funcall(a, rb_intern("exclude_end?"), 0);
-        //b = rb_ivar_get(a, id_end);
-        b = rb_funcall(a, id_end, 0);
-        //a = rb_ivar_get(a, id_beg);
-        a = rb_funcall(a, id_beg, 0);
+        //b = rb_ivar_get(a, cumo_id_end);
+        b = rb_funcall(a, cumo_id_end, 0);
+        //a = rb_ivar_get(a, cumo_id_beg);
+        a = rb_funcall(a, cumo_id_beg, 0);
     }
     step_init(self, a, b, c, d, e);
     return Qnil;
@@ -126,7 +126,7 @@ step_initialize( int argc, VALUE *argv, VALUE self )
 static VALUE
 step_first( VALUE self )
 {
-    return rb_ivar_get(self, id_beg);
+    return rb_ivar_get(self, cumo_id_beg);
 }
 
 /*
@@ -140,7 +140,7 @@ step_first( VALUE self )
 static VALUE
 step_last( VALUE self )
 {
-    return rb_ivar_get(self, id_end);
+    return rb_ivar_get(self, cumo_id_end);
 }
 
 /*
@@ -154,7 +154,7 @@ step_last( VALUE self )
 static VALUE
 step_length( VALUE self )
 {
-    return rb_ivar_get(self, id_len);
+    return rb_ivar_get(self, cumo_id_len);
 }
 
 /*
@@ -167,7 +167,7 @@ step_length( VALUE self )
 static VALUE
 step_step( VALUE self )
 {
-    return rb_ivar_get(self, id_step);
+    return rb_ivar_get(self, cumo_id_step);
 }
 
 /*
@@ -179,7 +179,7 @@ step_step( VALUE self )
 static VALUE
 step_exclude_end_p(VALUE self)
 {
-    return RTEST(rb_ivar_get(self, id_excl)) ? Qtrue : Qfalse;
+    return RTEST(rb_ivar_get(self, cumo_id_excl)) ? Qtrue : Qfalse;
 }
 
 
@@ -200,14 +200,14 @@ cumo_na_step_array_index(VALUE self, size_t ary_size,
     VALUE vbeg, vend, vstep, vlen;
     ssize_t end=ary_size;
 
-    //vbeg = rb_ivar_get(self, id_beg);
-    //vend = rb_ivar_get(self, id_end);
-    vlen = rb_ivar_get(self, id_len);
-    vstep = rb_ivar_get(self, id_step);
-    vbeg = rb_funcall(self, id_beg, 0);
-    vend = rb_funcall(self, id_end, 0);
-    //vlen = rb_funcall(self, id_len, 0);
-    //vstep = rb_funcall(self, id_step, 0);
+    //vbeg = rb_ivar_get(self, cumo_id_beg);
+    //vend = rb_ivar_get(self, cumo_id_end);
+    vlen = rb_ivar_get(self, cumo_id_len);
+    vstep = rb_ivar_get(self, cumo_id_step);
+    vbeg = rb_funcall(self, cumo_id_beg, 0);
+    vend = rb_funcall(self, cumo_id_end, 0);
+    //vlen = rb_funcall(self, cumo_id_len, 0);
+    //vstep = rb_funcall(self, cumo_id_step, 0);
 
     if (RTEST(vbeg)) {
         beg = NUM2SSIZET(vbeg);
@@ -335,17 +335,17 @@ cumo_na_step_sequence( VALUE self, size_t *plen, double *pbeg, double *pstep )
     double dbeg, dend, dstep=1, dsize, err;
     size_t size, n;
 
-    //vbeg = rb_ivar_get(self, id_beg);
-    vbeg = rb_funcall(self, id_beg, 0);
+    //vbeg = rb_ivar_get(self, cumo_id_beg);
+    vbeg = rb_funcall(self, cumo_id_beg, 0);
     dbeg = NUM2DBL(vbeg);
 
-    //vend = rb_ivar_get(self, id_end);
-    vend = rb_funcall(self, id_end, 0);
+    //vend = rb_ivar_get(self, cumo_id_end);
+    vend = rb_funcall(self, cumo_id_end, 0);
 
-    vlen = rb_ivar_get(self, id_len);
-    vstep = rb_ivar_get(self, id_step);
-    //vlen  = rb_funcall(self, id_len ,0);
-    //vstep = rb_funcall(self, id_step,0);
+    vlen = rb_ivar_get(self, cumo_id_len);
+    vstep = rb_ivar_get(self, cumo_id_step);
+    //vlen  = rb_funcall(self, cumo_id_len ,0);
+    //vstep = rb_funcall(self, cumo_id_step,0);
 
     if (RTEST(vlen)) {
         size = NUM2SIZET(vlen);
@@ -466,9 +466,9 @@ Init_cumo_na_step()
 
     rb_define_singleton_method(cNArray, "step", cumo_na_s_step, -1);
 
-    id_beg  = rb_intern("begin");
-    id_end  = rb_intern("end");
-    id_len  = rb_intern("length");
-    id_step = rb_intern("step");
-    id_excl = rb_intern("excl");
+    cumo_id_beg  = rb_intern("begin");
+    cumo_id_end  = rb_intern("end");
+    cumo_id_len  = rb_intern("length");
+    cumo_id_step = rb_intern("step");
+    cumo_id_excl = rb_intern("excl");
 }

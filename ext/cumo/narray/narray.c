@@ -15,30 +15,30 @@ VALUE cumo_na_eOperationError;
 VALUE cumo_na_eDimensionError;
 VALUE cumo_na_eValueError;
 
-static ID id_contiguous_stride;
-static ID id_allocate;
-static ID id_element_byte_size;
-static ID id_fill;
-static ID id_seq;
-static ID id_logseq;
-static ID id_eye;
-static ID id_UPCAST;
-static ID id_cast;
-static ID id_dup;
-static ID id_to_host;
-static ID id_bracket;
-static ID id_shift_left;
-static ID id_eq;
-static ID id_count_false;
-static ID id_count_false_cpu;
-static ID id_axis;
-static ID id_nan;
-static ID id_keepdims;
+static ID cumo_id_contiguous_stride;
+static ID cumo_id_allocate;
+static ID cumo_id_element_byte_size;
+static ID cumo_id_fill;
+static ID cumo_id_seq;
+static ID cumo_id_logseq;
+static ID cumo_id_eye;
+static ID cumo_id_UPCAST;
+static ID cumo_id_cast;
+static ID cumo_id_dup;
+static ID cumo_id_to_host;
+static ID cumo_id_bracket;
+static ID cumo_id_shift_left;
+static ID cumo_id_eq;
+static ID cumo_id_count_false;
+static ID cumo_id_count_false_cpu;
+static ID cumo_id_axis;
+static ID cumo_id_nan;
+static ID cumo_id_keepdims;
 
-VALUE sym_reduce;
-VALUE sym_option;
-VALUE sym_loop_opt;
-VALUE sym_init;
+VALUE cumo_sym_reduce;
+VALUE cumo_sym_option;
+VALUE cumo_sym_loop_opt;
+VALUE cumo_sym_init;
 
 VALUE cumo_na_cStep;
 #ifndef HAVE_RB_CCOMPLEX
@@ -375,7 +375,7 @@ cumo_na_new(VALUE klass, int ndim, size_t *shape)
 {
     volatile VALUE obj;
 
-    obj = rb_funcall(klass, id_allocate, 0);
+    obj = rb_funcall(klass, cumo_id_allocate, 0);
     cumo_na_setup(obj, ndim, shape);
     return obj;
 }
@@ -432,7 +432,7 @@ cumo_na_s_zeros(int argc, VALUE *argv, VALUE klass)
 {
     VALUE obj;
     obj = rb_class_new_instance(argc, argv, klass);
-    return rb_funcall(obj, id_fill, 1, INT2FIX(0));
+    return rb_funcall(obj, cumo_id_fill, 1, INT2FIX(0));
 }
 
 
@@ -456,7 +456,7 @@ cumo_na_s_ones(int argc, VALUE *argv, VALUE klass)
 {
     VALUE obj;
     obj = rb_class_new_instance(argc, argv, klass);
-    return rb_funcall(obj, id_fill, 1, INT2FIX(1));
+    return rb_funcall(obj, cumo_id_fill, 1, INT2FIX(1));
 }
 
 
@@ -495,7 +495,7 @@ cumo_na_s_linspace(int argc, VALUE *argv, VALUE klass)
     vstep = rb_funcall(obj, '/', 1, DBL2NUM(n-1));
 
     obj = rb_class_new_instance(1, &vsize, klass);
-    return rb_funcall(obj, id_seq, 2, vx1, vstep);
+    return rb_funcall(obj, cumo_id_seq, 2, vx1, vstep);
 }
 
 /*
@@ -539,7 +539,7 @@ cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
     vstep = rb_funcall(obj, '/', 1, DBL2NUM(n-1));
 
     obj = rb_class_new_instance(1, &vsize, klass);
-    return rb_funcall(obj, id_logseq, 3, vx1, vstep, vbase);
+    return rb_funcall(obj, cumo_id_logseq, 3, vx1, vstep, vbase);
 }
 
 
@@ -570,7 +570,7 @@ cumo_na_s_eye(int argc, VALUE *argv, VALUE klass)
         argc = 2;
     }
     obj = rb_class_new_instance(argc, argv, klass);
-    return rb_funcall(obj, id_eye, 0);
+    return rb_funcall(obj, cumo_id_eye, 0);
 }
 
 
@@ -599,7 +599,7 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
                 rb_raise(rb_eRuntimeError,"cannot read unallocated NArray");
             }
             if (flag & WRITE) {
-                rb_funcall(self, id_allocate, 0);
+                rb_funcall(self, cumo_id_allocate, 0);
                 ptr = NA_DATA_PTR(na);
             }
         }
@@ -752,7 +752,7 @@ cumo_na_element_stride(VALUE v)
 size_t
 cumo_na_dtype_element_stride(VALUE klass)
 {
-    return NUM2SIZET(rb_const_get(klass, id_contiguous_stride));
+    return NUM2SIZET(rb_const_get(klass, cumo_id_contiguous_stride));
 }
 
 size_t
@@ -1094,12 +1094,12 @@ cumo_na_upcast(VALUE type1, VALUE type2)
     if (type1==type2) {
         return type1;
     }
-    upcast_hash = rb_const_get(type1, id_UPCAST);
+    upcast_hash = rb_const_get(type1, cumo_id_UPCAST);
     result_type = rb_hash_aref(upcast_hash, type2);
     if (NIL_P(result_type)) {
         if (TYPE(type2)==T_CLASS) {
             if (RTEST(rb_class_inherited_p(type2,cNArray))) {
-                upcast_hash = rb_const_get(type2, id_UPCAST);
+                upcast_hash = rb_const_get(type2, cumo_id_UPCAST);
                 result_type = rb_hash_aref(upcast_hash, type1);
             }
         }
@@ -1122,7 +1122,7 @@ cumo_na_coerce(VALUE x, VALUE y)
     VALUE type;
 
     type = cumo_na_upcast(CLASS_OF(x), CLASS_OF(y));
-    y = rb_funcall(type,id_cast,1,y);
+    y = rb_funcall(type,cumo_id_cast,1,y);
     return rb_assoc_new(y , x);
 }
 
@@ -1138,7 +1138,7 @@ cumo_na_byte_size(VALUE self)
     narray_t *na;
 
     GetNArray(self,na);
-    velmsz = rb_const_get(CLASS_OF(self), id_element_byte_size);
+    velmsz = rb_const_get(CLASS_OF(self), cumo_id_element_byte_size);
     if (FIXNUM_P(velmsz)) {
         return SIZET2NUM(NUM2SIZET(velmsz) * na->size);
     }
@@ -1152,7 +1152,7 @@ cumo_na_byte_size(VALUE self)
 static VALUE
 cumo_na_s_byte_size(VALUE type)
 {
-    return rb_const_get(type, id_element_byte_size);
+    return rb_const_get(type, cumo_id_element_byte_size);
 }
 
 
@@ -1176,7 +1176,7 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
     narg = rb_scan_args(argc,argv,"11",&vstr,&vshape);
     Check_Type(vstr,T_STRING);
     str_len = RSTRING_LEN(vstr);
-    velmsz = rb_const_get(type, id_element_byte_size);
+    velmsz = rb_const_get(type, cumo_id_element_byte_size);
     if (narg==2) {
         switch(TYPE(vshape)) {
         case T_FIXNUM:
@@ -1261,7 +1261,7 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
 
     GetNArray(self,na);
     size = NA_SIZE(na);
-    velmsz = rb_const_get(CLASS_OF(self), id_element_byte_size);
+    velmsz = rb_const_get(CLASS_OF(self), cumo_id_element_byte_size);
     if (FIXNUM_P(velmsz)) {
         byte_size = size * NUM2SIZET(velmsz);
     } else {
@@ -1298,7 +1298,7 @@ cumo_na_to_binary(VALUE self)
         if (cumo_na_check_contiguous(self)==Qtrue) {
             offset = NA_VIEW_OFFSET(na);
         } else {
-            self = rb_funcall(self,id_dup,0);
+            self = rb_funcall(self,cumo_id_dup,0);
         }
     }
     len = NUM2SIZET(cumo_na_byte_size(self));
@@ -1334,7 +1334,7 @@ cumo_na_marshal_dump(VALUE self)
             if (cumo_na_check_contiguous(self)==Qtrue) {
                 offset = NA_VIEW_OFFSET(na);
             } else {
-                self = rb_funcall(self,id_dup,0);
+                self = rb_funcall(self,cumo_id_dup,0);
             }
         }
         ptr = (VALUE*)cumo_na_get_pointer_for_read(self);
@@ -1386,7 +1386,7 @@ cumo_na_marshal_load(VALUE self, VALUE a)
     } else {
         cumo_na_store_binary(1,&v,self);
         if (TEST_BYTE_SWAPPED(self)) {
-            rb_funcall(cumo_na_inplace(self),id_to_host,0);
+            rb_funcall(cumo_na_inplace(self),cumo_id_to_host,0);
             REVERSE_ENDIAN(self); // correct behavior??
         }
     }
@@ -1404,7 +1404,7 @@ cumo_na_marshal_load(VALUE self, VALUE a)
 static VALUE
 cumo_na_cast_to(VALUE obj, VALUE type)
 {
-    return rb_funcall(type, id_cast, 1, obj);
+    return rb_funcall(type, cumo_id_cast, 1, obj);
 }
 
 
@@ -1423,7 +1423,7 @@ cumo_na_test_reduce(VALUE reduce, int dim)
         if (m==0) return 1;
         return (m & (1u<<dim)) ? 1 : 0;
     } else {
-        return (rb_funcall(reduce,id_bracket,1,INT2FIX(dim))==INT2FIX(1)) ?
+        return (rb_funcall(reduce,cumo_id_bracket,1,INT2FIX(dim))==INT2FIX(1)) ?
             1 : 0 ;
     }
 }
@@ -1524,7 +1524,7 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
                     reduce = SIZET2NUM(m);
                 }
             }
-            v = rb_funcall( INT2FIX(1), id_shift_left, 1, INT2FIX(r) );
+            v = rb_funcall( INT2FIX(1), cumo_id_shift_left, 1, INT2FIX(r) );
             reduce = rb_funcall( reduce, '|', 1, v );
         }
     }
@@ -1575,7 +1575,7 @@ cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
     long narg;
     VALUE axes;
     VALUE kw_hash = Qnil;
-    ID kw_table[3] = {id_axis,id_keepdims,id_nan};
+    ID kw_table[3] = {cumo_id_axis,cumo_id_keepdims,cumo_id_nan};
     VALUE opts[3] = {Qundef,Qundef,Qundef};
 
     narg = rb_scan_args(argc, argv, "*:", &axes, &kw_hash);
@@ -1779,7 +1779,7 @@ cumo_na_equal(VALUE self, volatile VALUE other)
     GetNArray(self,na1);
 
     if (!rb_obj_is_kind_of(other,cNArray)) {
-        other = rb_funcall(CLASS_OF(self), id_cast, 1, other);
+        other = rb_funcall(CLASS_OF(self), cumo_id_cast, 1, other);
     }
 
     GetNArray(other,na2);
@@ -1791,8 +1791,8 @@ cumo_na_equal(VALUE self, volatile VALUE other)
             return Qfalse;
         }
     }
-    vbool = rb_funcall(self, id_eq, 1, other);
-    return (rb_funcall(vbool, id_count_false_cpu, 0)==INT2FIX(0)) ? Qtrue : Qfalse;
+    vbool = rb_funcall(self, cumo_id_eq, 1, other);
+    return (rb_funcall(vbool, cumo_id_count_false_cpu, 0)==INT2FIX(0)) ? Qtrue : Qfalse;
 }
 
 /*
@@ -1919,30 +1919,30 @@ Init_cumo_narray()
 
     rb_define_method(cNArray, "==", cumo_na_equal, 1);
 
-    id_allocate = rb_intern("allocate");
-    id_contiguous_stride = rb_intern(CONTIGUOUS_STRIDE);
-    //id_element_bit_size = rb_intern(ELEMENT_BIT_SIZE);
-    id_element_byte_size = rb_intern(ELEMENT_BYTE_SIZE);
+    cumo_id_allocate = rb_intern("allocate");
+    cumo_id_contiguous_stride = rb_intern(CONTIGUOUS_STRIDE);
+    //cumo_id_element_bit_size = rb_intern(ELEMENT_BIT_SIZE);
+    cumo_id_element_byte_size = rb_intern(ELEMENT_BYTE_SIZE);
 
-    id_fill            = rb_intern("fill");
-    id_seq             = rb_intern("seq");
-    id_logseq          = rb_intern("logseq");
-    id_eye             = rb_intern("eye");
-    id_UPCAST          = rb_intern("UPCAST");
-    id_cast            = rb_intern("cast");
-    id_dup             = rb_intern("dup");
-    id_to_host         = rb_intern("to_host");
-    id_bracket         = rb_intern("[]");
-    id_shift_left      = rb_intern("<<");
-    id_eq              = rb_intern("eq");
-    id_count_false     = rb_intern("count_false");
-    id_count_false_cpu = rb_intern("count_false_cpu");
-    id_axis            = rb_intern("axis");
-    id_nan             = rb_intern("nan");
-    id_keepdims        = rb_intern("keepdims");
+    cumo_id_fill            = rb_intern("fill");
+    cumo_id_seq             = rb_intern("seq");
+    cumo_id_logseq          = rb_intern("logseq");
+    cumo_id_eye             = rb_intern("eye");
+    cumo_id_UPCAST          = rb_intern("UPCAST");
+    cumo_id_cast            = rb_intern("cast");
+    cumo_id_dup             = rb_intern("dup");
+    cumo_id_to_host         = rb_intern("to_host");
+    cumo_id_bracket         = rb_intern("[]");
+    cumo_id_shift_left      = rb_intern("<<");
+    cumo_id_eq              = rb_intern("eq");
+    cumo_id_count_false     = rb_intern("count_false");
+    cumo_id_count_false_cpu = rb_intern("count_false_cpu");
+    cumo_id_axis            = rb_intern("axis");
+    cumo_id_nan             = rb_intern("nan");
+    cumo_id_keepdims        = rb_intern("keepdims");
 
-    sym_reduce   = ID2SYM(rb_intern("reduce"));
-    sym_option   = ID2SYM(rb_intern("option"));
-    sym_loop_opt = ID2SYM(rb_intern("loop_opt"));
-    sym_init     = ID2SYM(rb_intern("init"));
+    cumo_sym_reduce   = ID2SYM(rb_intern("reduce"));
+    cumo_sym_option   = ID2SYM(rb_intern("option"));
+    cumo_sym_loop_opt = ID2SYM(rb_intern("loop_opt"));
+    cumo_sym_init     = ID2SYM(rb_intern("init"));
 }

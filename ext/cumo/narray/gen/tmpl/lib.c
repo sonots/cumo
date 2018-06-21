@@ -21,7 +21,7 @@
 
 #define m_map(x) m_num_to_data(rb_yield(m_data_to_num(x)))
 
-<% id_decl.each do |x| %>
+<% cumo_id_decl.each do |x| %>
 <%= x %>
 <% end %>
 
@@ -41,7 +41,7 @@ Init_<%=lib_name%>(void)
 
     <%=ns_var%> = rb_define_module("Cumo");
 
-    <% id_assign.each do |x| %>
+    <% cumo_id_assign.each do |x| %>
     <%= x %><% end %>
 
 <% children.each do |c| %>

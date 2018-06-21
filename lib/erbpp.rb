@@ -113,30 +113,30 @@ end
 class IdVar
   DEFS = []
 
-  def id_decl
-    "static ID #{@id_var};"
+  def cumo_id_decl
+    "static ID #{@cumo_id_var};"
   end
 
-  def id_assign
-    "#{@id_var} = rb_intern(\"#{@name}\");"
+  def cumo_id_assign
+    "#{@cumo_id_var} = rb_intern(\"#{@name}\");"
   end
 
   def initialize(parent,name,var=nil)
     @name = name
     var = name if var.nil?
-    @id_var = "id_"+var.gsub(/\?/,"_p").gsub(/\!/,"_bang")
+    @cumo_id_var = "cumo_id_"+var.gsub(/\?/,"_p").gsub(/\!/,"_bang")
     DEFS.push(self)
   end
 
   def self.declaration
     DEFS.map do |x|
-      x.id_decl
+      x.cumo_id_decl
     end
   end
 
   def self.assignment
     DEFS.map do |x|
-      x.id_assign
+      x.cumo_id_assign
     end
   end
 end
@@ -153,11 +153,11 @@ class Function < ErbPP
   ]
   define_attrs attrs
 
-  def id_op
+  def cumo_id_op
     if op.size == 1
       "'#{op}'"
     else
-      "id_#{method}"
+      "cumo_id_#{method}"
     end
   end
 

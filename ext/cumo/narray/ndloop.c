@@ -68,13 +68,13 @@ typedef struct NA_MD_LOOP {
 #define NDL_WRITE 2
 #define NDL_READ_WRITE (NDL_READ|NDL_WRITE)
 
-static ID id_cast;
-static ID id_extract;
+static ID cumo_id_cast;
+static ID cumo_id_extract;
 
 static inline VALUE
 cumo_na_type_s_cast(VALUE type, VALUE obj)
 {
-    return rb_funcall(type,id_cast,1,obj);
+    return rb_funcall(type,cumo_id_cast,1,obj);
 }
 
 static void
@@ -268,16 +268,16 @@ ndloop_cast_args(ndfunc_t *nf, VALUE args)
 static void
 ndloop_handle_symbol_in_ain(VALUE type, VALUE value, int at, cumo_na_md_loop_t *lp)
 {
-    if (type==sym_reduce) {
+    if (type==cumo_sym_reduce) {
         lp->reduce = value;
     }
-    else if (type==sym_option) {
+    else if (type==cumo_sym_option) {
         lp->user.option = value;
     }
-    else if (type==sym_loop_opt) {
+    else if (type==cumo_sym_loop_opt) {
         lp->loop_opt = value;
     }
-    else if (type==sym_init) {
+    else if (type==cumo_sym_init) {
         lp->init_aidx = at;
     }
     else {
@@ -1322,7 +1322,7 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
         //     if (IsNArray(x)){
         //         GetNArray(x,na);
         //         if (NA_NDIM(na)==0) {
-        //             x = rb_funcall(x, id_extract, 0);
+        //             x = rb_funcall(x, cumo_id_extract, 0);
         //         }
         //     }
         // }
@@ -1335,7 +1335,7 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
     //         if (IsNArray(x)){
     //             GetNArray(x,na);
     //             if (NA_NDIM(na)==0) {
-    //                 y = rb_funcall(x, id_extract, 0);
+    //                 y = rb_funcall(x, cumo_id_extract, 0);
     //                 RARRAY_ASET(results,i,y);
     //             }
     //         }
@@ -1740,7 +1740,7 @@ cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
     volatile VALUE args;
     cumo_na_md_loop_t lp;
     VALUE buf;
-    ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
     ndfunc_t nf = { (cumo_na_iter_func_t)func, NO_LOOP, 3, 0, ain, 0 };
     //nf = ndfunc_alloc(NULL, NO_LOOP, 1, 0, Qnil);
 
@@ -1780,7 +1780,7 @@ loop_store_subnarray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VAL
 
     a_type = CLASS_OF(LARG(lp,0).value);
     if (CLASS_OF(a) != a_type) {
-        a = rb_funcall(a_type, id_cast, 1, a);
+        a = rb_funcall(a_type, cumo_id_cast, 1, a);
     }
     GetNArray(a,na);
     if (na->ndim != nd-i0+1) {
@@ -2101,6 +2101,6 @@ cumo_na_ndloop_with_index(nf, argc, va_alist)
 void
 Init_cumo_na_ndloop()
 {
-    id_cast    = rb_intern("cast");
-    id_extract = rb_intern("extract");
+    cumo_id_cast    = rb_intern("cast");
+    cumo_id_extract = rb_intern("extract");
 }

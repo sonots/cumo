@@ -459,7 +459,7 @@ static VALUE
 cumo_na_struct_to_a(VALUE self)
 {
     volatile VALUE opt;
-    ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
+    ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
     ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
     ndfunc_t ndf = {iter_nstruct_to_a, NO_LOOP, 3, 1, ain, aout};
 
@@ -626,7 +626,7 @@ cumo_na_struct_cast_array(VALUE klass, VALUE rary)
     narray_t *na;
     //cumo_na_compose_t *nc;
     VALUE opt;
-    ndfunc_arg_in_t ain[3] = {{OVERWRITE,0},{rb_cArray,0},{sym_option}};
+    ndfunc_arg_in_t ain[3] = {{OVERWRITE,0},{rb_cArray,0},{cumo_sym_option}};
     ndfunc_t ndf = {iter_nstruct_from_a, NO_LOOP, 3, 0, ain, 0};
 
     //fprintf(stderr,"rary:");rb_p(rary);

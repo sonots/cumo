@@ -90,8 +90,8 @@ static VALUE
     if (klass==cT) {
         return <%=c_func%>_self(self,other);
     } else {
-        v = rb_funcall(klass, id_cast, 1, self);
-        return rb_funcall(v, id_pow, 1, other);
+        v = rb_funcall(klass, cumo_id_cast, 1, self);
+        return rb_funcall(v, cumo_id_pow, 1, other);
     }
     <% end %>
 }

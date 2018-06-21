@@ -24,8 +24,8 @@ static inline VALUE COMP2NUM(dtype x) {
 
 static inline dtype NUM2COMP(VALUE v) {
     dtype z;
-    REAL(z) = NUM2DBL(rb_funcall(v,id_real,0));
-    IMAG(z) = NUM2DBL(rb_funcall(v,id_imag,0));
+    REAL(z) = NUM2DBL(rb_funcall(v,cumo_id_real,0));
+    IMAG(z) = NUM2DBL(rb_funcall(v,cumo_id_imag,0));
     return z;
 }
 
