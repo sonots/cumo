@@ -45,5 +45,5 @@ static VALUE
 
     rb_scan_args(argc, argv, "01", &fmt);
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    return cumo_na_ndloop_cast_cumo_narray_to_rarray(&ndf, self, fmt);
+    return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, fmt);
 }

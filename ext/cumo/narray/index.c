@@ -137,7 +137,7 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
 }
 
 static void
-cumo_na_parse_cumo_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
+cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
     VALUE idx;
     cumo_narray_t *na;
@@ -158,7 +158,7 @@ cumo_na_parse_cumo_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_ind
     q->idx  = ALLOC_N(size_t, n);
 
     // ndixp is cuda memory (cuda narray)
-    SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_cumo_narray_index", "any");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     for (k=0; k<n; k++) {
@@ -301,7 +301,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
         }
         // NArray index
         else if (NA_IsNArray(a)) {
-            cumo_na_parse_cumo_narray_index(a, i, size, q);
+            cumo_na_parse_narray_index(a, i, size, q);
         }
         else {
             rb_raise(rb_eIndexError, "not allowed type");

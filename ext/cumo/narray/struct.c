@@ -464,7 +464,7 @@ cumo_na_struct_to_a(VALUE self)
     ndfunc_t ndf = {iter_nstruct_to_a, NO_LOOP, 3, 1, ain, aout};
 
     opt = nst_create_member_views(self);
-    return cumo_na_ndloop_cast_cumo_narray_to_rarray(&ndf, self, opt);
+    return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, opt);
 }
 
 

@@ -1937,7 +1937,7 @@ cumo_na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
 //----------------------------------------------------------------------
 
 static void
-loop_cumo_narray_to_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+loop_narray_to_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int i;
@@ -1950,7 +1950,7 @@ loop_cumo_narray_to_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
     c = ALLOCA_N(size_t, nd+1);
     for (i=0; i<=nd; i++) c[i]=0;
     //c[i]=1; // for zero-dim
-    //fprintf(stderr,"in loop_cumo_narray_to_rarray, nd=%d\n",nd);
+    //fprintf(stderr,"in loop_narray_to_rarray, nd=%d\n",nd);
 
     a = ALLOCA_N(VALUE, nd+1);
     a[0] = a0 = lp->loop_opt;
@@ -1985,7 +1985,7 @@ loop_cumo_narray_to_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 }
 
 VALUE
-cumo_na_ndloop_cast_cumo_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
+cumo_na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
 {
     cumo_na_md_loop_t lp;
     VALUE args, a0;
@@ -2000,7 +2000,7 @@ cumo_na_ndloop_cast_cumo_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
     //ndloop_cast_args(nf, args);
 
     // allocate ndloop struct
-    ndloop_alloc(&lp, nf, args, NULL, 0, loop_cumo_narray_to_rarray);
+    ndloop_alloc(&lp, nf, args, NULL, 0, loop_narray_to_rarray);
 
     rb_ensure(ndloop_run, (VALUE)&lp, ndloop_release, (VALUE)&lp);
     return RARRAY_AREF(a0,0);
@@ -2010,7 +2010,7 @@ cumo_na_ndloop_cast_cumo_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
 //----------------------------------------------------------------------
 
 static void
-loop_cumo_narray_with_index(ndfunc_t *nf, cumo_na_md_loop_t *lp)
+loop_narray_with_index(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int i,j;
@@ -2092,7 +2092,7 @@ cumo_na_ndloop_with_index(nf, argc, va_alist)
     //copy_flag = ndloop_cast_args(nf, args);
 
     // allocate ndloop struct
-    ndloop_alloc(&lp, nf, args, 0, 0, loop_cumo_narray_with_index);
+    ndloop_alloc(&lp, nf, args, 0, 0, loop_narray_with_index);
 
     return rb_ensure(ndloop_run, (VALUE)&lp, ndloop_release, (VALUE)&lp);
 }

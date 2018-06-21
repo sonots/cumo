@@ -57,7 +57,7 @@ VALUE cumo_na_ndloop2(ndfunc_t *nf, VALUE args);
 VALUE cumo_na_ndloop3(ndfunc_t *nf, void *ptr, int argc, ...);
 VALUE cumo_na_ndloop4(ndfunc_t *nf, void *ptr, VALUE args);
 
-VALUE cumo_na_ndloop_cast_cumo_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt);
+VALUE cumo_na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt);
 VALUE cumo_na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary);
 VALUE cumo_na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt);
 VALUE cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt);

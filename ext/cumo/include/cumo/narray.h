@@ -226,7 +226,7 @@ typedef struct {
 
 
 static inline cumo_narray_t *
-cumo_na_get_cumo_narray_t(VALUE obj)
+cumo_na_get_narray_t(VALUE obj)
 {
     cumo_narray_t *na;
 
@@ -236,7 +236,7 @@ cumo_na_get_cumo_narray_t(VALUE obj)
 }
 
 static inline cumo_narray_t *
-_cumo_na_get_cumo_narray_t(VALUE obj, unsigned char cumo_na_type)
+_cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 {
     cumo_narray_t *na;
 
@@ -248,9 +248,9 @@ _cumo_na_get_cumo_narray_t(VALUE obj, unsigned char cumo_na_type)
     return na;
 }
 
-#define cumo_na_get_cumo_narray_data_t(obj) (cumo_narray_data_t*)_cumo_na_get_cumo_narray_t(obj,NARRAY_DATA_T)
-#define cumo_na_get_cumo_narray_view_t(obj) (cumo_narray_view_t*)_cumo_na_get_cumo_narray_t(obj,NARRAY_VIEW_T)
-#define cumo_na_get_cumo_narray_filemap_t(obj) (cumo_narray_filemap_t*)_cumo_na_get_cumo_narray_t(obj,NARRAY_FILEMAP_T)
+#define cumo_na_get_narray_data_t(obj) (cumo_narray_data_t*)_cumo_na_get_narray_t(obj,NARRAY_DATA_T)
+#define cumo_na_get_narray_view_t(obj) (cumo_narray_view_t*)_cumo_na_get_narray_t(obj,NARRAY_VIEW_T)
+#define cumo_na_get_narray_filemap_t(obj) (cumo_narray_filemap_t*)_cumo_na_get_narray_t(obj,NARRAY_FILEMAP_T)
 
 #define GetNArray(obj,var)      TypedData_Get_Struct(obj, cumo_narray_t, &cumo_na_data_type, var)
 #define GetNArrayView(obj,var)  TypedData_Get_Struct(obj, cumo_narray_view_t, &cumo_na_data_type, var)
@@ -287,7 +287,7 @@ _cumo_na_get_cumo_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define NA_SHAPE(na)    (((cumo_narray_t*)na)->shape)
 #define NA_REDUCE(na)   (((cumo_narray_t*)na)->reduce)
 
-#define NA_FLAG(obj)    (cumo_na_get_cumo_narray_t(obj)->flag)
+#define NA_FLAG(obj)    (cumo_na_get_narray_t(obj)->flag)
 #define NA_FLAG0(obj)   (NA_FLAG(obj)[0])
 #define NA_FLAG1(obj)   (NA_FLAG(obj)[1])
 
