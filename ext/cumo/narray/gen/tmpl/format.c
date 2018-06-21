@@ -13,7 +13,7 @@ format_<%=type_name%>(VALUE fmt, dtype* x)
 }
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     char   *p1, *p2;
@@ -58,5 +58,5 @@ static VALUE
 
     rb_scan_args(argc, argv, "01", &fmt);
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    return na_ndloop(&ndf, 2, self, fmt);
+    return cumo_na_ndloop(&ndf, 2, self, fmt);
 }

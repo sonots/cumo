@@ -15,11 +15,11 @@ static VALUE
     GetNArray(self,na);
 
     if (na->ndim==0) {
-        ptr = na_get_pointer_for_read(self) + na_get_offset(self);
+        ptr = cumo_na_get_pointer_for_read(self) + cumo_na_get_offset(self);
         SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         v = m_extract(ptr);
-        na_release_lock(self);
+        cumo_na_release_lock(self);
         return v;
     }
     return self;

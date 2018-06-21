@@ -48,8 +48,8 @@ static VALUE
     if (argc==0) {
         <%=c_func.sub(/_aset/,"_store")%>(self, argv[argc]);
     } else {
-        nd = na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
-        a = na_aref_main(argc, argv, self, 0, nd, pos);
+        nd = cumo_na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
+        a = cumo_na_aref_main(argc, argv, self, 0, nd, pos);
         <%=c_func.sub(/_aset/,"_store")%>(a, argv[argc]);
     }
     return argv[argc];

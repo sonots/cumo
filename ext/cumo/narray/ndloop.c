@@ -23,16 +23,16 @@ typedef struct NA_BUFFER_COPY {
     size_t *n;
     char *src_ptr;
     char *buf_ptr;
-    na_loop_iter_t *src_iter;
-    na_loop_iter_t *buf_iter;
-} na_buffer_copy_t;
+    cumo_na_loop_iter_t *src_iter;
+    cumo_na_loop_iter_t *buf_iter;
+} cumo_na_buffer_copy_t;
 
 typedef struct NA_LOOP_XARGS {
-    na_loop_iter_t *iter;     // moved from na_loop_t
-    na_buffer_copy_t *bufcp;  // copy data to buffer
+    cumo_na_loop_iter_t *iter;     // moved from cumo_na_loop_t
+    cumo_na_buffer_copy_t *bufcp;  // copy data to buffer
     int flag;                 // NDL_READ NDL_WRITE
     bool free_user_iter;   // alloc LARG(lp,j).iter=lp->xargs[j].iter
-} na_loop_xargs_t;
+} cumo_na_loop_xargs_t;
 
 typedef struct NA_MD_LOOP {
     int  narg;
@@ -40,10 +40,10 @@ typedef struct NA_MD_LOOP {
     int  ndim;                // n of total dimention looped at loop_narray. NOTE: lp->ndim + lp-.user.ndim is the total dimension.
     unsigned int copy_flag;   // set i-th bit if i-th arg is cast
     void    *ptr;             // memory for n
-    na_loop_iter_t *iter_ptr; // memory for iter
+    cumo_na_loop_iter_t *iter_ptr; // memory for iter
     size_t  *n;               // n of elements for each dim (shape)
-    na_loop_t  user;          // loop in user function
-    na_loop_xargs_t *xargs;   // extra data for each arg
+    cumo_na_loop_t  user;          // loop in user function
+    cumo_na_loop_xargs_t *xargs;   // extra data for each arg
     int    writeback;         // write back result to i-th arg
     int    init_aidx;         // index of initializer argument
     int    reduce_dim;        // number of dimensions to reduce in reduction kernel, e.g., for an array of shape: [2,3,4],
@@ -55,7 +55,7 @@ typedef struct NA_MD_LOOP {
     VALUE  loop_opt;
     ndfunc_t  *ndfunc;
     void (*loop_func)();
-} na_md_loop_t;
+} cumo_na_md_loop_t;
 
 #define LARG(lp,iarg) ((lp)->user.args[iarg])
 #define LITER(lp,idim,iarg) ((lp)->xargs[iarg].iter[idim])
@@ -72,7 +72,7 @@ static ID id_cast;
 static ID id_extract;
 
 static inline VALUE
-nary_type_s_cast(VALUE type, VALUE obj)
+cumo_na_type_s_cast(VALUE type, VALUE obj)
 {
     return rb_funcall(type,id_cast,1,obj);
 }
@@ -106,9 +106,9 @@ print_ndfunc(ndfunc_t *nf) {
 
 
 static void
-print_ndloop(na_md_loop_t *lp) {
+print_ndloop(cumo_na_md_loop_t *lp) {
     int i,j,nd;
-    printf("na_md_loop_t = 0x%"SZF"x {\n",(size_t)lp);
+    printf("cumo_na_md_loop_t = 0x%"SZF"x {\n",(size_t)lp);
     printf("  narg = %d\n", lp->narg);
     printf("  nin  = %d\n", lp->nin);
     printf("  ndim = %d\n", lp->ndim);
@@ -253,7 +253,7 @@ ndloop_cast_args(ndfunc_t *nf, VALUE args)
             continue;
 
         if (ndloop_castable_type(type)) {
-            RARRAY_ASET(args,j,nary_type_s_cast(type, value));
+            RARRAY_ASET(args,j,cumo_na_type_s_cast(type, value));
             copy_flag |= 1<<j;
         } else {
             ndloop_cast_error(type, value);
@@ -266,7 +266,7 @@ ndloop_cast_args(ndfunc_t *nf, VALUE args)
 
 
 static void
-ndloop_handle_symbol_in_ain(VALUE type, VALUE value, int at, na_md_loop_t *lp)
+ndloop_handle_symbol_in_ain(VALUE type, VALUE value, int at, cumo_na_md_loop_t *lp)
 {
     if (type==sym_reduce) {
         lp->reduce = value;
@@ -292,7 +292,7 @@ max2(int x, int y)
 }
 
 static void
-ndloop_find_max_dimension(na_md_loop_t *lp, ndfunc_t *nf, VALUE args)
+ndloop_find_max_dimension(cumo_na_md_loop_t *lp, ndfunc_t *nf, VALUE args)
 {
     int j;
     int nin=0; // number of input objects (except for symbols)
@@ -329,9 +329,9 @@ ndloop_find_max_dimension(na_md_loop_t *lp, ndfunc_t *nf, VALUE args)
 */
 
 static void
-ndloop_alloc(na_md_loop_t *lp, ndfunc_t *nf, VALUE args,
+ndloop_alloc(cumo_na_md_loop_t *lp, ndfunc_t *nf, VALUE args,
              void *opt_ptr, unsigned int copy_flag,
-             void (*loop_func)(ndfunc_t*, na_md_loop_t*))
+             void (*loop_func)(ndfunc_t*, cumo_na_md_loop_t*))
 {
     int i,j;
     int narg;
@@ -342,7 +342,7 @@ ndloop_alloc(na_md_loop_t *lp, ndfunc_t *nf, VALUE args,
 
     long args_len;
 
-    na_loop_iter_t *iter;
+    cumo_na_loop_iter_t *iter;
 
     int trans_dim;
     unsigned int f;
@@ -375,19 +375,19 @@ ndloop_alloc(na_md_loop_t *lp, ndfunc_t *nf, VALUE args,
     max_nd = lp->ndim + lp->user.ndim;
 
     n1 = sizeof(size_t)*(max_nd+1);
-    n2 = sizeof(na_loop_xargs_t)*narg;
+    n2 = sizeof(cumo_na_loop_xargs_t)*narg;
     n2 = ((n2-1)/8+1)*8;
-    n3 = sizeof(na_loop_args_t)*narg;
+    n3 = sizeof(cumo_na_loop_args_t)*narg;
     n3 = ((n3-1)/8+1)*8;
-    n4 = sizeof(na_loop_iter_t)*narg*(max_nd+1);
+    n4 = sizeof(cumo_na_loop_iter_t)*narg*(max_nd+1);
     n4 = ((n4-1)/8+1)*8;
     n5 = sizeof(int)*(max_nd+1);
 
     lp->ptr = buf = (char*)xmalloc(n1+n2+n3+n4+n5);
     lp->n = (size_t*)buf; buf+=n1;
-    lp->xargs = (na_loop_xargs_t*)buf; buf+=n2;
-    lp->user.args = (na_loop_args_t*)buf; buf+=n3;
-    lp->iter_ptr = iter = (na_loop_iter_t*)buf; buf+=n4;
+    lp->xargs = (cumo_na_loop_xargs_t*)buf; buf+=n2;
+    lp->user.args = (cumo_na_loop_args_t*)buf; buf+=n3;
+    lp->iter_ptr = iter = (cumo_na_loop_iter_t*)buf; buf+=n4;
     lp->trans_map = (int*)buf;
 
     for (j=0; j<narg; j++) {
@@ -417,7 +417,7 @@ ndloop_alloc(na_md_loop_t *lp, ndfunc_t *nf, VALUE args,
     if (NDF_TEST(nf,NDF_FLAT_REDUCE) && RTEST(lp->reduce)) {
         trans_dim = 0;
         for (i=0; i<max_nd; i++) {
-            if (na_test_reduce(lp->reduce, i)) {
+            if (cumo_na_test_reduce(lp->reduce, i)) {
                 lp->trans_map[i] = -1;
             } else {
                 lp->trans_map[i] = trans_dim++;
@@ -449,12 +449,12 @@ ndloop_release(VALUE vlp)
 {
     int j;
     VALUE v;
-    na_md_loop_t *lp = (na_md_loop_t*)(vlp);
+    cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)(vlp);
 
     for (j=0; j < lp->narg; j++) {
         v = LARG(lp,j).value;
         if (IsNArray(v)) {
-            na_release_lock(v);
+            cumo_na_release_lock(v);
         }
     }
     for (j=0; j<lp->narg; j++) {
@@ -483,7 +483,7 @@ ndloop_release(VALUE vlp)
   set lp->n[i] (shape of n-d iteration) here
 */
 static void
-ndloop_check_shape(na_md_loop_t *lp, int nf_dim, narray_t *na)
+ndloop_check_shape(cumo_na_md_loop_t *lp, int nf_dim, narray_t *na)
 {
     int i, k;
     size_t n;
@@ -500,7 +500,7 @@ ndloop_check_shape(na_md_loop_t *lp, int nf_dim, narray_t *na)
                 lp->n[i] = n;
             } else if (lp->n[i] != n) {
                 // inconsistent array shape
-                rb_raise(nary_eShapeError,"shape1[%d](=%"SZF"u) != shape2[%d](=%"SZF"u)",
+                rb_raise(cumo_na_eShapeError,"shape1[%d](=%"SZF"u) != shape2[%d](=%"SZF"u)",
                          i, lp->n[i], k, n);
             }
         }
@@ -512,7 +512,7 @@ ndloop_check_shape(na_md_loop_t *lp, int nf_dim, narray_t *na)
 na->shape[i] == lp->n[ dim_map[i] ]
  */
 static void
-ndloop_set_stepidx(na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rwflag)
+ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rwflag)
 {
     size_t n, s;
     int i, k, nd;
@@ -520,15 +520,15 @@ ndloop_set_stepidx(na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rwflag)
     narray_t *na;
 
     LARG(lp,j).value = vna;
-    LARG(lp,j).elmsz = nary_element_stride(vna);
+    LARG(lp,j).elmsz = cumo_na_element_stride(vna);
     if (rwflag == NDL_READ) {
-        LARG(lp,j).ptr = na_get_pointer_for_read(vna);
+        LARG(lp,j).ptr = cumo_na_get_pointer_for_read(vna);
     } else
     if (rwflag == NDL_WRITE) {
-        LARG(lp,j).ptr = na_get_pointer_for_write(vna);
+        LARG(lp,j).ptr = cumo_na_get_pointer_for_write(vna);
     } else
     if (rwflag == NDL_READ_WRITE) {
-        LARG(lp,j).ptr = na_get_pointer_for_read_write(vna);
+        LARG(lp,j).ptr = cumo_na_get_pointer_for_read_write(vna);
     } else {
         rb_bug("invalid value for read-write flag");
     }
@@ -589,7 +589,7 @@ ndloop_set_stepidx(na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rwflag)
 
 
 static void
-ndloop_init_args(ndfunc_t *nf, na_md_loop_t *lp, VALUE args)
+ndloop_init_args(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
 {
     int i, j;
     VALUE v;
@@ -617,7 +617,7 @@ na->shape[i] == lp->n[ dim_map[i] ]
             GetNArray(v,na);
             nf_dim = nf->ain[j].dim;
             if (nf_dim > na->ndim) {
-                rb_raise(nary_eDimensionError,"requires >= %d-dimensioal array "
+                rb_raise(cumo_na_eDimensionError,"requires >= %d-dimensioal array "
                          "while %d-dimensional array is given",nf_dim,na->ndim);
             }
             ndloop_check_shape(lp, nf_dim, na);
@@ -658,7 +658,7 @@ na->shape[i] == lp->n[ dim_map[i] ]
 
 
 static int
-ndloop_check_inplace(VALUE type, int na_ndim, size_t *na_shape, VALUE v)
+ndloop_check_inplace(VALUE type, int cumo_na_ndim, size_t *cumo_na_shape, VALUE v)
 {
     int i;
     narray_t *na;
@@ -669,11 +669,11 @@ ndloop_check_inplace(VALUE type, int na_ndim, size_t *na_shape, VALUE v)
     }
     GetNArray(v,na);
     // shape check
-    if (na->ndim != na_ndim) {
+    if (na->ndim != cumo_na_ndim) {
         return 0;
     }
-    for (i=0; i<na_ndim; i++) {
-        if (na_shape[i] != na->shape[i]) {
+    for (i=0; i<cumo_na_ndim; i++) {
+        if (cumo_na_shape[i] != na->shape[i]) {
             return 0;
         }
     }
@@ -682,8 +682,8 @@ ndloop_check_inplace(VALUE type, int na_ndim, size_t *na_shape, VALUE v)
 }
 
 static VALUE
-ndloop_find_inplace(ndfunc_t *nf, na_md_loop_t *lp, VALUE type,
-                    int na_ndim, size_t *na_shape, VALUE args)
+ndloop_find_inplace(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE type,
+                    int cumo_na_ndim, size_t *cumo_na_shape, VALUE args)
 {
     int j;
     VALUE v;
@@ -693,7 +693,7 @@ ndloop_find_inplace(ndfunc_t *nf, na_md_loop_t *lp, VALUE type,
         v = RARRAY_AREF(args,j);
         if (IsNArray(v)) {
             if (TEST_INPLACE(v)) {
-                if (ndloop_check_inplace(type,na_ndim,na_shape,v)) {
+                if (ndloop_check_inplace(type,cumo_na_ndim,cumo_na_shape,v)) {
                     // if already copied, create outary and write-back
                     if (lp->copy_flag & (1<<j)) {
                         lp->writeback = j;
@@ -707,7 +707,7 @@ ndloop_find_inplace(ndfunc_t *nf, na_md_loop_t *lp, VALUE type,
     for (j=0; j<nf->nin; j++) {
         if (lp->copy_flag & (1<<j)) {
             v = RARRAY_AREF(args,j);
-            if (ndloop_check_inplace(type,na_ndim,na_shape,v)) {
+            if (ndloop_check_inplace(type,cumo_na_ndim,cumo_na_shape,v)) {
                 return v;
             }
         }
@@ -739,60 +739,60 @@ ndloop_get_arg_type(ndfunc_t *nf, VALUE args, VALUE t)
 
 
 static VALUE
-ndloop_set_output_narray(ndfunc_t *nf, na_md_loop_t *lp, int k,
+ndloop_set_output_narray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
                          VALUE type, VALUE args)
 {
     int i, j;
-    int na_ndim;
+    int cumo_na_ndim;
     int lp_dim;
     volatile VALUE v=Qnil;
-    size_t *na_shape;
+    size_t *cumo_na_shape;
     int *dim_map;
     int flag = NDL_READ_WRITE;
     int nd;
     int max_nd = lp->ndim + nf->aout[k].dim;
 
-    na_shape = ALLOCA_N(size_t, max_nd);
+    cumo_na_shape = ALLOCA_N(size_t, max_nd);
     dim_map = ALLOCA_N(int, max_nd);
 
     //printf("max_nd=%d lp->ndim=%d\n",max_nd,lp->ndim);
 
     // md-loop shape
-    na_ndim = 0;
+    cumo_na_ndim = 0;
     for (i=0; i<lp->ndim; i++) {
-        // na_shape[i] == lp->n[lp->trans_map[i]]
+        // cumo_na_shape[i] == lp->n[lp->trans_map[i]]
         lp_dim = lp->trans_map[i];
         //printf("i=%d lp_dim=%d\n",i,lp_dim);
         if (NDF_TEST(nf,NDF_CUM)) {   // cumulate with shape kept
-            na_shape[na_ndim] = lp->n[lp_dim];
+            cumo_na_shape[cumo_na_ndim] = lp->n[lp_dim];
         } else
-        if (na_test_reduce(lp->reduce,lp_dim)) {   // accumulate dimension
+        if (cumo_na_test_reduce(lp->reduce,lp_dim)) {   // accumulate dimension
             if (NDF_TEST(nf,NDF_KEEP_DIM)) {
-                na_shape[na_ndim] = 1;         // leave it
+                cumo_na_shape[cumo_na_ndim] = 1;         // leave it
             } else {
                 continue;  // delete dimension
             }
         } else {
-            na_shape[na_ndim] = lp->n[lp_dim];
+            cumo_na_shape[cumo_na_ndim] = lp->n[lp_dim];
         }
-        //printf("i=%d lp_dim=%d na_shape[%d]=%ld\n",i,lp_dim,i,na_shape[i]);
-        dim_map[na_ndim++] = lp_dim;
-        //dim_map[lp_dim] = na_ndim++;
+        //printf("i=%d lp_dim=%d cumo_na_shape[%d]=%ld\n",i,lp_dim,i,cumo_na_shape[i]);
+        dim_map[cumo_na_ndim++] = lp_dim;
+        //dim_map[lp_dim] = cumo_na_ndim++;
     }
 
     // user-specified shape
     for (i=0; i<nf->aout[k].dim; i++) {
-        na_shape[na_ndim] = nf->aout[k].shape[i];
-        dim_map[na_ndim++] = i + lp->ndim;
+        cumo_na_shape[cumo_na_ndim] = nf->aout[k].shape[i];
+        dim_map[cumo_na_ndim++] = i + lp->ndim;
     }
 
     // find inplace from input arrays
     if (k==0 && NDF_TEST(nf,NDF_INPLACE)) {
-        v = ndloop_find_inplace(nf,lp,type,na_ndim,na_shape,args);
+        v = ndloop_find_inplace(nf,lp,type,cumo_na_ndim,cumo_na_shape,args);
     }
     if (!RTEST(v)) {
         // new object
-        v = nary_new(type, na_ndim, na_shape);
+        v = cumo_na_new(type, cumo_na_ndim, cumo_na_shape);
         flag = NDL_WRITE;
     }
 
@@ -807,7 +807,7 @@ ndloop_set_output_narray(ndfunc_t *nf, na_md_loop_t *lp, int k,
 }
 
 static VALUE
-ndloop_set_output(ndfunc_t *nf, na_md_loop_t *lp, VALUE args)
+ndloop_set_output(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
 {
     int i, j, k, idx;
     volatile VALUE v, t, results;
@@ -848,7 +848,7 @@ ndloop_set_output(ndfunc_t *nf, na_md_loop_t *lp, VALUE args)
         idx = nf->ain[k].dim;
         v = RARRAY_AREF(results,idx);
         init = RARRAY_AREF(args,k);
-        na_store(v,init);
+        cumo_na_store(v,init);
     }
 
     return results;
@@ -860,12 +860,12 @@ ndloop_set_output(ndfunc_t *nf, na_md_loop_t *lp, VALUE args)
 // For example, compressing [2,3] shape into [6] so that we can process
 // all elements with one user loop.
 static void
-ndfunc_contract_loop(na_md_loop_t *lp)
+ndfunc_contract_loop(cumo_na_md_loop_t *lp)
 {
     int i,j,k,success,cnt=0;
     int red0, redi;
 
-    redi = na_test_reduce(lp->reduce,0);
+    redi = cumo_na_test_reduce(lp->reduce,0);
 
     //for (i=0; i<lp->ndim; i++) {
     //    printf("lp->n[%d]=%lu\n",i,lp->n[i]);
@@ -873,7 +873,7 @@ ndfunc_contract_loop(na_md_loop_t *lp)
 
     for (i=1; i<lp->ndim; i++) {
         red0 = redi;
-        redi = na_test_reduce(lp->reduce,i);
+        redi = cumo_na_test_reduce(lp->reduce,i);
         //printf("contract i=%d reduce_cond=%d %d\n",i,red0,redi);
         if (red0 != redi) {
             continue;
@@ -932,7 +932,7 @@ ndfunc_contract_loop(na_md_loop_t *lp)
 //
 // For example, for element-wise function, lp->user.ndim is 1, and lp->ndim -= 1.
 static void
-ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
+ndfunc_set_user_loop(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     int j, ud=0;
 
@@ -964,7 +964,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
     //printf("lp->reduce_dim=%d lp->user.ndim=%d lp->ndim=%d\n",lp->reduce_dim,lp->user.ndim,lp->ndim);
 
  skip_ud:
-    // user function shape is the latter part of na_md_loop shape.
+    // user function shape is the latter part of cumo_na_md_loop shape.
     lp->user.n = &(lp->n[lp->ndim]);
     for (j=0; j<lp->narg; j++) {
         LARG(lp,j).iter = &LITER(lp,lp->ndim,j);
@@ -975,7 +975,7 @@ ndfunc_set_user_loop(ndfunc_t *nf, na_md_loop_t *lp)
 
 // Initialize lp->user for indexer loop.
 static void
-ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
+ndfunc_set_user_indexer_loop(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     int j;
 
@@ -986,7 +986,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
         // in
         LARG(lp,0).ndim = lp->user.ndim;
         LARG(lp,0).shape = &(lp->n[lp->ndim]);
-        // out is constructed at na_make_reduction_arg from in and lp->reduce
+        // out is constructed at cumo_na_make_reduction_arg from in and lp->reduce
 
         lp->user.n = &(lp->n[lp->ndim]);
         for (j=0; j<lp->narg; j++) {
@@ -1018,7 +1018,7 @@ ndfunc_set_user_indexer_loop(ndfunc_t *nf, na_md_loop_t *lp)
 // 1) ndloop has `idx` but does not support NDF_INDEX_LOOP.
 // 2) ndloop has non-contiguous arrays but does not support NDF_STRIDE_LOOP.
 static void
-ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
+ndfunc_set_bufcp(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     unsigned int f;
     int i, j;
@@ -1026,7 +1026,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
     bool zero_step;
     ssize_t n, sz, elmsz, stride, n_total; //, last_step;
     size_t *buf_shape;
-    na_loop_iter_t *buf_iter=NULL, *src_iter;
+    cumo_na_loop_iter_t *buf_iter=NULL, *src_iter;
 
     unsigned int loop_spec = ndloop_func_loop_spec(nf, lp->user.ndim);
     //if (loop_spec==0) return;
@@ -1087,7 +1087,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
         // over loop_spec or reduce_loop is not contiguous
         if (f & loop_spec || (lp->reduce_dim > 1 && ndim > 0)) {
             //printf("(buf,nd=%d)",nd);
-            buf_iter = ALLOC_N(na_loop_iter_t,nd+3);
+            buf_iter = ALLOC_N(cumo_na_loop_iter_t,nd+3);
             buf_shape = ALLOC_N(size_t,nd);
             buf_iter[nd].pos = 0;
             buf_iter[nd].step = 0;
@@ -1104,7 +1104,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
                 buf_shape[i] = n;
                 sz *= n;
             }
-            LBUFCP(lp,j) = ALLOC(na_buffer_copy_t);
+            LBUFCP(lp,j) = ALLOC(cumo_na_buffer_copy_t);
             LBUFCP(lp,j)->ndim = ndim;
             LBUFCP(lp,j)->elmsz = elmsz;
             LBUFCP(lp,j)->n = buf_shape;
@@ -1130,7 +1130,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
         last_step = src_iter[ndim-1].step;
         if (lp->reduce_dim>1) {
             //printf("(reduce_dim=%d,ndim=%d,nd=%d,n=%ld,lst=%ld)\n",lp->reduce_dim,ndim,nd,n_total,last_step);
-            buf_iter = ALLOC_N(na_loop_iter_t,2);
+            buf_iter = ALLOC_N(cumo_na_loop_iter_t,2);
             buf_iter[0].pos = LARG(lp,j).iter[0].pos;
             buf_iter[0].step = last_step;
             buf_iter[0].idx = NULL;
@@ -1161,7 +1161,7 @@ ndfunc_set_bufcp(ndfunc_t *nf, na_md_loop_t *lp)
 
 // Make contiguous memory for ops not supporting index or stride (step) loop
 static void
-ndloop_copy_to_buffer(na_buffer_copy_t *lp)
+ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
 {
     size_t *c;
     char *src, *buf;
@@ -1227,7 +1227,7 @@ ndloop_copy_to_buffer(na_buffer_copy_t *lp)
 }
 
 static void
-ndloop_copy_from_buffer(na_buffer_copy_t *lp)
+ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
 {
     size_t *c;
     char *src, *buf;
@@ -1291,14 +1291,14 @@ ndloop_copy_from_buffer(na_buffer_copy_t *lp)
 
 
 static void
-ndfunc_write_back(ndfunc_t *nf, na_md_loop_t *lp, VALUE orig_args, VALUE results)
+ndfunc_write_back(ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE orig_args, VALUE results)
 {
     VALUE src, dst;
 
     if (lp->writeback >= 0) {
         dst = RARRAY_AREF(orig_args,lp->writeback);
         src = RARRAY_AREF(results,0);
-        na_store(dst,src);
+        cumo_na_store(dst,src);
         RARRAY_ASET(results,0,dst);
     }
 }
@@ -1345,7 +1345,7 @@ ndloop_extract(VALUE results, ndfunc_t *nf)
 }
 
 static bool
-loop_is_using_idx(na_md_loop_t *lp)
+loop_is_using_idx(cumo_na_md_loop_t *lp)
 {
     int  i, j;
     int  nd = lp->ndim;
@@ -1367,13 +1367,13 @@ loop_is_using_idx(na_md_loop_t *lp)
 }
 
 static void
-loop_narray(ndfunc_t *nf, na_md_loop_t *lp);
+loop_narray(ndfunc_t *nf, cumo_na_md_loop_t *lp);
 
 static VALUE
 ndloop_run(VALUE vlp)
 {
     volatile VALUE args, orig_args, results;
-    na_md_loop_t *lp = (na_md_loop_t*)(vlp);
+    cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)(vlp);
     ndfunc_t *nf;
 
     orig_args = lp->vargs;
@@ -1384,7 +1384,7 @@ ndloop_run(VALUE vlp)
     // setup ndloop iterator with arguments
     ndloop_init_args(nf, lp, args);
     results = ndloop_set_output(nf, lp, args);
-    //if (na_debug_flag) {
+    //if (cumo_na_debug_flag) {
     //    printf("-- ndloop_set_output --\n");
     //    print_ndloop(lp);
     //}
@@ -1396,7 +1396,7 @@ ndloop_run(VALUE vlp)
     } else {
         if (lp->loop_func == loop_narray) {
             ndfunc_contract_loop(lp);
-            if (na_debug_flag) {
+            if (cumo_na_debug_flag) {
                 printf("-- ndfunc_contract_loop --\n");
                 print_ndloop(lp);
             }
@@ -1406,13 +1406,13 @@ ndloop_run(VALUE vlp)
     // setup lp->user
     if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
         ndfunc_set_user_indexer_loop(nf, lp);
-        if (na_debug_flag) {
+        if (cumo_na_debug_flag) {
             printf("-- ndfunc_set_user_indexer_loop --\n");
             print_ndloop(lp);
         }
     } else {
         ndfunc_set_user_loop(nf, lp);
-        if (na_debug_flag) {
+        if (cumo_na_debug_flag) {
             printf("-- ndfunc_set_user_loop --\n");
             print_ndloop(lp);
         }
@@ -1425,7 +1425,7 @@ ndloop_run(VALUE vlp)
         if (lp->loop_func == loop_narray) {
             ndfunc_set_bufcp(nf, lp);
         }
-        if (na_debug_flag) {
+        if (cumo_na_debug_flag) {
             printf("-- ndfunc_set_bufcp --\n");
             print_ndloop(lp);
         }
@@ -1449,7 +1449,7 @@ ndloop_run(VALUE vlp)
 // ---------------------------------------------------------------------------
 
 static void
-loop_narray(ndfunc_t *nf, na_md_loop_t *lp)
+loop_narray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int  i, j;
@@ -1526,12 +1526,12 @@ loop_narray(ndfunc_t *nf, na_md_loop_t *lp)
 
 
 static VALUE
-na_ndloop_main(ndfunc_t *nf, VALUE args, void *opt_ptr)
+cumo_na_ndloop_main(ndfunc_t *nf, VALUE args, void *opt_ptr)
 {
     unsigned int copy_flag;
-    na_md_loop_t lp;
+    cumo_na_md_loop_t lp;
 
-    if (na_debug_flag) print_ndfunc(nf);
+    if (cumo_na_debug_flag) print_ndfunc(nf);
 
     // cast arguments to NArray
     copy_flag = ndloop_cast_args(nf, args);
@@ -1545,9 +1545,9 @@ na_ndloop_main(ndfunc_t *nf, VALUE args, void *opt_ptr)
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-na_ndloop(ndfunc_t *nf, int argc, ...)
+cumo_na_ndloop(ndfunc_t *nf, int argc, ...)
 #else
-na_ndloop(nf, argc, va_alist)
+cumo_na_ndloop(nf, argc, va_alist)
   ndfunc_t *nf;
   int argc;
   va_dcl
@@ -1569,21 +1569,21 @@ na_ndloop(nf, argc, va_alist)
 
     args = rb_ary_new4(argc, argv);
 
-    return na_ndloop_main(nf, args, NULL);
+    return cumo_na_ndloop_main(nf, args, NULL);
 }
 
 
 VALUE
-na_ndloop2(ndfunc_t *nf, VALUE args)
+cumo_na_ndloop2(ndfunc_t *nf, VALUE args)
 {
-    return na_ndloop_main(nf, args, NULL);
+    return cumo_na_ndloop_main(nf, args, NULL);
 }
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-na_ndloop3(ndfunc_t *nf, void *ptr, int argc, ...)
+cumo_na_ndloop3(ndfunc_t *nf, void *ptr, int argc, ...)
 #else
-na_ndloop3(nf, ptr, argc, va_alist)
+cumo_na_ndloop3(nf, ptr, argc, va_alist)
   ndfunc_t *nf;
   void *ptr;
   int argc;
@@ -1606,19 +1606,19 @@ na_ndloop3(nf, ptr, argc, va_alist)
 
     args = rb_ary_new4(argc, argv);
 
-    return na_ndloop_main(nf, args, ptr);
+    return cumo_na_ndloop_main(nf, args, ptr);
 }
 
 VALUE
-na_ndloop4(ndfunc_t *nf, void *ptr, VALUE args)
+cumo_na_ndloop4(ndfunc_t *nf, void *ptr, VALUE args)
 {
-    return na_ndloop_main(nf, args, ptr);
+    return cumo_na_ndloop_main(nf, args, ptr);
 }
 
 //----------------------------------------------------------------------
 
 VALUE
-na_info_str(VALUE ary)
+cumo_na_info_str(VALUE ary)
 {
     int nd, i;
     char tmp[32];
@@ -1648,19 +1648,20 @@ na_info_str(VALUE ary)
 
 //----------------------------------------------------------------------
 
-#define ncol cumo_na_inspect_cols
-#define nrow cumo_na_inspect_rows
-extern int ncol, nrow;
+extern int cumo_na_inspect_cols_;
+extern int cumo_na_inspect_rows_;
+#define ncol cumo_na_inspect_cols_
+#define nrow cumo_na_inspect_rows_
 
 static void
-loop_inspect(ndfunc_t *nf, na_md_loop_t *lp)
+loop_inspect(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     int nd, i, ii;
     size_t *c;
     int col=0, row=0;
     long len;
     VALUE str;
-    na_text_func_t func = (na_text_func_t)(nf->func);
+    cumo_na_text_func_t func = (cumo_na_text_func_t)(nf->func);
     VALUE buf, opt;
 
     nd = lp->ndim;
@@ -1734,23 +1735,23 @@ loop_inspect(ndfunc_t *nf, na_md_loop_t *lp)
 
 
 VALUE
-na_ndloop_inspect(VALUE nary, na_text_func_t func, VALUE opt)
+cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
 {
     volatile VALUE args;
-    na_md_loop_t lp;
+    cumo_na_md_loop_t lp;
     VALUE buf;
     ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
-    ndfunc_t nf = { (na_iter_func_t)func, NO_LOOP, 3, 0, ain, 0 };
+    ndfunc_t nf = { (cumo_na_iter_func_t)func, NO_LOOP, 3, 0, ain, 0 };
     //nf = ndfunc_alloc(NULL, NO_LOOP, 1, 0, Qnil);
 
-    buf = na_info_str(nary);
+    buf = cumo_na_info_str(nary);
 
-    if (na_get_pointer(nary)==NULL) {
+    if (cumo_na_get_pointer(nary)==NULL) {
         return rb_str_cat(buf,"(empty)",7);
     }
 
     //rb_p(args);
-    //if (na_debug_flag) print_ndfunc(&nf);
+    //if (cumo_na_debug_flag) print_ndfunc(&nf);
 
     args = rb_ary_new3(3,nary,buf,opt);
 
@@ -1769,7 +1770,7 @@ na_ndloop_inspect(VALUE nary, na_text_func_t func, VALUE opt)
 //----------------------------------------------------------------------
 
 static void
-loop_store_subnarray(ndfunc_t *nf, na_md_loop_t *lp, int i0, size_t *c, VALUE a)
+loop_store_subnarray(ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VALUE a)
 {
     int nd = lp->ndim;
     int i, j;
@@ -1783,7 +1784,7 @@ loop_store_subnarray(ndfunc_t *nf, na_md_loop_t *lp, int i0, size_t *c, VALUE a)
     }
     GetNArray(a,na);
     if (na->ndim != nd-i0+1) {
-        rb_raise(nary_eShapeError, "mismatched dimension of sub-narray: "
+        rb_raise(cumo_na_eShapeError, "mismatched dimension of sub-narray: "
                  "nd_src=%d, nd_dst=%d", na->ndim, nd-i0+1);
     }
     dim_map = ALLOCA_N(int, na->ndim);
@@ -1825,7 +1826,7 @@ loop_store_subnarray(ndfunc_t *nf, na_md_loop_t *lp, int i0, size_t *c, VALUE a)
 
 
 static void
-loop_store_rarray(ndfunc_t *nf, na_md_loop_t *lp)
+loop_store_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int     i;
@@ -1891,13 +1892,13 @@ loop_store_rarray(ndfunc_t *nf, na_md_loop_t *lp)
 }
 
 VALUE
-na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary)
+cumo_na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary)
 {
-    na_md_loop_t lp;
+    cumo_na_md_loop_t lp;
     VALUE args;
 
     //rb_p(args);
-    if (na_debug_flag) print_ndfunc(nf);
+    if (cumo_na_debug_flag) print_ndfunc(nf);
 
     args = rb_assoc_new(nary,rary);
 
@@ -1912,13 +1913,13 @@ na_ndloop_store_rarray(ndfunc_t *nf, VALUE nary, VALUE rary)
 
 
 VALUE
-na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
+cumo_na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
 {
-    na_md_loop_t lp;
+    cumo_na_md_loop_t lp;
     VALUE args;
 
     //rb_p(args);
-    if (na_debug_flag) print_ndfunc(nf);
+    if (cumo_na_debug_flag) print_ndfunc(nf);
 
     //args = rb_assoc_new(rary,nary);
     args = rb_ary_new3(3,nary,rary,opt);
@@ -1936,7 +1937,7 @@ na_ndloop_store_rarray2(ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt)
 //----------------------------------------------------------------------
 
 static void
-loop_narray_to_rarray(ndfunc_t *nf, na_md_loop_t *lp)
+loop_narray_to_rarray(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int i;
@@ -1984,13 +1985,13 @@ loop_narray_to_rarray(ndfunc_t *nf, na_md_loop_t *lp)
 }
 
 VALUE
-na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
+cumo_na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
 {
-    na_md_loop_t lp;
+    cumo_na_md_loop_t lp;
     VALUE args, a0;
 
     //rb_p(args);
-    if (na_debug_flag) print_ndfunc(nf);
+    if (cumo_na_debug_flag) print_ndfunc(nf);
 
     a0 = rb_ary_new();
     args = rb_ary_new3(3,nary,a0,fmt);
@@ -2009,7 +2010,7 @@ na_ndloop_cast_narray_to_rarray(ndfunc_t *nf, VALUE nary, VALUE fmt)
 //----------------------------------------------------------------------
 
 static void
-loop_narray_with_index(ndfunc_t *nf, na_md_loop_t *lp)
+loop_narray_with_index(ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
     int i,j;
@@ -2059,9 +2060,9 @@ loop_narray_with_index(ndfunc_t *nf, na_md_loop_t *lp)
 
 VALUE
 #ifdef HAVE_STDARG_PROTOTYPES
-na_ndloop_with_index(ndfunc_t *nf, int argc, ...)
+cumo_na_ndloop_with_index(ndfunc_t *nf, int argc, ...)
 #else
-na_ndloop_with_index(nf, argc, va_alist)
+cumo_na_ndloop_with_index(nf, argc, va_alist)
   ndfunc_t *nf;
   int argc;
   va_dcl
@@ -2072,7 +2073,7 @@ na_ndloop_with_index(nf, argc, va_alist)
     int i;
     VALUE *argv;
     volatile VALUE args;
-    na_md_loop_t lp;
+    cumo_na_md_loop_t lp;
 
     argv = ALLOCA_N(VALUE,argc);
 
@@ -2084,8 +2085,8 @@ na_ndloop_with_index(nf, argc, va_alist)
 
     args = rb_ary_new4(argc, argv);
 
-    //return na_ndloop_main(nf, args, NULL);
-    if (na_debug_flag) print_ndfunc(nf);
+    //return cumo_na_ndloop_main(nf, args, NULL);
+    if (cumo_na_debug_flag) print_ndfunc(nf);
 
     // cast arguments to NArray
     //copy_flag = ndloop_cast_args(nf, args);
@@ -2098,7 +2099,7 @@ na_ndloop_with_index(nf, argc, va_alist)
 
 
 void
-Init_cumo_nary_ndloop()
+Init_cumo_na_ndloop()
 {
     id_cast    = rb_intern("cast");
     id_extract = rb_intern("extract");

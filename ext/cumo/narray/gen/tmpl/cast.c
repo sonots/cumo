@@ -29,7 +29,7 @@ static VALUE
     }
     if (IsNArray(obj)) {
         GetNArray(obj,na);
-        v = nary_new(cT, NA_NDIM(na), NA_SHAPE(na));
+        v = cumo_na_new(cT, NA_NDIM(na), NA_SHAPE(na));
         if (NA_SIZE(na) > 0) {
             <%=find_tmpl("store").c_func%>(v,obj);
         }
@@ -38,7 +38,7 @@ static VALUE
     <% if is_object %>
     return robject_new_dim0(obj);
     <% else %>
-    rb_raise(nary_eCastError,"cannot cast to %s",rb_class2name(type));
+    rb_raise(cumo_na_eCastError,"cannot cast to %s",rb_class2name(type));
     return Qnil;
     <% end %>
 }

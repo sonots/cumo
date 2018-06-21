@@ -9,11 +9,11 @@
 /* global variables within this module */
 VALUE cumo_cNArray;
 VALUE rb_mCumo;
-VALUE nary_eCastError;
-VALUE nary_eShapeError;
-VALUE nary_eOperationError;
-VALUE nary_eDimensionError;
-VALUE nary_eValueError;
+VALUE cumo_na_eCastError;
+VALUE cumo_na_eShapeError;
+VALUE cumo_na_eOperationError;
+VALUE cumo_na_eDimensionError;
+VALUE cumo_na_eValueError;
 
 static ID id_contiguous_stride;
 static ID id_allocate;
@@ -40,21 +40,21 @@ VALUE sym_option;
 VALUE sym_loop_opt;
 VALUE sym_init;
 
-VALUE na_cStep;
+VALUE cumo_na_cStep;
 #ifndef HAVE_RB_CCOMPLEX
 VALUE rb_cComplex;
 #endif
 
-int cumo_na_inspect_rows=20;
-int cumo_na_inspect_cols=80;
+int cumo_na_inspect_rows_=20;
+int cumo_na_inspect_cols_=80;
 
-const rb_data_type_t na_data_type = {
+const rb_data_type_t cumo_na_data_type = {
     "Cumo::NArray",
     {0, 0, 0,}, 0, 0, 0,
 };
 
 static void
-nary_debug_info_nadata(VALUE self)
+cumo_na_debug_info_nadata(VALUE self)
 {
     narray_data_t *na;
     GetNArrayData(self,na);
@@ -64,7 +64,7 @@ nary_debug_info_nadata(VALUE self)
 
 
 static VALUE
-nary_debug_info_naview(VALUE self)
+cumo_na_debug_info_naview(VALUE self)
 {
     int i;
     narray_view_t *na;
@@ -99,7 +99,7 @@ nary_debug_info_naview(VALUE self)
 
 
 VALUE
-nary_debug_info(VALUE self)
+cumo_na_debug_info(VALUE self)
 {
     int i;
     narray_t *na;
@@ -122,10 +122,10 @@ nary_debug_info(VALUE self)
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        nary_debug_info_nadata(self);
+        cumo_na_debug_info_nadata(self);
         break;
     case NARRAY_VIEW_T:
-        nary_debug_info_naview(self);
+        cumo_na_debug_info_naview(self);
         break;
     }
     return Qnil;
@@ -133,7 +133,7 @@ nary_debug_info(VALUE self)
 
 
 static size_t
-na_view_memsize(const void* ptr)
+cumo_na_view_memsize(const void* ptr)
 {
     int i;
     size_t size = sizeof(narray_view_t);
@@ -158,7 +158,7 @@ na_view_memsize(const void* ptr)
 }
 
 static void
-na_view_free(void* ptr)
+cumo_na_view_free(void* ptr)
 {
     int i;
     narray_view_t *na = (narray_view_t*)ptr;
@@ -189,21 +189,21 @@ na_view_free(void* ptr)
 }
 
 static void
-na_view_gc_mark(void* na)
+cumo_na_view_gc_mark(void* na)
 {
     if (((narray_t*)na)->type == NARRAY_VIEW_T) {
         rb_gc_mark(((narray_view_t*)na)->data);
     }
 }
 
-const rb_data_type_t na_data_type_view = {
+const rb_data_type_t cumo_na_data_type_view = {
     "Cumo::NArrayView",
-    {na_view_gc_mark, na_view_free, na_view_memsize,},
-    &na_data_type, 0, 0,
+    {cumo_na_view_gc_mark, cumo_na_view_free, cumo_na_view_memsize,},
+    &cumo_na_data_type, 0, 0,
 };
 
 VALUE
-na_s_allocate_view(VALUE klass)
+cumo_na_s_allocate_view(VALUE klass)
 {
     narray_view_t *na = ALLOC(narray_view_t);
 
@@ -217,14 +217,14 @@ na_s_allocate_view(VALUE klass)
     na->data = Qnil;
     na->offset = 0;
     na->stridx = NULL;
-    return TypedData_Wrap_Struct(klass, &na_data_type_view, (void*)na);
+    return TypedData_Wrap_Struct(klass, &cumo_na_data_type_view, (void*)na);
 }
 
 
 //static const size_t zero=0;
 
 void
-na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape)
+cumo_na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape)
 {
     size_t    i, n, c, s;
     ssize_t   x;
@@ -257,7 +257,7 @@ na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape)
 
 
 void
-na_alloc_shape(narray_t *na, int ndim)
+cumo_na_alloc_shape(narray_t *na, int ndim)
 {
     na->ndim = ndim;
     na->size = 0;
@@ -268,22 +268,22 @@ na_alloc_shape(narray_t *na, int ndim)
         break;
     default:
         if (ndim < 0) {
-            rb_raise(nary_eDimensionError,"ndim=%d is negative", ndim);
+            rb_raise(cumo_na_eDimensionError,"ndim=%d is negative", ndim);
         }
         if (ndim > NA_MAX_DIMENSION) {
-            rb_raise(nary_eDimensionError,"ndim=%d is too many", ndim);
+            rb_raise(cumo_na_eDimensionError,"ndim=%d is too many", ndim);
         }
         na->shape = ALLOC_N(size_t, ndim);
     }
 }
 
 void
-na_setup_shape(narray_t *na, int ndim, size_t *shape)
+cumo_na_setup_shape(narray_t *na, int ndim, size_t *shape)
 {
     int i;
     size_t size;
 
-    na_alloc_shape(na, ndim);
+    cumo_na_alloc_shape(na, ndim);
 
     if (ndim==0) {
         na->size = 1;
@@ -301,11 +301,11 @@ na_setup_shape(narray_t *na, int ndim, size_t *shape)
 }
 
 static void
-na_setup(VALUE self, int ndim, size_t *shape)
+cumo_na_setup(VALUE self, int ndim, size_t *shape)
 {
     narray_t *na;
     GetNArray(self,na);
-    na_setup_shape(na, ndim, shape);
+    cumo_na_setup_shape(na, ndim, shape);
 }
 
 
@@ -343,7 +343,7 @@ na_setup(VALUE self, int ndim, size_t *shape)
 
 */
 static VALUE
-na_initialize(VALUE self, VALUE args)
+cumo_na_initialize(VALUE self, VALUE args)
 {
     VALUE v;
     size_t *shape=NULL;
@@ -363,31 +363,31 @@ na_initialize(VALUE self, VALUE args)
     }
     shape = ALLOCA_N(size_t, ndim);
     // setup size_t shape[] from VALUE shape argument
-    na_array_to_internal_shape(self, v, shape);
-    na_setup(self, ndim, shape);
+    cumo_na_array_to_internal_shape(self, v, shape);
+    cumo_na_setup(self, ndim, shape);
 
     return self;
 }
 
 
 VALUE
-nary_new(VALUE klass, int ndim, size_t *shape)
+cumo_na_new(VALUE klass, int ndim, size_t *shape)
 {
     volatile VALUE obj;
 
     obj = rb_funcall(klass, id_allocate, 0);
-    na_setup(obj, ndim, shape);
+    cumo_na_setup(obj, ndim, shape);
     return obj;
 }
 
 
 VALUE
-nary_view_new(VALUE klass, int ndim, size_t *shape)
+cumo_na_view_new(VALUE klass, int ndim, size_t *shape)
 {
     volatile VALUE obj;
 
-    obj = na_s_allocate_view(klass);
-    na_setup(obj, ndim, shape);
+    obj = cumo_na_s_allocate_view(klass);
+    cumo_na_setup(obj, ndim, shape);
     return obj;
 }
 
@@ -400,14 +400,14 @@ nary_view_new(VALUE klass, int ndim, size_t *shape)
   @return [Cumo::NArray] self
  */
 static VALUE
-na_initialize_copy(VALUE self, VALUE orig)
+cumo_na_initialize_copy(VALUE self, VALUE orig)
 {
     narray_t *na;
     GetNArray(orig,na);
 
-    na_setup(self,NA_NDIM(na),NA_SHAPE(na));
-    na_store(self,orig);
-    na_copy_flags(orig,self);
+    cumo_na_setup(self,NA_NDIM(na),NA_SHAPE(na));
+    cumo_na_store(self,orig);
+    cumo_na_copy_flags(orig,self);
     return self;
 }
 
@@ -428,7 +428,7 @@ na_initialize_copy(VALUE self, VALUE orig)
  *     [0, 0, 0, 0, 0]]
  */
 static VALUE
-na_s_zeros(int argc, VALUE *argv, VALUE klass)
+cumo_na_s_zeros(int argc, VALUE *argv, VALUE klass)
 {
     VALUE obj;
     obj = rb_class_new_instance(argc, argv, klass);
@@ -452,7 +452,7 @@ na_s_zeros(int argc, VALUE *argv, VALUE klass)
  *     [1, 1, 1, 1, 1]]
  */
 static VALUE
-na_s_ones(int argc, VALUE *argv, VALUE klass)
+cumo_na_s_ones(int argc, VALUE *argv, VALUE klass)
 {
     VALUE obj;
     obj = rb_class_new_instance(argc, argv, klass);
@@ -477,7 +477,7 @@ na_s_ones(int argc, VALUE *argv, VALUE klass)
     [-5, -3.33333, -1.66667, 0, 1.66667, 3.33333, 5]
  */
 static VALUE
-na_s_linspace(int argc, VALUE *argv, VALUE klass)
+cumo_na_s_linspace(int argc, VALUE *argv, VALUE klass)
 {
     VALUE obj, vx1, vx2, vstep, vsize;
     double n;
@@ -519,7 +519,7 @@ na_s_linspace(int argc, VALUE *argv, VALUE klass)
        [1+4.44659e-323i, 0.707107+0.707107i, 6.12323e-17+1i, -0.707107+0.707107i, ...]
  */
 static VALUE
-na_s_logspace(int argc, VALUE *argv, VALUE klass)
+cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
 {
     VALUE obj, vx1, vx2, vstep, vsize, vbase;
     double n;
@@ -556,7 +556,7 @@ na_s_logspace(int argc, VALUE *argv, VALUE klass)
      [0, 0, 1]]
 */
 static VALUE
-na_s_eye(int argc, VALUE *argv, VALUE klass)
+cumo_na_s_eye(int argc, VALUE *argv, VALUE klass)
 {
     VALUE obj;
     VALUE tmp[2];
@@ -579,7 +579,7 @@ na_s_eye(int argc, VALUE *argv, VALUE klass)
 #define WRITE 2
 
 static char *
-na_get_pointer_for_rw(VALUE self, int flag)
+cumo_na_get_pointer_for_rw(VALUE self, int flag)
 {
     char *ptr;
     VALUE obj;
@@ -630,32 +630,32 @@ na_get_pointer_for_rw(VALUE self, int flag)
 }
 
 char *
-na_get_pointer_for_read(VALUE self)
+cumo_na_get_pointer_for_read(VALUE self)
 {
-    return na_get_pointer_for_rw(self, READ);
+    return cumo_na_get_pointer_for_rw(self, READ);
 }
 
 char *
-na_get_pointer_for_write(VALUE self)
+cumo_na_get_pointer_for_write(VALUE self)
 {
-    return na_get_pointer_for_rw(self, WRITE);
+    return cumo_na_get_pointer_for_rw(self, WRITE);
 }
 
 char *
-na_get_pointer_for_read_write(VALUE self)
+cumo_na_get_pointer_for_read_write(VALUE self)
 {
-    return na_get_pointer_for_rw(self, READ|WRITE);
+    return cumo_na_get_pointer_for_rw(self, READ|WRITE);
 }
 
 char *
-na_get_pointer(VALUE self)
+cumo_na_get_pointer(VALUE self)
 {
-    return na_get_pointer_for_rw(self, 0);
+    return cumo_na_get_pointer_for_rw(self, 0);
 }
 
 
 void
-na_release_lock(VALUE self)
+cumo_na_release_lock(VALUE self)
 {
     narray_t *na;
 
@@ -664,7 +664,7 @@ na_release_lock(VALUE self)
 
     switch(NA_TYPE(na)) {
     case NARRAY_VIEW_T:
-        na_release_lock(NA_VIEW_DATA(na));
+        cumo_na_release_lock(NA_VIEW_DATA(na));
         break;
     }
 }
@@ -672,7 +672,7 @@ na_release_lock(VALUE self)
 
 /* method: size() -- returns the total number of typeents */
 static VALUE
-na_size(VALUE self)
+cumo_na_size(VALUE self)
 {
     narray_t *na;
     GetNArray(self,na);
@@ -682,7 +682,7 @@ na_size(VALUE self)
 
 /* method: size() -- returns the total number of typeents */
 static VALUE
-na_ndim(VALUE self)
+cumo_na_ndim(VALUE self)
 {
     narray_t *na;
     GetNArray(self,na);
@@ -695,7 +695,7 @@ na_ndim(VALUE self)
   @overload empty?
 */
 static VALUE
-na_empty_p(VALUE self)
+cumo_na_empty_p(VALUE self)
 {
     narray_t *na;
     GetNArray(self,na);
@@ -708,7 +708,7 @@ na_empty_p(VALUE self)
 
 /* method: shape() -- returns shape, array of the size of dimensions */
 static VALUE
- na_shape(VALUE self)
+ cumo_na_shape(VALUE self)
 {
     volatile VALUE v;
     narray_t *na;
@@ -733,7 +733,7 @@ static VALUE
 
 
 unsigned int
-nary_element_stride(VALUE v)
+cumo_na_element_stride(VALUE v)
 {
     narray_type_info_t *info;
     narray_t *na;
@@ -750,13 +750,13 @@ nary_element_stride(VALUE v)
 }
 
 size_t
-na_dtype_elmsz(VALUE klass)
+cumo_na_dtype_element_stride(VALUE klass)
 {
     return NUM2SIZET(rb_const_get(klass, id_contiguous_stride));
 }
 
 size_t
-na_get_offset(VALUE self)
+cumo_na_get_offset(VALUE self)
 {
     narray_t *na;
     GetNArray(self,na);
@@ -773,7 +773,7 @@ na_get_offset(VALUE self)
 
 
 void
-na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
+cumo_na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
 {
     int i,j;
     VALUE tmp;
@@ -788,7 +788,7 @@ na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
 }
 
 void
-na_copy_flags(VALUE src, VALUE dst)
+cumo_na_copy_flags(VALUE src, VALUE dst)
 {
     narray_t *na1, *na2;
 
@@ -805,7 +805,7 @@ na_copy_flags(VALUE src, VALUE dst)
 
 // fix name, ex, allow_stride_for_flatten_view
 VALUE
-na_check_ladder(VALUE self, int start_dim)
+cumo_na_check_ladder(VALUE self, int start_dim)
 {
     int i;
     ssize_t st0, st1;
@@ -844,7 +844,7 @@ na_check_ladder(VALUE self, int start_dim)
 }
 
 VALUE
-na_check_contiguous(VALUE self)
+cumo_na_check_contiguous(VALUE self)
 {
     ssize_t elmsz;
     narray_t *na;
@@ -858,8 +858,8 @@ na_check_contiguous(VALUE self)
         if (NA_VIEW_STRIDX(na)==0) {
             return Qtrue;
         }
-        if (na_check_ladder(self,0)==Qtrue) {
-            elmsz = nary_element_stride(self);
+        if (cumo_na_check_ladder(self,0)==Qtrue) {
+            elmsz = cumo_na_element_stride(self);
             if (elmsz == NA_STRIDE_AT(na,NA_NDIM(na)-1)) {
                 return Qtrue;
             }
@@ -877,7 +877,7 @@ na_check_contiguous(VALUE self)
  *  Return view of NArray
  */
 VALUE
-na_make_view(VALUE self)
+cumo_na_make_view(VALUE self)
 {
     int i, nd;
     size_t  j;
@@ -890,18 +890,18 @@ na_make_view(VALUE self)
     GetNArray(self,na);
     nd = na->ndim;
 
-    view = na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(CLASS_OF(self));
 
-    na_copy_flags(self, view);
+    cumo_na_copy_flags(self, view);
     GetNArrayView(view, na2);
 
-    na_setup_shape((narray_t*)na2, nd, na->shape);
+    cumo_na_setup_shape((narray_t*)na2, nd, na->shape);
     na2->stridx = ALLOC_N(stridx_t,nd);
 
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        stride = nary_element_stride(self);
+        stride = cumo_na_element_stride(self);
         for (i=nd; i--;) {
             SDX_SET_STRIDE(na2->stridx[i],stride);
             stride *= na->shape[i];
@@ -944,11 +944,11 @@ na_make_view(VALUE self)
  *  @return [Cumo::NArray]  result narray view.
  */
 static VALUE
-na_expand_dims(VALUE self, VALUE vdim)
+cumo_na_expand_dims(VALUE self, VALUE vdim)
 {
     int  i, j, nd, dim;
-    size_t *shape, *na_shape;
-    stridx_t *stridx, *na_stridx;
+    size_t *shape, *cumo_na_shape;
+    stridx_t *stridx, *cumo_na_stridx;
     narray_t *na;
     narray_view_t *na2;
     VALUE view;
@@ -958,37 +958,37 @@ na_expand_dims(VALUE self, VALUE vdim)
 
     dim = NUM2INT(vdim);
     if (dim < -nd-1 || dim > nd) {
-        rb_raise(nary_eDimensionError,"invalid axis (%d for %dD NArray)",
+        rb_raise(cumo_na_eDimensionError,"invalid axis (%d for %dD NArray)",
                  dim,nd);
     }
     if (dim < 0) {
         dim += nd+1;
     }
 
-    view = na_make_view(self);
+    view = cumo_na_make_view(self);
     GetNArrayView(view, na2);
 
     shape = ALLOC_N(size_t,nd+1);
     stridx = ALLOC_N(stridx_t,nd+1);
-    na_shape = na2->base.shape;
-    na_stridx = na2->stridx;
+    cumo_na_shape = na2->base.shape;
+    cumo_na_stridx = na2->stridx;
 
     for (i=j=0; i<=nd; i++) {
         if (i==dim) {
             shape[i] = 1;
             SDX_SET_STRIDE(stridx[i],0);
         } else {
-            shape[i] = na_shape[j];
-            stridx[i] = na_stridx[j];
+            shape[i] = cumo_na_shape[j];
+            stridx[i] = cumo_na_stridx[j];
             j++;
         }
     }
 
     na2->stridx = stridx;
-    xfree(na_stridx);
+    xfree(cumo_na_stridx);
     na2->base.shape = shape;
-    if (na_shape != &(na2->base.size)) {
-        xfree(na_shape);
+    if (cumo_na_shape != &(na2->base.size)) {
+        xfree(cumo_na_shape);
     }
     na2->base.ndim++;
     return view;
@@ -1003,7 +1003,7 @@ na_expand_dims(VALUE self, VALUE vdim)
  *  Return reversed view along specified dimeinsion
  */
 static VALUE
-nary_reverse(int argc, VALUE *argv, VALUE self)
+cumo_na_reverse(int argc, VALUE *argv, VALUE self)
 {
     int i, nd;
     size_t  j, n;
@@ -1016,26 +1016,26 @@ nary_reverse(int argc, VALUE *argv, VALUE self)
     VALUE view;
     VALUE reduce;
 
-    reduce = na_reduce_dimension(argc, argv, 1, &self, 0, 0);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, 0, 0);
 
     GetNArray(self,na);
     nd = na->ndim;
 
-    view = na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(CLASS_OF(self));
 
-    na_copy_flags(self, view);
+    cumo_na_copy_flags(self, view);
     GetNArrayView(view, na2);
 
-    na_setup_shape((narray_t*)na2, nd, na->shape);
+    cumo_na_setup_shape((narray_t*)na2, nd, na->shape);
     na2->stridx = ALLOC_N(stridx_t,nd);
 
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        stride = nary_element_stride(self);
+        stride = cumo_na_element_stride(self);
         offset = 0;
         for (i=nd; i--;) {
-            if (na_test_reduce(reduce,i)) {
+            if (cumo_na_test_reduce(reduce,i)) {
                 offset += (na->shape[i]-1)*stride;
                 sign = -1;
             } else {
@@ -1055,7 +1055,7 @@ nary_reverse(int argc, VALUE *argv, VALUE self)
             if (SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = SDX_GET_INDEX(na1->stridx[i]);
                 idx2 = ALLOC_N(size_t,n);
-                if (na_test_reduce(reduce,i)) {
+                if (cumo_na_test_reduce(reduce,i)) {
                     for (j=0; j<n; j++) {
                         idx2[n-1-j] = idx1[j];
                     }
@@ -1067,7 +1067,7 @@ nary_reverse(int argc, VALUE *argv, VALUE self)
                 SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
                 stride = SDX_GET_STRIDE(na1->stridx[i]);
-                if (na_test_reduce(reduce,i)) {
+                if (cumo_na_test_reduce(reduce,i)) {
                     offset += (n-1)*stride;
                     SDX_SET_STRIDE(na2->stridx[i],-stride);
                 } else {
@@ -1117,7 +1117,7 @@ cumo_na_upcast(VALUE type1, VALUE type2)
   @return [Array]  NArray-casted [other,self]
 */
 static VALUE
-nary_coerce(VALUE x, VALUE y)
+cumo_na_coerce(VALUE x, VALUE y)
 {
     VALUE type;
 
@@ -1132,7 +1132,7 @@ nary_coerce(VALUE x, VALUE y)
   @return [Integer] byte size.
  */
 static VALUE
-nary_byte_size(VALUE self)
+cumo_na_byte_size(VALUE self)
 {
     VALUE velmsz;
     narray_t *na;
@@ -1150,7 +1150,7 @@ nary_byte_size(VALUE self)
   @return [Numeric] byte size.
  */
 static VALUE
-nary_s_byte_size(VALUE type)
+cumo_na_s_byte_size(VALUE type)
 {
     return rb_const_get(type, id_element_byte_size);
 }
@@ -1164,7 +1164,7 @@ nary_s_byte_size(VALUE type)
   @return [Cumo::NArray] NArray containing binary data.
  */
 static VALUE
-nary_s_from_binary(int argc, VALUE *argv, VALUE type)
+cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
 {
     size_t len, str_len, byte_size;
     size_t *shape;
@@ -1187,7 +1187,7 @@ nary_s_from_binary(int argc, VALUE *argv, VALUE type)
         case T_ARRAY:
             nd = RARRAY_LEN(vshape);
             if (nd == 0 || nd > NA_MAX_DIMENSION) {
-                rb_raise(nary_eDimensionError,"too long or empty shape (%d)", nd);
+                rb_raise(cumo_na_eDimensionError,"too long or empty shape (%d)", nd);
             }
             shape = ALLOCA_N(size_t,nd);
             len = 1;
@@ -1222,8 +1222,8 @@ nary_s_from_binary(int argc, VALUE *argv, VALUE type)
         shape[0] = len;
     }
 
-    vna = nary_new(type, nd, shape);
-    ptr = na_get_pointer_for_write(vna);
+    vna = cumo_na_new(type, nd, shape);
+    ptr = cumo_na_get_pointer_for_write(vna);
 
     memcpy(ptr, RSTRING_PTR(vstr), byte_size);
 
@@ -1238,7 +1238,7 @@ nary_s_from_binary(int argc, VALUE *argv, VALUE type)
   @return [Integer] stored length.
  */
 static VALUE
-nary_store_binary(int argc, VALUE *argv, VALUE self)
+cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
 {
     size_t size, str_len, byte_size, offset;
     char *ptr;
@@ -1271,7 +1271,7 @@ nary_store_binary(int argc, VALUE *argv, VALUE self)
         rb_raise(rb_eArgError, "string is too short to store");
     }
 
-    ptr = na_get_pointer_for_write(self);
+    ptr = cumo_na_get_pointer_for_write(self);
     memcpy(ptr, RSTRING_PTR(vstr)+offset, byte_size);
 
     return SIZET2NUM(byte_size);
@@ -1283,26 +1283,26 @@ nary_store_binary(int argc, VALUE *argv, VALUE self)
   @return [String] String object containing binary raw data.
  */
 static VALUE
-nary_to_binary(VALUE self)
+cumo_na_to_binary(VALUE self)
 {
     size_t len, offset=0;
     char *ptr;
     VALUE str;
     narray_t *na;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("nary_to_binary", "any");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     GetNArray(self,na);
     if (na->type == NARRAY_VIEW_T) {
-        if (na_check_contiguous(self)==Qtrue) {
+        if (cumo_na_check_contiguous(self)==Qtrue) {
             offset = NA_VIEW_OFFSET(na);
         } else {
             self = rb_funcall(self,id_dup,0);
         }
     }
-    len = NUM2SIZET(nary_byte_size(self));
-    ptr = na_get_pointer_for_read(self);
+    len = NUM2SIZET(cumo_na_byte_size(self));
+    ptr = cumo_na_get_pointer_for_read(self);
     str = rb_usascii_str_new(ptr+offset,len);
     RB_GC_GUARD(self);
     return str;
@@ -1314,16 +1314,16 @@ nary_to_binary(VALUE self)
   @return [Array] Array containing marshal data.
  */
 static VALUE
-nary_marshal_dump(VALUE self)
+cumo_na_marshal_dump(VALUE self)
 {
     VALUE a;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("nary_marshal_dump", "any");
+    SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_marshal_dump", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     a = rb_ary_new();
     rb_ary_push(a, INT2FIX(1));     // version
-    rb_ary_push(a, na_shape(self));
+    rb_ary_push(a, cumo_na_shape(self));
     rb_ary_push(a, INT2FIX(NA_FLAG0(self)));
     if (CLASS_OF(self) == cumo_cRObject) {
         narray_t *na;
@@ -1331,22 +1331,22 @@ nary_marshal_dump(VALUE self)
         size_t offset=0;
         GetNArray(self,na);
         if (na->type == NARRAY_VIEW_T) {
-            if (na_check_contiguous(self)==Qtrue) {
+            if (cumo_na_check_contiguous(self)==Qtrue) {
                 offset = NA_VIEW_OFFSET(na);
             } else {
                 self = rb_funcall(self,id_dup,0);
             }
         }
-        ptr = (VALUE*)na_get_pointer_for_read(self);
+        ptr = (VALUE*)cumo_na_get_pointer_for_read(self);
         rb_ary_push(a, rb_ary_new4(NA_SIZE(na), ptr+offset));
     } else {
-        rb_ary_push(a, nary_to_binary(self));
+        rb_ary_push(a, cumo_na_to_binary(self));
     }
     RB_GC_GUARD(self);
     return a;
 }
 
-static VALUE na_inplace( VALUE self );
+static VALUE cumo_na_inplace( VALUE self );
 /*
   Load marshal data.
   @overload marshal_load(data)
@@ -1354,7 +1354,7 @@ static VALUE na_inplace( VALUE self );
   @return [nil]
  */
 static VALUE
-nary_marshal_load(VALUE self, VALUE a)
+cumo_na_marshal_load(VALUE self, VALUE a)
 {
     VALUE v;
 
@@ -1368,7 +1368,7 @@ nary_marshal_load(VALUE self, VALUE a)
         rb_raise(rb_eArgError,"NArray marshal version %d is not supported "
                  "(only version 1)", NUM2INT(RARRAY_AREF(a,0)));
     }
-    na_initialize(self,RARRAY_AREF(a,1));
+    cumo_na_initialize(self,RARRAY_AREF(a,1));
     NA_FL0_SET(self,FIX2INT(RARRAY_AREF(a,2)));
     v = RARRAY_AREF(a,3);
     if (CLASS_OF(self) == cumo_cRObject) {
@@ -1381,12 +1381,12 @@ nary_marshal_load(VALUE self, VALUE a)
         if (RARRAY_LEN(v) != (long)NA_SIZE(na)) {
             rb_raise(rb_eArgError,"RObject content size mismatch");
         }
-        ptr = na_get_pointer_for_write(self);
+        ptr = cumo_na_get_pointer_for_write(self);
         memcpy(ptr, RARRAY_PTR(v), NA_SIZE(na)*sizeof(VALUE));
     } else {
-        nary_store_binary(1,&v,self);
+        cumo_na_store_binary(1,&v,self);
         if (TEST_BYTE_SWAPPED(self)) {
-            rb_funcall(na_inplace(self),id_to_host,0);
+            rb_funcall(cumo_na_inplace(self),id_to_host,0);
             REVERSE_ENDIAN(self); // correct behavior??
         }
     }
@@ -1402,7 +1402,7 @@ nary_marshal_load(VALUE self, VALUE a)
   @return [Cumo::NArray]
  */
 static VALUE
-nary_cast_to(VALUE obj, VALUE type)
+cumo_na_cast_to(VALUE obj, VALUE type)
 {
     return rb_funcall(type, id_cast, 1, obj);
 }
@@ -1412,7 +1412,7 @@ nary_cast_to(VALUE obj, VALUE type)
 // reduce is dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
 // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
 bool
-na_test_reduce(VALUE reduce, int dim)
+cumo_na_test_reduce(VALUE reduce, int dim)
 {
     size_t m;
 
@@ -1430,7 +1430,7 @@ na_test_reduce(VALUE reduce, int dim)
 
 
 static VALUE
-na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
+cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
 {
     int ndim, ndim0;
     int rowmaj;
@@ -1444,7 +1444,7 @@ na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
     }
     GetNArray(naryv[0],na);
     if (na->size==0) {
-        rb_raise(nary_eShapeError,"cannot reduce empty NArray");
+        rb_raise(cumo_na_eShapeError,"cannot reduce empty NArray");
     }
     reduce = na->reduce;
     ndim = ndim0 = na->ndim;
@@ -1453,10 +1453,10 @@ na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
     for (i=0; i<naryc; i++) {
         GetNArray(naryv[i],na);
         if (na->size==0) {
-            rb_raise(nary_eShapeError,"cannot reduce empty NArray");
+            rb_raise(cumo_na_eShapeError,"cannot reduce empty NArray");
         }
         if (TEST_COLUMN_MAJOR(naryv[i]) != rowmaj) {
-            rb_raise(nary_eDimensionError,"dimension order is different");
+            rb_raise(cumo_na_eDimensionError,"dimension order is different");
         }
         if (na->ndim > ndim) { // maximum dimension
             ndim = na->ndim;
@@ -1472,7 +1472,7 @@ na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
 
 
 static VALUE
-na_get_reduce_flag_from_axes(VALUE na_obj, VALUE axes)
+cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
 {
     int i, r;
     int ndim, rowmaj;
@@ -1485,9 +1485,9 @@ na_get_reduce_flag_from_axes(VALUE na_obj, VALUE axes)
     VALUE reduce;
     narray_t *na;
 
-    GetNArray(na_obj,na);
+    GetNArray(cumo_na_obj,na);
     ndim = na->ndim;
-    rowmaj = TEST_COLUMN_MAJOR(na_obj);
+    rowmaj = TEST_COLUMN_MAJOR(cumo_na_obj);
 
     m = 0;
     reduce = Qnil;
@@ -1499,16 +1499,16 @@ na_get_reduce_flag_from_axes(VALUE na_obj, VALUE axes)
             beg = FIX2INT(v);
             if (beg<0) beg+=ndim;
             if (beg>=ndim || beg<0) {
-                rb_raise(nary_eDimensionError,"dimension is out of range");
+                rb_raise(cumo_na_eDimensionError,"dimension is out of range");
             }
             len = 1;
             step = 0;
             //printf("beg=%d step=%d len=%d\n",beg,step,len);
         } else if (rb_obj_is_kind_of(v,rb_cRange) ||
-                   rb_obj_is_kind_of(v,na_cStep)) {
-            nary_step_array_index( v, ndim, &len, &beg, &step );
+                   rb_obj_is_kind_of(v,cumo_na_cStep)) {
+            cumo_na_step_array_index( v, ndim, &len, &beg, &step );
         } else {
-            rb_raise(nary_eDimensionError, "invalid dimension argument %s",
+            rb_raise(cumo_na_eDimensionError, "invalid dimension argument %s",
                      rb_obj_classname(v));
         }
         for (j=0; j<len; j++) {
@@ -1534,7 +1534,7 @@ na_get_reduce_flag_from_axes(VALUE na_obj, VALUE axes)
 
 
 VALUE
-nary_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
+cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
                     ndfunc_t *ndf)
 {
     int  max_arg;
@@ -1560,17 +1560,17 @@ nary_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
         }
     }
 
-    reduce = na_get_reduce_flag_from_narray(naryc, naryv, &max_arg);
+    reduce = cumo_na_get_reduce_flag_from_narray(naryc, naryv, &max_arg);
 
     if (NIL_P(axes)) return reduce;
 
-    return na_get_reduce_flag_from_axes(naryv[max_arg], axes);
+    return cumo_na_get_reduce_flag_from_axes(naryv[max_arg], axes);
 }
 
 
 VALUE
-nary_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
-                      ndfunc_t *ndf, na_iter_func_t iter_nan)
+cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
+                      ndfunc_t *ndf, cumo_na_iter_func_t iter_nan)
 {
     long narg;
     VALUE axes;
@@ -1589,13 +1589,13 @@ nary_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
         }
     }
 
-    return na_reduce_options((narg)?axes:Qnil, opts, naryc, naryv, ndf);
+    return cumo_na_reduce_options((narg)?axes:Qnil, opts, naryc, naryv, ndf);
 }
 
 /*
   Return true if column major.
 */
-static VALUE na_column_major_p( VALUE self )
+static VALUE cumo_na_column_major_p( VALUE self )
 {
     if (TEST_COLUMN_MAJOR(self))
 	return Qtrue;
@@ -1606,7 +1606,7 @@ static VALUE na_column_major_p( VALUE self )
 /*
   Return true if row major.
 */
-static VALUE na_row_major_p( VALUE self )
+static VALUE cumo_na_row_major_p( VALUE self )
 {
     if (TEST_ROW_MAJOR(self))
 	return Qtrue;
@@ -1618,7 +1618,7 @@ static VALUE na_row_major_p( VALUE self )
 /*
   Return true if byte swapped.
 */
-static VALUE na_byte_swapped_p( VALUE self )
+static VALUE cumo_na_byte_swapped_p( VALUE self )
 {
     if (TEST_BYTE_SWAPPED(self))
       return Qtrue;
@@ -1628,7 +1628,7 @@ static VALUE na_byte_swapped_p( VALUE self )
 /*
   Return true if not byte swapped.
 */
-static VALUE na_host_order_p( VALUE self )
+static VALUE cumo_na_host_order_p( VALUE self )
 {
     if (TEST_BYTE_SWAPPED(self))
       return Qfalse;
@@ -1640,10 +1640,10 @@ static VALUE na_host_order_p( VALUE self )
   Returns view of narray with inplace flagged.
   @return [Cumo::NArray] view of narray with inplace flag.
 */
-static VALUE na_inplace( VALUE self )
+static VALUE cumo_na_inplace( VALUE self )
 {
     VALUE view = self;
-    view = na_make_view(self);
+    view = cumo_na_make_view(self);
     SET_INPLACE(view);
     return view;
 }
@@ -1652,7 +1652,7 @@ static VALUE na_inplace( VALUE self )
   Set inplace flag to self.
   @return [Cumo::NArray] self
 */
-static VALUE na_inplace_bang( VALUE self )
+static VALUE cumo_na_inplace_bang( VALUE self )
 {
     SET_INPLACE(self);
     return self;
@@ -1661,7 +1661,7 @@ static VALUE na_inplace_bang( VALUE self )
 /*
   Return true if inplace flagged.
 */
-static VALUE na_inplace_p( VALUE self )
+static VALUE cumo_na_inplace_p( VALUE self )
 {
     if (TEST_INPLACE(self))
         return Qtrue;
@@ -1673,30 +1673,30 @@ static VALUE na_inplace_p( VALUE self )
   Unset inplace flag to self.
   @return [Cumo::NArray] self
 */
-static VALUE na_out_of_place_bang( VALUE self )
+static VALUE cumo_na_out_of_place_bang( VALUE self )
 {
     UNSET_INPLACE(self);
     return self;
 }
 
-int na_debug_flag=0;
+int cumo_na_debug_flag=0;
 
-static VALUE na_debug_set(VALUE mod, VALUE flag)
+static VALUE cumo_na_debug_set(VALUE mod, VALUE flag)
 {
-    na_debug_flag = RTEST(flag);
+    cumo_na_debug_flag = RTEST(flag);
     return Qnil;
 }
 
-static double na_profile_value=0;
+static double cumo_na_profile_value=0;
 
-static VALUE na_profile(VALUE mod)
+static VALUE cumo_na_profile(VALUE mod)
 {
-    return rb_float_new(na_profile_value);
+    return rb_float_new(cumo_na_profile_value);
 }
 
-static VALUE na_profile_set(VALUE mod, VALUE val)
+static VALUE cumo_na_profile_set(VALUE mod, VALUE val)
 {
-    na_profile_value = NUM2DBL(val);
+    cumo_na_profile_value = NUM2DBL(val);
     return val;
 }
 
@@ -1706,10 +1706,10 @@ static VALUE na_profile_set(VALUE mod, VALUE val)
   @overload inspect_rows
   @return [Integer or nil]  the number of rows.
 */
-static VALUE na_inspect_rows(VALUE mod)
+static VALUE cumo_na_inspect_rows(VALUE mod)
 {
-    if (cumo_na_inspect_rows > 0) {
-        return INT2NUM(cumo_na_inspect_rows);
+    if (cumo_na_inspect_rows_ > 0) {
+        return INT2NUM(cumo_na_inspect_rows_);
     } else {
         return Qnil;
     }
@@ -1721,12 +1721,12 @@ static VALUE na_inspect_rows(VALUE mod)
   @param [Integer or nil] rows  the number of rows
   @return [nil]
 */
-static VALUE na_inspect_rows_set(VALUE mod, VALUE num)
+static VALUE cumo_na_inspect_rows_set(VALUE mod, VALUE num)
 {
     if (RTEST(num)) {
-        cumo_na_inspect_rows = NUM2INT(num);
+        cumo_na_inspect_rows_ = NUM2INT(num);
     } else {
-        cumo_na_inspect_rows = 0;
+        cumo_na_inspect_rows_ = 0;
     }
     return Qnil;
 }
@@ -1736,10 +1736,10 @@ static VALUE na_inspect_rows_set(VALUE mod, VALUE num)
   @overload inspect_cols
   @return [Integer or nil]  the number of cols.
 */
-static VALUE na_inspect_cols(VALUE mod)
+static VALUE cumo_na_inspect_cols(VALUE mod)
 {
-    if (cumo_na_inspect_cols > 0) {
-        return INT2NUM(cumo_na_inspect_cols);
+    if (cumo_na_inspect_cols_ > 0) {
+        return INT2NUM(cumo_na_inspect_cols_);
     } else {
         return Qnil;
     }
@@ -1751,12 +1751,12 @@ static VALUE na_inspect_cols(VALUE mod)
   @param [Integer or nil] cols  the number of cols
   @return [nil]
 */
-static VALUE na_inspect_cols_set(VALUE mod, VALUE num)
+static VALUE cumo_na_inspect_cols_set(VALUE mod, VALUE num)
 {
     if (RTEST(num)) {
-        cumo_na_inspect_cols = NUM2INT(num);
+        cumo_na_inspect_cols_ = NUM2INT(num);
     } else {
-        cumo_na_inspect_cols = 0;
+        cumo_na_inspect_cols_ = 0;
     }
     return Qnil;
 }
@@ -1770,7 +1770,7 @@ static VALUE na_inspect_cols_set(VALUE mod, VALUE num)
   @return [Boolean] true if self and other is equal.
 */
 static VALUE
-na_equal(VALUE self, volatile VALUE other)
+cumo_na_equal(VALUE self, volatile VALUE other)
 {
     volatile VALUE vbool;
     narray_t *na1, *na2;
@@ -1845,79 +1845,79 @@ Init_cumo_narray()
 
     rb_define_const(cNArray, "VERSION", rb_str_new2(CUMO_VERSION));
 
-    nary_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
-    nary_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);
-    nary_eOperationError = rb_define_class_under(cNArray, "OperationError", rb_eStandardError);
-    nary_eDimensionError = rb_define_class_under(cNArray, "DimensionError", rb_eStandardError);
-    nary_eValueError = rb_define_class_under(cNArray, "ValueError", rb_eStandardError);
+    cumo_na_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
+    cumo_na_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);
+    cumo_na_eOperationError = rb_define_class_under(cNArray, "OperationError", rb_eStandardError);
+    cumo_na_eDimensionError = rb_define_class_under(cNArray, "DimensionError", rb_eStandardError);
+    cumo_na_eValueError = rb_define_class_under(cNArray, "ValueError", rb_eStandardError);
 
-    rb_define_singleton_method(cNArray, "debug=", na_debug_set, 1);
-    rb_define_singleton_method(cNArray, "profile", na_profile, 0);
-    rb_define_singleton_method(cNArray, "profile=", na_profile_set, 1);
+    rb_define_singleton_method(cNArray, "debug=", cumo_na_debug_set, 1);
+    rb_define_singleton_method(cNArray, "profile", cumo_na_profile, 0);
+    rb_define_singleton_method(cNArray, "profile=", cumo_na_profile_set, 1);
 
-    rb_define_singleton_method(cNArray, "inspect_rows", na_inspect_rows, 0);
-    rb_define_singleton_method(cNArray, "inspect_rows=", na_inspect_rows_set, 1);
-    rb_define_singleton_method(cNArray, "inspect_cols", na_inspect_cols, 0);
-    rb_define_singleton_method(cNArray, "inspect_cols=", na_inspect_cols_set, 1);
+    rb_define_singleton_method(cNArray, "inspect_rows", cumo_na_inspect_rows, 0);
+    rb_define_singleton_method(cNArray, "inspect_rows=", cumo_na_inspect_rows_set, 1);
+    rb_define_singleton_method(cNArray, "inspect_cols", cumo_na_inspect_cols, 0);
+    rb_define_singleton_method(cNArray, "inspect_cols=", cumo_na_inspect_cols_set, 1);
 
     /* Ruby allocation framework  */
     rb_undef_alloc_func(cNArray);
-    rb_define_method(cNArray, "initialize", na_initialize, -2);
-    rb_define_method(cNArray, "initialize_copy", na_initialize_copy, 1);
+    rb_define_method(cNArray, "initialize", cumo_na_initialize, -2);
+    rb_define_method(cNArray, "initialize_copy", cumo_na_initialize_copy, 1);
 
     rb_define_method(cNArray, "free", cumo_na_free_data, 0);
 
-    rb_define_singleton_method(cNArray, "zeros", na_s_zeros, -1);
-    rb_define_singleton_method(cNArray, "ones", na_s_ones, -1);
-    rb_define_singleton_method(cNArray, "linspace", na_s_linspace, -1);
-    rb_define_singleton_method(cNArray, "logspace", na_s_logspace, -1);
-    rb_define_singleton_method(cNArray, "eye", na_s_eye, -1);
+    rb_define_singleton_method(cNArray, "zeros", cumo_na_s_zeros, -1);
+    rb_define_singleton_method(cNArray, "ones", cumo_na_s_ones, -1);
+    rb_define_singleton_method(cNArray, "linspace", cumo_na_s_linspace, -1);
+    rb_define_singleton_method(cNArray, "logspace", cumo_na_s_logspace, -1);
+    rb_define_singleton_method(cNArray, "eye", cumo_na_s_eye, -1);
 
-    rb_define_method(cNArray, "size", na_size, 0);
+    rb_define_method(cNArray, "size", cumo_na_size, 0);
     rb_define_alias (cNArray, "length","size");
     rb_define_alias (cNArray, "total","size");
-    rb_define_method(cNArray, "shape", na_shape, 0);
-    rb_define_method(cNArray, "ndim", na_ndim,0);
+    rb_define_method(cNArray, "shape", cumo_na_shape, 0);
+    rb_define_method(cNArray, "ndim", cumo_na_ndim,0);
     rb_define_alias (cNArray, "rank","ndim");
-    rb_define_method(cNArray, "empty?", na_empty_p, 0);
+    rb_define_method(cNArray, "empty?", cumo_na_empty_p, 0);
 
-    rb_define_method(cNArray, "debug_info", nary_debug_info, 0);
+    rb_define_method(cNArray, "debug_info", cumo_na_debug_info, 0);
 
-    rb_define_method(cNArray, "contiguous?", na_check_contiguous, 0);
+    rb_define_method(cNArray, "contiguous?", cumo_na_check_contiguous, 0);
 
-    rb_define_method(cNArray, "view", na_make_view, 0);
-    rb_define_method(cNArray, "expand_dims", na_expand_dims, 1);
-    rb_define_method(cNArray, "reverse", nary_reverse, -1);
+    rb_define_method(cNArray, "view", cumo_na_make_view, 0);
+    rb_define_method(cNArray, "expand_dims", cumo_na_expand_dims, 1);
+    rb_define_method(cNArray, "reverse", cumo_na_reverse, -1);
 
     rb_define_singleton_method(cNArray, "upcast", cumo_na_upcast, 1);
-    rb_define_singleton_method(cNArray, "byte_size", nary_s_byte_size, 0);
+    rb_define_singleton_method(cNArray, "byte_size", cumo_na_s_byte_size, 0);
 
-    rb_define_singleton_method(cNArray, "from_binary", nary_s_from_binary, -1);
+    rb_define_singleton_method(cNArray, "from_binary", cumo_na_s_from_binary, -1);
     rb_define_alias (rb_singleton_class(cNArray), "from_string", "from_binary");
-    rb_define_method(cNArray, "store_binary",  nary_store_binary, -1);
-    rb_define_method(cNArray, "to_binary",  nary_to_binary, 0);
+    rb_define_method(cNArray, "store_binary",  cumo_na_store_binary, -1);
+    rb_define_method(cNArray, "to_binary",  cumo_na_to_binary, 0);
     rb_define_alias (cNArray, "to_string", "to_binary");
-    rb_define_method(cNArray, "marshal_dump",  nary_marshal_dump, 0);
-    rb_define_method(cNArray, "marshal_load",  nary_marshal_load, 1);
+    rb_define_method(cNArray, "marshal_dump",  cumo_na_marshal_dump, 0);
+    rb_define_method(cNArray, "marshal_load",  cumo_na_marshal_load, 1);
 
-    rb_define_method(cNArray, "byte_size",  nary_byte_size, 0);
+    rb_define_method(cNArray, "byte_size",  cumo_na_byte_size, 0);
 
-    rb_define_method(cNArray, "cast_to", nary_cast_to, 1);
+    rb_define_method(cNArray, "cast_to", cumo_na_cast_to, 1);
 
-    rb_define_method(cNArray, "coerce", nary_coerce, 1);
+    rb_define_method(cNArray, "coerce", cumo_na_coerce, 1);
 
-    rb_define_method(cNArray, "column_major?", na_column_major_p, 0);
-    rb_define_method(cNArray, "row_major?", na_row_major_p, 0);
-    rb_define_method(cNArray, "byte_swapped?", na_byte_swapped_p, 0);
-    rb_define_method(cNArray, "host_order?", na_host_order_p, 0);
+    rb_define_method(cNArray, "column_major?", cumo_na_column_major_p, 0);
+    rb_define_method(cNArray, "row_major?", cumo_na_row_major_p, 0);
+    rb_define_method(cNArray, "byte_swapped?", cumo_na_byte_swapped_p, 0);
+    rb_define_method(cNArray, "host_order?", cumo_na_host_order_p, 0);
 
-    rb_define_method(cNArray, "inplace", na_inplace, 0);
-    rb_define_method(cNArray, "inplace?", na_inplace_p, 0);
-    rb_define_method(cNArray, "inplace!", na_inplace_bang, 0);
-    rb_define_method(cNArray, "out_of_place!", na_out_of_place_bang, 0);
+    rb_define_method(cNArray, "inplace", cumo_na_inplace, 0);
+    rb_define_method(cNArray, "inplace?", cumo_na_inplace_p, 0);
+    rb_define_method(cNArray, "inplace!", cumo_na_inplace_bang, 0);
+    rb_define_method(cNArray, "out_of_place!", cumo_na_out_of_place_bang, 0);
     rb_define_alias (cNArray, "not_inplace!", "out_of_place!");
 
-    rb_define_method(cNArray, "==", na_equal, 1);
+    rb_define_method(cNArray, "==", cumo_na_equal, 1);
 
     id_allocate = rb_intern("allocate");
     id_contiguous_stride = rb_intern(CONTIGUOUS_STRIDE);

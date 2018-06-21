@@ -2,7 +2,7 @@
    [64,32].each do |i| %>
 #define idx_t int<%=i%>_t
 static void
-<%=type_name%>_index<%=i%>_qsort<%=j%>(na_loop_t *const lp)
+<%=type_name%>_index<%=i%>_qsort<%=j%>(cumo_na_loop_t *const lp)
 {
     size_t   i, n, idx;
     char    *d_ptr, *i_ptr, *o_ptr;
@@ -75,26 +75,26 @@ static VALUE
     if (na->size > (~(u_int32_t)0)) {
         ain[1].type =
         aout[0].type = cumo_cInt64;
-        idx = nary_new(cumo_cInt64, na->ndim, na->shape);
+        idx = cumo_na_new(cumo_cInt64, na->ndim, na->shape);
        <% if is_float %>
          ndf.func = <%=type_name%>_index64_qsort_ignan;
-         reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf,
+         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf,
                                       <%=type_name%>_index64_qsort_prnan);
        <% else %>
          ndf.func = <%=type_name%>_index64_qsort;
-         reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
        <% end %>
     } else {
         ain[1].type =
         aout[0].type = cumo_cInt32;
-        idx = nary_new(cumo_cInt32, na->ndim, na->shape);
+        idx = cumo_na_new(cumo_cInt32, na->ndim, na->shape);
        <% if is_float %>
          ndf.func = <%=type_name%>_index32_qsort_ignan;
-         reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf,
+         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf,
                                       <%=type_name%>_index32_qsort_prnan);
        <% else %>
          ndf.func = <%=type_name%>_index32_qsort;
-         reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
        <% end %>
     }
     rb_funcall(idx, rb_intern("seq"), 0);
@@ -105,7 +105,7 @@ static VALUE
     SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cudaDeviceSynchronize();
 
-    res = na_ndloop3(&ndf, buf, 3, self, idx, reduce);
+    res = cumo_na_ndloop3(&ndf, buf, 3, self, idx, reduce);
     rb_free_tmp_buffer(&tmp);
     return res;
 }

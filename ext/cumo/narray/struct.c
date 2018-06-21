@@ -71,10 +71,10 @@ nst_definition(VALUE nst, VALUE idx)
 
 
 
-void na_copy_array_structure(VALUE self, VALUE view);
+void cumo_na_copy_array_structure(VALUE self, VALUE view);
 
 static VALUE
-na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
+cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
 {
     size_t i, n;
     int j, k, ndim;
@@ -104,7 +104,7 @@ na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
         }
         klass = CLASS_OF(dtype);
         stridx = ALLOC_N(stridx_t, ndim);
-        stride = na_dtype_elmsz(klass);
+        stride = cumo_na_dtype_element_stride(klass);
         for (j=ndim,k=nt->ndim; k; ) {
             SDX_SET_STRIDE(stridx[--j],stride);
             stride *= nt->shape[--k];
@@ -124,16 +124,16 @@ na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
         stridx = ALLOC_N(stridx_t, ndim);
     }
 
-    view = na_s_allocate_view(klass);
-    na_copy_flags(self, view);
+    view = cumo_na_s_allocate_view(klass);
+    cumo_na_copy_flags(self, view);
     GetNArrayView(view, na2);
-    na_setup_shape((narray_t*)na2, ndim, shape);
+    cumo_na_setup_shape((narray_t*)na2, ndim, shape);
     na2->stridx = stridx;
 
     switch(na->type) {
     case NARRAY_DATA_T:
     case NARRAY_FILEMAP_T:
-        stride = nary_element_stride(self);
+        stride = cumo_na_element_stride(self);
         for (j=na->ndim; j--;) {
             SDX_SET_STRIDE(na2->stridx[j], stride);
             stride *= na->shape[j];
@@ -182,7 +182,7 @@ nst_field_view(VALUE self, VALUE idx)
     }
     type = RARRAY_AREF(def,1);
     ofs  = RARRAY_AREF(def,2);
-    return na_make_view_struct(self, type, ofs);
+    return cumo_na_make_view_struct(self, type, ofs);
 }
 
 static VALUE
@@ -340,7 +340,7 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
                 rb_raise(rb_eArgError,"array is empty");
             }
             shape = ALLOCA_N(size_t, ndim);
-            na_array_to_internal_shape(Qnil, argv[i], shape);
+            cumo_na_array_to_internal_shape(Qnil, argv[i], shape);
             break;
         }
     }
@@ -354,11 +354,11 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
         ndim = na->ndim;
         shape = na->shape;
     }
-    type = nary_view_new(type,ndim,shape);
+    type = cumo_na_view_new(type,ndim,shape);
     GetNArrayView(type,nt);
 
     nt->stridx = ALLOC_N(stridx_t,ndim);
-    stride = na_dtype_elmsz(CLASS_OF(type));
+    stride = cumo_na_dtype_element_stride(CLASS_OF(type));
     for (j=ndim; j--; ) {
         SDX_SET_STRIDE(nt->stridx[j], stride);
         stride *= shape[j];
@@ -383,7 +383,7 @@ nst_extract(VALUE self)
 
 
 static void
-iter_nstruct_to_a(na_loop_t *const lp)
+iter_nstruct_to_a(cumo_na_loop_t *const lp)
 {
     long    i, len;
     VALUE   opt, types, defs, def;
@@ -417,7 +417,7 @@ iter_nstruct_to_a(na_loop_t *const lp)
 }
 
 static VALUE
-na_original_data(VALUE self)
+cumo_na_original_data(VALUE self)
 {
     narray_t *na;
     narray_view_t *nv;
@@ -446,17 +446,17 @@ nst_create_member_views(VALUE self)
         def  = RARRAY_AREF(defs,i);
         type = RARRAY_AREF(def,1);
         //ofst = RARRAY_AREF(def,2);
-        elmt = na_make_view(type);
+        elmt = cumo_na_make_view(type);
         rb_ary_push(types, elmt);
         //rb_ary_push(ofsts, ofst);
         GetNArrayView(elmt,ne);
-        ne->data = na_original_data(self);
+        ne->data = cumo_na_original_data(self);
     }
     return rb_assoc_new(types,defs);
 }
 
 static VALUE
-nary_struct_to_a(VALUE self)
+cumo_na_struct_to_a(VALUE self)
 {
     volatile VALUE opt;
     ndfunc_arg_in_t ain[3] = {{Qnil,0},{sym_loop_opt},{sym_option}};
@@ -464,7 +464,7 @@ nary_struct_to_a(VALUE self)
     ndfunc_t ndf = {iter_nstruct_to_a, NO_LOOP, 3, 1, ain, aout};
 
     opt = nst_create_member_views(self);
-    return na_ndloop_cast_narray_to_rarray(&ndf, self, opt);
+    return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, opt);
 }
 
 
@@ -558,14 +558,14 @@ nst_check_compatibility(VALUE nst, VALUE ary)
         } else {
             // multi-dimension member
             //volatile VALUE vnc;
-            //na_compose_t *nc;
+            //cumo_na_compose_t *nc;
             VALUE vnc;
             narray_t *nc;
             int j;
 
-            //vnc = na_ary_composition(item);
-            //Data_Get_Struct(vnc, na_compose_t, nc);
-            vnc = na_s_new_like(cNArray, item);
+            //vnc = cumo_na_ary_composition(item);
+            //Data_Get_Struct(vnc, cumo_na_compose_t, nc);
+            vnc = cumo_na_s_new_like(cNArray, item);
             GetNArray(vnc,nc);
             if (nt->ndim != nc->ndim) {
                 return Qfalse;
@@ -583,11 +583,11 @@ nst_check_compatibility(VALUE nst, VALUE ary)
 */
 
 
-VALUE na_ary_composition_for_struct(VALUE nstruct, VALUE ary);
+VALUE cumo_na_ary_composition_for_struct(VALUE nstruct, VALUE ary);
 
 // ------
 static void
-iter_nstruct_from_a(na_loop_t *const lp)
+iter_nstruct_from_a(cumo_na_loop_t *const lp)
 {
     long  i, len;
     VALUE ary;
@@ -619,12 +619,12 @@ iter_nstruct_from_a(na_loop_t *const lp)
 }
 
 static VALUE
-nary_struct_cast_array(VALUE klass, VALUE rary)
+cumo_na_struct_cast_array(VALUE klass, VALUE rary)
 {
     //volatile VALUE vnc, nary;
     VALUE nary;
     narray_t *na;
-    //na_compose_t *nc;
+    //cumo_na_compose_t *nc;
     VALUE opt;
     ndfunc_arg_in_t ain[3] = {{OVERWRITE,0},{rb_cArray,0},{sym_option}};
     ndfunc_t ndf = {iter_nstruct_from_a, NO_LOOP, 3, 0, ain, 0};
@@ -632,31 +632,31 @@ nary_struct_cast_array(VALUE klass, VALUE rary)
     //fprintf(stderr,"rary:");rb_p(rary);
     //fprintf(stderr,"class_of(rary):");rb_p(CLASS_OF(rary));
 
-    //vnc = na_ary_composition_for_struct(klass, rary);
-    //Data_Get_Struct(vnc, na_compose_t, nc);
-    //nary = nary_new(klass, nc->ndim, nc->shape);
-    nary = na_s_new_like(klass, rary);
+    //vnc = cumo_na_ary_composition_for_struct(klass, rary);
+    //Data_Get_Struct(vnc, cumo_na_compose_t, nc);
+    //nary = cumo_na_new(klass, nc->ndim, nc->shape);
+    nary = cumo_na_s_new_like(klass, rary);
     GetNArray(nary,na);
     //fprintf(stderr,"na->size=%lu\n",na->size);
     //fprintf(stderr,"na->ndim=%d\n",na->ndim);
     if (na->size>0) {
         opt = nst_create_member_views(nary);
         rb_funcall(nary, rb_intern("allocate"), 0);
-        na_ndloop_store_rarray2(&ndf, nary, rary, opt);
+        cumo_na_ndloop_store_rarray2(&ndf, nary, rary, opt);
     }
     return nary;
 }
 
 static inline VALUE
-nary_struct_s_cast(VALUE klass, VALUE rary)
+cumo_na_struct_s_cast(VALUE klass, VALUE rary)
 {
-    return nary_struct_cast_array(klass, rary);
+    return cumo_na_struct_cast_array(klass, rary);
 }
 
 
 
 static void
-iter_struct_store_struct(na_loop_t *const lp)
+iter_struct_store_struct(cumo_na_loop_t *const lp)
 {
     size_t  i, s1, s2;
     char   *p1, *p2;
@@ -701,12 +701,12 @@ iter_struct_store_struct(na_loop_t *const lp)
 
 
 static VALUE
-nary_struct_store_struct(VALUE self, VALUE obj)
+cumo_na_struct_store_struct(VALUE self, VALUE obj)
 {
     ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{Qnil,0}};
     ndfunc_t ndf = {iter_struct_store_struct, FULL_LOOP, 2, 0, ain, 0};
 
-    na_ndloop(&ndf, 2, self, obj);
+    cumo_na_ndloop(&ndf, 2, self, obj);
     return self;
 }
 
@@ -714,9 +714,9 @@ nary_struct_store_struct(VALUE self, VALUE obj)
 
 
 static inline VALUE
-nary_struct_store_array(VALUE self, VALUE obj)
+cumo_na_struct_store_array(VALUE self, VALUE obj)
 {
-    return nary_struct_store_struct(self, nary_struct_cast_array(CLASS_OF(self),obj));
+    return cumo_na_struct_store_struct(self, cumo_na_struct_cast_array(CLASS_OF(self),obj));
 }
 
 /*
@@ -726,17 +726,17 @@ nary_struct_store_array(VALUE self, VALUE obj)
   @return [Cumo::Struct] self
 */
 static VALUE
-nary_struct_store(VALUE self, VALUE obj)
+cumo_na_struct_store(VALUE self, VALUE obj)
 {
     if (TYPE(obj)==T_ARRAY) {
-        nary_struct_store_array(self,obj);
+        cumo_na_struct_store_array(self,obj);
         return self;
     }
     if (CLASS_OF(self) == CLASS_OF(obj)) {
-        nary_struct_store_struct(self,obj);
+        cumo_na_struct_store_struct(self,obj);
         return self;
     }
-    rb_raise(nary_eCastError, "unknown conversion from %s to %s",
+    rb_raise(cumo_na_eCastError, "unknown conversion from %s to %s",
              rb_class2name(CLASS_OF(obj)),
              rb_class2name(CLASS_OF(self)));
     return self;
@@ -745,7 +745,7 @@ nary_struct_store(VALUE self, VALUE obj)
 
 
 static VALUE
-//iter_struct_inspect(na_loop_t *const lp)
+//iter_struct_inspect(cumo_na_loop_t *const lp)
 iter_struct_inspect(char *ptr, size_t pos, VALUE opt)
 {
     VALUE   types, defs, def, name, elmt, vary, v, x;
@@ -787,11 +787,11 @@ iter_struct_inspect(char *ptr, size_t pos, VALUE opt)
   @return [String]
 */
 static VALUE
-nary_struct_inspect(VALUE ary)
+cumo_na_struct_inspect(VALUE ary)
 {
     VALUE opt;
     opt = nst_create_member_views(ary);
-    return na_ndloop_inspect(ary, iter_struct_inspect, opt);
+    return cumo_na_ndloop_inspect(ary, iter_struct_inspect, opt);
 }
 
 
@@ -833,7 +833,7 @@ NST_TYPEDEF(scomplex,cumo_cSComplex)
     rb_define_alias(rb_singleton_class(klass),name1,name2)
 
 void
-Init_cumo_nary_struct()
+Init_cumo_na_struct()
 {
     cT = rb_define_class_under(mCumo, "Struct", cumo_cNArray);
     //cNStMember = rb_define_class_under(cT, "Member", rb_cObject);
@@ -868,18 +868,18 @@ Init_cumo_nary_struct()
     rb_define_method(cT, "extract", nst_extract, 0);
     rb_define_method(cT, "method_missing", nst_method_missing, -1);
 
-    //rb_define_method(cT, "fill", nary_nstruct_fill, 1);
+    //rb_define_method(cT, "fill", cumo_na_nstruct_fill, 1);
 
-    //rb_define_method(cT, "debug_print", nary_nstruct_debug_print, 0);
+    //rb_define_method(cT, "debug_print", cumo_na_nstruct_debug_print, 0);
 
-    rb_define_method(cT, "to_a", nary_struct_to_a, 0);
+    rb_define_method(cT, "to_a", cumo_na_struct_to_a, 0);
 
-    rb_define_method(cT, "store", nary_struct_store, 1);
+    rb_define_method(cT, "store", cumo_na_struct_store, 1);
 
-    rb_define_method(cT, "inspect", nary_struct_inspect, 0);
+    rb_define_method(cT, "inspect", cumo_na_struct_inspect, 0);
 
-    rb_define_singleton_method(cT, "cast", nary_struct_s_cast, 1);
-    rb_define_singleton_method(cT, "[]", nary_struct_s_cast, -2);
+    rb_define_singleton_method(cT, "cast", cumo_na_struct_s_cast, 1);
+    rb_define_singleton_method(cT, "[]", cumo_na_struct_s_cast, -2);
 
     //rb_define_method(cT, "initialize", rb_struct_initialize, -2);
     //rb_define_method(cT, "initialize_copy", rb_struct_init_copy, 1);

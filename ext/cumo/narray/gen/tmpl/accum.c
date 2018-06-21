@@ -5,12 +5,12 @@
 //<% unless indexer_ops.include?(name) %>
 void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(size_t n, char *p1, ssize_t s1, char *p2);
 <% else %>
-void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(na_reduction_arg_t* arg);
+void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(cumo_na_reduction_arg_t* arg);
 <% end %>
 <% end %>
 
 static void
-<%=c_iter%><%=nan%>(na_loop_t *const lp)
+<%=c_iter%><%=nan%>(cumo_na_loop_t *const lp)
 {
     <% if type_name == 'robject' || name == 'kahan_sum' || nan == '_nan' %>
     {
@@ -41,7 +41,7 @@ static void
     {
         // TODO(sonots): How to compute Kahan summation algorithm in parallel?
         // TODO(sonots): Implement nan CUDA version
-        na_reduction_arg_t arg = na_make_reduction_arg(lp);
+        cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp);
         cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(&arg);
     }
     <% end %>
@@ -73,11 +73,11 @@ static VALUE
     <% end %>
 
   <% if is_float %>
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);
   <% else %>
-    reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    v =  na_ndloop(&ndf, 2, self, reduce);
+    v =  cumo_na_ndloop(&ndf, 2, self, reduce);
   <% if result_class == "cT" %>
     return <%=type_name%>_extract(v);
   <% else %>

@@ -83,36 +83,36 @@ extern cublasSideMode_t cumo_cuda_cublas_option_side(VALUE side);
 // Error Class ??
 #define CHECK_DIM_GE(na,nd)                                     \
     if ((na)->ndim<(nd)) {                                      \
-        rb_raise(nary_eShapeError,                              \
+        rb_raise(cumo_na_eShapeError,                              \
                  "n-dimension=%d, but >=%d is expected",        \
                  (na)->ndim, (nd));                             \
     }
 
 #define CHECK_DIM_EQ(na1,nd)                                    \
     if ((na1)->ndim != (nd)) {                                  \
-        rb_raise(nary_eShapeError,                              \
+        rb_raise(cumo_na_eShapeError,                              \
                  "dimention mismatch: %d != %d",                \
                  (na1)->ndim, (nd));                            \
     }
 
 #define CHECK_SQUARE(name,na)                                           \
     if ((na)->shape[(na)->ndim-1] != (na)->shape[(na)->ndim-2]) {       \
-        rb_raise(nary_eShapeError,"%s is not square matrix",name);      \
+        rb_raise(cumo_na_eShapeError,"%s is not square matrix",name);      \
     }
 
 #define CHECK_SIZE_GE(na,sz)                                    \
     if ((na)->size < (size_t)(sz)) {                            \
-        rb_raise(nary_eShapeError,                              \
+        rb_raise(cumo_na_eShapeError,                              \
                  "NArray size must be >= %"SZF"u",(size_t)(sz));\
     }
 #define CHECK_NON_EMPTY(na)                                     \
     if ((na)->size==0) {                                        \
-        rb_raise(nary_eShapeError,"empty NArray");              \
+        rb_raise(cumo_na_eShapeError,"empty NArray");              \
     }
 
 #define CHECK_SIZE_EQ(n,m)                                      \
     if ((n)!=(m)) {                                             \
-        rb_raise(nary_eShapeError,                              \
+        rb_raise(cumo_na_eShapeError,                              \
                  "size mismatch: %"SZF"d != %"SZF"d",           \
                  (size_t)(n),(size_t)(m));                      \
     }
@@ -127,7 +127,7 @@ extern cublasSideMode_t cumo_cuda_cublas_option_side(VALUE side);
 
 #define CHECK_INT_EQ(sm,m,sn,n)                          \
     if ((m) != (n)) {                                    \
-        rb_raise(nary_eShapeError,                       \
+        rb_raise(cumo_na_eShapeError,                       \
                  "%s must be == %s: %s=%d %s=%d",        \
                  sm,sn,sm,m,sn,n);                       \
     }
@@ -135,7 +135,7 @@ extern cublasSideMode_t cumo_cuda_cublas_option_side(VALUE side);
 // Error Class ??
 #define CHECK_LEADING_GE(sld,ld,sn,n)                    \
     if ((ld) < (n)) {                                    \
-        rb_raise(nary_eShapeError,                       \
+        rb_raise(cumo_na_eShapeError,                       \
                  "%s must be >= max(%s,1): %s=%d %s=%d", \
                  sld,sn,sld,ld,sn,n);                    \
     }
@@ -144,7 +144,7 @@ extern cublasSideMode_t cumo_cuda_cublas_option_side(VALUE side);
     {                                                   \
         if (CLASS_OF(a) == (T)) {                       \
             if (!TEST_INPLACE(a)) {                     \
-                a = na_copy(a);                         \
+                a = cumo_na_copy(a);                         \
             }                                           \
         } else {                                        \
             a = rb_funcall(T,rb_intern("cast"),1,a);    \

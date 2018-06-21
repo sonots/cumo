@@ -7,7 +7,7 @@ void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(size_t p1, char *p2, BIT_D
 void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(size_t p1, char *p2, BIT_DIGIT *a1, ssize_t s1, ssize_t s2, uint64_t n);
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     BIT_DIGIT *a1;
@@ -57,8 +57,8 @@ static VALUE
         ndfunc_arg_out_t aout[1] = {{cumo_cUInt64,0}};
         ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 3, 1, ain, aout };
 
-        reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
-        v = na_ndloop(&ndf, 3, self, reduce, INT2FIX(0));
+        reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+        v = cumo_na_ndloop(&ndf, 3, self, reduce, INT2FIX(0));
         return v;
     }
 }

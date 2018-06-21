@@ -1,5 +1,5 @@
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t   i;
     BIT_DIGIT *a1, x=0;
@@ -43,6 +43,6 @@ static VALUE
     ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 1,0, ain,0};
 
-    na_ndloop(&ndf, 1, self);
+    cumo_na_ndloop(&ndf, 1, self);
     return self;
 }

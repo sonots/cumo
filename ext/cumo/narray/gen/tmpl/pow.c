@@ -4,7 +4,7 @@ void <%="cumo_#{c_iter}_int32_kernel_launch"%>(char *p1, char *p2, char *p3, ssi
 <% end %>
 
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     char    *p1, *p2, *p3;
@@ -30,7 +30,7 @@ static void
 }
 
 static void
-<%=c_iter%>_int32(na_loop_t *const lp)
+<%=c_iter%>_int32(cumo_na_loop_t *const lp)
 {
     size_t  i;
     char   *p1, *p2, *p3;
@@ -67,9 +67,9 @@ static VALUE
 
     // fixme : use na.integer?
     if (FIXNUM_P(other) || rb_obj_is_kind_of(other,cumo_cInt32)) {
-        return na_ndloop(&ndf_i, 2, self, other);
+        return cumo_na_ndloop(&ndf_i, 2, self, other);
     } else {
-        return na_ndloop(&ndf, 2, self, other);
+        return cumo_na_ndloop(&ndf, 2, self, other);
     }
 }
 
@@ -86,7 +86,7 @@ static VALUE
     return <%=c_func%>_self(self,other);
     <% else %>
     VALUE klass, v;
-    klass = na_upcast(CLASS_OF(self),CLASS_OF(other));
+    klass = cumo_na_upcast(CLASS_OF(self),CLASS_OF(other));
     if (klass==cT) {
         return <%=c_func%>_self(self,other);
     } else {

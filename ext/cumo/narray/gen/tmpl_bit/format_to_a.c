@@ -1,5 +1,5 @@
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
     BIT_DIGIT *a1, x=0;
@@ -47,5 +47,5 @@ static VALUE
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     rb_scan_args(argc, argv, "01", &fmt);
-    return na_ndloop_cast_narray_to_rarray(&ndf, self, fmt);
+    return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, fmt);
 }

@@ -20,7 +20,7 @@ void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(char *p1, char* p2, cha
 <% end %>
 
 static void
-<%=c_iter%><%=nan%>(na_loop_t *const lp)
+<%=c_iter%><%=nan%>(cumo_na_loop_t *const lp)
 {
     size_t   n;
     char    *p1, *p2, *p3;
@@ -75,5 +75,5 @@ static VALUE
     rb_scan_args(argc, argv, "20", &a1, &a2);
     <% end %>
 
-    return na_ndloop(&ndf, 2, a1, a2);
+    return cumo_na_ndloop(&ndf, 2, a1, a2);
 }

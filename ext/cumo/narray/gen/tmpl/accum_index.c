@@ -2,12 +2,12 @@
 
 <%   [64,32].each do |i| %>
 <% unless type_name == 'robject' %>
-void cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(na_reduction_arg_t* arg);
+void cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg);
 <% end %>
 
 #define idx_t int<%=i%>_t
 static void
-<%=c_iter%>_index<%=i%><%=nan%>(na_loop_t *const lp)
+<%=c_iter%>_index<%=i%><%=nan%>(cumo_na_loop_t *const lp)
 {
     // TODO(sonots): Support nan in CUDA
     <% if type_name == 'robject' || nan == '_nan' %>
@@ -27,7 +27,7 @@ static void
     }
     <% else %>
     {
-        na_reduction_arg_t arg = na_make_reduction_arg(lp);
+        cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp);
         cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(&arg);
     }
     <% end %>
@@ -65,26 +65,26 @@ static VALUE
         }
         if (na->size > (~(u_int32_t)0)) {
             aout[0].type = cumo_cInt64;
-            idx = nary_new(cumo_cInt64, na->ndim, na->shape);
+            idx = cumo_na_new(cumo_cInt64, na->ndim, na->shape);
             ndf.func = <%=c_iter%>_index64;
             <% if is_float %>
-            reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index64_nan);
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index64_nan);
             <% else %>
-            reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
             <% end %>
         } else {
             aout[0].type = cumo_cInt32;
-            idx = nary_new(cumo_cInt32, na->ndim, na->shape);
+            idx = cumo_na_new(cumo_cInt32, na->ndim, na->shape);
             ndf.func = <%=c_iter%>_index32;
             <% if is_float %>
-            reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index32_nan);
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index32_nan);
             <% else %>
-            reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
             <% end %>
         }
         rb_funcall(idx, rb_intern("seq"), 0);
 
-        return na_ndloop(&ndf, 3, self, idx, reduce);
+        return cumo_na_ndloop(&ndf, 3, self, idx, reduce);
     }
     <% else %>
     {
@@ -99,21 +99,21 @@ static VALUE
             aout[0].type = cumo_cInt64;
             ndf.func = <%=c_iter%>_index64;
             <% if is_float %>
-            reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index64_nan);
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index64_nan);
             <% else %>
-            reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
             <% end %>
         } else {
             aout[0].type = cumo_cInt32;
             ndf.func = <%=c_iter%>_index32;
             <% if is_float %>
-            reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index32_nan);
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_index32_nan);
             <% else %>
-            reduce = na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
             <% end %>
         }
 
-        return na_ndloop(&ndf, 2, self, reduce);
+        return cumo_na_ndloop(&ndf, 2, self, reduce);
     }
     <% end %>
 }

@@ -44,11 +44,11 @@ static VALUE
     char *ptr;
     dtype x;
 
-    nd = na_get_result_dimension(self, argc, argv, 1, &pos);
+    nd = cumo_na_get_result_dimension(self, argc, argv, 1, &pos);
     if (nd) {
-        return na_aref_main(argc, argv, self, 0, nd, pos);
+        return cumo_na_aref_main(argc, argv, self, 0, nd, pos);
     } else {
-        ptr = na_get_pointer_for_read(self);
+        ptr = cumo_na_get_pointer_for_read(self);
         SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         LOAD_BIT(ptr,pos,x);

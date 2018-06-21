@@ -1,5 +1,5 @@
 static void
-<%=c_iter%>(na_loop_t *const lp)
+<%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t   i;
     char    *p1, *p2, *p3;
@@ -34,5 +34,5 @@ static VALUE
     ndfunc_arg_in_t ain[1] = {{cT,0}};
     ndfunc_arg_out_t aout[2] = {{cT,0},{cumo_cInt32,0}};
     ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 1,2, ain,aout };
-    return na_ndloop(&ndf, 1, a1);
+    return cumo_na_ndloop(&ndf, 1, a1);
 }

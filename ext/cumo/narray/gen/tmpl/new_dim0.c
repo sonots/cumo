@@ -6,10 +6,10 @@ static VALUE
     VALUE v;
     dtype *ptr;
 
-    v = nary_new(cT, 0, NULL);
-    ptr = (dtype*)na_get_pointer_for_write(v);
+    v = cumo_na_new(cT, 0, NULL);
+    ptr = (dtype*)cumo_na_get_pointer_for_write(v);
     <%="cumo_#{c_func(:nodef)}_kernel_launch"%>(ptr, x);
 
-    na_release_lock(v);
+    cumo_na_release_lock(v);
     return v;
 }

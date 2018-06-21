@@ -12,7 +12,6 @@ extern "C" {
 #include "cumo/compat.h"
 #include "cumo/template.h"
 #include "cumo/extconf.h"
-#include "cumo/intern_fwd.h"
 
 #ifdef HAVE_STDBOOL_H
 # include <stdbool.h>
@@ -124,22 +123,22 @@ typedef int fortran_integer;
 #define REAL(x) ((x).dat[0])
 #define IMAG(x) ((x).dat[1])
 
-extern int na_debug_flag;
+extern int cumo_na_debug_flag;
 
-#ifndef CUMO_NARRAY_C
-extern VALUE cumo_cNArray;
+#define mCumo rb_mCumo
 extern VALUE rb_mCumo;
-extern VALUE nary_eCastError;
-extern VALUE nary_eShapeError;
-extern VALUE nary_eOperationError;
-extern VALUE nary_eDimensionError;
-extern VALUE nary_eValueError;
-extern const rb_data_type_t na_data_type;
+#define cNArray cumo_cNArray
+extern VALUE cumo_cNArray;
+extern VALUE cumo_na_eCastError;
+extern VALUE cumo_na_eShapeError;
+extern VALUE cumo_na_eOperationError;
+extern VALUE cumo_na_eDimensionError;
+extern VALUE cumo_na_eValueError;
+extern const rb_data_type_t cumo_na_data_type;
 
-//EXTERN const int na_sizeof[NA_NTYPES+1];
-#endif
+//EXTERN const int cumo_na_sizeof[NA_NTYPES+1];
 
-//#define na_upcast(x,y) cumo_na_upcast(x,y)
+//#define cumo_na_upcast(x,y) cumo_na_upcast(x,y)
 
 /* global variables within this module */
 extern VALUE cumo_cBit;
@@ -156,7 +155,7 @@ extern VALUE cumo_cUInt32;
 extern VALUE cumo_cUInt16;
 extern VALUE cumo_cUInt8;
 extern VALUE cumo_cRObject;
-extern VALUE na_cStep;
+extern VALUE cumo_na_cStep;
 #ifndef HAVE_RB_CCOMPLEX
 extern VALUE rb_cComplex;
 #endif
@@ -227,35 +226,35 @@ typedef struct {
 
 
 static inline narray_t *
-na_get_narray_t(VALUE obj)
+cumo_na_get_narray_t(VALUE obj)
 {
     narray_t *na;
 
-    Check_TypedStruct(obj,&na_data_type);
+    Check_TypedStruct(obj,&cumo_na_data_type);
     na = (narray_t*)DATA_PTR(obj);
     return na;
 }
 
 static inline narray_t *
-_na_get_narray_t(VALUE obj, unsigned char na_type)
+_cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 {
     narray_t *na;
 
-    Check_TypedStruct(obj,&na_data_type);
+    Check_TypedStruct(obj,&cumo_na_data_type);
     na = (narray_t*)DATA_PTR(obj);
-    if (na->type != na_type) {
-        rb_bug("unknown type 0x%x (0x%x given)", na_type, na->type);
+    if (na->type != cumo_na_type) {
+        rb_bug("unknown type 0x%x (0x%x given)", cumo_na_type, na->type);
     }
     return na;
 }
 
-#define na_get_narray_data_t(obj) (narray_data_t*)_na_get_narray_t(obj,NARRAY_DATA_T)
-#define na_get_narray_view_t(obj) (narray_view_t*)_na_get_narray_t(obj,NARRAY_VIEW_T)
-#define na_get_narray_filemap_t(obj) (narray_filemap_t*)_na_get_narray_t(obj,NARRAY_FILEMAP_T)
+#define cumo_na_get_narray_data_t(obj) (narray_data_t*)_cumo_na_get_narray_t(obj,NARRAY_DATA_T)
+#define cumo_na_get_narray_view_t(obj) (narray_view_t*)_cumo_na_get_narray_t(obj,NARRAY_VIEW_T)
+#define cumo_na_get_narray_filemap_t(obj) (narray_filemap_t*)_cumo_na_get_narray_t(obj,NARRAY_FILEMAP_T)
 
-#define GetNArray(obj,var)      TypedData_Get_Struct(obj, narray_t, &na_data_type, var)
-#define GetNArrayView(obj,var)  TypedData_Get_Struct(obj, narray_view_t, &na_data_type, var)
-#define GetNArrayData(obj,var)  TypedData_Get_Struct(obj, narray_data_t, &na_data_type, var)
+#define GetNArray(obj,var)      TypedData_Get_Struct(obj, narray_t, &cumo_na_data_type, var)
+#define GetNArrayView(obj,var)  TypedData_Get_Struct(obj, narray_view_t, &cumo_na_data_type, var)
+#define GetNArrayData(obj,var)  TypedData_Get_Struct(obj, narray_data_t, &cumo_na_data_type, var)
 
 #define SDX_IS_STRIDE(x) ((x).stride&0x1)
 #define SDX_IS_INDEX(x)  (!SDX_IS_STRIDE(x))
@@ -288,7 +287,7 @@ _na_get_narray_t(VALUE obj, unsigned char na_type)
 #define NA_SHAPE(na)    (((narray_t*)na)->shape)
 #define NA_REDUCE(na)   (((narray_t*)na)->reduce)
 
-#define NA_FLAG(obj)    (na_get_narray_t(obj)->flag)
+#define NA_FLAG(obj)    (cumo_na_get_narray_t(obj)->flag)
 #define NA_FLAG0(obj)   (NA_FLAG(obj)[0])
 #define NA_FLAG1(obj)   (NA_FLAG(obj)[1])
 
@@ -392,8 +391,8 @@ _na_get_narray_t(VALUE obj, unsigned char na_type)
 #define NA_IsArray(obj) \
   (TYPE(obj)==T_ARRAY || rb_obj_is_kind_of(obj,cNArray)==Qtrue)
 
-#define NUM2REAL(v)  NUM2DBL( rb_funcall((v),na_id_real,0) )
-#define NUM2IMAG(v)  NUM2DBL( rb_funcall((v),na_id_imag,0) )
+#define NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
+#define NUM2IMAG(v)  NUM2DBL( rb_funcall((v),cumo_na_id_imag,0) )
 
 //#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
 #define NA_MAX_DIMENSION 12

@@ -1,7 +1,7 @@
 <% unless type_name == 'robject' %>
 
 <% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
-__global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(na_iarray_t a1, na_iarray_t a2, na_iarray_t a3, na_indexer_t indexer)
+__global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_iarray_t a3, cumo_na_indexer_t indexer)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
         cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
@@ -13,7 +13,7 @@ __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(na_iarray_t a1, na_iarra
 }
 <% end %>
 
-void <%="cumo_#{c_iter}_kernel_launch"%>(na_iarray_t* a1, na_iarray_t* a2, na_iarray_t* a3, na_indexer_t* indexer)
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer)
 {
     size_t gridDim = get_gridDim(indexer->total_size);
     size_t blockDim = get_blockDim(indexer->total_size);
