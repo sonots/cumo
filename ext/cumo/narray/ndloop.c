@@ -308,7 +308,7 @@ ndloop_find_max_dimension(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args)
             nin++;
             user_nd = max2(user_nd, nf->ain[j].dim);
             if (IsNArray(v))
-                loop_nd = max2(loop_nd, RNARRAY_NDIM(v) - nf->ain[j].dim);
+                loop_nd = max2(loop_nd, CUMO_RNARRAY_NDIM(v) - nf->ain[j].dim);
         }
     }
 

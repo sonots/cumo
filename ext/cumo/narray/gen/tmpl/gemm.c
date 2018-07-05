@@ -121,7 +121,7 @@ is_f_contiguous(VALUE a)
     ssize_t s0;
     cumo_narray_t *na;
 
-    switch(RNARRAY_TYPE(a)) {
+    switch(CUMO_RNARRAY_TYPE(a)) {
     case CUMO_NARRAY_DATA_T:
     case CUMO_NARRAY_FILEMAP_T:
         return TEST_COLUMN_MAJOR(a);
@@ -142,7 +142,7 @@ is_f_contiguous(VALUE a)
         }
         return true;
     default:
-        rb_raise(rb_eArgError, "NArray type : %d is not supported", RNARRAY_TYPE(a));
+        rb_raise(rb_eArgError, "NArray type : %d is not supported", CUMO_RNARRAY_TYPE(a));
     }
 }
 
