@@ -49,6 +49,14 @@ extern "C" {
 # endif
 #endif
 
+#ifndef IS_INTEGER_CLASS
+#ifdef RUBY_INTEGER_UNIFICATION
+#define IS_INTEGER_CLASS(c) ((c)==rb_cInteger)
+#else
+#define IS_INTEGER_CLASS(c) ((c)==rb_cFixnum||(c)==rb_cBignum)
+#endif
+#endif
+
 #ifndef SZF
 #define SZF PRI_SIZE_PREFIX // defined in ruby.h
 #endif
@@ -436,14 +444,6 @@ typedef unsigned int CUMO_BIT_DIGIT;
 #define CUMO_NB     (sizeof(CUMO_BIT_DIGIT)*8)
 #define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
 #define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
-
-#ifndef IS_INTEGER_CLASS
-#ifdef RUBY_INTEGER_UNIFICATION
-#define IS_INTEGER_CLASS(c) ((c)==rb_cInteger)
-#else
-#define IS_INTEGER_CLASS(c) ((c)==rb_cFixnum||(c)==rb_cBignum)
-#endif
-#endif
 
 #include "cumo/ndloop.h"
 #include "cumo/intern.h"
