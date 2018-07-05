@@ -145,7 +145,7 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     size_t k, n;
     ssize_t *nidxp;
 
-    GetNArray(a,na);
+    CumoGetNArray(a,na);
     if (NA_NDIM(na) != 1) {
         rb_raise(rb_eIndexError, "should be 1-d NArray");
     }
@@ -153,7 +153,7 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     idx = cumo_na_new(cIndex,1,&n);
     cumo_na_store(idx,a);
 
-    GetNArrayData(idx,nidx);
+    CumoGetNArrayData(idx,nidx);
     nidxp   = (ssize_t*)nidx->ptr;
     q->idx  = ALLOC_N(size_t, n);
 
@@ -579,7 +579,7 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
     view = cumo_na_s_allocate_view(CLASS_OF(self));
 
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view,na2);
+    CumoGetNArrayView(view,na2);
 
     cumo_na_alloc_shape((cumo_narray_t*)na2, ndim_new);
 
@@ -640,7 +640,7 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
     VALUE idx;
     cumo_narray_t *nidx;
 
-    GetNArray(self,na1);
+    CumoGetNArray(self,na1);
 
     args = rb_ary_new4(argc,argv);
 
@@ -650,7 +650,7 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
             idx = rb_apply(cumo_cNArray,cumo_id_bracket,idx);
         }
         if (rb_obj_is_kind_of(idx, cumo_cNArray)) {
-            GetNArray(idx,nidx);
+            CumoGetNArray(idx,nidx);
             if (NA_NDIM(nidx)>1) {
                 store = cumo_na_new(CLASS_OF(self),NA_NDIM(nidx),NA_SHAPE(nidx));
                 idx = cumo_na_flatten(idx);
@@ -660,7 +660,7 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
         // flatten should be done only for narray-view with non-uniform stride.
         if (na1->ndim > 1) {
             self = cumo_na_flatten(self);
-            GetNArray(self,na1);
+            CumoGetNArray(self,na1);
         }
     }
 
@@ -682,7 +682,7 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
     case CUMO_NARRAY_VIEW_T:
         {
             cumo_narray_view_t *nv;
-            GetNArrayView(self,nv);
+            CumoGetNArrayView(self,nv);
             // pos obtained by cumo_na_get_result_dimension adds view->offset.
             data.pos = pos - nv->offset;
         }
@@ -756,7 +756,7 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
     cumo_stridx_t sdx;
     VALUE a;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     if (na->size == 0) {
         rb_raise(rb_eRuntimeError, "cannot get index of empty array");
         return -1;
@@ -797,7 +797,7 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
 
     switch(na->type) {
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(self,nv);
+        CumoGetNArrayView(self,nv);
         pos = nv->offset;
         if (j == na->ndim) {
             for (i=j-1; i>=0; i--) {

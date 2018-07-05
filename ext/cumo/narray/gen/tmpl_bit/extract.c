@@ -13,7 +13,7 @@ static VALUE
     BIT_DIGIT *ptr, val;
     size_t pos;
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     if (na->ndim==0) {
         pos = cumo_na_get_offset(self);

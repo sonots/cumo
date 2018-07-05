@@ -213,7 +213,7 @@ cumo_na_mdai_investigate(cumo_na_mdai_t *mdai, int ndim)
         else if (IsNArray(v)) {
             int r;
             cumo_narray_t *na;
-            GetNArray(v,na);
+            CumoGetNArray(v,na);
             if ( na->ndim == 0 ) {
                 len--; /* NArray is empty */
             } else {
@@ -416,7 +416,7 @@ cumo_na_composition3(VALUE obj, VALUE *ptype, VALUE *pshape, VALUE *pnary)
     else if (IsNArray(obj)) {
         int i, ndim;
         cumo_narray_t *na;
-        GetNArray(obj,na);
+        CumoGetNArray(obj,na);
         ndim = na->ndim;
         dtype = update_type(ptype, CLASS_OF(obj));
         if (pshape) {
@@ -535,7 +535,7 @@ cumo_na_mdai_for_struct(cumo_na_mdai_t *mdai, int ndim)
     //fpintf(stderr,"val = ");    rb_p(val);
 
     if (CLASS_OF(val) == mdai->na_type) {
-        GetNArray(val,na);
+        CumoGetNArray(val,na);
         if ( ndim+na->ndim > mdai->capa ) {
             abort();
             cumo_na_mdai_realloc(mdai,((na->ndim-1)/4+1)*4);

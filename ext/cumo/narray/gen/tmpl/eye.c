@@ -77,7 +77,7 @@ static VALUE
         kofs = 0;
     }
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
     if (nd < 2) {
         rb_raise(cumo_na_eDimensionError,"less than 2-d array");

@@ -15,7 +15,7 @@ static dtype
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (IsNArray(obj)) {
-        GetNArray(obj,na);
+        CumoGetNArray(obj,na);
         if (na->size != 1) {
             rb_raise(cumo_na_eShapeError,"narray size should be 1");
        }

@@ -285,9 +285,9 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define cumo_na_get_narray_view_t(obj) (cumo_narray_view_t*)_cumo_na_get_narray_t(obj,CUMO_NARRAY_VIEW_T)
 #define cumo_na_get_narray_filemap_t(obj) (cumo_narray_filemap_t*)_cumo_na_get_narray_t(obj,CUMO_NARRAY_FILEMAP_T)
 
-#define GetNArray(obj,var)      TypedData_Get_Struct(obj, cumo_narray_t, &cumo_na_data_type, var)
-#define GetNArrayView(obj,var)  TypedData_Get_Struct(obj, cumo_narray_view_t, &cumo_na_data_type, var)
-#define GetNArrayData(obj,var)  TypedData_Get_Struct(obj, cumo_narray_data_t, &cumo_na_data_type, var)
+#define CumoGetNArray(obj,var)      TypedData_Get_Struct(obj, cumo_narray_t, &cumo_na_data_type, var)
+#define CumoGetNArrayView(obj,var)  TypedData_Get_Struct(obj, cumo_narray_view_t, &cumo_na_data_type, var)
+#define CumoGetNArrayData(obj,var)  TypedData_Get_Struct(obj, cumo_narray_data_t, &cumo_na_data_type, var)
 
 #define SDX_IS_STRIDE(x) ((x).stride&0x1)
 #define SDX_IS_INDEX(x)  (!SDX_IS_STRIDE(x))

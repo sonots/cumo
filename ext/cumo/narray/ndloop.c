@@ -532,7 +532,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
     } else {
         rb_bug("invalid value for read-write flag");
     }
-    GetNArray(vna,na);
+    CumoGetNArray(vna,na);
     nd = LARG(lp,j).ndim;
 
     switch(NA_TYPE(na)) {
@@ -614,7 +614,7 @@ na->shape[i] == lp->n[ dim_map[i] ]
         v = RARRAY_AREF(args,j);
         if (IsNArray(v)) {
             // set LARG(lp,j) with v
-            GetNArray(v,na);
+            CumoGetNArray(v,na);
             nf_dim = nf->ain[j].dim;
             if (nf_dim > na->ndim) {
                 rb_raise(cumo_na_eDimensionError,"requires >= %d-dimensioal array "
@@ -667,7 +667,7 @@ ndloop_check_inplace(VALUE type, int cumo_na_ndim, size_t *cumo_na_shape, VALUE 
     if (type != CLASS_OF(v)) {
         return 0;
     }
-    GetNArray(v,na);
+    CumoGetNArray(v,na);
     // shape check
     if (na->ndim != cumo_na_ndim) {
         return 0;
@@ -1320,7 +1320,7 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
         // x = RARRAY_AREF(results,0);
         // if (CUMO_NDF_TEST(nf,CUMO_NDF_EXTRACT)) {
         //     if (IsNArray(x)){
-        //         GetNArray(x,na);
+        //         CumoGetNArray(x,na);
         //         if (NA_NDIM(na)==0) {
         //             x = rb_funcall(x, cumo_id_extract, 0);
         //         }
@@ -1333,7 +1333,7 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
     //     for (i=0; i<n; i++) {
     //         x = RARRAY_AREF(results,i);
     //         if (IsNArray(x)){
-    //             GetNArray(x,na);
+    //             CumoGetNArray(x,na);
     //             if (NA_NDIM(na)==0) {
     //                 y = rb_funcall(x, cumo_id_extract, 0);
     //                 RARRAY_ASET(results,i,y);
@@ -1625,7 +1625,7 @@ cumo_na_info_str(VALUE ary)
     VALUE buf;
     cumo_narray_t *na;
 
-    GetNArray(ary,na);
+    CumoGetNArray(ary,na);
     nd = na->ndim;
 
     buf = rb_str_new2(rb_class2name(CLASS_OF(ary)));
@@ -1782,7 +1782,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     if (CLASS_OF(a) != a_type) {
         a = rb_funcall(a_type, cumo_id_cast, 1, a);
     }
-    GetNArray(a,na);
+    CumoGetNArray(a,na);
     if (na->ndim != nd-i0+1) {
         rb_raise(cumo_na_eShapeError, "mismatched dimension of sub-narray: "
                  "nd_src=%d, nd_dst=%d", na->ndim, nd-i0+1);

@@ -59,7 +59,7 @@ static VALUE
         cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
         cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT, 3,1, ain,aout};
 
-        GetNArray(self,na);
+        CumoGetNArray(self,na);
         if (na->ndim==0) {
             return INT2FIX(0);
         }
@@ -94,7 +94,7 @@ static VALUE
         cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
         cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT|CUMO_NDF_INDEXER_LOOP, 2,1, ain,aout};
 
-        GetNArray(self,na);
+        CumoGetNArray(self,na);
         if (na->size > (~(u_int32_t)0)) {
             aout[0].type = cumo_cInt64;
             ndf.func = <%=c_iter%>_index64;

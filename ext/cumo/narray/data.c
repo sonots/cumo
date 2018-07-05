@@ -211,7 +211,7 @@ cumo_na_swapaxes(VALUE self, VALUE a1, VALUE a2)
     volatile VALUE view;
 
     view = cumo_na_make_view(self);
-    GetNArrayView(view,na);
+    CumoGetNArrayView(view,na);
 
     ndim = na->base.ndim;
     i = check_axis(NUM2INT(a1), ndim);
@@ -237,7 +237,7 @@ cumo_na_transpose_map(VALUE self, int *map)
     volatile VALUE view;
 
     view = cumo_na_make_view(self);
-    GetNArrayView(view,na);
+    CumoGetNArrayView(view,na);
 
     ndim = na->base.ndim;
     shape = ALLOCA_N(size_t,ndim);
@@ -265,7 +265,7 @@ cumo_na_transpose(int argc, VALUE *argv, VALUE self)
     bool is_positive, is_negative;
     cumo_narray_t *na1;
 
-    GetNArray(self,na1);
+    CumoGetNArray(self,na1);
     ndim = na1->ndim;
     if (ndim < 2) {
         if (argc > 0) {
@@ -340,7 +340,7 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
     if (argc == 0) {
         rb_raise(rb_eArgError, "No argrument");
     }
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     if (NA_SIZE(na) == 0) {
         rb_raise(rb_eRuntimeError, "cannot reshape empty array");
     }
@@ -395,7 +395,7 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
     shape = ALLOCA_N(size_t, argc);
     cumo_na_check_reshape(argc, argv, self, shape);
 
-    GetNArray(self, na);
+    CumoGetNArray(self, na);
     cumo_na_setup_shape(na, argc, shape);
     return self;
 }
@@ -420,7 +420,7 @@ cumo_na_reshape(int argc, VALUE *argv, VALUE self)
     cumo_na_check_reshape(argc, argv, self, shape);
 
     copy = rb_funcall(self, rb_intern("dup"), 0);
-    GetNArray(copy, na);
+    CumoGetNArray(copy, na);
     cumo_na_setup_shape(na, argc, shape);
     return copy;
 }
@@ -440,7 +440,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
     cumo_narray_view_t *na1, *na2;
     volatile VALUE view;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
 
     if (nd==0) {
@@ -464,7 +464,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
     // new object
     view = cumo_na_s_allocate_view(CLASS_OF(self));
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     // new stride
     cumo_na_setup_shape((cumo_narray_t*)na2, sd+1, shape);
@@ -483,7 +483,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
         na2->data = self;
         break;
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+        CumoGetNArrayView(self, na1);
         na2->data = na1->data;
         na2->offset = na1->offset;
         for (i=0; i<sd; i++) {
@@ -631,7 +631,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         kofs = 0;
     }
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
     if (nd < 2) {
         rb_raise(cumo_na_eDimensionError,"less than 2-d array");
@@ -687,7 +687,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
     // new object
     view = cumo_na_s_allocate_view(CLASS_OF(self));
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     // new stride
     cumo_na_setup_shape((cumo_narray_t*)na2, nd-1, shape);
@@ -719,7 +719,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         break;
 
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+        CumoGetNArrayView(self, na1);
         na2->data = na1->data;
         na2->offset = na1->offset;
         for (i=k=0; i<nd; i++) {
@@ -795,13 +795,13 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     cumo_stridx_t stridx_n;
     volatile VALUE view;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
 
     view = cumo_na_s_allocate_view(CLASS_OF(self));
 
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     // new dimension
     if (pos < 0) pos += nd;
@@ -835,7 +835,7 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
         na2->data = self;
         break;
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+        CumoGetNArrayView(self, na1);
         i = k = 0;
         while (i < nd) {
             if (i == pos && len > 0) {
@@ -900,8 +900,8 @@ cumo_na_dot(VALUE self, VALUE other)
     if (!RTEST(test)) {
         rb_raise(rb_eNoMethodError,"requires mulsum method for dot method");
     }
-    GetNArray(a1,na1);
-    GetNArray(a2,na2);
+    CumoGetNArray(a1,na1);
+    CumoGetNArray(a2,na2);
     if (na1->ndim==0 || na2->ndim==0) {
         rb_raise(cumo_na_eDimensionError,"zero dimensional narray");
     }

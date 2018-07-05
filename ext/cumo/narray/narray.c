@@ -57,7 +57,7 @@ static void
 cumo_na_debug_info_nadata(VALUE self)
 {
     cumo_narray_data_t *na;
-    GetNArrayData(self,na);
+    CumoGetNArrayData(self,na);
 
     printf("  ptr    = 0x%"SZF"x\n", (size_t)(na->ptr));
 }
@@ -70,7 +70,7 @@ cumo_na_debug_info_naview(VALUE self)
     cumo_narray_view_t *na;
     size_t *idx;
     size_t j;
-    GetNArrayView(self,na);
+    CumoGetNArrayView(self,na);
 
     printf("  data   = 0x%"SZF"x\n", (size_t)na->data);
     printf("  offset = %"SZF"d\n", (size_t)na->offset);
@@ -103,7 +103,7 @@ cumo_na_debug_info(VALUE self)
 {
     int i;
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     printf("%s:\n",rb_class2name(CLASS_OF(self)));
     printf("  id     = 0x%"PRI_VALUE_PREFIX"x\n", self);
@@ -304,7 +304,7 @@ static void
 cumo_na_setup(VALUE self, int ndim, size_t *shape)
 {
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     cumo_na_setup_shape(na, ndim, shape);
 }
 
@@ -403,7 +403,7 @@ static VALUE
 cumo_na_initialize_copy(VALUE self, VALUE orig)
 {
     cumo_narray_t *na;
-    GetNArray(orig,na);
+    CumoGetNArray(orig,na);
 
     cumo_na_setup(self,NA_NDIM(na),NA_SHAPE(na));
     cumo_na_store(self,orig);
@@ -589,7 +589,7 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
         rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
     }
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     switch(NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
@@ -609,7 +609,7 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
         if ((flag & WRITE) && OBJ_FROZEN(obj)) {
             rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
         }
-        GetNArray(obj,na);
+        CumoGetNArray(obj,na);
         switch(NA_TYPE(na)) {
         case CUMO_NARRAY_DATA_T:
             ptr = NA_DATA_PTR(na);
@@ -660,7 +660,7 @@ cumo_na_release_lock(VALUE self)
     cumo_narray_t *na;
 
     UNSET_LOCK(self);
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     switch(NA_TYPE(na)) {
     case CUMO_NARRAY_VIEW_T:
@@ -675,7 +675,7 @@ static VALUE
 cumo_na_size(VALUE self)
 {
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     return SIZET2NUM(na->size);
 }
 
@@ -685,7 +685,7 @@ static VALUE
 cumo_na_ndim(VALUE self)
 {
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     return INT2NUM(na->ndim);
 }
 
@@ -698,7 +698,7 @@ static VALUE
 cumo_na_empty_p(VALUE self)
 {
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     if (NA_SIZE(na)==0) {
         return Qtrue;
     }
@@ -714,7 +714,7 @@ static VALUE
     cumo_narray_t *na;
     size_t i, n, c, s;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     n = NA_NDIM(na);
     if (TEST_COLUMN_MAJOR(self)) {
         c = n-1;
@@ -738,10 +738,10 @@ cumo_na_element_stride(VALUE v)
     cumo_narray_type_info_t *info;
     cumo_narray_t *na;
 
-    GetNArray(v,na);
+    CumoGetNArray(v,na);
     if (na->type == CUMO_NARRAY_VIEW_T) {
         v = NA_VIEW_DATA(na);
-        GetNArray(v,na);
+        CumoGetNArray(v,na);
     }
     assert(na->type == CUMO_NARRAY_DATA_T);
 
@@ -759,7 +759,7 @@ size_t
 cumo_na_get_offset(VALUE self)
 {
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     switch(na->type) {
     case CUMO_NARRAY_DATA_T:
@@ -792,8 +792,8 @@ cumo_na_copy_flags(VALUE src, VALUE dst)
 {
     cumo_narray_t *na1, *na2;
 
-    GetNArray(src,na1);
-    GetNArray(dst,na2);
+    CumoGetNArray(src,na1);
+    CumoGetNArray(dst,na2);
 
     na2->flag[0] = na1->flag[0];
     //na2->flag[1] = NA_FL1_INIT;
@@ -810,7 +810,7 @@ cumo_na_check_ladder(VALUE self, int start_dim)
     int i;
     ssize_t st0, st1;
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     if (start_dim < -na->ndim || start_dim >= na->ndim) {
         rb_bug("start_dim (%d) out of range",start_dim);
@@ -848,7 +848,7 @@ cumo_na_check_contiguous(VALUE self)
 {
     ssize_t elmsz;
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     switch(na->type) {
     case CUMO_NARRAY_DATA_T:
@@ -887,13 +887,13 @@ cumo_na_make_view(VALUE self)
     cumo_narray_view_t *na1, *na2;
     volatile VALUE view;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
 
     view = cumo_na_s_allocate_view(CLASS_OF(self));
 
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     cumo_na_setup_shape((cumo_narray_t*)na2, nd, na->shape);
     na2->stridx = ALLOC_N(cumo_stridx_t,nd);
@@ -910,7 +910,7 @@ cumo_na_make_view(VALUE self)
         na2->data = self;
         break;
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+        CumoGetNArrayView(self, na1);
         for (i=0; i<nd; i++) {
             if (SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = SDX_GET_INDEX(na1->stridx[i]);
@@ -953,7 +953,7 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
     cumo_narray_view_t *na2;
     VALUE view;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
 
     dim = NUM2INT(vdim);
@@ -966,7 +966,7 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
     }
 
     view = cumo_na_make_view(self);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     shape = ALLOC_N(size_t,nd+1);
     stridx = ALLOC_N(cumo_stridx_t,nd+1);
@@ -1018,13 +1018,13 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
 
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, 0, 0);
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
 
     view = cumo_na_s_allocate_view(CLASS_OF(self));
 
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     cumo_na_setup_shape((cumo_narray_t*)na2, nd, na->shape);
     na2->stridx = ALLOC_N(cumo_stridx_t,nd);
@@ -1048,7 +1048,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
         na2->data = self;
         break;
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+        CumoGetNArrayView(self, na1);
         offset = na1->offset;
         for (i=0; i<nd; i++) {
             n = na1->base.shape[i];
@@ -1137,7 +1137,7 @@ cumo_na_byte_size(VALUE self)
     VALUE velmsz;
     cumo_narray_t *na;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     velmsz = rb_const_get(CLASS_OF(self), cumo_id_element_byte_size);
     if (FIXNUM_P(velmsz)) {
         return SIZET2NUM(NUM2SIZET(velmsz) * na->size);
@@ -1259,7 +1259,7 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
         offset = 0;
     }
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     size = NA_SIZE(na);
     velmsz = rb_const_get(CLASS_OF(self), cumo_id_element_byte_size);
     if (FIXNUM_P(velmsz)) {
@@ -1293,7 +1293,7 @@ cumo_na_to_binary(VALUE self)
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     if (na->type == CUMO_NARRAY_VIEW_T) {
         if (cumo_na_check_contiguous(self)==Qtrue) {
             offset = NA_VIEW_OFFSET(na);
@@ -1329,7 +1329,7 @@ cumo_na_marshal_dump(VALUE self)
         cumo_narray_t *na;
         VALUE *ptr;
         size_t offset=0;
-        GetNArray(self,na);
+        CumoGetNArray(self,na);
         if (na->type == CUMO_NARRAY_VIEW_T) {
             if (cumo_na_check_contiguous(self)==Qtrue) {
                 offset = NA_VIEW_OFFSET(na);
@@ -1377,7 +1377,7 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         if (TYPE(v) != T_ARRAY) {
             rb_raise(rb_eArgError,"RObject content should be array");
         }
-        GetNArray(self,na);
+        CumoGetNArray(self,na);
         if (RARRAY_LEN(v) != (long)NA_SIZE(na)) {
             rb_raise(rb_eArgError,"RObject content size mismatch");
         }
@@ -1442,7 +1442,7 @@ cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
     if (naryc<1) {
         rb_raise(rb_eRuntimeError,"must be positive: naryc=%d", naryc);
     }
-    GetNArray(naryv[0],na);
+    CumoGetNArray(naryv[0],na);
     if (na->size==0) {
         rb_raise(cumo_na_eShapeError,"cannot reduce empty NArray");
     }
@@ -1451,7 +1451,7 @@ cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
     if (max_arg) *max_arg = 0;
     rowmaj = TEST_COLUMN_MAJOR(naryv[0]);
     for (i=0; i<naryc; i++) {
-        GetNArray(naryv[i],na);
+        CumoGetNArray(naryv[i],na);
         if (na->size==0) {
             rb_raise(cumo_na_eShapeError,"cannot reduce empty NArray");
         }
@@ -1485,7 +1485,7 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
     VALUE reduce;
     cumo_narray_t *na;
 
-    GetNArray(cumo_na_obj,na);
+    CumoGetNArray(cumo_na_obj,na);
     ndim = na->ndim;
     rowmaj = TEST_COLUMN_MAJOR(cumo_na_obj);
 
@@ -1776,13 +1776,13 @@ cumo_na_equal(VALUE self, volatile VALUE other)
     cumo_narray_t *na1, *na2;
     int i;
 
-    GetNArray(self,na1);
+    CumoGetNArray(self,na1);
 
     if (!rb_obj_is_kind_of(other,cNArray)) {
         other = rb_funcall(CLASS_OF(self), cumo_id_cast, 1, other);
     }
 
-    GetNArray(other,na2);
+    CumoGetNArray(other,na2);
     if (na1->ndim != na2->ndim) {
         return Qfalse;
     }
@@ -1804,7 +1804,7 @@ VALUE
 cumo_na_free_data(VALUE self)
 {
     cumo_narray_t *na;
-    GetNArray(self, na);
+    CumoGetNArray(self, na);
 
     if (na->type == CUMO_NARRAY_DATA_T) {
         void *ptr = NA_DATA_PTR(na);

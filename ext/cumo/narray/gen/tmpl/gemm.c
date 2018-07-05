@@ -126,7 +126,7 @@ is_f_contiguous(VALUE a)
     case CUMO_NARRAY_FILEMAP_T:
         return TEST_COLUMN_MAJOR(a);
     case CUMO_NARRAY_VIEW_T:
-        GetNArray(a, na);
+        CumoGetNArray(a, na);
 
         // not contiguous if it has index
         for (i = 0; i < NA_NDIM(na); ++i) {
@@ -158,7 +158,7 @@ make_gemm_layout(VALUE a)
     cumo_narray_t *na;
     gemm_layout_t layout;
 
-    GetNArray(a, na);
+    CumoGetNArray(a, na);
 
     if (cumo_na_debug_flag) {
         printf("ndim==2 && f_contiguous:%d, c_contiguous:%d\n",
@@ -221,7 +221,7 @@ static void
     a_layout = make_gemm_layout(a);
     b_layout = make_gemm_layout(b);
 
-    GetNArray(c, nc);
+    CumoGetNArray(c, nc);
     int stridec = ROW_SIZE(nc) * COL_SIZE(nc);
     int batch_count = NA_SIZE(nc) / stridec;
 
@@ -305,8 +305,8 @@ static VALUE
     beta = cumo_cuda_cublas_option_value(opts[1],Qnil);
     g.beta = RTEST(beta) ? m_num_to_data(beta) : m_zero;
 
-    GetNArray(a, na);
-    GetNArray(b, nb);
+    CumoGetNArray(a, na);
+    CumoGetNArray(b, nb);
     CHECK_DIM_GE(na, 2);
     CHECK_DIM_GE(nb, 2);
 
@@ -328,7 +328,7 @@ static VALUE
     } else {
         cumo_narray_t *nc;
         COPY_OR_CAST_TO(c, cT);
-        GetNArray(c, nc);
+        CumoGetNArray(c, nc);
         CHECK_DIM_GE(nc, 2);
         if (ROW_SIZE(nc) != ROW_SIZE(na)) {
             rb_raise(cumo_na_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d",

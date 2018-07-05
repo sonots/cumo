@@ -4,7 +4,7 @@ static VALUE
     cumo_narray_t *na;
     void *ptr;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     switch(NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:

@@ -108,10 +108,10 @@ static VALUE
     cumo_na_ndloop3(&ndf, &g, 2, mask, val);
 
     view = cumo_na_s_allocate_view(CLASS_OF(val));
-    GetNArrayView(view, nv);
+    CumoGetNArrayView(view, nv);
     cumo_na_setup_shape((cumo_narray_t*)nv, 1, &n_1);
 
-    GetNArrayData(idx_1,nidx);
+    CumoGetNArrayData(idx_1,nidx);
     SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
     nidx->ptr = NULL;
 
@@ -119,13 +119,13 @@ static VALUE
     nv->stridx[0] = stridx0;
     nv->offset = 0;
 
-    GetNArray(val, na);
+    CumoGetNArray(val, na);
     switch(NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
         nv->data = val;
         break;
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(val, na1);
+        CumoGetNArrayView(val, na1);
         nv->data = na1->data;
         break;
     default:

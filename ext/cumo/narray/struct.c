@@ -14,7 +14,7 @@ nst_allocate(VALUE self)
     void *ptr;
     VALUE velmsz;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     switch(NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
@@ -87,11 +87,11 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     VALUE klass;
     volatile VALUE view;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     // build from Cumo::Struct
     if (rb_obj_is_kind_of(dtype,cNArray)) {
-	GetNArray(dtype,nt);
+	CumoGetNArray(dtype,nt);
         ndim = na->ndim + nt->ndim;
         shape = ALLOCA_N(size_t,ndim);
         // struct dimensions
@@ -126,7 +126,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
 
     view = cumo_na_s_allocate_view(klass);
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
     cumo_na_setup_shape((cumo_narray_t*)na2, ndim, shape);
     na2->stridx = stridx;
 
@@ -142,7 +142,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
         na2->data = self;
         break;
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+        CumoGetNArrayView(self, na1);
         for (j=na1->base.ndim; j--; ) {
             if (SDX_IS_INDEX(na1->stridx[j])) {
                 n = na1->base.shape[j];
@@ -192,7 +192,7 @@ nst_field(VALUE self, VALUE idx)
     cumo_narray_view_t *nv;
 
     obj = nst_field_view(self,idx);
-    GetNArrayView(obj,nv);
+    CumoGetNArrayView(obj,nv);
     if (nv->base.ndim==0) {
         obj = rb_funcall(obj,rb_intern("extract_cpu"),0);
     }
@@ -349,13 +349,13 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
     name = ID2SYM(id);
     if (rb_obj_is_kind_of(type,cNArray)) {
         cumo_narray_t *na;
-        GetNArray(type,na);
+        CumoGetNArray(type,na);
         type = CLASS_OF(type);
         ndim = na->ndim;
         shape = na->shape;
     }
     type = cumo_na_view_new(type,ndim,shape);
-    GetNArrayView(type,nt);
+    CumoGetNArrayView(type,nt);
 
     nt->stridx = ALLOC_N(cumo_stridx_t,ndim);
     stride = cumo_na_dtype_element_stride(CLASS_OF(type));
@@ -404,7 +404,7 @@ iter_nstruct_to_a(cumo_na_loop_t *const lp)
         ofs  = NUM2SIZET(RARRAY_AREF(def,2));
         //ofs  = NUM2SIZET(RARRAY_AREF(ofsts,i));
         elmt = RARRAY_AREF(types,i);
-        GetNArrayView(elmt,ne);
+        CumoGetNArrayView(elmt,ne);
         ne->offset = pos + ofs;
         if (ne->base.ndim==0) {
             velm = rb_funcall(elmt,rb_intern("extract_cpu"),0);
@@ -422,10 +422,10 @@ cumo_na_original_data(VALUE self)
     cumo_narray_t *na;
     cumo_narray_view_t *nv;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     switch(na->type) {
     case CUMO_NARRAY_VIEW_T:
-        GetNArrayView(self, nv);
+        CumoGetNArrayView(self, nv);
         return nv->data;
     }
     return self;
@@ -449,7 +449,7 @@ nst_create_member_views(VALUE self)
         elmt = cumo_na_make_view(type);
         rb_ary_push(types, elmt);
         //rb_ary_push(ofsts, ofst);
-        GetNArrayView(elmt,ne);
+        CumoGetNArrayView(elmt,ne);
         ne->data = cumo_na_original_data(self);
     }
     return rb_assoc_new(types,defs);
@@ -478,7 +478,7 @@ check_array(VALUE item) {
         return 1;
     }
     if (RTEST(rb_obj_is_kind_of(item, cNArray))) {
-        GetNArray(item,na);
+        CumoGetNArray(item,na);
         if (na->ndim == 1) {
             return 1;
         } else {
@@ -508,7 +508,7 @@ check_array_1d(VALUE item, size_t size) {
         return 1;
     }
     if (RTEST(rb_obj_is_kind_of(item, cNArray))) {
-        GetNArray(item,na);
+        CumoGetNArray(item,na);
         if (na->ndim == 1 && na->size == size) {
             return 1;
         } else {
@@ -543,7 +543,7 @@ nst_check_compatibility(VALUE nst, VALUE ary)
     for (i=0; i<len; i++) {
         def  = RARRAY_AREF(defs,i);
         type = RARRAY_AREF(def,1);
-        GetNArray(type,nt);
+        CumoGetNArray(type,nt);
         item = RARRAY_AREF(ary,i);
         if (nt->ndim == 0) {
             if (check_array(item)) {
@@ -566,7 +566,7 @@ nst_check_compatibility(VALUE nst, VALUE ary)
             //vnc = cumo_na_ary_composition(item);
             //Data_Get_Struct(vnc, cumo_na_compose_t, nc);
             vnc = cumo_na_s_new_like(cNArray, item);
-            GetNArray(vnc,nc);
+            CumoGetNArray(vnc,nc);
             if (nt->ndim != nc->ndim) {
                 return Qfalse;
             }
@@ -607,7 +607,7 @@ iter_nstruct_from_a(cumo_na_loop_t *const lp)
         def  = RARRAY_AREF(defs,i);
         ofs  = NUM2SIZET(RARRAY_AREF(def,2));
         elmt = RARRAY_AREF(types,i);
-        GetNArrayView(elmt,ne);
+        CumoGetNArrayView(elmt,ne);
         ne->offset = lp->args[0].iter[0].pos + ofs;
         item = RARRAY_AREF(ary,i);
         //rb_p(ary);
@@ -636,7 +636,7 @@ cumo_na_struct_cast_array(VALUE klass, VALUE rary)
     //Data_Get_Struct(vnc, cumo_na_compose_t, nc);
     //nary = cumo_na_new(klass, nc->ndim, nc->shape);
     nary = cumo_na_s_new_like(klass, rary);
-    GetNArray(nary,na);
+    CumoGetNArray(nary,na);
     //fprintf(stderr,"na->size=%lu\n",na->size);
     //fprintf(stderr,"na->ndim=%d\n",na->ndim);
     if (na->size>0) {
@@ -764,7 +764,7 @@ iter_struct_inspect(char *ptr, size_t pos, VALUE opt)
         name = RARRAY_AREF(def,0);
         ofs  = NUM2SIZET(RARRAY_AREF(def,2));
         elmt = RARRAY_AREF(types,i);
-        GetNArrayView(elmt,ne);
+        CumoGetNArrayView(elmt,ne);
         ne->offset = pos + ofs;
         v = rb_str_concat(rb_sym_to_s(name), rb_str_new2(": "));
         x = rb_funcall(elmt, rb_intern("format_to_a"), 0);        // <-- fix me
