@@ -68,7 +68,7 @@ static VALUE
     cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
     cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM, 3,1, ain,aout};
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     if (na->ndim==0) {
         return INT2FIX(0);
     }

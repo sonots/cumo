@@ -22,7 +22,7 @@ static VALUE
     }
     <% end %>
 
-    if (IsNArray(obj)) {
+    if (CumoIsNArray(obj)) {
         r = rb_funcall(obj, rb_intern("coerce_cast"), 1, cT);
         if (CLASS_OF(r)==cT) {
             <%=c_func%>(self,r);

@@ -17,7 +17,7 @@
 #define va_init_list(a,b) va_start(a)
 #endif
 
-typedef struct NA_BUFFER_COPY {
+typedef struct CUMO_NA_BUFFER_COPY {
     int ndim;
     size_t elmsz;
     size_t *n;
@@ -27,14 +27,14 @@ typedef struct NA_BUFFER_COPY {
     cumo_na_loop_iter_t *buf_iter;
 } cumo_na_buffer_copy_t;
 
-typedef struct NA_LOOP_XARGS {
+typedef struct CUMO_NA_LOOP_XARGS {
     cumo_na_loop_iter_t *iter;     // moved from cumo_na_loop_t
     cumo_na_buffer_copy_t *bufcp;  // copy data to buffer
     int flag;                 // CUMO_NDL_READ CUMO_NDL_WRITE
     bool free_user_iter;   // alloc LARG(lp,j).iter=lp->xargs[j].iter
 } cumo_na_loop_xargs_t;
 
-typedef struct NA_MD_LOOP {
+typedef struct CUMO_NA_MD_LOOP {
     int  narg;
     int  nin;
     int  ndim;                // n of total dimention looped at loop_narray. NOTE: lp->ndim + lp-.user.ndim is the total dimension.
@@ -307,8 +307,8 @@ ndloop_find_max_dimension(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args)
         } else {
             nin++;
             user_nd = max2(user_nd, nf->ain[j].dim);
-            if (IsNArray(v))
-                loop_nd = max2(loop_nd, RNARRAY_NDIM(v) - nf->ain[j].dim);
+            if (CumoIsNArray(v))
+                loop_nd = max2(loop_nd, CUMO_RNARRAY_NDIM(v) - nf->ain[j].dim);
         }
     }
 
@@ -453,7 +453,7 @@ ndloop_release(VALUE vlp)
 
     for (j=0; j < lp->narg; j++) {
         v = LARG(lp,j).value;
-        if (IsNArray(v)) {
+        if (CumoIsNArray(v)) {
             cumo_na_release_lock(v);
         }
     }
@@ -516,7 +516,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
 {
     size_t n, s;
     int i, k, nd;
-    stridx_t sdx;
+    cumo_stridx_t sdx;
     cumo_narray_t *na;
 
     LARG(lp,j).value = vna;
@@ -532,17 +532,17 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
     } else {
         rb_bug("invalid value for read-write flag");
     }
-    GetNArray(vna,na);
+    CumoGetNArray(vna,na);
     nd = LARG(lp,j).ndim;
 
-    switch(NA_TYPE(na)) {
-    case NARRAY_DATA_T:
-        if (NA_DATA_PTR(na)==NULL && NA_SIZE(na)>0) {
+    switch(CUMO_NA_TYPE(na)) {
+    case CUMO_NARRAY_DATA_T:
+        if (CUMO_NA_DATA_PTR(na)==NULL && CUMO_NA_SIZE(na)>0) {
             rb_bug("cannot read no-data NArray");
             rb_raise(rb_eRuntimeError,"cannot read no-data NArray");
         }
         // through
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_FILEMAP_T:
         s = LARG(lp,j).elmsz;
         for (k=na->ndim; k--;) {
             n = na->shape[k];
@@ -557,25 +557,25 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
         }
         LITER(lp,0,j).pos = 0;
         break;
-    case NARRAY_VIEW_T:
-        LITER(lp,0,j).pos = NA_VIEW_OFFSET(na);
+    case CUMO_NARRAY_VIEW_T:
+        LITER(lp,0,j).pos = CUMO_NA_VIEW_OFFSET(na);
         for (k=0; k<na->ndim; k++) {
             n = na->shape[k];
-            sdx = NA_VIEW_STRIDX(na)[k];
+            sdx = CUMO_NA_VIEW_STRIDX(na)[k];
             if (n > 1 || nd > 0) {
                 i = dim_map[k];
-                if (SDX_IS_INDEX(sdx)) {
+                if (CUMO_SDX_IS_INDEX(sdx)) {
                     LITER(lp,i,j).step = 0;
-                    LITER(lp,i,j).idx = SDX_GET_INDEX(sdx);
+                    LITER(lp,i,j).idx = CUMO_SDX_GET_INDEX(sdx);
                 } else {
-                    LITER(lp,i,j).step = SDX_GET_STRIDE(sdx);
+                    LITER(lp,i,j).step = CUMO_SDX_GET_STRIDE(sdx);
                     //LITER(lp,i,j).idx = NULL;
                 }
             } else if (n==1) {
-                if (SDX_IS_INDEX(sdx)) {
+                if (CUMO_SDX_IS_INDEX(sdx)) {
                     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_set_stepidx", "any");
                     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-                    LITER(lp,0,j).pos += SDX_GET_INDEX(sdx)[0];
+                    LITER(lp,0,j).pos += CUMO_SDX_GET_INDEX(sdx)[0];
                 }
             }
             nd--;
@@ -612,9 +612,9 @@ na->shape[i] == lp->n[ dim_map[i] ]
             continue;
         }
         v = RARRAY_AREF(args,j);
-        if (IsNArray(v)) {
+        if (CumoIsNArray(v)) {
             // set LARG(lp,j) with v
-            GetNArray(v,na);
+            CumoGetNArray(v,na);
             nf_dim = nf->ain[j].dim;
             if (nf_dim > na->ndim) {
                 rb_raise(cumo_na_eDimensionError,"requires >= %d-dimensioal array "
@@ -667,7 +667,7 @@ ndloop_check_inplace(VALUE type, int cumo_na_ndim, size_t *cumo_na_shape, VALUE 
     if (type != CLASS_OF(v)) {
         return 0;
     }
-    GetNArray(v,na);
+    CumoGetNArray(v,na);
     // shape check
     if (na->ndim != cumo_na_ndim) {
         return 0;
@@ -691,8 +691,8 @@ ndloop_find_inplace(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE type,
     // find inplace
     for (j=0; j<nf->nin; j++) {
         v = RARRAY_AREF(args,j);
-        if (IsNArray(v)) {
-            if (TEST_INPLACE(v)) {
+        if (CumoIsNArray(v)) {
+            if (CUMO_TEST_INPLACE(v)) {
                 if (ndloop_check_inplace(type,cumo_na_ndim,cumo_na_shape,v)) {
                     // if already copied, create outary and write-back
                     if (lp->copy_flag & (1<<j)) {
@@ -1319,9 +1319,9 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
         return RARRAY_AREF(results,0);
         // x = RARRAY_AREF(results,0);
         // if (CUMO_NDF_TEST(nf,CUMO_NDF_EXTRACT)) {
-        //     if (IsNArray(x)){
-        //         GetNArray(x,na);
-        //         if (NA_NDIM(na)==0) {
+        //     if (CumoIsNArray(x)){
+        //         CumoGetNArray(x,na);
+        //         if (CUMO_NA_NDIM(na)==0) {
         //             x = rb_funcall(x, cumo_id_extract, 0);
         //         }
         //     }
@@ -1332,9 +1332,9 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
     //     n = RARRAY_LEN(results);
     //     for (i=0; i<n; i++) {
     //         x = RARRAY_AREF(results,i);
-    //         if (IsNArray(x)){
-    //             GetNArray(x,na);
-    //             if (NA_NDIM(na)==0) {
+    //         if (CumoIsNArray(x)){
+    //             CumoGetNArray(x,na);
+    //             if (CUMO_NA_NDIM(na)==0) {
     //                 y = rb_funcall(x, cumo_id_extract, 0);
     //                 RARRAY_ASET(results,i,y);
     //             }
@@ -1625,11 +1625,11 @@ cumo_na_info_str(VALUE ary)
     VALUE buf;
     cumo_narray_t *na;
 
-    GetNArray(ary,na);
+    CumoGetNArray(ary,na);
     nd = na->ndim;
 
     buf = rb_str_new2(rb_class2name(CLASS_OF(ary)));
-    if (NA_TYPE(na) == NARRAY_VIEW_T) {
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
         rb_str_cat(buf,"(view)",6);
     }
     rb_str_cat(buf,"#shape=[",8);
@@ -1782,7 +1782,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     if (CLASS_OF(a) != a_type) {
         a = rb_funcall(a_type, cumo_id_cast, 1, a);
     }
-    GetNArray(a,na);
+    CumoGetNArray(a,na);
     if (na->ndim != nd-i0+1) {
         rb_raise(cumo_na_eShapeError, "mismatched dimension of sub-narray: "
                  "nd_src=%d, nd_dst=%d", na->ndim, nd-i0+1);
@@ -1857,7 +1857,7 @@ loop_store_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
                 } else {
                     a[i+1] = Qnil;
                 }
-            } else if (IsNArray(a[i])) {
+            } else if (CumoIsNArray(a[i])) {
                 //printf("a[i=%d]=0x%lx\n",i,a[i]);
                 loop_store_subnarray(nf,lp,i,c,a[i]);
                 goto loop_next;
@@ -1872,7 +1872,7 @@ loop_store_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         }
 
         //printf("a[i=%d]=0x%lx\n",i,a[i]);
-        if (IsNArray(a[i])) {
+        if (CumoIsNArray(a[i])) {
             loop_store_subnarray(nf,lp,i,c,a[i]);
         } else {
             LARG(lp,1).value = a[i];

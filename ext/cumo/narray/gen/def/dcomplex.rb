@@ -4,7 +4,7 @@ set full_class_name:     "Cumo::DComplex"
 set class_name:          "DComplex"
 set class_alias:         "Complex64"
 set class_var:           "cT"
-set ctype:               "dcomplex"
+set ctype:               "cumo_dcomplex"
 set real_class_name:     "DFloat"
 set real_ctype:          "double"
 

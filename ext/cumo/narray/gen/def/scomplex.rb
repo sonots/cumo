@@ -4,7 +4,7 @@ set full_class_name:     "Cumo::SComplex"
 set class_name:          "SComplex"
 set class_alias:         "Complex32"
 set class_var:           "cT"
-set ctype:               "Scomplex"
+set ctype:               "cumo_scomplex"
 set real_class_name:     "SFloat"
 set real_ctype:          "float"
 

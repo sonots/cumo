@@ -3,34 +3,34 @@
 
 #define CUMO_LOAD_BIT( adr, pos, val )                       \
     {                                                   \
-        size_t dig = (size_t)(pos) / NB;                \
-        int    bit = (size_t)(pos) % NB;                \
-        val = (((BIT_DIGIT*)(adr))[dig]>>(bit)) & 1u;   \
+        size_t dig = (size_t)(pos) / CUMO_NB;                \
+        int    bit = (size_t)(pos) % CUMO_NB;                \
+        val = (((CUMO_BIT_DIGIT*)(adr))[dig]>>(bit)) & 1u;   \
     }
 
 #define CUMO_LOAD_BIT_STEP( adr, pos, step, idx, val )       \
     {                                                   \
         size_t dig; int bit;                            \
         if (idx) {                                      \
-            dig = (size_t)((pos) + *(idx)) / NB;        \
-            bit = (size_t)((pos) + *(idx)) % NB;        \
+            dig = (size_t)((pos) + *(idx)) / CUMO_NB;        \
+            bit = (size_t)((pos) + *(idx)) % CUMO_NB;        \
             idx++;                                      \
         } else {                                        \
-            dig = (size_t)(pos) / NB;                   \
-            bit = (size_t)(pos) % NB;                   \
+            dig = (size_t)(pos) / CUMO_NB;                   \
+            bit = (size_t)(pos) % CUMO_NB;                   \
             pos += step;                                \
         }                                               \
-        val = (((BIT_DIGIT*)(adr))[dig]>>bit) & 1u;     \
+        val = (((CUMO_BIT_DIGIT*)(adr))[dig]>>bit) & 1u;     \
     }
 
 #define CUMO_STORE_BIT(adr,pos,val)                                     \
     {                                                              \
-        size_t dig = (size_t)(pos) / NB;                           \
-        int    bit = (size_t)(pos) % NB;                           \
+        size_t dig = (size_t)(pos) / CUMO_NB;                           \
+        int    bit = (size_t)(pos) % CUMO_NB;                           \
         if (val) {                                                 \
-            atomicOr((BIT_DIGIT*)(adr) + (dig), (val)<<(bit));     \
+            atomicOr((CUMO_BIT_DIGIT*)(adr) + (dig), (val)<<(bit));     \
         } else {                                                   \
-            atomicAnd((BIT_DIGIT*)(adr) + (dig), ~(1u<<(bit)));    \
+            atomicAnd((CUMO_BIT_DIGIT*)(adr) + (dig), ~(1u<<(bit)));    \
         }                                                          \
     }
 // val -> val&1 ??
@@ -39,18 +39,18 @@
     {                                                              \
         size_t dig; int bit;                                       \
         if (idx) {                                                 \
-            dig = (size_t)((pos) + *(idx)) / NB;                   \
-            bit = (size_t)((pos) + *(idx)) % NB;                   \
+            dig = (size_t)((pos) + *(idx)) / CUMO_NB;                   \
+            bit = (size_t)((pos) + *(idx)) % CUMO_NB;                   \
             idx++;                                                 \
         } else {                                                   \
-            dig = (size_t)(pos) / NB;                              \
-            bit = (size_t)(pos) % NB;                              \
+            dig = (size_t)(pos) / CUMO_NB;                              \
+            bit = (size_t)(pos) % CUMO_NB;                              \
             pos += step;                                           \
         }                                                          \
         if (val) {                                                 \
-            atomicOr((BIT_DIGIT*)(adr) + (dig), (val)<<(bit));     \
+            atomicOr((CUMO_BIT_DIGIT*)(adr) + (dig), (val)<<(bit));     \
         } else {                                                   \
-            atomicAnd((BIT_DIGIT*)(adr) + (dig), ~((1u)<<(bit)));  \
+            atomicAnd((CUMO_BIT_DIGIT*)(adr) + (dig), ~((1u)<<(bit)));  \
         }                                                          \
     }
 // val -> val&1 ??

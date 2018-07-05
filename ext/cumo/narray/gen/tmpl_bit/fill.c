@@ -6,8 +6,8 @@ static void
     ssize_t s3;
     size_t *idx3;
     int     len;
-    BIT_DIGIT *a3;
-    BIT_DIGIT  y;
+    CUMO_BIT_DIGIT *a3;
+    CUMO_BIT_DIGIT  y;
     VALUE x = lp->option;
 
     // TODO(sonots): CUDA kernelize
@@ -18,7 +18,7 @@ static void
         y = 0;
     } else
     if (x==INT2FIX(1) || x==Qtrue) {
-        y = ~(BIT_DIGIT)0;
+        y = ~(CUMO_BIT_DIGIT)0;
     } else {
         rb_raise(rb_eArgError, "invalid value for Bit");
     }
@@ -36,18 +36,18 @@ static void
             CUMO_STORE_BIT(a3, p3, y); p3+=s3;
         }
     } else {
-        if (p3>0 || n<NB) {
-            len = NB - p3;
+        if (p3>0 || n<CUMO_NB) {
+            len = CUMO_NB - p3;
             if ((int)n<len) len=n;
-            *a3 = (y & (SLB(len)<<p3)) | (*a3 & ~(SLB(len)<<p3));
+            *a3 = (y & (CUMO_SLB(len)<<p3)) | (*a3 & ~(CUMO_SLB(len)<<p3));
             a3++;
             n -= len;
         }
-        for (; n>=NB; n-=NB) {
+        for (; n>=CUMO_NB; n-=CUMO_NB) {
             *(a3++) = y;
         }
         if (n>0) {
-            *a3 = (y & SLB(n)) | (*a3 & BALL<<n);
+            *a3 = (y & CUMO_SLB(n)) | (*a3 & CUMO_BALL<<n);
         }
     }
 }

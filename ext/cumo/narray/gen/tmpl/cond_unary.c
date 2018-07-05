@@ -3,12 +3,12 @@ static void
 {
     size_t    i;
     char     *p1;
-    BIT_DIGIT *a2;
+    CUMO_BIT_DIGIT *a2;
     size_t    p2;
     ssize_t   s1, s2;
     size_t   *idx1;
     dtype     x;
-    BIT_DIGIT b;
+    CUMO_BIT_DIGIT b;
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     CUMO_INIT_PTR_BIT(lp, 1, a2, p2, s2);

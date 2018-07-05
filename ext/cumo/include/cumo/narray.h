@@ -49,13 +49,23 @@ extern "C" {
 # endif
 #endif
 
+#ifndef SZF
 #define SZF PRI_SIZE_PREFIX // defined in ruby.h
+#endif
 
 #if   SIZEOF_LONG==8
-# define NUM2INT64(x) NUM2LONG(x)
-# define INT642NUM(x) LONG2NUM(x)
-# define NUM2UINT64(x) NUM2ULONG(x)
-# define UINT642NUM(x) ULONG2NUM(x)
+# ifndef NUM2INT64
+#  define NUM2INT64(x) NUM2LONG(x)
+# endif
+# ifndef INT642NUM
+#  define INT642NUM(x) LONG2NUM(x)
+# endif
+# ifndef NUM2UINT64
+#  define NUM2UINT64(x) NUM2ULONG(x)
+# endif
+# ifndef UINT642NUM
+#  define UINT642NUM(x) ULONG2NUM(x)
+# endif
 # ifndef PRId64
 #  define PRId64 "ld"
 # endif
@@ -63,10 +73,18 @@ extern "C" {
 #  define PRIu64 "lu"
 # endif
 #elif SIZEOF_LONG_LONG==8
-# define NUM2INT64(x) NUM2LL(x)
-# define INT642NUM(x) LL2NUM(x)
-# define NUM2UINT64(x) NUM2ULL(x)
-# define UINT642NUM(x) ULL2NUM(x)
+# ifndef NUM2INT64
+#  define NUM2INT64(x) NUM2LL(x)
+# endif
+# ifndef INT642NUM
+#  define INT642NUM(x) LL2NUM(x)
+# endif
+# ifndef NUM2UINT64
+#  define NUM2UINT64(x) NUM2ULL(x)
+# endif
+# ifndef UINT642NUM
+#  define UINT642NUM(x) ULL2NUM(x)
+# endif
 # ifndef PRId64
 #  define PRId64 "lld"
 # endif
@@ -76,10 +94,18 @@ extern "C" {
 #endif
 
 #if   SIZEOF_LONG==4
-# define NUM2INT32(x) NUM2LONG(x)
-# define INT322NUM(x) LONG2NUM(x)
-# define NUM2UINT32(x) NUM2ULONG(x)
-# define UINT322NUM(x) ULONG2NUM(x)
+# ifndef NUM2INT32
+#  define NUM2INT32(x) NUM2LONG(x)
+# endif
+# ifndef INT322NUM
+#  define INT322NUM(x) LONG2NUM(x)
+# endif
+# ifndef NUM2UINT32
+#  define NUM2UINT32(x) NUM2ULONG(x)
+# endif
+# ifndef UINT322NUM
+#  define UINT322NUM(x) ULONG2NUM(x)
+# endif
 # ifndef PRId32
 #  define PRId32 "ld"
 # endif
@@ -87,10 +113,18 @@ extern "C" {
 #  define PRIu32 "lu"
 # endif
 #elif SIZEOF_INT==4
-# define NUM2INT32(x) NUM2INT(x)
-# define INT322NUM(x) INT2NUM(x)
-# define NUM2UINT32(x) NUM2UINT(x)
-# define UINT322NUM(x) UINT2NUM(x)
+# ifndef NUM2INT32
+#  define NUM2INT32(x) NUM2INT(x)
+# endif
+# ifndef INT322NUM
+#  define INT322NUM(x) INT2NUM(x)
+# endif
+# ifndef NUM2UINT32
+#  define NUM2UINT32(x) NUM2UINT(x)
+# endif
+# ifndef UINT322NUM
+#  define UINT322NUM(x) UINT2NUM(x)
+# endif
 # ifndef PRId32
 #  define PRId32 "d"
 # endif
@@ -116,12 +150,11 @@ extern "C" {
 # define TRUE    1
 #endif
 
-typedef struct { float dat[2]; }  scomplex;
-typedef struct { double dat[2]; } dcomplex;
-typedef int fortran_integer;
+typedef struct { float dat[2]; }  cumo_scomplex;
+typedef struct { double dat[2]; } cumo_dcomplex;
 
-#define REAL(x) ((x).dat[0])
-#define IMAG(x) ((x).dat[1])
+#define CUMO_REAL(x) ((x).dat[0])
+#define CUMO_IMAG(x) ((x).dat[1])
 
 extern int cumo_na_debug_flag;
 
@@ -136,7 +169,7 @@ extern VALUE cumo_na_eDimensionError;
 extern VALUE cumo_na_eValueError;
 extern const rb_data_type_t cumo_na_data_type;
 
-//EXTERN const int cumo_na_sizeof[NA_NTYPES+1];
+//EXTERN const int cumo_na_sizeof[CUMO_NA_NTYPES+1];
 
 //#define cumo_na_upcast(x,y) cumo_na_upcast(x,y)
 
@@ -165,9 +198,9 @@ extern VALUE cumo_sym_option;
 extern VALUE cumo_sym_loop_opt;
 extern VALUE cumo_sym_init;
 
-#define NARRAY_DATA_T     0x1
-#define NARRAY_VIEW_T     0x2
-#define NARRAY_FILEMAP_T  0x3
+#define CUMO_NARRAY_DATA_T     0x1
+#define CUMO_NARRAY_VIEW_T     0x2
+#define CUMO_NARRAY_FILEMAP_T  0x3
 
 typedef struct {
     unsigned char ndim;     // # of dimensions
@@ -189,7 +222,7 @@ typedef struct {
 typedef union {
     ssize_t stride;
     size_t *index;
-} stridx_t;
+} cumo_stridx_t;
 
 typedef struct {
     cumo_narray_t base;
@@ -199,7 +232,7 @@ typedef struct {
                          // address_unit  pointer_unit access_unit data_unit
                          // elm.step_unit = elm.bit_size / elm.access_unit
                          // elm.step_unit = elm.size_bits / elm.unit_bits
-    stridx_t *stridx;    // stride or indices of data pointer for each dimension
+    cumo_stridx_t *stridx;    // stride or indices of data pointer for each dimension
 } cumo_narray_view_t;
 
 
@@ -248,75 +281,75 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
     return na;
 }
 
-#define cumo_na_get_narray_data_t(obj) (cumo_narray_data_t*)_cumo_na_get_narray_t(obj,NARRAY_DATA_T)
-#define cumo_na_get_narray_view_t(obj) (cumo_narray_view_t*)_cumo_na_get_narray_t(obj,NARRAY_VIEW_T)
-#define cumo_na_get_narray_filemap_t(obj) (cumo_narray_filemap_t*)_cumo_na_get_narray_t(obj,NARRAY_FILEMAP_T)
+#define cumo_na_get_narray_data_t(obj) (cumo_narray_data_t*)_cumo_na_get_narray_t(obj,CUMO_NARRAY_DATA_T)
+#define cumo_na_get_narray_view_t(obj) (cumo_narray_view_t*)_cumo_na_get_narray_t(obj,CUMO_NARRAY_VIEW_T)
+#define cumo_na_get_narray_filemap_t(obj) (cumo_narray_filemap_t*)_cumo_na_get_narray_t(obj,CUMO_NARRAY_FILEMAP_T)
 
-#define GetNArray(obj,var)      TypedData_Get_Struct(obj, cumo_narray_t, &cumo_na_data_type, var)
-#define GetNArrayView(obj,var)  TypedData_Get_Struct(obj, cumo_narray_view_t, &cumo_na_data_type, var)
-#define GetNArrayData(obj,var)  TypedData_Get_Struct(obj, cumo_narray_data_t, &cumo_na_data_type, var)
+#define CumoGetNArray(obj,var)      TypedData_Get_Struct(obj, cumo_narray_t, &cumo_na_data_type, var)
+#define CumoGetNArrayView(obj,var)  TypedData_Get_Struct(obj, cumo_narray_view_t, &cumo_na_data_type, var)
+#define CumoGetNArrayData(obj,var)  TypedData_Get_Struct(obj, cumo_narray_data_t, &cumo_na_data_type, var)
 
-#define SDX_IS_STRIDE(x) ((x).stride&0x1)
-#define SDX_IS_INDEX(x)  (!SDX_IS_STRIDE(x))
-#define SDX_GET_STRIDE(x) ((x).stride>>1)
-#define SDX_GET_INDEX(x)  ((x).index)
+#define CUMO_SDX_IS_STRIDE(x) ((x).stride&0x1)
+#define CUMO_SDX_IS_INDEX(x)  (!CUMO_SDX_IS_STRIDE(x))
+#define CUMO_SDX_GET_STRIDE(x) ((x).stride>>1)
+#define CUMO_SDX_GET_INDEX(x)  ((x).index)
 
-#define SDX_SET_STRIDE(x,s) ((x).stride=((s)<<1)|0x1)
-#define SDX_SET_INDEX(x,idx) ((x).index=idx)
+#define CUMO_SDX_SET_STRIDE(x,s) ((x).stride=((s)<<1)|0x1)
+#define CUMO_SDX_SET_INDEX(x,idx) ((x).index=idx)
 
-#define RNARRAY(val)            ((cumo_narray_t*)DATA_PTR(val))
-#define RNARRAY_DATA(val)       ((cumo_narray_data_t*)DATA_PTR(val))
-#define RNARRAY_VIEW(val)       ((cumo_narray_view_t*)DATA_PTR(val))
-#define RNARRAY_FILEMAP(val)    ((cumo_narray_filemap_t*)DATA_PTR(val))
+#define CUMO_RNARRAY(val)            ((cumo_narray_t*)DATA_PTR(val))
+#define CUMO_RNARRAY_DATA(val)       ((cumo_narray_data_t*)DATA_PTR(val))
+#define CUMO_RNARRAY_VIEW(val)       ((cumo_narray_view_t*)DATA_PTR(val))
+#define CUMO_RNARRAY_FILEMAP(val)    ((cumo_narray_filemap_t*)DATA_PTR(val))
 
-#define RNARRAY_NDIM(val)       (RNARRAY(val)->ndim)
-#define RNARRAY_TYPE(val)       (RNARRAY(val)->type)
-#define RNARRAY_FLAG(val)       (RNARRAY(val)->flag)
-#define RNARRAY_SIZE(val)       (RNARRAY(val)->size)
-#define RNARRAY_SHAPE(val)      (RNARRAY(val)->shape)
-#define RNARRAY_REDUCE(val)     (RNARRAY(val)->reduce)
+#define CUMO_RNARRAY_NDIM(val)       (CUMO_RNARRAY(val)->ndim)
+#define CUMO_RNARRAY_TYPE(val)       (CUMO_RNARRAY(val)->type)
+#define CUMO_RNARRAY_FLAG(val)       (CUMO_RNARRAY(val)->flag)
+#define CUMO_RNARRAY_SIZE(val)       (CUMO_RNARRAY(val)->size)
+#define CUMO_RNARRAY_SHAPE(val)      (CUMO_RNARRAY(val)->shape)
+#define CUMO_RNARRAY_REDUCE(val)     (CUMO_RNARRAY(val)->reduce)
 
-#define RNARRAY_DATA_PTR(val)    (RNARRAY_DATA(val)->ptr)
-#define RNARRAY_VIEW_DATA(val)   (RNARRAY_VIEW(val)->data)
-#define RNARRAY_VIEW_OFFSET(val) (RNARRAY_VIEW(val)->offset)
-#define RNARRAY_VIEW_STRIDX(val) (RNARRAY_VIEW(val)->stridx)
+#define CUMO_RNARRAY_DATA_PTR(val)    (CUMO_RNARRAY_DATA(val)->ptr)
+#define CUMO_RNARRAY_VIEW_DATA(val)   (CUMO_RNARRAY_VIEW(val)->data)
+#define CUMO_RNARRAY_VIEW_OFFSET(val) (CUMO_RNARRAY_VIEW(val)->offset)
+#define CUMO_RNARRAY_VIEW_STRIDX(val) (CUMO_RNARRAY_VIEW(val)->stridx)
 
-#define NA_NDIM(na)     (((cumo_narray_t*)na)->ndim)
-#define NA_TYPE(na)     (((cumo_narray_t*)na)->type)
-#define NA_SIZE(na)     (((cumo_narray_t*)na)->size)
-#define NA_SHAPE(na)    (((cumo_narray_t*)na)->shape)
-#define NA_REDUCE(na)   (((cumo_narray_t*)na)->reduce)
+#define CUMO_NA_NDIM(na)     (((cumo_narray_t*)na)->ndim)
+#define CUMO_NA_TYPE(na)     (((cumo_narray_t*)na)->type)
+#define CUMO_NA_SIZE(na)     (((cumo_narray_t*)na)->size)
+#define CUMO_NA_SHAPE(na)    (((cumo_narray_t*)na)->shape)
+#define CUMO_NA_REDUCE(na)   (((cumo_narray_t*)na)->reduce)
 
-#define NA_FLAG(obj)    (cumo_na_get_narray_t(obj)->flag)
-#define NA_FLAG0(obj)   (NA_FLAG(obj)[0])
-#define NA_FLAG1(obj)   (NA_FLAG(obj)[1])
+#define CUMO_NA_FLAG(obj)    (cumo_na_get_narray_t(obj)->flag)
+#define CUMO_NA_FLAG0(obj)   (CUMO_NA_FLAG(obj)[0])
+#define CUMO_NA_FLAG1(obj)   (CUMO_NA_FLAG(obj)[1])
 
-#define NA_DATA(na)             ((cumo_narray_data_t*)(na))
-#define NA_VIEW(na)             ((cumo_narray_view_t*)(na))
-#define NA_DATA_PTR(na)         (NA_DATA(na)->ptr)
-#define NA_VIEW_DATA(na)        (NA_VIEW(na)->data)
-#define NA_VIEW_OFFSET(na)      (NA_VIEW(na)->offset)
-#define NA_VIEW_STRIDX(na)      (NA_VIEW(na)->stridx)
+#define CUMO_NA_DATA(na)             ((cumo_narray_data_t*)(na))
+#define CUMO_NA_VIEW(na)             ((cumo_narray_view_t*)(na))
+#define CUMO_NA_DATA_PTR(na)         (CUMO_NA_DATA(na)->ptr)
+#define CUMO_NA_VIEW_DATA(na)        (CUMO_NA_VIEW(na)->data)
+#define CUMO_NA_VIEW_OFFSET(na)      (CUMO_NA_VIEW(na)->offset)
+#define CUMO_NA_VIEW_STRIDX(na)      (CUMO_NA_VIEW(na)->stridx)
 
-#define NA_IS_INDEX_AT(na,i)    (SDX_IS_INDEX(NA_VIEW_STRIDX(na)[i]))
-#define NA_IS_STRIDE_AT(na,i)   (SDX_IS_STRIDE(NA_VIEW_STRIDX(na)[i]))
-#define NA_INDEX_AT(na,i)       (SDX_GET_INDEX(NA_VIEW_STRIDX(na)[i]))
-#define NA_STRIDE_AT(na,i)      (SDX_GET_STRIDE(NA_VIEW_STRIDX(na)[i]))
+#define CUMO_NA_IS_INDEX_AT(na,i)    (CUMO_SDX_IS_INDEX(CUMO_NA_VIEW_STRIDX(na)[i]))
+#define CUMO_NA_IS_STRIDE_AT(na,i)   (CUMO_SDX_IS_STRIDE(CUMO_NA_VIEW_STRIDX(na)[i]))
+#define CUMO_NA_INDEX_AT(na,i)       (CUMO_SDX_GET_INDEX(CUMO_NA_VIEW_STRIDX(na)[i]))
+#define CUMO_NA_STRIDE_AT(na,i)      (CUMO_SDX_GET_STRIDE(CUMO_NA_VIEW_STRIDX(na)[i]))
 
-#define NA_FILEMAP_PTR(na)      (((cumo_narray_filemap_t*)na)->ptr)
+#define CUMO_NA_FILEMAP_PTR(na)      (((cumo_narray_filemap_t*)na)->ptr)
 
 
-#define NA_FL0_TEST(x,f) (NA_FLAG0(x)&(f))
-#define NA_FL1_TEST(x,f) (NA_FLAG1(x)&(f))
+#define CUMO_NA_FL0_TEST(x,f) (CUMO_NA_FLAG0(x)&(f))
+#define CUMO_NA_FL1_TEST(x,f) (CUMO_NA_FLAG1(x)&(f))
 
-#define NA_FL0_SET(x,f) do {NA_FLAG0(x) |= (f);} while(0)
-#define NA_FL1_SET(x,f) do {NA_FLAG1(x) |= (f);} while(0)
+#define CUMO_NA_FL0_SET(x,f) do {CUMO_NA_FLAG0(x) |= (f);} while(0)
+#define CUMO_NA_FL1_SET(x,f) do {CUMO_NA_FLAG1(x) |= (f);} while(0)
 
-#define NA_FL0_UNSET(x,f) do {NA_FLAG0(x) &= ~(f);} while(0)
-#define NA_FL1_UNSET(x,f) do {NA_FLAG1(x) &= ~(f);} while(0)
+#define CUMO_NA_FL0_UNSET(x,f) do {CUMO_NA_FLAG0(x) &= ~(f);} while(0)
+#define CUMO_NA_FL1_UNSET(x,f) do {CUMO_NA_FLAG1(x) &= ~(f);} while(0)
 
-#define NA_FL0_REVERSE(x,f) do {NA_FLAG0(x) ^= (f);} while(0)
-#define NA_FL1_REVERSE(x,f) do {NA_FLAG1(x) ^= (f);} while(0)
+#define CUMO_NA_FL0_REVERSE(x,f) do {CUMO_NA_FLAG0(x) ^= (f);} while(0)
+#define CUMO_NA_FL1_REVERSE(x,f) do {CUMO_NA_FLAG1(x) ^= (f);} while(0)
 
 
 /* FLAGS
@@ -327,92 +360,89 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
    - matrix or not
 */
 
-#define NA_FL0_BIG_ENDIAN     (0x1<<0)
-#define NA_FL0_COLUMN_MAJOR   (0x1<<1)
-#define NA_FL1_LOCK           (0x1<<0)
-#define NA_FL1_INPLACE        (0x1<<1)
+#define CUMO_NA_FL0_BIG_ENDIAN     (0x1<<0)
+#define CUMO_NA_FL0_COLUMN_MAJOR   (0x1<<1)
+#define CUMO_NA_FL1_LOCK           (0x1<<0)
+#define CUMO_NA_FL1_INPLACE        (0x1<<1)
 
-#define TEST_COLUMN_MAJOR(x)   NA_FL0_TEST(x,NA_FL0_COLUMN_MAJOR)
-#define SET_COLUMN_MAJOR(x)    NA_FL0_SET(x,NA_FL0_COLUMN_MAJOR)
-#define UNSET_COLUMN_MAJOR(x)  NA_FL0_UNSET(x,NA_FL0_COLUMN_MAJOR)
+#define CUMO_TEST_COLUMN_MAJOR(x)   CUMO_NA_FL0_TEST(x,CUMO_NA_FL0_COLUMN_MAJOR)
+#define CUMO_SET_COLUMN_MAJOR(x)    CUMO_NA_FL0_SET(x,CUMO_NA_FL0_COLUMN_MAJOR)
+#define CUMO_UNSET_COLUMN_MAJOR(x)  CUMO_NA_FL0_UNSET(x,CUMO_NA_FL0_COLUMN_MAJOR)
 
-#define TEST_ROW_MAJOR(x)      (!TEST_COLUMN_MAJOR(x))
-#define SET_ROW_MAJOR(x)       UNSET_COLUMN_MAJOR(x)
-#define UNSET_ROW_MAJOR(x)     SET_COLUMN_MAJOR(x)
+#define CUMO_TEST_ROW_MAJOR(x)      (!CUMO_TEST_COLUMN_MAJOR(x))
+#define CUMO_SET_ROW_MAJOR(x)       CUMO_UNSET_COLUMN_MAJOR(x)
+#define CUMO_UNSET_ROW_MAJOR(x)     CUMO_SET_COLUMN_MAJOR(x)
 
-#define TEST_BIG_ENDIAN(x)     NA_FL0_TEST(x,NA_FL0_BIG_ENDIAN)
-#define SET_BIG_ENDIAN(x)      NA_FL0_SET(x,NA_FL0_BIG_ENDIAN)
-#define UNSET_BIG_ENDIAN(x)    NA_FL0_UNSET(x,NA_FL0_BIG_ENDIAN)
+#define CUMO_TEST_BIG_ENDIAN(x)     CUMO_NA_FL0_TEST(x,CUMO_NA_FL0_BIG_ENDIAN)
+#define CUMO_SET_BIG_ENDIAN(x)      CUMO_NA_FL0_SET(x,CUMO_NA_FL0_BIG_ENDIAN)
+#define CUMO_UNSET_BIG_ENDIAN(x)    CUMO_NA_FL0_UNSET(x,CUMO_NA_FL0_BIG_ENDIAN)
 
-#define TEST_LITTLE_ENDIAN(x)  (!TEST_BIG_ENDIAN(x))
-#define SET_LITTLE_ENDIAN(x)   UNSET_BIG_ENDIAN(x)
-#define UNSET_LITTLE_ENDIAN(x) SET_BIG_ENDIAN(x)
+#define CUMO_TEST_LITTLE_ENDIAN(x)  (!CUMO_TEST_BIG_ENDIAN(x))
+#define CUMO_SET_LITTLE_ENDIAN(x)   CUMO_UNSET_BIG_ENDIAN(x)
+#define CUMO_UNSET_LITTLE_ENDIAN(x) CUMO_SET_BIG_ENDIAN(x)
 
-#define REVERSE_ENDIAN(x)      NA_FL0_REVERSE((x),NA_FL0_BIG_ENDIAN)
+#define CUMO_REVERSE_ENDIAN(x)      CUMO_NA_FL0_REVERSE((x),CUMO_NA_FL0_BIG_ENDIAN)
 
-#define TEST_LOCK(x)           NA_FL1_TEST(x,NA_FL1_LOCK)
-#define SET_LOCK(x)            NA_FL1_SET(x,NA_FL1_LOCK)
-#define UNSET_LOCK(x)          NA_FL1_UNSET(x,NA_FL1_LOCK)
+#define CUMO_TEST_LOCK(x)           CUMO_NA_FL1_TEST(x,CUMO_NA_FL1_LOCK)
+#define CUMO_SET_LOCK(x)            CUMO_NA_FL1_SET(x,CUMO_NA_FL1_LOCK)
+#define CUMO_UNCUMO_SET_LOCK(x)          CUMO_NA_FL1_UNSET(x,CUMO_NA_FL1_LOCK)
 
-#define TEST_INPLACE(x)        NA_FL1_TEST(x,NA_FL1_INPLACE)
-#define SET_INPLACE(x)         NA_FL1_SET(x,NA_FL1_INPLACE)
-#define UNSET_INPLACE(x)       NA_FL1_UNSET(x,NA_FL1_INPLACE)
+#define CUMO_TEST_INPLACE(x)        CUMO_NA_FL1_TEST(x,CUMO_NA_FL1_INPLACE)
+#define CUMO_SET_INPLACE(x)         CUMO_NA_FL1_SET(x,CUMO_NA_FL1_INPLACE)
+#define CUMO_UNCUMO_SET_INPLACE(x)       CUMO_NA_FL1_UNSET(x,CUMO_NA_FL1_INPLACE)
 
 #ifdef DYNAMIC_ENDIAN
 // not supported
 #else
 #ifdef WORDS_BIGENDIAN
-#define TEST_HOST_ORDER(x)     TEST_BIG_ENDIAN(x)
-#define SET_HOST_ORDER(x)      SET_BIG_ENDIAN(x)
-#define UNSET_HOST_ORDER(x)    UNSET_BIG_ENDIAN(x)
-#define TEST_BYTE_SWAPPED(x)   TEST_LITTLE_ENDIAN(x)
-#define SET_BYTE_SWAPPED(x)    SET_LITTLE_ENDIAN(x)
-#define UNSET_BYTE_SWAPPED(x)  UNSET_LITTLE_ENDIAN(x)
-#define NA_FL0_INIT            NA_FL0_BIG_ENDIAN
+#define CUMO_TEST_HOST_ORDER(x)     CUMO_TEST_BIG_ENDIAN(x)
+#define CUMO_SET_HOST_ORDER(x)      CUMO_SET_BIG_ENDIAN(x)
+#define CUMO_UNSET_HOST_ORDER(x)    CUMO_UNSET_BIG_ENDIAN(x)
+#define CUMO_TEST_BYTE_SWAPPED(x)   CUMO_TEST_LITTLE_ENDIAN(x)
+#define CUMO_SET_BYTE_SWAPPED(x)    CUMO_SET_LITTLE_ENDIAN(x)
+#define CUMO_UNCUMO_SET_BYTE_SWAPPED(x)  CUMO_UNSET_LITTLE_ENDIAN(x)
+#define CUMO_NA_FL0_INIT            CUMO_NA_FL0_BIG_ENDIAN
 #else // LITTLE ENDIAN
-#define TEST_HOST_ORDER(x)     TEST_LITTLE_ENDIAN(x)
-#define SET_HOST_ORDER(x)      SET_LITTLE_ENDIAN(x)
-#define UNSET_HOST_ORDER(x)    UNSET_LITTLE_ENDIAN(x)
-#define TEST_BYTE_SWAPPED(x)   TEST_BIG_ENDIAN(x)
-#define SET_BYTE_SWAPPED(x)    SET_BIG_ENDIAN(x)
-#define UNSET_BYTE_SWAPPED(x)  UNSET_BIG_ENDIAN(x)
-#define NA_FL0_INIT            0
+#define CUMO_TEST_HOST_ORDER(x)     CUMO_TEST_LITTLE_ENDIAN(x)
+#define CUMO_SET_HOST_ORDER(x)      CUMO_SET_LITTLE_ENDIAN(x)
+#define CUMO_UNSET_HOST_ORDER(x)    CUMO_UNSET_LITTLE_ENDIAN(x)
+#define CUMO_TEST_BYTE_SWAPPED(x)   CUMO_TEST_BIG_ENDIAN(x)
+#define CUMO_SET_BYTE_SWAPPED(x)    CUMO_SET_BIG_ENDIAN(x)
+#define CUMO_UNCUMO_SET_BYTE_SWAPPED(x)  CUMO_UNSET_BIG_ENDIAN(x)
+#define CUMO_NA_FL0_INIT            0
 #endif
 #endif
-#define NA_FL1_INIT            0
+#define CUMO_NA_FL1_INIT            0
 
 
-#define IsNArray(obj) (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
+#define CumoIsNArray(obj) (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
 
-#define DEBUG_PRINT(v) puts(StringValueCStr(rb_funcall(v,rb_intern("inspect"),0)))
+#define CUMO_DEBUG_PRINT(v) puts(StringValueCStr(rb_funcall(v,rb_intern("inspect"),0)))
 
-#define NA_IsNArray(obj) \
+#define CUMO_NA_CumoIsNArray(obj) \
   (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
-#define NA_IsArray(obj) \
+#define CUMO_NA_IsArray(obj) \
   (TYPE(obj)==T_ARRAY || rb_obj_is_kind_of(obj,cNArray)==Qtrue)
 
-#define NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
-#define NUM2IMAG(v)  NUM2DBL( rb_funcall((v),cumo_na_id_imag,0) )
+#define CUMO_NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
+#define CUMO_NUM2IMAG(v)  NUM2DBL( rb_funcall((v),cumo_na_id_imag,0) )
 
-//#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
-#define NA_MAX_DIMENSION 12
-#define NA_MAX_ELMSZ     65535
+//#define CUMO_NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+#define CUMO_NA_MAX_DIMENSION 12
+#define CUMO_NA_MAX_ELMSZ     65535
 
-typedef unsigned int BIT_DIGIT;
-#define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
-#define NB     (sizeof(BIT_DIGIT)*8)
-#define BALL   (~(BIT_DIGIT)0)
-#define SLB(n) (((n)==NB)?~(BIT_DIGIT)0:(~(~(BIT_DIGIT)0<<(n))))
+typedef unsigned int CUMO_BIT_DIGIT;
+#define CUMO_BYTE_BIT_DIGIT sizeof(CUMO_BIT_DIGIT)
+#define CUMO_NB     (sizeof(CUMO_BIT_DIGIT)*8)
+#define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
+#define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
 
-#define ELEMENT_BIT_SIZE  "ELEMENT_BIT_SIZE"
-#define ELEMENT_BYTE_SIZE "ELEMENT_BYTE_SIZE"
-#define CONTIGUOUS_STRIDE "CONTIGUOUS_STRIDE"
-
-
+#ifndef IS_INTEGER_CLASS
 #ifdef RUBY_INTEGER_UNIFICATION
 #define IS_INTEGER_CLASS(c) ((c)==rb_cInteger)
 #else
 #define IS_INTEGER_CLASS(c) ((c)==rb_cFixnum||(c)==rb_cBignum)
+#endif
 #endif
 
 #include "cumo/ndloop.h"

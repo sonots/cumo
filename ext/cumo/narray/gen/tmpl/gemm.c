@@ -94,7 +94,7 @@
 #define COPY_OR_CAST_TO(a,T)                            \
     {                                                   \
         if (CLASS_OF(a) == (T)) {                       \
-            if (!TEST_INPLACE(a)) {                     \
+            if (!CUMO_TEST_INPLACE(a)) {                     \
                 a = cumo_na_copy(a);                    \
             }                                           \
         } else {                                        \
@@ -121,28 +121,28 @@ is_f_contiguous(VALUE a)
     ssize_t s0;
     cumo_narray_t *na;
 
-    switch(RNARRAY_TYPE(a)) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
-        return TEST_COLUMN_MAJOR(a);
-    case NARRAY_VIEW_T:
-        GetNArray(a, na);
+    switch(CUMO_RNARRAY_TYPE(a)) {
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
+        return CUMO_TEST_COLUMN_MAJOR(a);
+    case CUMO_NARRAY_VIEW_T:
+        CumoGetNArray(a, na);
 
         // not contiguous if it has index
-        for (i = 0; i < NA_NDIM(na); ++i) {
-            if (NA_IS_INDEX_AT(na, i)) return false;
+        for (i = 0; i < CUMO_NA_NDIM(na); ++i) {
+            if (CUMO_NA_IS_INDEX_AT(na, i)) return false;
         }
 
         // check f-contiguous
         s0 = cumo_na_element_stride(a);
-        for (i = 0; i < NA_NDIM(na); ++i) {
-            if (NA_SHAPE(na)[i] == 1) continue;
-            if (NA_STRIDE_AT(na, i) != s0) return false;
-            s0 *= NA_SHAPE(na)[i];
+        for (i = 0; i < CUMO_NA_NDIM(na); ++i) {
+            if (CUMO_NA_SHAPE(na)[i] == 1) continue;
+            if (CUMO_NA_STRIDE_AT(na, i) != s0) return false;
+            s0 *= CUMO_NA_SHAPE(na)[i];
         }
         return true;
     default:
-        rb_raise(rb_eArgError, "NArray type : %d is not supported", RNARRAY_TYPE(a));
+        rb_raise(rb_eArgError, "NArray type : %d is not supported", CUMO_RNARRAY_TYPE(a));
     }
 }
 
@@ -158,14 +158,14 @@ make_gemm_layout(VALUE a)
     cumo_narray_t *na;
     gemm_layout_t layout;
 
-    GetNArray(a, na);
+    CumoGetNArray(a, na);
 
     if (cumo_na_debug_flag) {
         printf("ndim==2 && f_contiguous:%d, c_contiguous:%d\n",
-                NA_NDIM(na) == 2 && is_f_contiguous(a), is_c_contiguous(a));
+                CUMO_NA_NDIM(na) == 2 && is_f_contiguous(a), is_c_contiguous(a));
     }
 
-    if (NA_NDIM(na) == 2 && is_f_contiguous(a)) {
+    if (CUMO_NA_NDIM(na) == 2 && is_f_contiguous(a)) {
         layout.ld = ROW_SIZE(na);
         layout.trans = CUBLAS_OP_T;
         layout.a = a;
@@ -221,9 +221,9 @@ static void
     a_layout = make_gemm_layout(a);
     b_layout = make_gemm_layout(b);
 
-    GetNArray(c, nc);
+    CumoGetNArray(c, nc);
     int stridec = ROW_SIZE(nc) * COL_SIZE(nc);
-    int batch_count = NA_SIZE(nc) / stridec;
+    int batch_count = CUMO_NA_SIZE(nc) / stridec;
 
     if (cumo_na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
     handle = cumo_cuda_cublas_handle();
@@ -305,8 +305,8 @@ static VALUE
     beta = cumo_cuda_cublas_option_value(opts[1],Qnil);
     g.beta = RTEST(beta) ? m_num_to_data(beta) : m_zero;
 
-    GetNArray(a, na);
-    GetNArray(b, nb);
+    CumoGetNArray(a, na);
+    CumoGetNArray(b, nb);
     CHECK_DIM_GE(na, 2);
     CHECK_DIM_GE(nb, 2);
 
@@ -320,15 +320,15 @@ static VALUE
     g.n = COL_SIZE(nb);
 
     if (c == Qnil) { // c is not given.
-        int ndim = NA_NDIM(na);
+        int ndim = CUMO_NA_NDIM(na);
         size_t *shape = ALLOCA_N(size_t, ndim);
-        memcpy(shape, NA_SHAPE(na), sizeof(size_t) * (ndim - 1)); // ... x m x k
+        memcpy(shape, CUMO_NA_SHAPE(na), sizeof(size_t) * (ndim - 1)); // ... x m x k
         shape[ndim - 1] = g.n; // ... x m x n
         c = cumo_na_new(cT, ndim, shape);
     } else {
         cumo_narray_t *nc;
         COPY_OR_CAST_TO(c, cT);
-        GetNArray(c, nc);
+        CumoGetNArray(c, nc);
         CHECK_DIM_GE(nc, 2);
         if (ROW_SIZE(nc) != ROW_SIZE(na)) {
             rb_raise(cumo_na_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d",

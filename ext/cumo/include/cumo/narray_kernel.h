@@ -49,13 +49,23 @@ extern "C" {
 # endif
 #endif
 
+#ifndef SZF
 #define SZF PRI_SIZE_PREFIX // defined in ruby.h
+#endif
 
 #if   SIZEOF_LONG==8
-# define NUM2INT64(x) NUM2LONG(x)
-# define INT642NUM(x) LONG2NUM(x)
-# define NUM2UINT64(x) NUM2ULONG(x)
-# define UINT642NUM(x) ULONG2NUM(x)
+# ifndef NUM2INT64
+#  define NUM2INT64(x) NUM2LONG(x)
+# endif
+# ifndef INT642NUM
+#  define INT642NUM(x) LONG2NUM(x)
+# endif
+# ifndef NUM2UINT64
+#  define NUM2UINT64(x) NUM2ULONG(x)
+# endif
+# ifndef UINT642NUM
+#  define UINT642NUM(x) ULONG2NUM(x)
+# endif
 # ifndef PRId64
 #  define PRId64 "ld"
 # endif
@@ -63,10 +73,18 @@ extern "C" {
 #  define PRIu64 "lu"
 # endif
 #elif SIZEOF_LONG_LONG==8
-# define NUM2INT64(x) NUM2LL(x)
-# define INT642NUM(x) LL2NUM(x)
-# define NUM2UINT64(x) NUM2ULL(x)
-# define UINT642NUM(x) ULL2NUM(x)
+# ifndef NUM2INT64
+#  define NUM2INT64(x) NUM2LL(x)
+# endif
+# ifndef INT642NUM
+#  define INT642NUM(x) LL2NUM(x)
+# endif
+# ifndef NUM2UINT64
+#  define NUM2UINT64(x) NUM2ULL(x)
+# endif
+# ifndef UINT642NUM
+#  define UINT642NUM(x) ULL2NUM(x)
+# endif
 # ifndef PRId64
 #  define PRId64 "lld"
 # endif
@@ -76,10 +94,18 @@ extern "C" {
 #endif
 
 #if   SIZEOF_LONG==4
-# define NUM2INT32(x) NUM2LONG(x)
-# define INT322NUM(x) LONG2NUM(x)
-# define NUM2UINT32(x) NUM2ULONG(x)
-# define UINT322NUM(x) ULONG2NUM(x)
+# ifndef NUM2INT32
+#  define NUM2INT32(x) NUM2LONG(x)
+# endif
+# ifndef INT322NUM
+#  define INT322NUM(x) LONG2NUM(x)
+# endif
+# ifndef NUM2UINT32
+#  define NUM2UINT32(x) NUM2ULONG(x)
+# endif
+# ifndef UINT322NUM
+#  define UINT322NUM(x) ULONG2NUM(x)
+# endif
 # ifndef PRId32
 #  define PRId32 "ld"
 # endif
@@ -87,10 +113,18 @@ extern "C" {
 #  define PRIu32 "lu"
 # endif
 #elif SIZEOF_INT==4
-# define NUM2INT32(x) NUM2INT(x)
-# define INT322NUM(x) INT2NUM(x)
-# define NUM2UINT32(x) NUM2UINT(x)
-# define UINT322NUM(x) UINT2NUM(x)
+# ifndef NUM2INT32
+#  define NUM2INT32(x) NUM2INT(x)
+# endif
+# ifndef INT322NUM
+#  define INT322NUM(x) INT2NUM(x)
+# endif
+# ifndef NUM2UINT32
+#  define NUM2UINT32(x) NUM2UINT(x)
+# endif
+# ifndef UINT322NUM
+#  define UINT322NUM(x) UINT2NUM(x)
+# endif
 # ifndef PRId32
 #  define PRId32 "d"
 # endif
@@ -109,32 +143,27 @@ extern "C" {
 # define TRUE    1
 #endif
 
-typedef struct { float dat[2]; }  scomplex;
-typedef struct { double dat[2]; } dcomplex;
-typedef int fortran_integer;
+typedef struct { float dat[2]; }  cumo_scomplex;
+typedef struct { double dat[2]; } cumo_dcomplex;
 
-#define REAL(x) ((x).dat[0])
-#define IMAG(x) ((x).dat[1])
+#define CUMO_REAL(x) ((x).dat[0])
+#define CUMO_IMAG(x) ((x).dat[1])
 
 extern int cumo_na_debug_flag;
 
-#define NARRAY_DATA_T     0x1
-#define NARRAY_VIEW_T     0x2
-#define NARRAY_FILEMAP_T  0x3
+#define CUMO_NARRAY_DATA_T     0x1
+#define CUMO_NARRAY_VIEW_T     0x2
+#define CUMO_NARRAY_FILEMAP_T  0x3
 
-//#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
-#define NA_MAX_DIMENSION 12
-#define NA_MAX_ELMSZ     65535
+//#define CUMO_NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+#define CUMO_NA_MAX_DIMENSION 12
+#define CUMO_NA_MAX_ELMSZ     65535
 
-typedef unsigned int BIT_DIGIT;
-#define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
-#define NB     (sizeof(BIT_DIGIT)*8)
-#define BALL   (~(BIT_DIGIT)0)
-#define SLB(n) (((n)==NB)?~(BIT_DIGIT)0:(~(~(BIT_DIGIT)0<<(n))))
-
-#define ELEMENT_BIT_SIZE  "ELEMENT_BIT_SIZE"
-#define ELEMENT_BYTE_SIZE "ELEMENT_BYTE_SIZE"
-#define CONTIGUOUS_STRIDE "CONTIGUOUS_STRIDE"
+typedef unsigned int CUMO_BIT_DIGIT;
+#define CUMO_BYTE_BIT_DIGIT sizeof(CUMO_BIT_DIGIT)
+#define CUMO_NB     (sizeof(CUMO_BIT_DIGIT)*8)
+#define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
+#define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
 
 #include "cumo/indexer.h"
 #include "cumo/intern_kernel.h"

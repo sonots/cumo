@@ -1,7 +1,7 @@
 #ifndef CUMO_SCOMPLEX_KERNEL_H
 #define CUMO_SCOMPLEX_KERNEL_H
 
-typedef scomplex dtype;
+typedef cumo_scomplex dtype;
 typedef float rtype;
 
 #include "complex_macro_kernel.h"

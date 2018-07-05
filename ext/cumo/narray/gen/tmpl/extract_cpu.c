@@ -12,7 +12,7 @@ static VALUE
     volatile VALUE v;
     char *ptr;
     cumo_narray_t *na;
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
 
     if (na->ndim==0) {
         ptr = cumo_na_get_pointer_for_read(self) + cumo_na_get_offset(self);

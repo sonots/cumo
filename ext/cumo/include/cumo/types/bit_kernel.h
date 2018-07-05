@@ -1,8 +1,8 @@
 #ifndef CUMO_BIT_KERNEL_H
 #define CUMO_BIT_KERNEL_H
 
-typedef BIT_DIGIT dtype;
-typedef BIT_DIGIT rtype;
+typedef CUMO_BIT_DIGIT dtype;
+typedef CUMO_BIT_DIGIT rtype;
 
 #define m_zero 0
 #define m_one  1

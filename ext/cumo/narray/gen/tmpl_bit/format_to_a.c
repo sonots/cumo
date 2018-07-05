@@ -2,7 +2,7 @@ static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
-    BIT_DIGIT *a1, x=0;
+    CUMO_BIT_DIGIT *a1, x=0;
     size_t     p1;
     ssize_t    s1;
     size_t   *idx1;

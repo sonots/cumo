@@ -4,12 +4,12 @@ static void
     size_t i, n;
     size_t i1, n1;
     VALUE  v1, *ptr;
-    BIT_DIGIT *a1;
+    CUMO_BIT_DIGIT *a1;
     size_t p1;
     size_t s1, *idx1;
     VALUE  x;
     double y;
-    BIT_DIGIT z;
+    CUMO_BIT_DIGIT z;
     size_t len, c;
     double beg, step;
 

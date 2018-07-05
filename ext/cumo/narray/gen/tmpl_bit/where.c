@@ -11,11 +11,11 @@ static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
-    BIT_DIGIT *a;
+    CUMO_BIT_DIGIT *a;
     size_t  p;
     ssize_t s;
     size_t *idx;
-    BIT_DIGIT x=0;
+    CUMO_BIT_DIGIT x=0;
     char   *idx1;
     size_t  count;
     size_t  e;
@@ -71,7 +71,7 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[1] = {{cT,0}};
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 1, 0, ain, 0 };
 
-    size = RNARRAY_SIZE(self);
+    size = CUMO_RNARRAY_SIZE(self);
     n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, self));
     g = ALLOCA_N(where_opt_t,1);
     g->count = 0;

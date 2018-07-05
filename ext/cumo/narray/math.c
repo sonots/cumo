@@ -93,7 +93,7 @@ static VALUE cumo_na_math_method_missing(int argc, VALUE *argv, VALUE mod)
 	ans = rb_funcall2(typemod,cumo_id_send,argc,argv);
 
 	if (!RTEST(rb_class_inherited_p(type,cNArray)) &&
-	    IsNArray(ans) ) {
+	    CumoIsNArray(ans) ) {
 	    ans = rb_funcall(ans,cumo_id_extract,0);
 	}
 	return ans;

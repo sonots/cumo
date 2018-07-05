@@ -1,5 +1,5 @@
 <% unless type_name == 'robject' %>
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, BIT_DIGIT *a3, size_t p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, CUMO_BIT_DIGIT *a3, size_t p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
 <% end %>
 
 static void
@@ -7,7 +7,7 @@ static void
 {
     size_t  i;
     char   *p1, *p2;
-    BIT_DIGIT *a3;
+    CUMO_BIT_DIGIT *a3;
     size_t  p3;
     ssize_t s1, s2, s3;
     CUMO_INIT_COUNTER(lp, i);
@@ -17,7 +17,7 @@ static void
     <% if type_name == 'robject' %>
     {
         dtype x, y;
-        BIT_DIGIT b;
+        CUMO_BIT_DIGIT b;
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         for (; i--;) {
             CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);

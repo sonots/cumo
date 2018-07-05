@@ -2,11 +2,11 @@ static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
-    BIT_DIGIT *a;
+    CUMO_BIT_DIGIT *a;
     size_t  p1, p2;
     ssize_t s1, s2;
     size_t *idx1, *idx2, *pidx;
-    BIT_DIGIT x=0;
+    CUMO_BIT_DIGIT x=0;
     size_t  count;
     where_opt_t *g;
 
@@ -92,7 +92,7 @@ static VALUE
     cumo_narray_view_t *nv;
     cumo_narray_t      *na;
     cumo_narray_view_t *na1;
-    stridx_t stridx0;
+    cumo_stridx_t stridx0;
     size_t n_1;
     where_opt_t g;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{Qnil,0}};
@@ -108,28 +108,28 @@ static VALUE
     cumo_na_ndloop3(&ndf, &g, 2, mask, val);
 
     view = cumo_na_s_allocate_view(CLASS_OF(val));
-    GetNArrayView(view, nv);
+    CumoGetNArrayView(view, nv);
     cumo_na_setup_shape((cumo_narray_t*)nv, 1, &n_1);
 
-    GetNArrayData(idx_1,nidx);
-    SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
+    CumoGetNArrayData(idx_1,nidx);
+    CUMO_SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
     nidx->ptr = NULL;
 
-    nv->stridx = ALLOC_N(stridx_t,1);
+    nv->stridx = ALLOC_N(cumo_stridx_t,1);
     nv->stridx[0] = stridx0;
     nv->offset = 0;
 
-    GetNArray(val, na);
-    switch(NA_TYPE(na)) {
-    case NARRAY_DATA_T:
+    CumoGetNArray(val, na);
+    switch(CUMO_NA_TYPE(na)) {
+    case CUMO_NARRAY_DATA_T:
         nv->data = val;
         break;
-    case NARRAY_VIEW_T:
-        GetNArrayView(val, na1);
+    case CUMO_NARRAY_VIEW_T:
+        CumoGetNArrayView(val, na1);
         nv->data = na1->data;
         break;
     default:
-        rb_raise(rb_eRuntimeError,"invalid NA_TYPE: %d",NA_TYPE(na));
+        rb_raise(rb_eRuntimeError,"invalid CUMO_NA_TYPE: %d",CUMO_NA_TYPE(na));
     }
 
     return view;

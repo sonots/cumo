@@ -27,10 +27,10 @@ static VALUE
     if (RTEST(rb_obj_is_kind_of(obj,rb_cArray))) {
         return <%=find_tmpl("cast_array").c_func%>(obj);
     }
-    if (IsNArray(obj)) {
-        GetNArray(obj,na);
-        v = cumo_na_new(cT, NA_NDIM(na), NA_SHAPE(na));
-        if (NA_SIZE(na) > 0) {
+    if (CumoIsNArray(obj)) {
+        CumoGetNArray(obj,na);
+        v = cumo_na_new(cT, CUMO_NA_NDIM(na), CUMO_NA_SHAPE(na));
+        if (CUMO_NA_SIZE(na) > 0) {
             <%=find_tmpl("store").c_func%>(v,obj);
         }
         return v;

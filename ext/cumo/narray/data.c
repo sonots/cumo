@@ -115,7 +115,7 @@ cumo_na_swap_byte(VALUE self)
     if (self!=v) {
         cumo_na_copy_flags(self, v);
     }
-    REVERSE_ENDIAN(v);
+    CUMO_REVERSE_ENDIAN(v);
     return v;
 }
 
@@ -123,7 +123,7 @@ cumo_na_swap_byte(VALUE self)
 static VALUE
 cumo_na_to_network(VALUE self)
 {
-    if (TEST_BIG_ENDIAN(self)) {
+    if (CUMO_TEST_BIG_ENDIAN(self)) {
         return self;
     }
     return rb_funcall(self, cumo_id_swap_byte, 0);
@@ -132,7 +132,7 @@ cumo_na_to_network(VALUE self)
 static VALUE
 cumo_na_to_vacs(VALUE self)
 {
-    if (TEST_LITTLE_ENDIAN(self)) {
+    if (CUMO_TEST_LITTLE_ENDIAN(self)) {
         return self;
     }
     return rb_funcall(self, cumo_id_swap_byte, 0);
@@ -141,7 +141,7 @@ cumo_na_to_vacs(VALUE self)
 static VALUE
 cumo_na_to_host(VALUE self)
 {
-    if (TEST_HOST_ORDER(self)) {
+    if (CUMO_TEST_HOST_ORDER(self)) {
         return self;
     }
     return rb_funcall(self, cumo_id_swap_byte, 0);
@@ -150,7 +150,7 @@ cumo_na_to_host(VALUE self)
 static VALUE
 cumo_na_to_swapped(VALUE self)
 {
-    if (TEST_BYTE_SWAPPED(self)) {
+    if (CUMO_TEST_BYTE_SWAPPED(self)) {
         return self;
     }
     return rb_funcall(self, cumo_id_swap_byte, 0);
@@ -206,12 +206,12 @@ cumo_na_swapaxes(VALUE self, VALUE a1, VALUE a2)
 {
     int  i, j, ndim;
     size_t tmp_shape;
-    stridx_t tmp_stridx;
+    cumo_stridx_t tmp_stridx;
     cumo_narray_view_t *na;
     volatile VALUE view;
 
     view = cumo_na_make_view(self);
-    GetNArrayView(view,na);
+    CumoGetNArrayView(view,na);
 
     ndim = na->base.ndim;
     i = check_axis(NUM2INT(a1), ndim);
@@ -232,16 +232,16 @@ cumo_na_transpose_map(VALUE self, int *map)
 {
     int  i, ndim;
     size_t *shape;
-    stridx_t *stridx;
+    cumo_stridx_t *stridx;
     cumo_narray_view_t *na;
     volatile VALUE view;
 
     view = cumo_na_make_view(self);
-    GetNArrayView(view,na);
+    CumoGetNArrayView(view,na);
 
     ndim = na->base.ndim;
     shape = ALLOCA_N(size_t,ndim);
-    stridx = ALLOCA_N(stridx_t,ndim);
+    stridx = ALLOCA_N(cumo_stridx_t,ndim);
 
     for (i=0; i<ndim; i++) {
 	shape[i] = na->base.shape[i];
@@ -265,7 +265,7 @@ cumo_na_transpose(int argc, VALUE *argv, VALUE self)
     bool is_positive, is_negative;
     cumo_narray_t *na1;
 
-    GetNArray(self,na1);
+    CumoGetNArray(self,na1);
     ndim = na1->ndim;
     if (ndim < 2) {
         if (argc > 0) {
@@ -340,8 +340,8 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
     if (argc == 0) {
         rb_raise(rb_eArgError, "No argrument");
     }
-    GetNArray(self,na);
-    if (NA_SIZE(na) == 0) {
+    CumoGetNArray(self,na);
+    if (CUMO_NA_SIZE(na) == 0) {
         rb_raise(rb_eRuntimeError, "cannot reshape empty array");
     }
 
@@ -364,12 +364,12 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
     }
 
     if (unfixed>=0) {
-        if (NA_SIZE(na) % total != 0) {
+        if (CUMO_NA_SIZE(na) % total != 0) {
             rb_raise(rb_eArgError, "Total size size must be divisor");
         }
-        shape[unfixed] = NA_SIZE(na) / total;
+        shape[unfixed] = CUMO_NA_SIZE(na) / total;
     }
-    else if (total !=  NA_SIZE(na)) {
+    else if (total !=  CUMO_NA_SIZE(na)) {
         rb_raise(rb_eArgError, "Total size must be same");
     }
 }
@@ -395,7 +395,7 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
     shape = ALLOCA_N(size_t, argc);
     cumo_na_check_reshape(argc, argv, self, shape);
 
-    GetNArray(self, na);
+    CumoGetNArray(self, na);
     cumo_na_setup_shape(na, argc, shape);
     return self;
 }
@@ -420,7 +420,7 @@ cumo_na_reshape(int argc, VALUE *argv, VALUE self)
     cumo_na_check_reshape(argc, argv, self, shape);
 
     copy = rb_funcall(self, rb_intern("dup"), 0);
-    GetNArray(copy, na);
+    CumoGetNArray(copy, na);
     cumo_na_setup_shape(na, argc, shape);
     return copy;
 }
@@ -435,12 +435,12 @@ cumo_na_flatten_dim(VALUE self, int sd)
     size_t *c, *pos, *idx1, *idx2;
     size_t stride;
     size_t  *shape, size;
-    stridx_t sdx;
+    cumo_stridx_t sdx;
     cumo_narray_t *na;
     cumo_narray_view_t *na1, *na2;
     volatile VALUE view;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
 
     if (nd==0) {
@@ -464,39 +464,39 @@ cumo_na_flatten_dim(VALUE self, int sd)
     // new object
     view = cumo_na_s_allocate_view(CLASS_OF(self));
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     // new stride
     cumo_na_setup_shape((cumo_narray_t*)na2, sd+1, shape);
-    na2->stridx = ALLOC_N(stridx_t,sd+1);
+    na2->stridx = ALLOC_N(cumo_stridx_t,sd+1);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         stride = cumo_na_element_stride(self);
         for (i=sd+1; i--; ) {
             //printf("data: i=%d shpae[i]=%ld stride=%ld\n",i,shape[i],stride);
-            SDX_SET_STRIDE(na2->stridx[i],stride);
+            CUMO_SDX_SET_STRIDE(na2->stridx[i],stride);
             stride *= shape[i];
         }
         na2->offset = 0;
         na2->data = self;
         break;
-    case NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+    case CUMO_NARRAY_VIEW_T:
+        CumoGetNArrayView(self, na1);
         na2->data = na1->data;
         na2->offset = na1->offset;
         for (i=0; i<sd; i++) {
-            if (SDX_IS_INDEX(na1->stridx[i])) {
-                idx1 = SDX_GET_INDEX(na1->stridx[i]);
+            if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                 idx2 = ALLOC_N(size_t, shape[i]);
                 for (j=0; j<shape[i]; j++) {
                     idx2[j] = idx1[j];
                 }
-                SDX_SET_INDEX(na2->stridx[i],idx2);
+                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
                 na2->stridx[i] = na1->stridx[i];
-                //printf("view: i=%d stridx=%d\n",i,SDX_GET_STRIDE(sdx));
+                //printf("view: i=%d stridx=%d\n",i,CUMO_SDX_GET_STRIDE(sdx));
             }
         }
         // flat dimenion == last dimension
@@ -506,7 +506,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
         } else {
             // set index
             idx2 = ALLOC_N(size_t, shape[sd]);
-            SDX_SET_INDEX(na2->stridx[sd],idx2);
+            CUMO_SDX_SET_INDEX(na2->stridx[sd],idx2);
             // init for md-loop
             fd = nd-sd;
             c = ALLOC_N(size_t, fd);
@@ -517,10 +517,10 @@ cumo_na_flatten_dim(VALUE self, int sd)
             for (i=j=0;;) {
                 for (; i<fd; i++) {
                     sdx = na1->stridx[i+sd];
-                    if (SDX_IS_INDEX(sdx)) {
-                        pos[i+1] = pos[i] + SDX_GET_INDEX(sdx)[c[i]];
+                    if (CUMO_SDX_IS_INDEX(sdx)) {
+                        pos[i+1] = pos[i] + CUMO_SDX_GET_INDEX(sdx)[c[i]];
                     } else {
-                        pos[i+1] = pos[i] + SDX_GET_STRIDE(sdx)*c[i];
+                        pos[i+1] = pos[i] + CUMO_SDX_GET_STRIDE(sdx)*c[i];
                     }
                 }
                 idx2[j++] = pos[i];
@@ -631,7 +631,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         kofs = 0;
     }
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
     if (nd < 2) {
         rb_raise(cumo_na_eDimensionError,"less than 2-d array");
@@ -687,15 +687,15 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
     // new object
     view = cumo_na_s_allocate_view(CLASS_OF(self));
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     // new stride
     cumo_na_setup_shape((cumo_narray_t*)na2, nd-1, shape);
-    na2->stridx = ALLOC_N(stridx_t, nd-1);
+    na2->stridx = ALLOC_N(cumo_stridx_t, nd-1);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         na2->offset = 0;
         na2->data = self;
         stride = stride0 = stride1 = cumo_na_element_stride(self);
@@ -711,60 +711,60 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
                     na2->offset = (-kofs)*stride;
                 }
             } else {
-                SDX_SET_STRIDE(na2->stridx[--k],stride);
+                CUMO_SDX_SET_STRIDE(na2->stridx[--k],stride);
             }
             stride *= na->shape[i];
         }
-        SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
+        CUMO_SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
         break;
 
-    case NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+    case CUMO_NARRAY_VIEW_T:
+        CumoGetNArrayView(self, na1);
         na2->data = na1->data;
         na2->offset = na1->offset;
         for (i=k=0; i<nd; i++) {
             if (i != ax[0] && i != ax[1]) {
-                if (SDX_IS_INDEX(na1->stridx[i])) {
-                    idx0 = SDX_GET_INDEX(na1->stridx[i]);
+                if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                    idx0 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                     idx1 = ALLOC_N(size_t, na->shape[i]);
                     for (j=0; j<na->shape[i]; j++) {
                         idx1[j] = idx0[j];
                     }
-                    SDX_SET_INDEX(na2->stridx[k],idx1);
+                    CUMO_SDX_SET_INDEX(na2->stridx[k],idx1);
                 } else {
                     na2->stridx[k] = na1->stridx[i];
                 }
                 k++;
             }
         }
-        if (SDX_IS_INDEX(na1->stridx[ax[0]])) {
-            idx0 = SDX_GET_INDEX(na1->stridx[ax[0]]);
+        if (CUMO_SDX_IS_INDEX(na1->stridx[ax[0]])) {
+            idx0 = CUMO_SDX_GET_INDEX(na1->stridx[ax[0]]);
             diag_idx = ALLOC_N(size_t, diag_size);
-            if (SDX_IS_INDEX(na1->stridx[ax[1]])) {
-                idx1 = SDX_GET_INDEX(na1->stridx[ax[1]]);
+            if (CUMO_SDX_IS_INDEX(na1->stridx[ax[1]])) {
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
                 for (j=0; j<diag_size; j++) {
                     diag_idx[j] = idx0[j+k0] + idx1[j+k1];
                 }
             } else {
-                stride1 = SDX_GET_STRIDE(na1->stridx[ax[1]]);
+                stride1 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[1]]);
                 for (j=0; j<diag_size; j++) {
                     diag_idx[j] = idx0[j+k0] + stride1*(j+k1);
                 }
             }
-            SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
+            CUMO_SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
         } else {
-            stride0 = SDX_GET_STRIDE(na1->stridx[ax[0]]);
-            if (SDX_IS_INDEX(na1->stridx[ax[1]])) {
-                idx1 = SDX_GET_INDEX(na1->stridx[ax[1]]);
+            stride0 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[0]]);
+            if (CUMO_SDX_IS_INDEX(na1->stridx[ax[1]])) {
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
                 diag_idx = ALLOC_N(size_t, diag_size);
                 for (j=0; j<diag_size; j++) {
                     diag_idx[j] = stride0*(j+k0) + idx1[j+k1];
                 }
-                SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
+                CUMO_SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
             } else {
-                stride1 = SDX_GET_STRIDE(na1->stridx[ax[1]]);
+                stride1 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[1]]);
                 na2->offset += stride0*k0 + stride1*k1;
-                SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
+                CUMO_SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
             }
         }
         break;
@@ -792,16 +792,16 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     cumo_narray_t *na;
     cumo_narray_view_t *na1, *na2;
     size_t shape_n;
-    stridx_t stridx_n;
+    cumo_stridx_t stridx_n;
     volatile VALUE view;
 
-    GetNArray(self,na);
+    CumoGetNArray(self,na);
     nd = na->ndim;
 
     view = cumo_na_s_allocate_view(CLASS_OF(self));
 
     cumo_na_copy_flags(self, view);
-    GetNArrayView(view, na2);
+    CumoGetNArrayView(view, na2);
 
     // new dimension
     if (pos < 0) pos += nd;
@@ -810,11 +810,11 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     }
     nd += len;
     shape = ALLOCA_N(size_t,nd);
-    na2->stridx = ALLOC_N(stridx_t,nd);
+    na2->stridx = ALLOC_N(cumo_stridx_t,nd);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         i = k = 0;
         while (i < nd) {
             if (i == pos && len > 0) {
@@ -828,36 +828,36 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
         cumo_na_setup_shape((cumo_narray_t*)na2, nd, shape);
         stride = cumo_na_element_stride(self);
         for (i=nd; i--;) {
-            SDX_SET_STRIDE(na2->stridx[i], stride);
+            CUMO_SDX_SET_STRIDE(na2->stridx[i], stride);
             stride *= shape[i];
         }
         na2->offset = 0;
         na2->data = self;
         break;
-    case NARRAY_VIEW_T:
-        GetNArrayView(self, na1);
+    case CUMO_NARRAY_VIEW_T:
+        CumoGetNArrayView(self, na1);
         i = k = 0;
         while (i < nd) {
             if (i == pos && len > 0) {
-                if (SDX_IS_INDEX(na1->stridx[k])) {
-                    stride = SDX_GET_INDEX(na1->stridx[k])[0];
+                if (CUMO_SDX_IS_INDEX(na1->stridx[k])) {
+                    stride = CUMO_SDX_GET_INDEX(na1->stridx[k])[0];
                 } else {
-                    stride = SDX_GET_STRIDE(na1->stridx[k]);
+                    stride = CUMO_SDX_GET_STRIDE(na1->stridx[k]);
                 }
                 for (l=0; l<len; l++) {
                     shape[i] = 1;
-                    SDX_SET_STRIDE(na2->stridx[i], stride);
+                    CUMO_SDX_SET_STRIDE(na2->stridx[i], stride);
                     i++;
                 }
             } else {
                 shape[i] = na1->base.shape[k];
-                if (SDX_IS_INDEX(na1->stridx[k])) {
-                    idx1 = SDX_GET_INDEX(na1->stridx[k]);
+                if (CUMO_SDX_IS_INDEX(na1->stridx[k])) {
+                    idx1 = CUMO_SDX_GET_INDEX(na1->stridx[k]);
                     idx2 = ALLOC_N(size_t,na1->base.shape[k]);
                     for (j=0; j<na1->base.shape[k]; j++) {
                         idx2[j] = idx1[j];
                     }
-                    SDX_SET_INDEX(na2->stridx[i], idx2);
+                    CUMO_SDX_SET_INDEX(na2->stridx[i], idx2);
                 } else {
                     na2->stridx[i] = na1->stridx[k];
                 }
@@ -900,8 +900,8 @@ cumo_na_dot(VALUE self, VALUE other)
     if (!RTEST(test)) {
         rb_raise(rb_eNoMethodError,"requires mulsum method for dot method");
     }
-    GetNArray(a1,na1);
-    GetNArray(a2,na2);
+    CumoGetNArray(a1,na1);
+    CumoGetNArray(a2,na2);
     if (na1->ndim==0 || na2->ndim==0) {
         rb_raise(cumo_na_eDimensionError,"zero dimensional narray");
     }
