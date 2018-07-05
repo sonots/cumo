@@ -150,12 +150,11 @@ extern "C" {
 # define TRUE    1
 #endif
 
-typedef struct { float dat[2]; }  scomplex;
-typedef struct { double dat[2]; } dcomplex;
-typedef int fortran_integer;
+typedef struct { float dat[2]; }  cumo_scomplex;
+typedef struct { double dat[2]; } cumo_dcomplex;
 
-#define REAL(x) ((x).dat[0])
-#define IMAG(x) ((x).dat[1])
+#define CUMO_REAL(x) ((x).dat[0])
+#define CUMO_IMAG(x) ((x).dat[1])
 
 extern int cumo_na_debug_flag;
 

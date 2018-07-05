@@ -236,7 +236,7 @@ class Store < DefMethod
     when "RObject"
       "#{x} = m_num_to_data(*(#{dtype}*)(#{ptr}+#{pos}))"
     when /Complex/
-      "{#{dtype} *p = (#{dtype}*)(#{ptr}+#{pos}); #{x} = c_new(REAL(*p),IMAG(*p));}"
+      "{#{dtype} *p = (#{dtype}*)(#{ptr}+#{pos}); #{x} = c_new(CUMO_REAL(*p),CUMO_IMAG(*p));}"
     when /Float/
       "#{x} = m_from_real(*(#{dtype}*)(#{ptr}+#{pos}))"
     when /UInt64/

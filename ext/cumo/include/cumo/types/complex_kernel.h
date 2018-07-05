@@ -3,166 +3,166 @@
 
 __host__ __device__ static inline dtype c_new(rtype r, rtype i) {
     dtype z;
-    REAL(z) = r;
-    IMAG(z) = i;
+    CUMO_REAL(z) = r;
+    CUMO_IMAG(z) = i;
     return z;
 }
 
 __host__ __device__ static inline dtype c_set_real(dtype x, rtype r) {
-    REAL(x)=r;
+    CUMO_REAL(x)=r;
     return x;
 }
 
 __host__ __device__ static inline dtype c_set_imag(dtype x, rtype i) {
-    IMAG(x)=i;
+    CUMO_IMAG(x)=i;
     return x;
 }
 
 //static inline VALUE COMP2NUM(dtype x) {
 //    VALUE v;
 //    v = rb_funcall(rb_intern("Kernel"), rb_intern("Complex"), 2,
-//                   rb_float_new(REAL(x)), rb_float_new(IMAG(x)));
+//                   rb_float_new(CUMO_REAL(x)), rb_float_new(CUMO_IMAG(x)));
 //    return v;
 //}
 //
 //static inline dtype NUM2COMP(VALUE v) {
 //    dtype z;
-//    REAL(z) = NUM2DBL(rb_funcall(v,cumo_id_real,0));
-//    IMAG(z) = NUM2DBL(rb_funcall(v,cumo_id_imag,0));
+//    CUMO_REAL(z) = NUM2DBL(rb_funcall(v,cumo_id_real,0));
+//    CUMO_IMAG(z) = NUM2DBL(rb_funcall(v,cumo_id_imag,0));
 //    return z;
 //}
 
-#define c_is_zero(x) (REAL(x)==0 && IMAG(x)==0)
-#define c_eq(x,y) (REAL(x)==REAL(y) && IMAG(x)==IMAG(y))
-#define c_ne(x,y) (REAL(x)!=REAL(y) || IMAG(x)!=IMAG(y))
-#define c_isnan(x) (isnan(REAL(x)) || isnan(IMAG(x)))
-#define c_isinf(x) (isinf(REAL(x)) || isinf(IMAG(x)))
-#define c_isposinf(x) ((isinf(REAL(x)) && signbit(REAL(x))==0) || \
-                       (isinf(IMAG(x)) && signbit(IMAG(x))==0))
-#define c_isneginf(x) ((isinf(REAL(x)) && signbit(REAL(x))) || \
-                       (isinf(IMAG(x)) && signbit(IMAG(x))))
-#define c_isfinite(x) (isfinite(REAL(x)) && isfinite(IMAG(x)))
+#define c_is_zero(x) (CUMO_REAL(x)==0 && CUMO_IMAG(x)==0)
+#define c_eq(x,y) (CUMO_REAL(x)==CUMO_REAL(y) && CUMO_IMAG(x)==CUMO_IMAG(y))
+#define c_ne(x,y) (CUMO_REAL(x)!=CUMO_REAL(y) || CUMO_IMAG(x)!=CUMO_IMAG(y))
+#define c_isnan(x) (isnan(CUMO_REAL(x)) || isnan(CUMO_IMAG(x)))
+#define c_isinf(x) (isinf(CUMO_REAL(x)) || isinf(CUMO_IMAG(x)))
+#define c_isposinf(x) ((isinf(CUMO_REAL(x)) && signbit(CUMO_REAL(x))==0) || \
+                       (isinf(CUMO_IMAG(x)) && signbit(CUMO_IMAG(x))==0))
+#define c_isneginf(x) ((isinf(CUMO_REAL(x)) && signbit(CUMO_REAL(x))) || \
+                       (isinf(CUMO_IMAG(x)) && signbit(CUMO_IMAG(x))))
+#define c_isfinite(x) (isfinite(CUMO_REAL(x)) && isfinite(CUMO_IMAG(x)))
 
 __host__ __device__ static inline dtype c_zero() {
     dtype z;
-    REAL(z) = 0;
-    IMAG(z) = 0;
+    CUMO_REAL(z) = 0;
+    CUMO_IMAG(z) = 0;
     return z;
 }
 
 __host__ __device__ static inline dtype c_one() {
     dtype z;
-    REAL(z) = 1;
-    IMAG(z) = 0;
+    CUMO_REAL(z) = 1;
+    CUMO_IMAG(z) = 0;
     return z;
 }
 
 __host__ __device__ static inline dtype c_minus(dtype x) {
     dtype z;
-    REAL(z) = -REAL(x);
-    IMAG(z) = -IMAG(x);
+    CUMO_REAL(z) = -CUMO_REAL(x);
+    CUMO_IMAG(z) = -CUMO_IMAG(x);
     return z;
 }
 
 __host__ __device__ static inline dtype c_im(dtype x) {
     dtype z;
-    REAL(z) = -IMAG(x);
-    IMAG(z) = REAL(x);
+    CUMO_REAL(z) = -CUMO_IMAG(x);
+    CUMO_IMAG(z) = CUMO_REAL(x);
     return z;
 }
 
 __host__ __device__ static inline dtype c_add(dtype x, dtype y) {
     dtype z;
-    REAL(z) = REAL(x)+REAL(y);
-    IMAG(z) = IMAG(x)+IMAG(y);
+    CUMO_REAL(z) = CUMO_REAL(x)+CUMO_REAL(y);
+    CUMO_IMAG(z) = CUMO_IMAG(x)+CUMO_IMAG(y);
     return z;
 }
 
 __host__ __device__ static inline dtype c_sub(dtype x, dtype y) {
     dtype z;
-    REAL(z) = REAL(x)-REAL(y);
-    IMAG(z) = IMAG(x)-IMAG(y);
+    CUMO_REAL(z) = CUMO_REAL(x)-CUMO_REAL(y);
+    CUMO_IMAG(z) = CUMO_IMAG(x)-CUMO_IMAG(y);
     return z;
 }
 
 
 __host__ __device__ static inline dtype c_mul(dtype x, dtype y) {
     dtype z;
-    REAL(z) = REAL(x)*REAL(y)-IMAG(x)*IMAG(y);
-    IMAG(z) = REAL(x)*IMAG(y)+IMAG(x)*REAL(y);
+    CUMO_REAL(z) = CUMO_REAL(x)*CUMO_REAL(y)-CUMO_IMAG(x)*CUMO_IMAG(y);
+    CUMO_IMAG(z) = CUMO_REAL(x)*CUMO_IMAG(y)+CUMO_IMAG(x)*CUMO_REAL(y);
     return z;
 }
 
 __host__ __device__ static inline dtype c_mul_r(dtype x, rtype y) {
     dtype z;
-    REAL(z) = REAL(x)*y;
-    IMAG(z) = IMAG(x)*y;
+    CUMO_REAL(z) = CUMO_REAL(x)*y;
+    CUMO_IMAG(z) = CUMO_IMAG(x)*y;
     return z;
 }
 
 __host__ __device__ static inline dtype c_div(dtype x, dtype y) {
     dtype z;
     rtype s,yr,yi;
-    s  = r_hypot(REAL(y),IMAG(y));
-    yr = REAL(y)/s;
-    yi = IMAG(y)/s;
-    REAL(z) = (REAL(x)*yr+IMAG(x)*yi)/s;
-    IMAG(z) = (IMAG(x)*yr-REAL(x)*yi)/s;
+    s  = r_hypot(CUMO_REAL(y),CUMO_IMAG(y));
+    yr = CUMO_REAL(y)/s;
+    yi = CUMO_IMAG(y)/s;
+    CUMO_REAL(z) = (CUMO_REAL(x)*yr+CUMO_IMAG(x)*yi)/s;
+    CUMO_IMAG(z) = (CUMO_IMAG(x)*yr-CUMO_REAL(x)*yi)/s;
     return z;
 }
 
 __host__ __device__ static inline dtype c_div_r(dtype x, rtype y) {
     dtype z;
-    REAL(z) = REAL(x)/y;
-    IMAG(z) = IMAG(x)/y;
+    CUMO_REAL(z) = CUMO_REAL(x)/y;
+    CUMO_IMAG(z) = CUMO_IMAG(x)/y;
     return z;
 }
 
 __host__ __device__ static inline dtype c_reciprocal(dtype x) {
     dtype z;
-    if ( r_abs(REAL(x)) > r_abs(IMAG(x)) ) {
-        IMAG(z) = IMAG(x)/REAL(x);
-        REAL(z) = (1+IMAG(z)*IMAG(z))*REAL(x);
-        IMAG(z) /= -REAL(z);
-        REAL(z) = 1/REAL(z);
+    if ( r_abs(CUMO_REAL(x)) > r_abs(CUMO_IMAG(x)) ) {
+        CUMO_IMAG(z) = CUMO_IMAG(x)/CUMO_REAL(x);
+        CUMO_REAL(z) = (1+CUMO_IMAG(z)*CUMO_IMAG(z))*CUMO_REAL(x);
+        CUMO_IMAG(z) /= -CUMO_REAL(z);
+        CUMO_REAL(z) = 1/CUMO_REAL(z);
     } else {
-        REAL(z) = REAL(x)/IMAG(x);
-        IMAG(z) = (1+REAL(z)*REAL(z))*IMAG(x);
-        REAL(z) /= IMAG(z);
-        IMAG(z) = -1/IMAG(z);
+        CUMO_REAL(z) = CUMO_REAL(x)/CUMO_IMAG(x);
+        CUMO_IMAG(z) = (1+CUMO_REAL(z)*CUMO_REAL(z))*CUMO_IMAG(x);
+        CUMO_REAL(z) /= CUMO_IMAG(z);
+        CUMO_IMAG(z) = -1/CUMO_IMAG(z);
     }
     return z;
 }
 
 __host__ __device__ static inline dtype c_square(dtype x) {
     dtype z;
-    REAL(z) = REAL(x)*REAL(x)-IMAG(x)*IMAG(x);
-    IMAG(z) = 2*REAL(x)*IMAG(x);
+    CUMO_REAL(z) = CUMO_REAL(x)*CUMO_REAL(x)-CUMO_IMAG(x)*CUMO_IMAG(x);
+    CUMO_IMAG(z) = 2*CUMO_REAL(x)*CUMO_IMAG(x);
     return z;
 }
 
 __host__ __device__ static inline dtype c_sqrt(dtype x) {
     dtype z;
     rtype xr, xi, r;
-    xr = REAL(x)/2;
-    xi = IMAG(x)/2;
+    xr = CUMO_REAL(x)/2;
+    xi = CUMO_IMAG(x)/2;
     r  = r_hypot(xr,xi);
     if (xr>0) {
-        REAL(z) = sqrt(r+xr);
-        IMAG(z) = xi/REAL(z);
+        CUMO_REAL(z) = sqrt(r+xr);
+        CUMO_IMAG(z) = xi/CUMO_REAL(z);
     } else if ( (r-=xr)!=0 ) {
-        IMAG(z) = (xi>=0) ? sqrt(r):-sqrt(r);
-        REAL(z) = xi/IMAG(z);
+        CUMO_IMAG(z) = (xi>=0) ? sqrt(r):-sqrt(r);
+        CUMO_REAL(z) = xi/CUMO_IMAG(z);
     } else {
-        REAL(z) = IMAG(z) = 0;
+        CUMO_REAL(z) = CUMO_IMAG(z) = 0;
     }
     return z;
 }
 
 __host__ __device__ static inline dtype c_log(dtype x) {
     dtype z;
-    REAL(z) = r_log(r_hypot(REAL(x),IMAG(x)));
-    IMAG(z) = r_atan2(IMAG(x),REAL(x));
+    CUMO_REAL(z) = r_log(r_hypot(CUMO_REAL(x),CUMO_IMAG(x)));
+    CUMO_IMAG(z) = r_atan2(CUMO_IMAG(x),CUMO_REAL(x));
     return z;
 }
 
@@ -182,73 +182,73 @@ __host__ __device__ static inline dtype c_log10(dtype x) {
 
 __host__ __device__ static inline dtype c_exp(dtype x) {
     dtype z;
-    rtype a = r_exp(REAL(x));
-    REAL(z) = a*r_cos(IMAG(x));
-    IMAG(z) = a*r_sin(IMAG(x));
+    rtype a = r_exp(CUMO_REAL(x));
+    CUMO_REAL(z) = a*r_cos(CUMO_IMAG(x));
+    CUMO_IMAG(z) = a*r_sin(CUMO_IMAG(x));
     return z;
 }
 
 __host__ __device__ static inline dtype c_exp2(dtype x) {
     dtype z;
-    rtype a = r_exp(REAL(x)*M_LN2);
-    REAL(z) = a*r_cos(IMAG(x));
-    IMAG(z) = a*r_sin(IMAG(x));
+    rtype a = r_exp(CUMO_REAL(x)*M_LN2);
+    CUMO_REAL(z) = a*r_cos(CUMO_IMAG(x));
+    CUMO_IMAG(z) = a*r_sin(CUMO_IMAG(x));
     return z;
 }
 
 __host__ __device__ static inline dtype c_exp10(dtype x) {
     dtype z;
-    rtype a = r_exp(REAL(x)*M_LN10);
-    REAL(z) = a*r_cos(IMAG(x));
-    IMAG(z) = a*r_sin(IMAG(x));
+    rtype a = r_exp(CUMO_REAL(x)*M_LN10);
+    CUMO_REAL(z) = a*r_cos(CUMO_IMAG(x));
+    CUMO_IMAG(z) = a*r_sin(CUMO_IMAG(x));
     return z;
 }
 
 __host__ __device__ static inline dtype c_sin(dtype x) {
     dtype z;
-    REAL(z) = r_sin(REAL(x))*r_cosh(IMAG(x));
-    IMAG(z) = r_cos(REAL(x))*r_sinh(IMAG(x));
+    CUMO_REAL(z) = r_sin(CUMO_REAL(x))*r_cosh(CUMO_IMAG(x));
+    CUMO_IMAG(z) = r_cos(CUMO_REAL(x))*r_sinh(CUMO_IMAG(x));
     return z;
 }
 
 __host__ __device__ static inline dtype c_sinh(dtype x) {
     dtype z;
-    REAL(z) = r_sinh(REAL(x))*r_cos(IMAG(x));
-    IMAG(z) = r_cosh(REAL(x))*r_sin(IMAG(x));
+    CUMO_REAL(z) = r_sinh(CUMO_REAL(x))*r_cos(CUMO_IMAG(x));
+    CUMO_IMAG(z) = r_cosh(CUMO_REAL(x))*r_sin(CUMO_IMAG(x));
     return z;
 }
 
 __host__ __device__ static inline dtype c_cos(dtype x) {
     dtype z;
-    REAL(z) = r_cos(REAL(x))*r_cosh(IMAG(x));
-    IMAG(z) = -r_sin(REAL(x))*r_sinh(IMAG(x));
+    CUMO_REAL(z) = r_cos(CUMO_REAL(x))*r_cosh(CUMO_IMAG(x));
+    CUMO_IMAG(z) = -r_sin(CUMO_REAL(x))*r_sinh(CUMO_IMAG(x));
     return z;
 }
 
 __host__ __device__ static inline dtype c_cosh(dtype x) {
     dtype z;
-    REAL(z) = r_cosh(REAL(x))*r_cos(IMAG(x));
-    IMAG(z) = r_sinh(REAL(x))*r_sin(IMAG(x));
+    CUMO_REAL(z) = r_cosh(CUMO_REAL(x))*r_cos(CUMO_IMAG(x));
+    CUMO_IMAG(z) = r_sinh(CUMO_REAL(x))*r_sin(CUMO_IMAG(x));
     return z;
 }
 
 __host__ __device__ static inline dtype c_tan(dtype x) {
     dtype z;
     rtype c, d;
-    if (r_abs(IMAG(x))<1) {
-        c = r_cos(REAL(x));
-        d = r_sinh(IMAG(x));
+    if (r_abs(CUMO_IMAG(x))<1) {
+        c = r_cos(CUMO_REAL(x));
+        d = r_sinh(CUMO_IMAG(x));
         d = c*c + d*d;
-        REAL(z) = 0.5*r_sin(2*REAL(x))/d;
-        IMAG(z) = 0.5*r_sinh(2*IMAG(x))/d;
+        CUMO_REAL(z) = 0.5*r_sin(2*CUMO_REAL(x))/d;
+        CUMO_IMAG(z) = 0.5*r_sinh(2*CUMO_IMAG(x))/d;
     } else {
-        d = r_exp(-IMAG(x));
+        d = r_exp(-CUMO_IMAG(x));
         c = 2*d/(1-d*d);
         c = c*c;
-        d = r_cos(REAL(x));
+        d = r_cos(CUMO_REAL(x));
         d = 1.0 + d*d*c;
-        REAL(z) = 0.5*r_sin(2*REAL(x))*c/d;
-        IMAG(z) = 1/r_tanh(IMAG(x))/d;
+        CUMO_REAL(z) = 0.5*r_sin(2*CUMO_REAL(x))*c/d;
+        CUMO_IMAG(z) = 1/r_tanh(CUMO_IMAG(x))/d;
     }
     return z;
 }
@@ -256,17 +256,17 @@ __host__ __device__ static inline dtype c_tan(dtype x) {
 __host__ __device__ static inline dtype c_tanh(dtype x) {
     dtype z;
     rtype c, d, s;
-    c = r_cos(IMAG(x));
-    s = r_sinh(REAL(x));
+    c = r_cos(CUMO_IMAG(x));
+    s = r_sinh(CUMO_REAL(x));
     d = c*c + s*s;
-    if (r_abs(REAL(x))<1) {
-        REAL(z) = s*r_cosh(REAL(x))/d;
-        IMAG(z) = 0.5*r_sin(2*IMAG(x))/d;
+    if (r_abs(CUMO_REAL(x))<1) {
+        CUMO_REAL(z) = s*r_cosh(CUMO_REAL(x))/d;
+        CUMO_IMAG(z) = 0.5*r_sin(2*CUMO_IMAG(x))/d;
     } else {
         c = c / s;
         c = 1 + c*c;
-        REAL(z) = 1/(r_tanh(REAL(x))*c);
-        IMAG(z) = 0.5*r_sin(2*IMAG(x))/d;
+        CUMO_REAL(z) = 1/(r_tanh(CUMO_REAL(x))*c);
+        CUMO_IMAG(z) = 0.5*r_sin(2*CUMO_IMAG(x))/d;
     }
     return z;
 }
@@ -274,24 +274,24 @@ __host__ __device__ static inline dtype c_tanh(dtype x) {
 __host__ __device__ static inline dtype c_asin(dtype x) {
     dtype z, y;
     y = c_square(x);
-    REAL(y) = 1-REAL(y);
-    IMAG(y) = -IMAG(y);
+    CUMO_REAL(y) = 1-CUMO_REAL(y);
+    CUMO_IMAG(y) = -CUMO_IMAG(y);
     y = c_sqrt(y);
-    REAL(y) -= IMAG(x);
-    IMAG(y) += REAL(x);
+    CUMO_REAL(y) -= CUMO_IMAG(x);
+    CUMO_IMAG(y) += CUMO_REAL(x);
     y = c_log(y);
-    REAL(z) = IMAG(y);
-    IMAG(z) = -REAL(y);
+    CUMO_REAL(z) = CUMO_IMAG(y);
+    CUMO_IMAG(z) = -CUMO_REAL(y);
     return z;
 }
 
 __host__ __device__ static inline dtype c_asinh(dtype x) {
     dtype z, y;
     y = c_square(x);
-    REAL(y) += 1;
+    CUMO_REAL(y) += 1;
     y = c_sqrt(y);
-    REAL(y) += REAL(x);
-    IMAG(y) += IMAG(x);
+    CUMO_REAL(y) += CUMO_REAL(x);
+    CUMO_IMAG(y) += CUMO_IMAG(x);
     z = c_log(y);
     return z;
 }
@@ -299,51 +299,51 @@ __host__ __device__ static inline dtype c_asinh(dtype x) {
 __host__ __device__ static inline dtype c_acos(dtype x) {
     dtype z, y;
     y = c_square(x);
-    REAL(y) = 1-REAL(y);
-    IMAG(y) = -IMAG(y);
+    CUMO_REAL(y) = 1-CUMO_REAL(y);
+    CUMO_IMAG(y) = -CUMO_IMAG(y);
     y = c_sqrt(y);
-    REAL(z) = REAL(x)-IMAG(y);
-    IMAG(z) = IMAG(x)+REAL(y);
+    CUMO_REAL(z) = CUMO_REAL(x)-CUMO_IMAG(y);
+    CUMO_IMAG(z) = CUMO_IMAG(x)+CUMO_REAL(y);
     y = c_log(z);
-    REAL(z) = IMAG(y);
-    IMAG(z) = -REAL(y);
+    CUMO_REAL(z) = CUMO_IMAG(y);
+    CUMO_IMAG(z) = -CUMO_REAL(y);
     return z;
 }
 
 __host__ __device__ static inline dtype c_acosh(dtype x) {
     dtype z, y;
     y = c_square(x);
-    REAL(y) -= 1;
+    CUMO_REAL(y) -= 1;
     y = c_sqrt(y);
-    REAL(y) += REAL(x);
-    IMAG(y) += IMAG(x);
+    CUMO_REAL(y) += CUMO_REAL(x);
+    CUMO_IMAG(y) += CUMO_IMAG(x);
     z = c_log(y);
     return z;
 }
 
 __host__ __device__ static inline dtype c_atan(dtype x) {
     dtype z, y;
-    REAL(y) = -REAL(x);
-    IMAG(y) = 1-IMAG(x);
-    REAL(z) = REAL(x);
-    IMAG(z) = 1+IMAG(x);
+    CUMO_REAL(y) = -CUMO_REAL(x);
+    CUMO_IMAG(y) = 1-CUMO_IMAG(x);
+    CUMO_REAL(z) = CUMO_REAL(x);
+    CUMO_IMAG(z) = 1+CUMO_IMAG(x);
     y = c_div(z,y);
     y = c_log(y);
-    REAL(z) = -IMAG(y)/2;
-    IMAG(z) = REAL(y)/2;
+    CUMO_REAL(z) = -CUMO_IMAG(y)/2;
+    CUMO_IMAG(z) = CUMO_REAL(y)/2;
     return z;
 }
 
 __host__ __device__ static inline dtype c_atanh(dtype x) {
     dtype z, y;
-    REAL(y) = 1-REAL(x);
-    IMAG(y) = -IMAG(x);
-    REAL(z) = 1+REAL(x);
-    IMAG(z) = IMAG(x);
+    CUMO_REAL(y) = 1-CUMO_REAL(x);
+    CUMO_IMAG(y) = -CUMO_IMAG(x);
+    CUMO_REAL(z) = 1+CUMO_REAL(x);
+    CUMO_IMAG(z) = CUMO_IMAG(x);
     y = c_div(z,y);
     y = c_log(y);
-    REAL(z) = REAL(y)/2;
-    IMAG(z) = IMAG(y)/2;
+    CUMO_REAL(z) = CUMO_REAL(y)/2;
+    CUMO_IMAG(z) = CUMO_IMAG(y)/2;
     return z;
 }
 
@@ -352,7 +352,7 @@ __host__ __device__ static inline dtype c_pow(dtype x, dtype y)
     dtype z;
     if (c_is_zero(y)) {
         z = c_one();
-    } else if (c_is_zero(x) && REAL(y)>0 && IMAG(y)==0) {
+    } else if (c_is_zero(x) && CUMO_REAL(y)>0 && CUMO_IMAG(y)==0) {
         z = c_zero();
     } else {
         z = c_log(x);
@@ -396,11 +396,11 @@ __host__ __device__ static inline dtype c_cbrt(dtype x) {
 }
 
 __host__ __device__ static inline rtype c_abs(dtype x) {
-    return r_hypot(REAL(x),IMAG(x));
+    return r_hypot(CUMO_REAL(x),CUMO_IMAG(x));
 }
 
 __host__ __device__ static inline rtype c_abs_square(dtype x) {
-    return REAL(x)*REAL(x)+IMAG(x)*IMAG(x);
+    return CUMO_REAL(x)*CUMO_REAL(x)+CUMO_IMAG(x)*CUMO_IMAG(x);
 }
 
 

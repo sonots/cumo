@@ -22,17 +22,17 @@ extern double exp10(double);
 
 #include "complex_kernel.h"
 
-__host__ __device__ static inline dtype c_from_scomplex(scomplex x) {
+__host__ __device__ static inline dtype c_from_scomplex(cumo_scomplex x) {
     dtype z;
-    REAL(z) = REAL(x);
-    IMAG(z) = IMAG(x);
+    CUMO_REAL(z) = CUMO_REAL(x);
+    CUMO_IMAG(z) = CUMO_IMAG(x);
     return z;
 }
 
-__host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
+__host__ __device__ static inline dtype c_from_dcomplex(cumo_dcomplex x) {
     dtype z;
-    REAL(z) = REAL(x);
-    IMAG(z) = IMAG(x);
+    CUMO_REAL(z) = CUMO_REAL(x);
+    CUMO_IMAG(z) = CUMO_IMAG(x);
     return z;
 }
 
@@ -56,8 +56,8 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
 
 //#define m_extract(x) COMP2NUM(*(dtype*)x)
 
-#define m_real(x)  REAL(x)
-#define m_imag(x)  IMAG(x)
+#define m_real(x)  CUMO_REAL(x)
+#define m_imag(x)  CUMO_IMAG(x)
 #define m_set_real(x,y)  c_set_real(x,y)
 #define m_set_imag(x,y)  c_set_imag(x,y)
 
@@ -73,19 +73,19 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
 #define m_minus(x) c_minus(x)
 #define m_reciprocal(x) c_reciprocal(x)
 #define m_square(x) c_square(x)
-#define m_floor(x) c_new(floor(REAL(x)),floor(IMAG(x)))
-#define m_round(x) c_new(round(REAL(x)),round(IMAG(x)))
-#define m_ceil(x)  c_new(ceil(REAL(x)),ceil(IMAG(x)))
-#define m_trunc(x) c_new(trunc(REAL(x)),trunc(IMAG(x)))
-#define m_rint(x)  c_new(rint(REAL(x)),rint(IMAG(x)))
+#define m_floor(x) c_new(floor(CUMO_REAL(x)),floor(CUMO_IMAG(x)))
+#define m_round(x) c_new(round(CUMO_REAL(x)),round(CUMO_IMAG(x)))
+#define m_ceil(x)  c_new(ceil(CUMO_REAL(x)),ceil(CUMO_IMAG(x)))
+#define m_trunc(x) c_new(trunc(CUMO_REAL(x)),trunc(CUMO_IMAG(x)))
+#define m_rint(x)  c_new(rint(CUMO_REAL(x)),rint(CUMO_IMAG(x)))
 #define m_sign(x)  c_new( \
- ((REAL(x)==0) ? 0.0:((REAL(x)>0) ? 1.0:((REAL(x)<0) ? -1.0:REAL(x)))), \
- ((IMAG(x)==0) ? 0.0:((IMAG(x)>0) ? 1.0:((IMAG(x)<0) ? -1.0:IMAG(x)))))
-#define m_copysign(x,y) c_new(copysign(REAL(x),REAL(y)),copysign(IMAG(x),IMAG(y)))
+ ((CUMO_REAL(x)==0) ? 0.0:((CUMO_REAL(x)>0) ? 1.0:((CUMO_REAL(x)<0) ? -1.0:CUMO_REAL(x)))), \
+ ((CUMO_IMAG(x)==0) ? 0.0:((CUMO_IMAG(x)>0) ? 1.0:((CUMO_IMAG(x)<0) ? -1.0:CUMO_IMAG(x)))))
+#define m_copysign(x,y) c_new(copysign(CUMO_REAL(x),CUMO_REAL(y)),copysign(CUMO_IMAG(x),CUMO_IMAG(y)))
 
 #define m_im(x)    c_im(x)
-#define m_conj(x)  c_new(REAL(x),-IMAG(x))
-#define m_arg(x)   atan2(IMAG(x),REAL(x))
+#define m_conj(x)  c_new(CUMO_REAL(x),-CUMO_IMAG(x))
+#define m_arg(x)   atan2(CUMO_IMAG(x),CUMO_REAL(x))
 
 #define m_eq(x,y) c_eq(x,y)
 #define m_ne(x,y) c_ne(x,y)
@@ -97,7 +97,7 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
 #define m_isneginf(x) c_isneginf(x)
 #define m_isfinite(x) c_isfinite(x)
 
-#define m_sprintf(s,x) sprintf(s,"%g%+gi",REAL(x),IMAG(x))
+#define m_sprintf(s,x) sprintf(s,"%g%+gi",CUMO_REAL(x),CUMO_IMAG(x))
 
 #define m_sqrt(x)    c_sqrt(x)
 #define m_cbrt(x)    c_cbrt(x)
@@ -125,7 +125,7 @@ __host__ __device__ static inline dtype c_from_dcomplex(dcomplex x) {
 #define m_sum_init 0
 #define m_mulsum_init 0
 
-#define not_nan(x) (REAL(x)==REAL(x) && IMAG(x)==IMAG(x))
+#define not_nan(x) (CUMO_REAL(x)==CUMO_REAL(x) && CUMO_IMAG(x)==CUMO_IMAG(x))
 
 #define m_mulsum(x,y,z) {z = m_add(m_mul(x,y),z);}
 #define m_mulsum_nan(x,y,z) {          \

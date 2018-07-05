@@ -1,5 +1,5 @@
-#ifndef CUMO_REAL_ACCUM_KERNEL_H
-#define CUMO_REAL_ACCUM_KERNEL_H
+#ifndef CUMO_CUMO_REAL_ACCUM_KERNEL_H
+#define CUMO_CUMO_REAL_ACCUM_KERNEL_H
 
 #define not_nan(x) ((x)==(x))
 
@@ -98,4 +98,4 @@ struct cumo_thrust_square : public thrust::unary_function<dtype, dtype>
     __host__ __device__ rtype operator()(const dtype& x) const { return m_square(x); }
 };
 
-#endif // CUMO_REAL_ACCUM_KERNEL_H
+#endif // CUMO_CUMO_REAL_ACCUM_KERNEL_H

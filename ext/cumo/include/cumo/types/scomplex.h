@@ -1,4 +1,4 @@
-typedef scomplex dtype;
+typedef cumo_scomplex dtype;
 typedef float rtype;
 #define cT  cumo_cSComplex
 #define cRT cumo_cSFloat
@@ -17,8 +17,8 @@ static inline bool c_nearly_eq(dtype x, dtype y) {
 inline static dtype m_rand(dtype max)
 {
     dtype z;
-    REAL(z) = to_real2(gen_rand32()) * REAL(max);
-    IMAG(z) = to_real2(gen_rand32()) * IMAG(max);
+    CUMO_REAL(z) = to_real2(gen_rand32()) * CUMO_REAL(max);
+    CUMO_IMAG(z) = to_real2(gen_rand32()) * CUMO_IMAG(max);
     return z;
 }
 
@@ -36,8 +36,8 @@ inline static void m_rand_norm(dtype mu, rtype sigma, dtype *a0)
 	w = x1 * x1 + x2 * x2;
     } while (w>=1);
     w = sqrt( (-2*log(w)) / w );
-    REAL(*a0) = x1*w * sigma + REAL(mu);
-    IMAG(*a0) = x2*w * sigma + IMAG(mu);
+    CUMO_REAL(*a0) = x1*w * sigma + CUMO_REAL(mu);
+    CUMO_IMAG(*a0) = x2*w * sigma + CUMO_IMAG(mu);
 }
 #endif
 

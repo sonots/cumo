@@ -108,8 +108,8 @@ def_method "store" do
   store_numeric
   store_from "Bit"
   if is_complex
-    store_from "DComplex","dcomplex","m_from_dcomplex"
-    store_from "SComplex","scomplex","m_from_scomplex"
+    store_from "DComplex","cumo_dcomplex","m_from_dcomplex"
+    store_from "SComplex","cumo_scomplex","m_from_scomplex"
   end
   store_from "DFloat","double",   "m_from_real"
   store_from "SFloat","float",    "m_from_real"
