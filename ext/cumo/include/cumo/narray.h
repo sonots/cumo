@@ -49,13 +49,23 @@ extern "C" {
 # endif
 #endif
 
+#ifndef SZF
 #define SZF PRI_SIZE_PREFIX // defined in ruby.h
+#endif
 
 #if   SIZEOF_LONG==8
-# define NUM2INT64(x) NUM2LONG(x)
-# define INT642NUM(x) LONG2NUM(x)
-# define NUM2UINT64(x) NUM2ULONG(x)
-# define UINT642NUM(x) ULONG2NUM(x)
+# ifndef NUM2INT64
+#  define NUM2INT64(x) NUM2LONG(x)
+# endif
+# ifndef INT642NUM
+#  define INT642NUM(x) LONG2NUM(x)
+# endif
+# ifndef NUM2UINT64
+#  define NUM2UINT64(x) NUM2ULONG(x)
+# endif
+# ifndef UINT642NUM
+#  define UINT642NUM(x) ULONG2NUM(x)
+# endif
 # ifndef PRId64
 #  define PRId64 "ld"
 # endif
@@ -63,10 +73,18 @@ extern "C" {
 #  define PRIu64 "lu"
 # endif
 #elif SIZEOF_LONG_LONG==8
-# define NUM2INT64(x) NUM2LL(x)
-# define INT642NUM(x) LL2NUM(x)
-# define NUM2UINT64(x) NUM2ULL(x)
-# define UINT642NUM(x) ULL2NUM(x)
+# ifndef NUM2INT64
+#  define NUM2INT64(x) NUM2LL(x)
+# endif
+# ifndef INT642NUM
+#  define INT642NUM(x) LL2NUM(x)
+# endif
+# ifndef NUM2UINT64
+#  define NUM2UINT64(x) NUM2ULL(x)
+# endif
+# ifndef UINT642NUM
+#  define UINT642NUM(x) ULL2NUM(x)
+# endif
 # ifndef PRId64
 #  define PRId64 "lld"
 # endif
@@ -76,10 +94,18 @@ extern "C" {
 #endif
 
 #if   SIZEOF_LONG==4
-# define NUM2INT32(x) NUM2LONG(x)
-# define INT322NUM(x) LONG2NUM(x)
-# define NUM2UINT32(x) NUM2ULONG(x)
-# define UINT322NUM(x) ULONG2NUM(x)
+# ifndef NUM2INT32
+#  define NUM2INT32(x) NUM2LONG(x)
+# endif
+# ifndef INT322NUM
+#  define INT322NUM(x) LONG2NUM(x)
+# endif
+# ifndef NUM2UINT32
+#  define NUM2UINT32(x) NUM2ULONG(x)
+# endif
+# ifndef UINT322NUM
+#  define UINT322NUM(x) ULONG2NUM(x)
+# endif
 # ifndef PRId32
 #  define PRId32 "ld"
 # endif
@@ -87,10 +113,18 @@ extern "C" {
 #  define PRIu32 "lu"
 # endif
 #elif SIZEOF_INT==4
-# define NUM2INT32(x) NUM2INT(x)
-# define INT322NUM(x) INT2NUM(x)
-# define NUM2UINT32(x) NUM2UINT(x)
-# define UINT322NUM(x) UINT2NUM(x)
+# ifndef NUM2INT32
+#  define NUM2INT32(x) NUM2INT(x)
+# endif
+# ifndef INT322NUM
+#  define INT322NUM(x) INT2NUM(x)
+# endif
+# ifndef NUM2UINT32
+#  define NUM2UINT32(x) NUM2UINT(x)
+# endif
+# ifndef UINT322NUM
+#  define UINT322NUM(x) UINT2NUM(x)
+# endif
 # ifndef PRId32
 #  define PRId32 "d"
 # endif
