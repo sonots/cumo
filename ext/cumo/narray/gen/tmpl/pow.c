@@ -62,8 +62,8 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_arg_in_t ain_i[2] = {{cT,0},{cumo_cInt32,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 2, 1, ain, aout };
-    cumo_ndfunc_t ndf_i = { <%=c_iter%>_int32, STRIDE_LOOP, 2, 1, ain_i, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf_i = { <%=c_iter%>_int32, CUMO_STRIDE_LOOP, 2, 1, ain_i, aout };
 
     // fixme : use na.integer?
     if (FIXNUM_P(other) || rb_obj_is_kind_of(other,cumo_cInt32)) {

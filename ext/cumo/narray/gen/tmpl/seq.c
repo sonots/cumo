@@ -91,8 +91,8 @@ static VALUE
 {
     seq_opt_t *g;
     VALUE vbeg=Qnil, vstep=Qnil;
-    cumo_ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,0}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
 
     g = ALLOCA_N(seq_opt_t,1);
     g->beg = m_zero;

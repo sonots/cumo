@@ -96,7 +96,7 @@ static VALUE
     size_t n_1;
     where_opt_t g;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{Qnil,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 2, 0, ain, 0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0};
 
     // TODO(sonots): bit_count_true synchronizes with CPU. Avoid.
     n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, mask));

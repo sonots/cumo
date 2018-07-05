@@ -66,7 +66,7 @@ cumo_na_copy(VALUE self)
     VALUE v;
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
-    cumo_ndfunc_t ndf = { iter_copy_bytes, FULL_LOOP, 1, 1, ain, aout };
+    cumo_ndfunc_t ndf = { iter_copy_bytes, CUMO_FULL_LOOP, 1, 1, ain, aout };
 
     v = cumo_na_ndloop(&ndf, 1, self);
     return v;
@@ -108,7 +108,7 @@ cumo_na_swap_byte(VALUE self)
     VALUE v;
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
-    cumo_ndfunc_t ndf = { iter_swap_byte, FULL_LOOP|NDF_ACCEPT_BYTESWAP,
+    cumo_ndfunc_t ndf = { iter_swap_byte, CUMO_FULL_LOOP|CUMO_NDF_ACCEPT_BYTESWAP,
                      1, 1, ain, aout };
 
     v = cumo_na_ndloop(&ndf, 1, self);

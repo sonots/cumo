@@ -131,8 +131,8 @@ static VALUE
     rand_opt_t g;
     VALUE v1=Qnil, v2=Qnil;
     dtype high;
-    cumo_ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,0}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
 
     <% if is_int && !is_object %>
     rb_scan_args(argc, args, "11", &v1, &v2);

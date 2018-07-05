@@ -67,9 +67,9 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{<%=result_class%>,0}};
     //<% if type_name == 'robject' || !indexer_ops.include?(name) %>
-    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE, 2, 1, ain, aout };
     <% else %>
-    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_INDEXER_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
     <% end %>
 
   <% if is_float %>

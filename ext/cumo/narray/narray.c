@@ -1556,7 +1556,7 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
         // option: keepdims
         if (opts[1] != Qundef) {
             if (RTEST(opts[1]))
-                ndf->flag |= NDF_KEEP_DIM;
+                ndf->flag |= CUMO_NDF_KEEP_DIM;
         }
     }
 

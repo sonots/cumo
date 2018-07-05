@@ -42,7 +42,7 @@ static VALUE
     size_t shape_out[1] = {length};
     cumo_ndfunc_arg_in_t ain[1] = {{cT,1}};
     cumo_ndfunc_arg_out_t aout[1] = {{<%=cnt_cT%>,1,shape_out}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>_<%=bits%>, NO_LOOP|NDF_STRIDE_LOOP|NDF_INDEX_LOOP,
+    cumo_ndfunc_t ndf = {<%=c_iter%>_<%=bits%>, CUMO_NO_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP,
                     1, 1, ain, aout};
 
     return cumo_na_ndloop(&ndf, 1, self);
@@ -94,7 +94,7 @@ static VALUE
     size_t shape_out[1] = {length};
     cumo_ndfunc_arg_in_t ain[2] = {{cT,1},{<%=cnt_cT%>,1}};
     cumo_ndfunc_arg_out_t aout[1] = {{<%=cnt_cT%>,1,shape_out}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>_<%=fn%>, NO_LOOP|NDF_STRIDE_LOOP,
+    cumo_ndfunc_t ndf = {<%=c_iter%>_<%=fn%>, CUMO_NO_LOOP|CUMO_NDF_STRIDE_LOOP,
                     2, 1, ain, aout};
 
     return cumo_na_ndloop(&ndf, 2, self, weight);

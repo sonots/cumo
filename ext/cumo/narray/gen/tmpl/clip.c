@@ -101,9 +101,9 @@ static VALUE
 {
     cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cT,0},{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
-    cumo_ndfunc_t ndf_min = { <%=c_iter%>_min, STRIDE_LOOP, 2, 1, ain, aout };
-    cumo_ndfunc_t ndf_max = { <%=c_iter%>_max, STRIDE_LOOP, 2, 1, ain, aout };
-    cumo_ndfunc_t ndf_both = { <%=c_iter%>, STRIDE_LOOP, 3, 1, ain, aout };
+    cumo_ndfunc_t ndf_min = { <%=c_iter%>_min, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf_max = { <%=c_iter%>_max, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf_both = { <%=c_iter%>, CUMO_STRIDE_LOOP, 3, 1, ain, aout };
 
     if (RTEST(min)) {
         if (RTEST(max)) {

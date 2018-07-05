@@ -102,8 +102,8 @@ static VALUE
     int n;
     randn_opt_t g;
     VALUE v1=Qnil, v2=Qnil;
-    cumo_ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,0}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
 
     n = rb_scan_args(argc, args, "02", &v1, &v2);
     if (n == 0) {

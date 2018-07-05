@@ -69,7 +69,7 @@ static VALUE
     where_opt_t *g;
 
     cumo_ndfunc_arg_in_t ain[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP, 1, 0, ain, 0 };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 1, 0, ain, 0 };
 
     size = RNARRAY_SIZE(self);
     n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, self));
