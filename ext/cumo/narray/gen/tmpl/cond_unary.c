@@ -9,22 +9,22 @@ static void
     size_t   *idx1;
     dtype     x;
     BIT_DIGIT b;
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
-    INIT_PTR_BIT(lp, 1, a2, p2, s2);
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR_BIT(lp, 1, a2, p2, s2);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
-            GET_DATA_INDEX(p1,idx1,dtype,x);
+            CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             b = (m_<%=name%>(x)) ? 1:0;
-            STORE_BIT(a2,p2,b);
+            CUMO_STORE_BIT(a2,p2,b);
             p2+=s2;
         }
     } else {
         for (; i--;) {
-            GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
             b = (m_<%=name%>(x)) ? 1:0;
-            STORE_BIT(a2,p2,b);
+            CUMO_STORE_BIT(a2,p2,b);
             p2+=s2;
         }
     }

@@ -9,10 +9,10 @@ static void
     ssize_t  d_step, i_step, o_step;
     char   **ptr;
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, d_ptr, d_step);
-    INIT_PTR(lp, 1, i_ptr, i_step);
-    INIT_PTR(lp, 2, o_ptr, o_step);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR(lp, 0, d_ptr, d_step);
+    CUMO_INIT_PTR(lp, 1, i_ptr, i_step);
+    CUMO_INIT_PTR(lp, 2, o_ptr, o_step);
 
     ptr = (char**)(lp->opt_ptr);
 
@@ -102,7 +102,7 @@ static VALUE
     size = na->size*sizeof(void*); // max capa
     buf = rb_alloc_tmp_buffer(&tmp, size);
 
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cudaDeviceSynchronize();
 
     res = cumo_na_ndloop3(&ndf, buf, 3, self, idx, reduce);

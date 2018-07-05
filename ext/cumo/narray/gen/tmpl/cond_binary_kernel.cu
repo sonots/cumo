@@ -5,7 +5,7 @@ __global__ void <%="cumo_#{c_iter}_stride_kernel"%>(char *p1, char *p2, BIT_DIGI
         dtype x = *(dtype*)(p1+(i*s1));
         dtype y = *(dtype*)(p2+(i*s2));
         BIT_DIGIT b = (m_<%=name%>(x,y)) ? 1:0;
-        STORE_BIT(a3,p3+(i*s3),b);
+        CUMO_STORE_BIT(a3,p3+(i*s3),b);
     }
 }
 

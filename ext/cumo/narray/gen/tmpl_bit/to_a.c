@@ -9,22 +9,22 @@ static void
     BIT_DIGIT  x=0;
     VALUE      a, y;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     a = rb_ary_new2(i);
     rb_ary_push(lp->args[1].value, a);
     if (idx1) {
         for (; i--;) {
-            LOAD_BIT(a1,p1+*idx1,x); idx1++;
+            CUMO_LOAD_BIT(a1,p1+*idx1,x); idx1++;
             y = m_data_to_num(x);
             rb_ary_push(a,y);
         }
     } else {
         for (; i--;) {
-            LOAD_BIT(a1,p1,x); p1+=s1;
+            CUMO_LOAD_BIT(a1,p1,x); p1+=s1;
             y = m_data_to_num(x);
             rb_ary_push(a,y);
         }

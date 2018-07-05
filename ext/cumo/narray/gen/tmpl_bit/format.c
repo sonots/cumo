@@ -22,24 +22,24 @@ static void
     VALUE  y;
     VALUE  fmt = lp->option;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
-    INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
 
     if (idx1) {
         for (; i--;) {
-            LOAD_BIT(a1, p1+*idx1, x); idx1++;
+            CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             y = format_<%=type_name%>(fmt, x);
-            SET_DATA_STRIDE(p2, s2, VALUE, y);
+            CUMO_SET_DATA_STRIDE(p2, s2, VALUE, y);
         }
     } else {
         for (; i--;) {
-            LOAD_BIT(a1, p1, x); p1+=s1;
+            CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             y = format_<%=type_name%>(fmt, x);
-            SET_DATA_STRIDE(p2, s2, VALUE, y);
+            CUMO_SET_DATA_STRIDE(p2, s2, VALUE, y);
         }
     }
 }

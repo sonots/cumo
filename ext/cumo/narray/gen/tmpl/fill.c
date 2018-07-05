@@ -12,18 +12,18 @@ static void
     size_t  *idx1;
     VALUE    x = lp->option;
     dtype    y;
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     y = m_num_to_data(x);
     <% if type_name == 'robject' %>
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
-            SET_DATA_INDEX(p1,idx1,dtype,y);
+            CUMO_SET_DATA_INDEX(p1,idx1,dtype,y);
         }
     } else {
         for (; i--;) {
-            SET_DATA_STRIDE(p1,s1,dtype,y);
+            CUMO_SET_DATA_STRIDE(p1,s1,dtype,y);
         }
     }
     <% else %>

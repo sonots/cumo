@@ -26,22 +26,22 @@ static void
     char    *p1, *p2, *p3;
     ssize_t  s1, s2, s3;
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR(lp, 2, p3, s3);
 
     <% if type_name == 'robject' %>
     {
         size_t i;
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         for (i=0; i<n; i++) {
             dtype x, y, z;
-            GET_DATA_STRIDE(p1,s1,dtype,x);
-            GET_DATA_STRIDE(p2,s2,dtype,y);
-            GET_DATA(p3,dtype,z);
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p2,s2,dtype,y);
+            CUMO_GET_DATA(p3,dtype,z);
             z = f_<%=name%><%=nan%>(x,y);
-            SET_DATA_STRIDE(p3,s3,dtype,z);
+            CUMO_SET_DATA_STRIDE(p3,s3,dtype,z);
         }
     }
     <% else %>

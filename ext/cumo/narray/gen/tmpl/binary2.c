@@ -8,18 +8,18 @@ static void
     size_t   i, n;
     char    *p1, *p2, *p3, *p4;
     ssize_t  s1, s2, s3, s4;
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
-    INIT_PTR(lp, 3, p4, s4);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR(lp, 2, p3, s3);
+    CUMO_INIT_PTR(lp, 3, p4, s4);
     for (i=n; i--;) {
         <% if type_name == 'robject' %>
         {
             dtype    x, y, a, b;
-            SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-            GET_DATA_STRIDE(p1,s1,dtype,x);
-            GET_DATA_STRIDE(p2,s2,dtype,y);
+            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p2,s2,dtype,y);
 <% if is_int and %w[divmod].include? name %>
                 if (y==0) {
                     lp->err_type = rb_eZeroDivError;
@@ -27,8 +27,8 @@ static void
                 }
 <% end %>
             m_<%=name%>(x,y,a,b);
-            SET_DATA_STRIDE(p3,s3,dtype,a);
-            SET_DATA_STRIDE(p4,s4,dtype,b);
+            CUMO_SET_DATA_STRIDE(p3,s3,dtype,a);
+            CUMO_SET_DATA_STRIDE(p4,s4,dtype,b);
         }
         <% else %>
         <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,p4,s1,s2,s3,s4,n);

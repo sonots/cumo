@@ -12,8 +12,8 @@ static void
     ssize_t  s1, s2;
     size_t  *idx1;
 
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
-    INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
     i = lp->args[0].shape[0];
     n = lp->args[1].shape[0];
 
@@ -22,15 +22,15 @@ static void
         *(<%=cnt_type%>*)(p2 + s2*x) = 0;
     }
 
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_<%=bits%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_<%=bits%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
-            GET_DATA_INDEX(p1,idx1,dtype,x);
+            CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             (*(<%=cnt_type%>*)(p2 + s2*x))++;
         }
     } else {
         for (; i--;) {
-            GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
             (*(<%=cnt_type%>*)(p2 + s2*x))++;
         }
     }
@@ -65,9 +65,9 @@ static void
     char    *p1, *p2, *p3;
     ssize_t  s1, s2, s3;
 
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR(lp, 2, p3, s3);
     i = lp->args[0].shape[0];
     m = lp->args[1].shape[0];
     n = lp->args[2].shape[0];
@@ -82,8 +82,8 @@ static void
         *(<%=cnt_type%>*)(p3 + s3*x) = 0;
     }
     for (; i--;) {
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,<%=cnt_type%>,w);
+        CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+        CUMO_GET_DATA_STRIDE(p2,s2,<%=cnt_type%>,w);
         (*(<%=cnt_type%>*)(p3 + s3*x)) += w;
     }
 }

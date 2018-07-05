@@ -6,9 +6,9 @@ static void
     char *ptr;
     ssize_t step;
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, ptr, step);
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR(lp, 0, ptr, step);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     <%=type_name%>_qsort<%=j%>(ptr, n, step);
 }
 <% end %>

@@ -18,11 +18,11 @@ static void
         char    *p1, *p2;
         ssize_t  s1;
 
-        INIT_COUNTER(lp, n);
-        INIT_PTR(lp, 0, p1, s1);
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, p1, s1);
         p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
 
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         *(<%=dtype%>*)p2 = f_<%=name%><%=nan%>(n,p1,s1);
     }
     //<% elsif !indexer_ops.include?(name) %>
@@ -31,8 +31,8 @@ static void
         char    *p1, *p2;
         ssize_t  s1;
 
-        INIT_COUNTER(lp, n);
-        INIT_PTR(lp, 0, p1, s1);
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, p1, s1);
         p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
 
         cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(n,p1,s1,p2);

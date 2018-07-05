@@ -664,10 +664,10 @@ iter_struct_store_struct(cumo_na_loop_t *const lp)
     size_t  elmsz;
     char   *x, *y;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
-    INIT_PTR_IDX(lp, 1, p2, s2, idx2);
-    INIT_ELMSIZE(lp, 0, elmsz);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);
+    CUMO_INIT_ELMSIZE(lp, 0, elmsz);
     if (idx2) {
         if (idx1) {
             for (; i--;) {

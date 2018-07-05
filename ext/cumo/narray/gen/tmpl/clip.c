@@ -5,20 +5,20 @@ static void
     char   *p1, *p2, *p3, *p4;
     ssize_t s1, s2, s3, s4;
     dtype   x, min, max;
-    INIT_COUNTER(lp, i);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
-    INIT_PTR(lp, 3, p4, s4);
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR(lp, 2, p3, s3);
+    CUMO_INIT_PTR(lp, 3, p4, s4);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     for (; i--;) {
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,dtype,min);
-        GET_DATA_STRIDE(p3,s3,dtype,max);
+        CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+        CUMO_GET_DATA_STRIDE(p2,s2,dtype,min);
+        CUMO_GET_DATA_STRIDE(p3,s3,dtype,max);
         if (m_gt(min,max)) {rb_raise(cumo_na_eOperationError,"min is greater than max");}
         if (m_lt(x,min)) {x=min;}
         if (m_gt(x,max)) {x=max;}
-        SET_DATA_STRIDE(p4,s4,dtype,x);
+        CUMO_SET_DATA_STRIDE(p4,s4,dtype,x);
     }
 }
 
@@ -29,16 +29,16 @@ static void
     char   *p1, *p2, *p3;
     ssize_t s1, s2, s3;
     dtype   x, min;
-    INIT_COUNTER(lp, i);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_min", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR(lp, 2, p3, s3);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_min", "<%=type_name%>");
     for (; i--;) {
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,dtype,min);
+        CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+        CUMO_GET_DATA_STRIDE(p2,s2,dtype,min);
         if (m_lt(x,min)) {x=min;}
-        SET_DATA_STRIDE(p3,s3,dtype,x);
+        CUMO_SET_DATA_STRIDE(p3,s3,dtype,x);
     }
 }
 
@@ -49,16 +49,16 @@ static void
     char   *p1, *p2, *p3;
     ssize_t s1, s2, s3;
     dtype   x, max;
-    INIT_COUNTER(lp, i);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_max", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR(lp, 2, p3, s3);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_max", "<%=type_name%>");
     for (; i--;) {
-        GET_DATA_STRIDE(p1,s1,dtype,x);
-        GET_DATA_STRIDE(p2,s2,dtype,max);
+        CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+        CUMO_GET_DATA_STRIDE(p2,s2,dtype,max);
         if (m_gt(x,max)) {x=max;}
-        SET_DATA_STRIDE(p3,s3,dtype,x);
+        CUMO_SET_DATA_STRIDE(p3,s3,dtype,x);
     }
 }
 

@@ -22,13 +22,13 @@ static void
     n1 = lp->args[0].shape[1];
     s0 = lp->args[0].iter[0].step;
     s1 = lp->args[0].iter[1].step;
-    p0 = NDL_PTR(lp,0);
+    p0 = CUMO_NDL_PTR(lp,0);
 
     <% if type_name == 'robject' %>
     {
         size_t i0, i1;
         char *p1;
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         for (i0=0; i0 < n0; i0++) {
             p1 = p0;
             for (i1=0; i1 < n1; i1++) {

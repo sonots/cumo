@@ -6,12 +6,12 @@ static void
     char *p1, *p2;
     dtype *buf;
 
-    INIT_COUNTER(lp, n);
+    CUMO_INIT_COUNTER(lp, n);
     p1 = (lp->args[0]).ptr + (lp->args[0].iter[0]).pos;
     p2 = (lp->args[1]).ptr + (lp->args[1].iter[0]).pos;
     buf = (dtype*)p1;
 
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     <%=type_name%>_qsort<%=j%>(buf, n, sizeof(dtype));
 
     <% if is_float %>

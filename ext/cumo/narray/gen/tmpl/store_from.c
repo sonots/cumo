@@ -12,40 +12,40 @@ static void
     char   *p1, *p2;
     size_t *idx1, *idx2;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
-    INIT_PTR_IDX(lp, 1, p2, s2, idx2);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);
     //<% if c_iter.include? 'robject' %>
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     {
         <%=dtype%> x;
         dtype y;
         if (idx2) {
             if (idx1) {
                 for (; i--;) {
-                    GET_DATA_INDEX(p2,idx2,<%=dtype%>,x);
+                    CUMO_GET_DATA_INDEX(p2,idx2,<%=dtype%>,x);
                     y = <%=macro%>(x);
-                    SET_DATA_INDEX(p1,idx1,dtype,y);
+                    CUMO_SET_DATA_INDEX(p1,idx1,dtype,y);
                 }
             } else {
                 for (; i--;) {
-                    GET_DATA_INDEX(p2,idx2,<%=dtype%>,x);
+                    CUMO_GET_DATA_INDEX(p2,idx2,<%=dtype%>,x);
                     y = <%=macro%>(x);
-                    SET_DATA_STRIDE(p1,s1,dtype,y);
+                    CUMO_SET_DATA_STRIDE(p1,s1,dtype,y);
                 }
             }
         } else {
             if (idx1) {
                 for (; i--;) {
-                    GET_DATA_STRIDE(p2,s2,<%=dtype%>,x);
+                    CUMO_GET_DATA_STRIDE(p2,s2,<%=dtype%>,x);
                     y = <%=macro%>(x);
-                    SET_DATA_INDEX(p1,idx1,dtype,y);
+                    CUMO_SET_DATA_INDEX(p1,idx1,dtype,y);
                 }
             } else {
                 for (; i--;) {
-                    GET_DATA_STRIDE(p2,s2,<%=dtype%>,x);
+                    CUMO_GET_DATA_STRIDE(p2,s2,<%=dtype%>,x);
                     y = <%=macro%>(x);
-                    SET_DATA_STRIDE(p1,s1,dtype,y);
+                    CUMO_SET_DATA_STRIDE(p1,s1,dtype,y);
                 }
             }
         }

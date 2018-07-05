@@ -16,9 +16,9 @@ static void
     ssize_t s1, s2;
     size_t *idx1;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
-    INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
 
     if (s2==0) {
         if (idx1) {

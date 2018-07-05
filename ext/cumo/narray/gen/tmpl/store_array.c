@@ -25,8 +25,8 @@ static void
     size_t len, c;
     double beg, step;
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     v1 = lp->args[1].value;
     i = 0;
 
@@ -59,7 +59,7 @@ static void
 
     //<% if c_iter.include? 'robject' %>
     {
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
         if (idx1) {
@@ -70,12 +70,12 @@ static void
                     for (c=0; c<len && i<n; c++,i++) {
                         y = beg + step * c;
                         z = m_from_double(y);
-                        SET_DATA_INDEX(p1, idx1, dtype, z);
+                        CUMO_SET_DATA_INDEX(p1, idx1, dtype, z);
                     }
                 }
                 else if (TYPE(x) != T_ARRAY) {
                     z = m_num_to_data(x);
-                    SET_DATA_INDEX(p1, idx1, dtype, z);
+                    CUMO_SET_DATA_INDEX(p1, idx1, dtype, z);
                 }
             }
         } else {
@@ -86,12 +86,12 @@ static void
                     for (c=0; c<len && i<n; c++,i++) {
                         y = beg + step * c;
                         z = m_from_double(y);
-                        SET_DATA_STRIDE(p1, s1, dtype, z);
+                        CUMO_SET_DATA_STRIDE(p1, s1, dtype, z);
                     }
                 }
                 else if (TYPE(x) != T_ARRAY) {
                     z = m_num_to_data(x);
-                    SET_DATA_STRIDE(p1, s1, dtype, z);
+                    CUMO_SET_DATA_STRIDE(p1, s1, dtype, z);
                 }
             }
         }
@@ -157,11 +157,11 @@ static void
     {
         if (idx1) {
             for (; i<n; i++) {
-                SET_DATA_INDEX(p1, idx1, dtype, z);
+                CUMO_SET_DATA_INDEX(p1, idx1, dtype, z);
             }
         } else {
             for (; i<n; i++) {
-                SET_DATA_STRIDE(p1, s1, dtype, z);
+                CUMO_SET_DATA_STRIDE(p1, s1, dtype, z);
             }
         }
     }

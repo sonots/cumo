@@ -16,12 +16,12 @@ static void
         char    *d_ptr, *i_ptr, *o_ptr;
         ssize_t  d_step, i_step;
 
-        INIT_COUNTER(lp, n);
-        INIT_PTR(lp, 0, d_ptr, d_step);
-        INIT_PTR(lp, 1, i_ptr, i_step);
-        o_ptr = NDL_PTR(lp,2);
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, d_ptr, d_step);
+        CUMO_INIT_PTR(lp, 1, i_ptr, i_step);
+        o_ptr = CUMO_NDL_PTR(lp,2);
 
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
         *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
     }

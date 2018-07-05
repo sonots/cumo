@@ -1,14 +1,14 @@
 #ifndef CUMO_TEMPLATE_KERNEL_H
 #define CUMO_TEMPLATE_KERNEL_H
 
-#define LOAD_BIT( adr, pos, val )                       \
+#define CUMO_LOAD_BIT( adr, pos, val )                       \
     {                                                   \
         size_t dig = (size_t)(pos) / NB;                \
         int    bit = (size_t)(pos) % NB;                \
         val = (((BIT_DIGIT*)(adr))[dig]>>(bit)) & 1u;   \
     }
 
-#define LOAD_BIT_STEP( adr, pos, step, idx, val )       \
+#define CUMO_LOAD_BIT_STEP( adr, pos, step, idx, val )       \
     {                                                   \
         size_t dig; int bit;                            \
         if (idx) {                                      \
@@ -23,7 +23,7 @@
         val = (((BIT_DIGIT*)(adr))[dig]>>bit) & 1u;     \
     }
 
-#define STORE_BIT(adr,pos,val)                                     \
+#define CUMO_STORE_BIT(adr,pos,val)                                     \
     {                                                              \
         size_t dig = (size_t)(pos) / NB;                           \
         int    bit = (size_t)(pos) % NB;                           \
@@ -35,7 +35,7 @@
     }
 // val -> val&1 ??
 
-#define STORE_BIT_STEP( adr, pos, step, idx, val )                 \
+#define CUMO_STORE_BIT_STEP( adr, pos, step, idx, val )                 \
     {                                                              \
         size_t dig; int bit;                                       \
         if (idx) {                                                 \

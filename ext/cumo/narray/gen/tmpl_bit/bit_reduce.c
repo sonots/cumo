@@ -9,20 +9,20 @@ static void
     BIT_DIGIT  x=0, y=0;
 
     // TODO(sonots): CUDA kernelize
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
-    INIT_PTR_BIT_IDX(lp, 1, a2, p2, s2, idx2);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_PTR_BIT_IDX(lp, 1, a2, p2, s2, idx2);
     if (idx2) {
         if (idx1) {
             for (; i--;) {
-                LOAD_BIT(a2, p2+*idx2, y);
+                CUMO_LOAD_BIT(a2, p2+*idx2, y);
                 if (y == <%=init_bit%>) {
-                    LOAD_BIT(a1, p1+*idx1, x);
+                    CUMO_LOAD_BIT(a1, p1+*idx1, x);
                     if (x != <%=init_bit%>) {
-                        STORE_BIT(a2, p2+*idx2, x);
+                        CUMO_STORE_BIT(a2, p2+*idx2, x);
                     }
                 }
                 idx1++;
@@ -30,11 +30,11 @@ static void
             }
         } else {
             for (; i--;) {
-                LOAD_BIT(a2, p2+*idx2, y);
+                CUMO_LOAD_BIT(a2, p2+*idx2, y);
                 if (y == <%=init_bit%>) {
-                    LOAD_BIT(a1, p1, x);
+                    CUMO_LOAD_BIT(a1, p1, x);
                     if (x != <%=init_bit%>) {
-                        STORE_BIT(a2, p2+*idx2, x);
+                        CUMO_STORE_BIT(a2, p2+*idx2, x);
                     }
                 }
                 p1 += s1;
@@ -44,11 +44,11 @@ static void
     } else if (s2) {
         if (idx1) {
             for (; i--;) {
-                LOAD_BIT(a2, p2, y);
+                CUMO_LOAD_BIT(a2, p2, y);
                 if (y == <%=init_bit%>) {
-                    LOAD_BIT(a1, p1+*idx1, x);
+                    CUMO_LOAD_BIT(a1, p1+*idx1, x);
                     if (x != <%=init_bit%>) {
-                        STORE_BIT(a2, p2, x);
+                        CUMO_STORE_BIT(a2, p2, x);
                     }
                 }
                 idx1++;
@@ -56,11 +56,11 @@ static void
             }
         } else {
             for (; i--;) {
-                LOAD_BIT(a2, p2, y);
+                CUMO_LOAD_BIT(a2, p2, y);
                 if (y == <%=init_bit%>) {
-                    LOAD_BIT(a1, p1, x);
+                    CUMO_LOAD_BIT(a1, p1, x);
                     if (x != <%=init_bit%>) {
-                        STORE_BIT(a2, p2, x);
+                        CUMO_STORE_BIT(a2, p2, x);
                     }
                 }
                 p1 += s1;
@@ -68,24 +68,24 @@ static void
             }
         }
     } else {
-        LOAD_BIT(a2, p2, x);
+        CUMO_LOAD_BIT(a2, p2, x);
         if (x != <%=init_bit%>) {
             return;
         }
         if (idx1) {
             for (; i--;) {
-                LOAD_BIT(a1, p1+*idx1, y);
+                CUMO_LOAD_BIT(a1, p1+*idx1, y);
                 if (y != <%=init_bit%>) {
-                    STORE_BIT(a2, p2, y);
+                    CUMO_STORE_BIT(a2, p2, y);
                     return;
                 }
                 idx1++;
             }
         } else {
             for (; i--;) {
-                LOAD_BIT(a1, p1, y);
+                CUMO_LOAD_BIT(a1, p1, y);
                 if (y != <%=init_bit%>) {
-                    STORE_BIT(a2, p2, y);
+                    CUMO_STORE_BIT(a2, p2, y);
                     return;
                 }
                 p1 += s1;

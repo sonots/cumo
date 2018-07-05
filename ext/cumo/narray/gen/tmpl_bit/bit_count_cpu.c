@@ -13,17 +13,17 @@ static void
     BIT_DIGIT x=0;
     int_t   y;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
-    INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
     if (s2==0) {
-        GET_DATA(p2, int_t, y);
+        CUMO_GET_DATA(p2, int_t, y);
         if (idx1) {
             for (; i--;) {
-                LOAD_BIT(a1, p1+*idx1, x);
+                CUMO_LOAD_BIT(a1, p1+*idx1, x);
                 idx1++;
                 if (m_<%=name%>(x)) {
                     y++;
@@ -31,7 +31,7 @@ static void
             }
         } else {
             for (; i--;) {
-                LOAD_BIT(a1, p1, x);
+                CUMO_LOAD_BIT(a1, p1, x);
                 p1 += s1;
                 if (m_<%=name%>(x)) {
                     y++;
@@ -42,23 +42,23 @@ static void
     } else {
         if (idx1) {
             for (; i--;) {
-                LOAD_BIT(a1, p1+*idx1, x);
+                CUMO_LOAD_BIT(a1, p1+*idx1, x);
                 idx1++;
                 if (m_<%=name%>(x)) {
-                    GET_DATA(p2, int_t, y);
+                    CUMO_GET_DATA(p2, int_t, y);
                     y++;
-                    SET_DATA(p2, int_t, y);
+                    CUMO_SET_DATA(p2, int_t, y);
                 }
                 p2+=s2;
             }
         } else {
             for (; i--;) {
-                LOAD_BIT(a1, p1, x);
+                CUMO_LOAD_BIT(a1, p1, x);
                 p1+=s1;
                 if (m_<%=name%>(x)) {
-                    GET_DATA(p2, int_t, y);
+                    CUMO_GET_DATA(p2, int_t, y);
                     y++;
-                    SET_DATA(p2, int_t, y);
+                    CUMO_SET_DATA(p2, int_t, y);
                 }
                 p2+=s2;
             }

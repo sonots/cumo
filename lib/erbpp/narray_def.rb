@@ -317,7 +317,7 @@ class Store < Function
   def extract_data(ptr,pos,x)
     case tpname
     when "bit"
-      "{BIT_DIGIT b; LOAD_BIT(#{ptr},#{pos},b); x = m_from_real(b);}"
+      "{BIT_DIGIT b; CUMO_LOAD_BIT(#{ptr},#{pos},b); x = m_from_real(b);}"
     when "robject"
       "#{x} = m_num_to_data(*(#{dtype}*)(#{ptr}+#{pos}))"
     when /complex/

@@ -7,20 +7,20 @@ static void
     dtype x;
     volatile VALUE a, y;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     a = rb_ary_new2(i);
     rb_ary_push(lp->args[1].value, a);
-    //SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    //CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
-            GET_DATA_INDEX(p1,idx1,dtype,x);
+            CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             y = m_data_to_num(x);
             rb_ary_push(a,y);
         }
     } else {
         for (; i--;) {
-            GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
             y = m_data_to_num(x);
             rb_ary_push(a,y);
         }

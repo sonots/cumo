@@ -10,15 +10,15 @@ static void
     size_t  count;
     where_opt_t *g;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     g = (where_opt_t*)(lp->opt_ptr);
     count = g->count;
     pidx  = (size_t*)(g->idx1);
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a, p1, s1, idx1);
-    //INIT_PTR_IDX(lp, 1, p2, s2, idx2);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a, p1, s1, idx1);
+    //CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);
     p2 = lp->args[1].iter[0].pos;
     s2 = lp->args[1].iter[0].step;
     idx2 = lp->args[1].iter[0].idx;
@@ -26,7 +26,7 @@ static void
     if (idx1) {
         if (idx2) {
             for (; i--;) {
-                LOAD_BIT(a, p1+*idx1, x);
+                CUMO_LOAD_BIT(a, p1+*idx1, x);
                 idx1++;
                 if (x) {
                     *(pidx++) = p2+*idx2;
@@ -36,7 +36,7 @@ static void
             }
         } else {
             for (; i--;) {
-                LOAD_BIT(a, p1+*idx1, x);
+                CUMO_LOAD_BIT(a, p1+*idx1, x);
                 idx1++;
                 if (x) {
                     *(pidx++) = p2;
@@ -48,7 +48,7 @@ static void
     } else {
         if (idx2) {
             for (; i--;) {
-                LOAD_BIT(a, p1, x);
+                CUMO_LOAD_BIT(a, p1, x);
                 p1 += s1;
                 if (x) {
                     *(pidx++) = p2+*idx2;
@@ -58,7 +58,7 @@ static void
             }
         } else {
             for (; i--;) {
-                LOAD_BIT(a, p1, x);
+                CUMO_LOAD_BIT(a, p1, x);
                 p1 += s1;
                 if (x) {
                     *(pidx++) = p2;

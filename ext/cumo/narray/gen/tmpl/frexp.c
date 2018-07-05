@@ -6,16 +6,16 @@ static void
     ssize_t  s1, s2, s3;
     dtype    x;
     int      y;
-    INIT_COUNTER(lp, i);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR(lp, 2, p3, s3);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     for (; i--;) {
-        GET_DATA_STRIDE(p1,s1,dtype,x);
+        CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
         x = m_<%=name%>(x,&y);
-        SET_DATA_STRIDE(p2,s2,dtype,x);
-        SET_DATA_STRIDE(p3,s3,int32_t,y);
+        CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
+        CUMO_SET_DATA_STRIDE(p3,s3,int32_t,y);
     }
 }
 

@@ -5,7 +5,7 @@ __global__ void <%="cumo_#{c_iter}_index_kernel"%>(size_t p1, char* p2, BIT_DIGI
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         BIT_DIGIT x=0;
-        LOAD_BIT(a1, p1 + idx1[i], x);
+        CUMO_LOAD_BIT(a1, p1 + idx1[i], x);
         if (m_<%=name%>(x)) {
             atomicAdd((int_t*)p2, (int_t)1);
         }
@@ -16,7 +16,7 @@ __global__ void <%="cumo_#{c_iter}_stride_kernel"%>(size_t p1, char* p2, BIT_DIG
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         BIT_DIGIT x=0;
-        LOAD_BIT(a1, p1 + i * s1, x);
+        CUMO_LOAD_BIT(a1, p1 + i * s1, x);
         if (m_<%=name%>(x)) {
             atomicAdd((int_t*)p2, (int_t)1);
         }
@@ -27,7 +27,7 @@ __global__ void <%="cumo_#{c_iter}_index_stride_kernel"%>(size_t p1, char* p2, B
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         BIT_DIGIT x=0;
-        LOAD_BIT(a1, p1 + idx1[i], x);
+        CUMO_LOAD_BIT(a1, p1 + idx1[i], x);
         if (m_<%=name%>(x)) {
             atomicAdd((int_t*)(p2 + i * s2), (int_t)1);
         }
@@ -38,7 +38,7 @@ __global__ void <%="cumo_#{c_iter}_stride_stride_kernel"%>(size_t p1, char* p2, 
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         BIT_DIGIT x=0;
-        LOAD_BIT(a1, p1 + i * s1, x);
+        CUMO_LOAD_BIT(a1, p1 + i * s1, x);
         if (m_<%=name%>(x)) {
             atomicAdd((int_t*)(p2 + i * s2), (int_t)1);
         }

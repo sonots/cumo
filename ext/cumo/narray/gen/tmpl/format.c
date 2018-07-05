@@ -22,21 +22,21 @@ static void
     dtype *x;
     VALUE y;
     VALUE fmt = lp->option;
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
-    INIT_PTR(lp, 1, p2, s2);
-    //SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    //CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             x = (dtype*)(p1+*idx1); idx1++;
             y = format_<%=type_name%>(fmt, x);
-            SET_DATA_STRIDE(p2, s2, VALUE, y);
+            CUMO_SET_DATA_STRIDE(p2, s2, VALUE, y);
         }
     } else {
         for (; i--;) {
             x = (dtype*)p1;         p1+=s1;
             y = format_<%=type_name%>(fmt, x);
-            SET_DATA_STRIDE(p2, s2, VALUE, y);
+            CUMO_SET_DATA_STRIDE(p2, s2, VALUE, y);
         }
     }
 }

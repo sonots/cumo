@@ -16,9 +16,9 @@ static ID cumo_id_swap_byte;
     ssize_t s1, s2;                                \
     char   *p1, *p2;                               \
     size_t *idx1, *idx2;                           \
-    INIT_COUNTER(lp, i);                           \
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);             \
-    INIT_PTR_IDX(lp, 1, p2, s2, idx2);             \
+    CUMO_INIT_COUNTER(lp, i);                           \
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);             \
+    CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);             \
     if (idx1) {                                    \
         if (idx2) {                                \
             for (; i--;) {                         \

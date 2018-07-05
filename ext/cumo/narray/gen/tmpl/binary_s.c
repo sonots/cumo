@@ -8,19 +8,19 @@ static void
     size_t  i;
     char    *p1, *p2, *p3;
     ssize_t s1, s2, s3;
-    INIT_COUNTER(lp, i);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR(lp, 2, p3, s3);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR(lp, 2, p3, s3);
     <% if type_name == 'robject' %>
     {
         dtype x, y;
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         for (; i--;) {
-            GET_DATA_STRIDE(p1,s1,dtype,x);
-            GET_DATA_STRIDE(p2,s2,dtype,y);
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p2,s2,dtype,y);
             x = m_<%=name%>(x,y);
-            SET_DATA_STRIDE(p3,s3,dtype,x);
+            CUMO_SET_DATA_STRIDE(p3,s3,dtype,x);
         }
     }
     <% else %>

@@ -7,37 +7,37 @@ static void
     size_t *idx1, *idx2;
     dtype   x;
     <%=dtype%> y;
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
-    INIT_PTR_IDX(lp, 1, p2, s2, idx2);
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     if (idx1) {
         if (idx2) {
             for (; i--;) {
-                GET_DATA_INDEX(p1,idx1,dtype,x);
+                CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
                 y = m_<%=name%>(x);
-                SET_DATA_INDEX(p2,idx2,<%=dtype%>,y);
+                CUMO_SET_DATA_INDEX(p2,idx2,<%=dtype%>,y);
             }
         } else {
             for (; i--;) {
-                GET_DATA_INDEX(p1,idx1,dtype,x);
+                CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
                 y = m_<%=name%>(x);
-                SET_DATA_STRIDE(p2,s2,<%=dtype%>,y);
+                CUMO_SET_DATA_STRIDE(p2,s2,<%=dtype%>,y);
             }
         }
     } else {
         if (idx2) {
             for (; i--;) {
-                GET_DATA_STRIDE(p1,s1,dtype,x);
+                CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
                 y = m_<%=name%>(x);
-                SET_DATA_INDEX(p2,idx2,<%=dtype%>,y);
+                CUMO_SET_DATA_INDEX(p2,idx2,<%=dtype%>,y);
             }
         } else {
             for (; i--;) {
-                GET_DATA_STRIDE(p1,s1,dtype,x);
+                CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
                 y = m_<%=name%>(x);
-                SET_DATA_STRIDE(p2,s2,<%=dtype%>,y);
+                CUMO_SET_DATA_STRIDE(p2,s2,<%=dtype%>,y);
             }
         }
     }

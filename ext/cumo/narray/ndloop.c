@@ -30,7 +30,7 @@ typedef struct NA_BUFFER_COPY {
 typedef struct NA_LOOP_XARGS {
     cumo_na_loop_iter_t *iter;     // moved from cumo_na_loop_t
     cumo_na_buffer_copy_t *bufcp;  // copy data to buffer
-    int flag;                 // NDL_READ NDL_WRITE
+    int flag;                 // CUMO_NDL_READ CUMO_NDL_WRITE
     bool free_user_iter;   // alloc LARG(lp,j).iter=lp->xargs[j].iter
 } cumo_na_loop_xargs_t;
 
@@ -64,9 +64,9 @@ typedef struct NA_MD_LOOP {
 
 #define CASTABLE(t) (RTEST(t) && (t)!=CUMO_OVERWRITE)
 
-#define NDL_READ 1
-#define NDL_WRITE 2
-#define NDL_READ_WRITE (NDL_READ|NDL_WRITE)
+#define CUMO_NDL_READ 1
+#define CUMO_NDL_WRITE 2
+#define CUMO_NDL_READ_WRITE (CUMO_NDL_READ|CUMO_NDL_WRITE)
 
 static ID cumo_id_cast;
 static ID cumo_id_extract;
@@ -397,7 +397,7 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
         LARG(lp,j).ndim = 0;
         lp->xargs[j].iter = &(iter[(max_nd+1)*j]);
         lp->xargs[j].bufcp = NULL;
-        lp->xargs[j].flag = (j<lp->nin) ? NDL_READ : NDL_WRITE;
+        lp->xargs[j].flag = (j<lp->nin) ? CUMO_NDL_READ : CUMO_NDL_WRITE;
         lp->xargs[j].free_user_iter = 0;
     }
 
@@ -521,13 +521,13 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
 
     LARG(lp,j).value = vna;
     LARG(lp,j).elmsz = cumo_na_element_stride(vna);
-    if (rwflag == NDL_READ) {
+    if (rwflag == CUMO_NDL_READ) {
         LARG(lp,j).ptr = cumo_na_get_pointer_for_read(vna);
     } else
-    if (rwflag == NDL_WRITE) {
+    if (rwflag == CUMO_NDL_WRITE) {
         LARG(lp,j).ptr = cumo_na_get_pointer_for_write(vna);
     } else
-    if (rwflag == NDL_READ_WRITE) {
+    if (rwflag == CUMO_NDL_READ_WRITE) {
         LARG(lp,j).ptr = cumo_na_get_pointer_for_read_write(vna);
     } else {
         rb_bug("invalid value for read-write flag");
@@ -573,7 +573,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
                 }
             } else if (n==1) {
                 if (SDX_IS_INDEX(sdx)) {
-                    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_set_stepidx", "any");
+                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_set_stepidx", "any");
                     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     LITER(lp,0,j).pos += SDX_GET_INDEX(sdx)[0];
                 }
@@ -627,9 +627,9 @@ na->shape[i] == lp->n[ dim_map[i] ]
                 //printf("dim_map[%d]=%d na->shape[%d]=%d\n",i,dim_map[i],i,na->shape[i]);
             }
             if (nf->ain[j].type==CUMO_OVERWRITE) {
-                lp->xargs[j].flag = flag = NDL_WRITE;
+                lp->xargs[j].flag = flag = CUMO_NDL_WRITE;
             } else {
-                lp->xargs[j].flag = flag = NDL_READ;
+                lp->xargs[j].flag = flag = CUMO_NDL_READ;
             }
             LARG(lp,j).ndim = nf_dim;
             ndloop_set_stepidx(lp, j, v, dim_map, flag);
@@ -748,7 +748,7 @@ ndloop_set_output_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
     volatile VALUE v=Qnil;
     size_t *cumo_na_shape;
     int *dim_map;
-    int flag = NDL_READ_WRITE;
+    int flag = CUMO_NDL_READ_WRITE;
     int nd;
     int max_nd = lp->ndim + nf->aout[k].dim;
 
@@ -793,7 +793,7 @@ ndloop_set_output_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
     if (!RTEST(v)) {
         // new object
         v = cumo_na_new(type, cumo_na_ndim, cumo_na_shape);
-        flag = NDL_WRITE;
+        flag = CUMO_NDL_WRITE;
     }
 
     j = lp->nin + k;
@@ -1195,7 +1195,7 @@ ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
         // i-th dimension
         for (; i<nd; i++) {
             if (LITER_SRC(lp,i).idx) {
-                SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_to_buffer", "any");
+                CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_to_buffer", "any");
                 cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).idx[c[i]];
             } else {
@@ -1468,7 +1468,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         }
         (*(nf->func))(&(lp->user));
         for (j=0; j<lp->narg; j++) {
-            if (lp->xargs[j].bufcp && (lp->xargs[j].flag & NDL_WRITE)) {
+            if (lp->xargs[j].bufcp && (lp->xargs[j].flag & CUMO_NDL_WRITE)) {
                 //printf("copy_from_buffer j=%d\n",j);
                 // copy data to work buffer
                 ndloop_copy_from_buffer(lp->xargs[j].bufcp);
@@ -1505,7 +1505,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         }
         (*(nf->func))(&(lp->user));
         for (j=0; j<lp->narg; j++) {
-            if (lp->xargs[j].bufcp && (lp->xargs[j].flag & NDL_WRITE)) {
+            if (lp->xargs[j].bufcp && (lp->xargs[j].flag & CUMO_NDL_WRITE)) {
                 // copy data to work buffer
                 //printf("copy_from_buffer j=%d\n",j);
                 ndloop_copy_from_buffer(lp->xargs[j].bufcp);
@@ -1792,7 +1792,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
         dim_map[i] = lp->trans_map[i+i0];
         //printf("dim_map[i=%d] = %d, i0=%d\n", i, dim_map[i], i0);
     }
-    ndloop_set_stepidx(lp, 1, a, dim_map, NDL_READ);
+    ndloop_set_stepidx(lp, 1, a, dim_map, CUMO_NDL_READ);
     LARG(lp,1).shape = &(na->shape[na->ndim-1]);
 
     // loop body

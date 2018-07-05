@@ -11,17 +11,17 @@ static void
     BIT_DIGIT  y;
 
     // TODO(sonots): CUDA kernelize
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
-    INIT_PTR_BIT_IDX(lp, 1, a3, p3, s3, idx3);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_PTR_BIT_IDX(lp, 1, a3, p3, s3, idx3);
     if (s1!=1 || s3!=1 || idx1 || idx3) {
         for (; n--;) {
-            LOAD_BIT_STEP(a1, p1, s1, idx1, x);
+            CUMO_LOAD_BIT_STEP(a1, p1, s1, idx1, x);
             y = m_<%=name%>(x);
-            STORE_BIT_STEP(a3, p3, s3, idx3, y);
+            CUMO_STORE_BIT_STEP(a3, p3, s3, idx3, y);
         }
     } else {
         o1 =  p1 % NB;
