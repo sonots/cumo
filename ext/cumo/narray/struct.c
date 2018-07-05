@@ -106,7 +106,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
         stridx = ALLOC_N(cumo_stridx_t, ndim);
         stride = cumo_na_dtype_element_stride(klass);
         for (j=ndim,k=nt->ndim; k; ) {
-            SDX_SET_STRIDE(stridx[--j],stride);
+            CUMO_SDX_SET_STRIDE(stridx[--j],stride);
             stride *= nt->shape[--k];
         }
     } else {
@@ -135,7 +135,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     case CUMO_NARRAY_FILEMAP_T:
         stride = cumo_na_element_stride(self);
         for (j=na->ndim; j--;) {
-            SDX_SET_STRIDE(na2->stridx[j], stride);
+            CUMO_SDX_SET_STRIDE(na2->stridx[j], stride);
             stride *= na->shape[j];
         }
         na2->offset = 0;
@@ -144,14 +144,14 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     case CUMO_NARRAY_VIEW_T:
         CumoGetNArrayView(self, na1);
         for (j=na1->base.ndim; j--; ) {
-            if (SDX_IS_INDEX(na1->stridx[j])) {
+            if (CUMO_SDX_IS_INDEX(na1->stridx[j])) {
                 n = na1->base.shape[j];
-                idx1 = SDX_GET_INDEX(na1->stridx[j]);
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[j]);
                 idx2 = ALLOC_N(size_t, na1->base.shape[j]);
                 for (i=0; i<n; i++) {
                     idx2[i] = idx1[i];
                 }
-                SDX_SET_INDEX(na2->stridx[j],idx2);
+                CUMO_SDX_SET_INDEX(na2->stridx[j],idx2);
             } else {
                 na2->stridx[j] = na1->stridx[j];
             }
@@ -360,7 +360,7 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
     nt->stridx = ALLOC_N(cumo_stridx_t,ndim);
     stride = cumo_na_dtype_element_stride(CLASS_OF(type));
     for (j=ndim; j--; ) {
-        SDX_SET_STRIDE(nt->stridx[j], stride);
+        CUMO_SDX_SET_STRIDE(nt->stridx[j], stride);
         stride *= shape[j];
     }
 

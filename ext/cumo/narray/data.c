@@ -476,7 +476,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
         stride = cumo_na_element_stride(self);
         for (i=sd+1; i--; ) {
             //printf("data: i=%d shpae[i]=%ld stride=%ld\n",i,shape[i],stride);
-            SDX_SET_STRIDE(na2->stridx[i],stride);
+            CUMO_SDX_SET_STRIDE(na2->stridx[i],stride);
             stride *= shape[i];
         }
         na2->offset = 0;
@@ -487,16 +487,16 @@ cumo_na_flatten_dim(VALUE self, int sd)
         na2->data = na1->data;
         na2->offset = na1->offset;
         for (i=0; i<sd; i++) {
-            if (SDX_IS_INDEX(na1->stridx[i])) {
-                idx1 = SDX_GET_INDEX(na1->stridx[i]);
+            if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                 idx2 = ALLOC_N(size_t, shape[i]);
                 for (j=0; j<shape[i]; j++) {
                     idx2[j] = idx1[j];
                 }
-                SDX_SET_INDEX(na2->stridx[i],idx2);
+                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
                 na2->stridx[i] = na1->stridx[i];
-                //printf("view: i=%d stridx=%d\n",i,SDX_GET_STRIDE(sdx));
+                //printf("view: i=%d stridx=%d\n",i,CUMO_SDX_GET_STRIDE(sdx));
             }
         }
         // flat dimenion == last dimension
@@ -506,7 +506,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
         } else {
             // set index
             idx2 = ALLOC_N(size_t, shape[sd]);
-            SDX_SET_INDEX(na2->stridx[sd],idx2);
+            CUMO_SDX_SET_INDEX(na2->stridx[sd],idx2);
             // init for md-loop
             fd = nd-sd;
             c = ALLOC_N(size_t, fd);
@@ -517,10 +517,10 @@ cumo_na_flatten_dim(VALUE self, int sd)
             for (i=j=0;;) {
                 for (; i<fd; i++) {
                     sdx = na1->stridx[i+sd];
-                    if (SDX_IS_INDEX(sdx)) {
-                        pos[i+1] = pos[i] + SDX_GET_INDEX(sdx)[c[i]];
+                    if (CUMO_SDX_IS_INDEX(sdx)) {
+                        pos[i+1] = pos[i] + CUMO_SDX_GET_INDEX(sdx)[c[i]];
                     } else {
-                        pos[i+1] = pos[i] + SDX_GET_STRIDE(sdx)*c[i];
+                        pos[i+1] = pos[i] + CUMO_SDX_GET_STRIDE(sdx)*c[i];
                     }
                 }
                 idx2[j++] = pos[i];
@@ -711,11 +711,11 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
                     na2->offset = (-kofs)*stride;
                 }
             } else {
-                SDX_SET_STRIDE(na2->stridx[--k],stride);
+                CUMO_SDX_SET_STRIDE(na2->stridx[--k],stride);
             }
             stride *= na->shape[i];
         }
-        SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
+        CUMO_SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
         break;
 
     case CUMO_NARRAY_VIEW_T:
@@ -724,47 +724,47 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         na2->offset = na1->offset;
         for (i=k=0; i<nd; i++) {
             if (i != ax[0] && i != ax[1]) {
-                if (SDX_IS_INDEX(na1->stridx[i])) {
-                    idx0 = SDX_GET_INDEX(na1->stridx[i]);
+                if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                    idx0 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                     idx1 = ALLOC_N(size_t, na->shape[i]);
                     for (j=0; j<na->shape[i]; j++) {
                         idx1[j] = idx0[j];
                     }
-                    SDX_SET_INDEX(na2->stridx[k],idx1);
+                    CUMO_SDX_SET_INDEX(na2->stridx[k],idx1);
                 } else {
                     na2->stridx[k] = na1->stridx[i];
                 }
                 k++;
             }
         }
-        if (SDX_IS_INDEX(na1->stridx[ax[0]])) {
-            idx0 = SDX_GET_INDEX(na1->stridx[ax[0]]);
+        if (CUMO_SDX_IS_INDEX(na1->stridx[ax[0]])) {
+            idx0 = CUMO_SDX_GET_INDEX(na1->stridx[ax[0]]);
             diag_idx = ALLOC_N(size_t, diag_size);
-            if (SDX_IS_INDEX(na1->stridx[ax[1]])) {
-                idx1 = SDX_GET_INDEX(na1->stridx[ax[1]]);
+            if (CUMO_SDX_IS_INDEX(na1->stridx[ax[1]])) {
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
                 for (j=0; j<diag_size; j++) {
                     diag_idx[j] = idx0[j+k0] + idx1[j+k1];
                 }
             } else {
-                stride1 = SDX_GET_STRIDE(na1->stridx[ax[1]]);
+                stride1 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[1]]);
                 for (j=0; j<diag_size; j++) {
                     diag_idx[j] = idx0[j+k0] + stride1*(j+k1);
                 }
             }
-            SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
+            CUMO_SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
         } else {
-            stride0 = SDX_GET_STRIDE(na1->stridx[ax[0]]);
-            if (SDX_IS_INDEX(na1->stridx[ax[1]])) {
-                idx1 = SDX_GET_INDEX(na1->stridx[ax[1]]);
+            stride0 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[0]]);
+            if (CUMO_SDX_IS_INDEX(na1->stridx[ax[1]])) {
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
                 diag_idx = ALLOC_N(size_t, diag_size);
                 for (j=0; j<diag_size; j++) {
                     diag_idx[j] = stride0*(j+k0) + idx1[j+k1];
                 }
-                SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
+                CUMO_SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
             } else {
-                stride1 = SDX_GET_STRIDE(na1->stridx[ax[1]]);
+                stride1 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[1]]);
                 na2->offset += stride0*k0 + stride1*k1;
-                SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
+                CUMO_SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
             }
         }
         break;
@@ -828,7 +828,7 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
         cumo_na_setup_shape((cumo_narray_t*)na2, nd, shape);
         stride = cumo_na_element_stride(self);
         for (i=nd; i--;) {
-            SDX_SET_STRIDE(na2->stridx[i], stride);
+            CUMO_SDX_SET_STRIDE(na2->stridx[i], stride);
             stride *= shape[i];
         }
         na2->offset = 0;
@@ -839,25 +839,25 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
         i = k = 0;
         while (i < nd) {
             if (i == pos && len > 0) {
-                if (SDX_IS_INDEX(na1->stridx[k])) {
-                    stride = SDX_GET_INDEX(na1->stridx[k])[0];
+                if (CUMO_SDX_IS_INDEX(na1->stridx[k])) {
+                    stride = CUMO_SDX_GET_INDEX(na1->stridx[k])[0];
                 } else {
-                    stride = SDX_GET_STRIDE(na1->stridx[k]);
+                    stride = CUMO_SDX_GET_STRIDE(na1->stridx[k]);
                 }
                 for (l=0; l<len; l++) {
                     shape[i] = 1;
-                    SDX_SET_STRIDE(na2->stridx[i], stride);
+                    CUMO_SDX_SET_STRIDE(na2->stridx[i], stride);
                     i++;
                 }
             } else {
                 shape[i] = na1->base.shape[k];
-                if (SDX_IS_INDEX(na1->stridx[k])) {
-                    idx1 = SDX_GET_INDEX(na1->stridx[k]);
+                if (CUMO_SDX_IS_INDEX(na1->stridx[k])) {
+                    idx1 = CUMO_SDX_GET_INDEX(na1->stridx[k]);
                     idx2 = ALLOC_N(size_t,na1->base.shape[k]);
                     for (j=0; j<na1->base.shape[k]; j++) {
                         idx2[j] = idx1[j];
                     }
-                    SDX_SET_INDEX(na2->stridx[i], idx2);
+                    CUMO_SDX_SET_INDEX(na2->stridx[i], idx2);
                 } else {
                     na2->stridx[i] = na1->stridx[k];
                 }

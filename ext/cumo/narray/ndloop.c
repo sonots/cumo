@@ -564,18 +564,18 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
             sdx = NA_VIEW_STRIDX(na)[k];
             if (n > 1 || nd > 0) {
                 i = dim_map[k];
-                if (SDX_IS_INDEX(sdx)) {
+                if (CUMO_SDX_IS_INDEX(sdx)) {
                     LITER(lp,i,j).step = 0;
-                    LITER(lp,i,j).idx = SDX_GET_INDEX(sdx);
+                    LITER(lp,i,j).idx = CUMO_SDX_GET_INDEX(sdx);
                 } else {
-                    LITER(lp,i,j).step = SDX_GET_STRIDE(sdx);
+                    LITER(lp,i,j).step = CUMO_SDX_GET_STRIDE(sdx);
                     //LITER(lp,i,j).idx = NULL;
                 }
             } else if (n==1) {
-                if (SDX_IS_INDEX(sdx)) {
+                if (CUMO_SDX_IS_INDEX(sdx)) {
                     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_set_stepidx", "any");
                     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-                    LITER(lp,0,j).pos += SDX_GET_INDEX(sdx)[0];
+                    LITER(lp,0,j).pos += CUMO_SDX_GET_INDEX(sdx)[0];
                 }
             }
             nd--;

@@ -79,9 +79,9 @@ cumo_na_debug_info_naview(VALUE self)
     if (na->stridx) {
         printf("  stridx = [");
         for (i=0; i<na->base.ndim; i++) {
-            if (SDX_IS_INDEX(na->stridx[i])) {
+            if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
 
-                idx = SDX_GET_INDEX(na->stridx[i]);
+                idx = CUMO_SDX_GET_INDEX(na->stridx[i]);
                 printf("  index[%d]=[", i);
                 for (j=0; j<na->base.shape[i]; j++) {
                     printf(" %"SZF"d", idx[j]);
@@ -89,7 +89,7 @@ cumo_na_debug_info_naview(VALUE self)
                 printf(" ] ");
 
             } else {
-                printf(" %"SZF"d", SDX_GET_STRIDE(na->stridx[i]));
+                printf(" %"SZF"d", CUMO_SDX_GET_STRIDE(na->stridx[i]));
             }
         }
         printf(" ]\n");
@@ -143,7 +143,7 @@ cumo_na_view_memsize(const void* ptr)
 
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
-            if (SDX_IS_INDEX(na->stridx[i])) {
+            if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
                 size += sizeof(size_t) * na->base.shape[i];
             }
         }
@@ -167,8 +167,8 @@ cumo_na_view_free(void* ptr)
 
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
-            if (SDX_IS_INDEX(na->stridx[i])) {
-                void *p = SDX_GET_INDEX(na->stridx[i]);
+            if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
+                void *p = CUMO_SDX_GET_INDEX(na->stridx[i]);
                 if (cumo_cuda_runtime_is_device_memory(p)) {
                     cumo_cuda_runtime_free(p);
                 } else {
@@ -903,7 +903,7 @@ cumo_na_make_view(VALUE self)
     case CUMO_NARRAY_FILEMAP_T:
         stride = cumo_na_element_stride(self);
         for (i=nd; i--;) {
-            SDX_SET_STRIDE(na2->stridx[i],stride);
+            CUMO_SDX_SET_STRIDE(na2->stridx[i],stride);
             stride *= na->shape[i];
         }
         na2->offset = 0;
@@ -912,13 +912,13 @@ cumo_na_make_view(VALUE self)
     case CUMO_NARRAY_VIEW_T:
         CumoGetNArrayView(self, na1);
         for (i=0; i<nd; i++) {
-            if (SDX_IS_INDEX(na1->stridx[i])) {
-                idx1 = SDX_GET_INDEX(na1->stridx[i]);
+            if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                 idx2 = ALLOC_N(size_t,na1->base.shape[i]);
                 for (j=0; j<na1->base.shape[i]; j++) {
                     idx2[j] = idx1[j];
                 }
-                SDX_SET_INDEX(na2->stridx[i],idx2);
+                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
                 na2->stridx[i] = na1->stridx[i];
             }
@@ -976,7 +976,7 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
     for (i=j=0; i<=nd; i++) {
         if (i==dim) {
             shape[i] = 1;
-            SDX_SET_STRIDE(stridx[i],0);
+            CUMO_SDX_SET_STRIDE(stridx[i],0);
         } else {
             shape[i] = cumo_na_shape[j];
             stridx[i] = cumo_na_stridx[j];
@@ -1041,7 +1041,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
             } else {
                 sign = 1;
             }
-            SDX_SET_STRIDE(na2->stridx[i],stride*sign);
+            CUMO_SDX_SET_STRIDE(na2->stridx[i],stride*sign);
             stride *= na->shape[i];
         }
         na2->offset = offset;
@@ -1052,8 +1052,8 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
         offset = na1->offset;
         for (i=0; i<nd; i++) {
             n = na1->base.shape[i];
-            if (SDX_IS_INDEX(na1->stridx[i])) {
-                idx1 = SDX_GET_INDEX(na1->stridx[i]);
+            if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                 idx2 = ALLOC_N(size_t,n);
                 if (cumo_na_test_reduce(reduce,i)) {
                     for (j=0; j<n; j++) {
@@ -1064,12 +1064,12 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
                         idx2[j] = idx1[j];
                     }
                 }
-                SDX_SET_INDEX(na2->stridx[i],idx2);
+                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
-                stride = SDX_GET_STRIDE(na1->stridx[i]);
+                stride = CUMO_SDX_GET_STRIDE(na1->stridx[i]);
                 if (cumo_na_test_reduce(reduce,i)) {
                     offset += (n-1)*stride;
-                    SDX_SET_STRIDE(na2->stridx[i],-stride);
+                    CUMO_SDX_SET_STRIDE(na2->stridx[i],-stride);
                 } else {
                     na2->stridx[i] = na1->stridx[i];
                 }

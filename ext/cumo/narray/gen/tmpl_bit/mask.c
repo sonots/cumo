@@ -112,7 +112,7 @@ static VALUE
     cumo_na_setup_shape((cumo_narray_t*)nv, 1, &n_1);
 
     CumoGetNArrayData(idx_1,nidx);
-    SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
+    CUMO_SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
     nidx->ptr = NULL;
 
     nv->stridx = ALLOC_N(cumo_stridx_t,1);
