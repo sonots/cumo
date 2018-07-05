@@ -27,7 +27,7 @@ static VALUE
     if (RTEST(rb_obj_is_kind_of(obj,rb_cArray))) {
         return <%=find_tmpl("cast_array").c_func%>(obj);
     }
-    if (IsNArray(obj)) {
+    if (CumoIsNArray(obj)) {
         CumoGetNArray(obj,na);
         v = cumo_na_new(cT, CUMO_NA_NDIM(na), CUMO_NA_SHAPE(na));
         if (CUMO_NA_SIZE(na) > 0) {

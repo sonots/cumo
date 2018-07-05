@@ -415,17 +415,17 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define CUMO_NA_FL1_INIT            0
 
 
-#define IsNArray(obj) (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
+#define CumoIsNArray(obj) (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
 
-#define DEBUG_PRINT(v) puts(StringValueCStr(rb_funcall(v,rb_intern("inspect"),0)))
+#define CUMO_DEBUG_PRINT(v) puts(StringValueCStr(rb_funcall(v,rb_intern("inspect"),0)))
 
-#define CUMO_NA_IsNArray(obj) \
+#define CUMO_NA_CumoIsNArray(obj) \
   (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
 #define CUMO_NA_IsArray(obj) \
   (TYPE(obj)==T_ARRAY || rb_obj_is_kind_of(obj,cNArray)==Qtrue)
 
-#define NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
-#define NUM2IMAG(v)  NUM2DBL( rb_funcall((v),cumo_na_id_imag,0) )
+#define CUMO_NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
+#define CUMO_NUM2IMAG(v)  NUM2DBL( rb_funcall((v),cumo_na_id_imag,0) )
 
 //#define CUMO_NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
 #define CUMO_NA_MAX_DIMENSION 12

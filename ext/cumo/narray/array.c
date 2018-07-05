@@ -210,7 +210,7 @@ cumo_na_mdai_investigate(cumo_na_mdai_t *mdai, int ndim)
             len += length-1;
             mdai->type = cumo_na_mdai_object_type(mdai->type, v);
         }
-        else if (IsNArray(v)) {
+        else if (CumoIsNArray(v)) {
             int r;
             cumo_narray_t *na;
             CumoGetNArray(v,na);
@@ -413,7 +413,7 @@ cumo_na_composition3(VALUE obj, VALUE *ptype, VALUE *pshape, VALUE *pnary)
             *pnary = cumo_na_new(dtype, 0, 0);
         }
     }
-    else if (IsNArray(obj)) {
+    else if (CumoIsNArray(obj)) {
         int i, ndim;
         cumo_narray_t *na;
         CumoGetNArray(obj,na);

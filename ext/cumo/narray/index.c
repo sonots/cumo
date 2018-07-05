@@ -300,7 +300,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
             cumo_na_index_set_step(q,i,n,beg,step);
         }
         // NArray index
-        else if (CUMO_NA_IsNArray(a)) {
+        else if (CUMO_NA_CumoIsNArray(a)) {
             cumo_na_parse_narray_index(a, i, size, q);
         }
         else {

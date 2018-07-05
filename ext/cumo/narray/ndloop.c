@@ -307,7 +307,7 @@ ndloop_find_max_dimension(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args)
         } else {
             nin++;
             user_nd = max2(user_nd, nf->ain[j].dim);
-            if (IsNArray(v))
+            if (CumoIsNArray(v))
                 loop_nd = max2(loop_nd, CUMO_RNARRAY_NDIM(v) - nf->ain[j].dim);
         }
     }
@@ -453,7 +453,7 @@ ndloop_release(VALUE vlp)
 
     for (j=0; j < lp->narg; j++) {
         v = LARG(lp,j).value;
-        if (IsNArray(v)) {
+        if (CumoIsNArray(v)) {
             cumo_na_release_lock(v);
         }
     }
@@ -612,7 +612,7 @@ na->shape[i] == lp->n[ dim_map[i] ]
             continue;
         }
         v = RARRAY_AREF(args,j);
-        if (IsNArray(v)) {
+        if (CumoIsNArray(v)) {
             // set LARG(lp,j) with v
             CumoGetNArray(v,na);
             nf_dim = nf->ain[j].dim;
@@ -691,7 +691,7 @@ ndloop_find_inplace(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE type,
     // find inplace
     for (j=0; j<nf->nin; j++) {
         v = RARRAY_AREF(args,j);
-        if (IsNArray(v)) {
+        if (CumoIsNArray(v)) {
             if (CUMO_TEST_INPLACE(v)) {
                 if (ndloop_check_inplace(type,cumo_na_ndim,cumo_na_shape,v)) {
                     // if already copied, create outary and write-back
@@ -1319,7 +1319,7 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
         return RARRAY_AREF(results,0);
         // x = RARRAY_AREF(results,0);
         // if (CUMO_NDF_TEST(nf,CUMO_NDF_EXTRACT)) {
-        //     if (IsNArray(x)){
+        //     if (CumoIsNArray(x)){
         //         CumoGetNArray(x,na);
         //         if (CUMO_NA_NDIM(na)==0) {
         //             x = rb_funcall(x, cumo_id_extract, 0);
@@ -1332,7 +1332,7 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
     //     n = RARRAY_LEN(results);
     //     for (i=0; i<n; i++) {
     //         x = RARRAY_AREF(results,i);
-    //         if (IsNArray(x)){
+    //         if (CumoIsNArray(x)){
     //             CumoGetNArray(x,na);
     //             if (CUMO_NA_NDIM(na)==0) {
     //                 y = rb_funcall(x, cumo_id_extract, 0);
@@ -1857,7 +1857,7 @@ loop_store_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
                 } else {
                     a[i+1] = Qnil;
                 }
-            } else if (IsNArray(a[i])) {
+            } else if (CumoIsNArray(a[i])) {
                 //printf("a[i=%d]=0x%lx\n",i,a[i]);
                 loop_store_subnarray(nf,lp,i,c,a[i]);
                 goto loop_next;
@@ -1872,7 +1872,7 @@ loop_store_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         }
 
         //printf("a[i=%d]=0x%lx\n",i,a[i]);
-        if (IsNArray(a[i])) {
+        if (CumoIsNArray(a[i])) {
             loop_store_subnarray(nf,lp,i,c,a[i]);
         } else {
             LARG(lp,1).value = a[i];
