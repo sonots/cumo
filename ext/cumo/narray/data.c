@@ -115,7 +115,7 @@ cumo_na_swap_byte(VALUE self)
     if (self!=v) {
         cumo_na_copy_flags(self, v);
     }
-    REVERSE_ENDIAN(v);
+    CUMO_REVERSE_ENDIAN(v);
     return v;
 }
 
@@ -123,7 +123,7 @@ cumo_na_swap_byte(VALUE self)
 static VALUE
 cumo_na_to_network(VALUE self)
 {
-    if (TEST_BIG_ENDIAN(self)) {
+    if (CUMO_TEST_BIG_ENDIAN(self)) {
         return self;
     }
     return rb_funcall(self, cumo_id_swap_byte, 0);
@@ -132,7 +132,7 @@ cumo_na_to_network(VALUE self)
 static VALUE
 cumo_na_to_vacs(VALUE self)
 {
-    if (TEST_LITTLE_ENDIAN(self)) {
+    if (CUMO_TEST_LITTLE_ENDIAN(self)) {
         return self;
     }
     return rb_funcall(self, cumo_id_swap_byte, 0);
@@ -141,7 +141,7 @@ cumo_na_to_vacs(VALUE self)
 static VALUE
 cumo_na_to_host(VALUE self)
 {
-    if (TEST_HOST_ORDER(self)) {
+    if (CUMO_TEST_HOST_ORDER(self)) {
         return self;
     }
     return rb_funcall(self, cumo_id_swap_byte, 0);
@@ -150,7 +150,7 @@ cumo_na_to_host(VALUE self)
 static VALUE
 cumo_na_to_swapped(VALUE self)
 {
-    if (TEST_BYTE_SWAPPED(self)) {
+    if (CUMO_TEST_BYTE_SWAPPED(self)) {
         return self;
     }
     return rb_funcall(self, cumo_id_swap_byte, 0);

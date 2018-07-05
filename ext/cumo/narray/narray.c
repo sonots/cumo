@@ -234,7 +234,7 @@ cumo_na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape)
     n = RARRAY_LEN(ary);
 
     if (RTEST(self)) {
-        flag = TEST_COLUMN_MAJOR(self);
+        flag = CUMO_TEST_COLUMN_MAJOR(self);
     }
     if (flag) {
         c = n-1;
@@ -659,7 +659,7 @@ cumo_na_release_lock(VALUE self)
 {
     cumo_narray_t *na;
 
-    UNSET_LOCK(self);
+    CUMO_UNCUMO_SET_LOCK(self);
     CumoGetNArray(self,na);
 
     switch(CUMO_NA_TYPE(na)) {
@@ -716,7 +716,7 @@ static VALUE
 
     CumoGetNArray(self,na);
     n = CUMO_NA_NDIM(na);
-    if (TEST_COLUMN_MAJOR(self)) {
+    if (CUMO_TEST_COLUMN_MAJOR(self)) {
         c = n-1;
         s = -1;
     } else {
@@ -778,7 +778,7 @@ cumo_na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
     int i,j;
     VALUE tmp;
 
-    if (TEST_COLUMN_MAJOR(self)) {
+    if (CUMO_TEST_COLUMN_MAJOR(self)) {
         for (i=0,j=argc-1; i<argc/2; i++,j--) {
             tmp = argv[i];
             argv[i] = argv[j];
@@ -1385,9 +1385,9 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         memcpy(ptr, RARRAY_PTR(v), CUMO_NA_SIZE(na)*sizeof(VALUE));
     } else {
         cumo_na_store_binary(1,&v,self);
-        if (TEST_BYTE_SWAPPED(self)) {
+        if (CUMO_TEST_BYTE_SWAPPED(self)) {
             rb_funcall(cumo_na_inplace(self),cumo_id_to_host,0);
-            REVERSE_ENDIAN(self); // correct behavior??
+            CUMO_REVERSE_ENDIAN(self); // correct behavior??
         }
     }
     RB_GC_GUARD(a);
@@ -1449,13 +1449,13 @@ cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
     reduce = na->reduce;
     ndim = ndim0 = na->ndim;
     if (max_arg) *max_arg = 0;
-    rowmaj = TEST_COLUMN_MAJOR(naryv[0]);
+    rowmaj = CUMO_TEST_COLUMN_MAJOR(naryv[0]);
     for (i=0; i<naryc; i++) {
         CumoGetNArray(naryv[i],na);
         if (na->size==0) {
             rb_raise(cumo_na_eShapeError,"cannot reduce empty NArray");
         }
-        if (TEST_COLUMN_MAJOR(naryv[i]) != rowmaj) {
+        if (CUMO_TEST_COLUMN_MAJOR(naryv[i]) != rowmaj) {
             rb_raise(cumo_na_eDimensionError,"dimension order is different");
         }
         if (na->ndim > ndim) { // maximum dimension
@@ -1487,7 +1487,7 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
 
     CumoGetNArray(cumo_na_obj,na);
     ndim = na->ndim;
-    rowmaj = TEST_COLUMN_MAJOR(cumo_na_obj);
+    rowmaj = CUMO_TEST_COLUMN_MAJOR(cumo_na_obj);
 
     m = 0;
     reduce = Qnil;
@@ -1597,7 +1597,7 @@ cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
 */
 static VALUE cumo_na_column_major_p( VALUE self )
 {
-    if (TEST_COLUMN_MAJOR(self))
+    if (CUMO_TEST_COLUMN_MAJOR(self))
 	return Qtrue;
     else
 	return Qfalse;
@@ -1608,7 +1608,7 @@ static VALUE cumo_na_column_major_p( VALUE self )
 */
 static VALUE cumo_na_row_major_p( VALUE self )
 {
-    if (TEST_ROW_MAJOR(self))
+    if (CUMO_TEST_ROW_MAJOR(self))
 	return Qtrue;
     else
 	return Qfalse;
@@ -1620,7 +1620,7 @@ static VALUE cumo_na_row_major_p( VALUE self )
 */
 static VALUE cumo_na_byte_swapped_p( VALUE self )
 {
-    if (TEST_BYTE_SWAPPED(self))
+    if (CUMO_TEST_BYTE_SWAPPED(self))
       return Qtrue;
     return Qfalse;
 }
@@ -1630,7 +1630,7 @@ static VALUE cumo_na_byte_swapped_p( VALUE self )
 */
 static VALUE cumo_na_host_order_p( VALUE self )
 {
-    if (TEST_BYTE_SWAPPED(self))
+    if (CUMO_TEST_BYTE_SWAPPED(self))
       return Qfalse;
     return Qtrue;
 }
@@ -1644,7 +1644,7 @@ static VALUE cumo_na_inplace( VALUE self )
 {
     VALUE view = self;
     view = cumo_na_make_view(self);
-    SET_INPLACE(view);
+    CUMO_SET_INPLACE(view);
     return view;
 }
 
@@ -1654,7 +1654,7 @@ static VALUE cumo_na_inplace( VALUE self )
 */
 static VALUE cumo_na_inplace_bang( VALUE self )
 {
-    SET_INPLACE(self);
+    CUMO_SET_INPLACE(self);
     return self;
 }
 
@@ -1663,7 +1663,7 @@ static VALUE cumo_na_inplace_bang( VALUE self )
 */
 static VALUE cumo_na_inplace_p( VALUE self )
 {
-    if (TEST_INPLACE(self))
+    if (CUMO_TEST_INPLACE(self))
         return Qtrue;
     else
         return Qfalse;
@@ -1675,7 +1675,7 @@ static VALUE cumo_na_inplace_p( VALUE self )
 */
 static VALUE cumo_na_out_of_place_bang( VALUE self )
 {
-    UNSET_INPLACE(self);
+    CUMO_UNCUMO_SET_INPLACE(self);
     return self;
 }
 

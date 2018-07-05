@@ -94,7 +94,7 @@
 #define COPY_OR_CAST_TO(a,T)                            \
     {                                                   \
         if (CLASS_OF(a) == (T)) {                       \
-            if (!TEST_INPLACE(a)) {                     \
+            if (!CUMO_TEST_INPLACE(a)) {                     \
                 a = cumo_na_copy(a);                    \
             }                                           \
         } else {                                        \
@@ -124,7 +124,7 @@ is_f_contiguous(VALUE a)
     switch(CUMO_RNARRAY_TYPE(a)) {
     case CUMO_NARRAY_DATA_T:
     case CUMO_NARRAY_FILEMAP_T:
-        return TEST_COLUMN_MAJOR(a);
+        return CUMO_TEST_COLUMN_MAJOR(a);
     case CUMO_NARRAY_VIEW_T:
         CumoGetNArray(a, na);
 

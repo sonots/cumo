@@ -692,7 +692,7 @@ ndloop_find_inplace(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE type,
     for (j=0; j<nf->nin; j++) {
         v = RARRAY_AREF(args,j);
         if (IsNArray(v)) {
-            if (TEST_INPLACE(v)) {
+            if (CUMO_TEST_INPLACE(v)) {
                 if (ndloop_check_inplace(type,cumo_na_ndim,cumo_na_shape,v)) {
                     // if already copied, create outary and write-back
                     if (lp->copy_flag & (1<<j)) {

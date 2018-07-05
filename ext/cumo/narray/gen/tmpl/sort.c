@@ -33,7 +33,7 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP|CUMO_NDF_FLAT_REDUCE, 2,0, ain,0};
 
-    if (!TEST_INPLACE(self)) {
+    if (!CUMO_TEST_INPLACE(self)) {
         self = cumo_na_copy(self);
     }
   <% if is_float %>
