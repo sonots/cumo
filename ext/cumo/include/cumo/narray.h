@@ -437,11 +437,6 @@ typedef unsigned int CUMO_BIT_DIGIT;
 #define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
 #define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
 
-#define ELEMENT_BIT_SIZE  "ELEMENT_BIT_SIZE"
-#define ELEMENT_BYTE_SIZE "ELEMENT_BYTE_SIZE"
-#define CONTIGUOUS_STRIDE "CONTIGUOUS_STRIDE"
-
-
 #ifdef RUBY_INTEGER_UNIFICATION
 #define IS_INTEGER_CLASS(c) ((c)==rb_cInteger)
 #else

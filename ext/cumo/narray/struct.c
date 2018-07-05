@@ -291,9 +291,9 @@ nst_s_new(int argc, VALUE *argv, VALUE klass)
     size = rb_iv_get(st, "__offset__");
     members = rb_iv_get(st, "__members__");
     //printf("size=%d\n",NUM2INT(size));
-    rb_define_const(st, CONTIGUOUS_STRIDE, size);
-    rb_define_const(st, ELEMENT_BYTE_SIZE, size);
-    rb_define_const(st, ELEMENT_BIT_SIZE,  rb_funcall(size,'*',1,INT2FIX(8)));
+    rb_define_const(st, "CONTIGUOUS_STRIDE", size);
+    rb_define_const(st, "ELEMENT_BYTE_SIZE", size);
+    rb_define_const(st, "ELEMENT_BIT_SIZE",  rb_funcall(size,'*',1,INT2FIX(8)));
 
     OBJ_FREEZE(members);
     rb_define_const(st, "DEFINITIONS", members);

@@ -1920,9 +1920,9 @@ Init_cumo_narray()
     rb_define_method(cNArray, "==", cumo_na_equal, 1);
 
     cumo_id_allocate = rb_intern("allocate");
-    cumo_id_contiguous_stride = rb_intern(CONTIGUOUS_STRIDE);
-    //cumo_id_element_bit_size = rb_intern(ELEMENT_BIT_SIZE);
-    cumo_id_element_byte_size = rb_intern(ELEMENT_BYTE_SIZE);
+    cumo_id_contiguous_stride = rb_intern("CONTIGUOUS_STRIDE");
+    //cumo_id_element_bit_size = rb_intern("ELEMENT_BIT_SIZE");
+    cumo_id_element_byte_size = rb_intern("ELEMENT_BYTE_SIZE");
 
     cumo_id_fill            = rb_intern("fill");
     cumo_id_seq             = rb_intern("seq");
