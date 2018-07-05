@@ -146,10 +146,10 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     ssize_t *nidxp;
 
     CumoGetNArray(a,na);
-    if (NA_NDIM(na) != 1) {
+    if (CUMO_NA_NDIM(na) != 1) {
         rb_raise(rb_eIndexError, "should be 1-d NArray");
     }
-    n = NA_SIZE(na);
+    n = CUMO_NA_SIZE(na);
     idx = cumo_na_new(cIndex,1,&n);
     cumo_na_store(idx,a);
 
@@ -300,7 +300,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
             cumo_na_index_set_step(q,i,n,beg,step);
         }
         // NArray index
-        else if (NA_IsNArray(a)) {
+        else if (CUMO_NA_IsNArray(a)) {
             cumo_na_parse_narray_index(a, i, size, q);
         }
         else {
@@ -651,8 +651,8 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
         }
         if (rb_obj_is_kind_of(idx, cumo_cNArray)) {
             CumoGetNArray(idx,nidx);
-            if (NA_NDIM(nidx)>1) {
-                store = cumo_na_new(CLASS_OF(self),NA_NDIM(nidx),NA_SHAPE(nidx));
+            if (CUMO_NA_NDIM(nidx)>1) {
+                store = cumo_na_new(CLASS_OF(self),CUMO_NA_NDIM(nidx),CUMO_NA_SHAPE(nidx));
                 idx = cumo_na_flatten(idx);
                 RARRAY_ASET(args,0,idx);
             }

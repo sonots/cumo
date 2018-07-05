@@ -120,7 +120,7 @@ static VALUE
     nv->offset = 0;
 
     CumoGetNArray(val, na);
-    switch(NA_TYPE(na)) {
+    switch(CUMO_NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
         nv->data = val;
         break;
@@ -129,7 +129,7 @@ static VALUE
         nv->data = na1->data;
         break;
     default:
-        rb_raise(rb_eRuntimeError,"invalid NA_TYPE: %d",NA_TYPE(na));
+        rb_raise(rb_eRuntimeError,"invalid CUMO_NA_TYPE: %d",CUMO_NA_TYPE(na));
     }
 
     return view;

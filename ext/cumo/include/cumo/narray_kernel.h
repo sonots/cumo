@@ -155,9 +155,9 @@ extern int cumo_na_debug_flag;
 #define CUMO_NARRAY_VIEW_T     0x2
 #define CUMO_NARRAY_FILEMAP_T  0x3
 
-//#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
-#define NA_MAX_DIMENSION 12
-#define NA_MAX_ELMSZ     65535
+//#define CUMO_NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+#define CUMO_NA_MAX_DIMENSION 12
+#define CUMO_NA_MAX_ELMSZ     65535
 
 typedef unsigned int BIT_DIGIT;
 #define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)

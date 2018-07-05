@@ -6,9 +6,9 @@ static VALUE
 
     CumoGetNArray(self,na);
 
-    switch(NA_TYPE(na)) {
+    switch(CUMO_NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
-        ptr = NA_DATA_PTR(na);
+        ptr = CUMO_NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             <% if is_object %>
             ptr = xmalloc(sizeof(dtype) * na->size);
@@ -21,17 +21,17 @@ static VALUE
             <% else %>
             ptr = cumo_cuda_runtime_malloc(sizeof(dtype) * na->size);
             <% end %>
-            NA_DATA_PTR(na) = ptr;
+            CUMO_NA_DATA_PTR(na) = ptr;
         }
         break;
     case CUMO_NARRAY_VIEW_T:
-        rb_funcall(NA_VIEW_DATA(na), rb_intern("allocate"), 0);
+        rb_funcall(CUMO_NA_VIEW_DATA(na), rb_intern("allocate"), 0);
         break;
     case CUMO_NARRAY_FILEMAP_T:
         //ptr = ((cumo_narray_filemap_t*)na)->ptr;
         // to be implemented
     default:
-        rb_bug("invalid narray type : %d",NA_TYPE(na));
+        rb_bug("invalid narray type : %d",CUMO_NA_TYPE(na));
     }
     return self;
 }

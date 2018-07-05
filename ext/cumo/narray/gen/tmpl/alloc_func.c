@@ -97,8 +97,8 @@ static VALUE
 
     na->base.ndim = 0;
     na->base.type = CUMO_NARRAY_DATA_T;
-    na->base.flag[0] = NA_FL0_INIT;
-    na->base.flag[1] = NA_FL1_INIT;
+    na->base.flag[0] = CUMO_NA_FL0_INIT;
+    na->base.flag[1] = CUMO_NA_FL1_INIT;
     na->base.size = 0;
     na->base.shape = NULL;
     na->base.reduce = INT2FIX(0);

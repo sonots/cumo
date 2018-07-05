@@ -16,8 +16,8 @@
 typedef struct {
     unsigned char ndim;               // # of dimensions
     size_t total_size;                // # of total elements
-    size_t shape[NA_MAX_DIMENSION];   // # of elements for each dimension
-    uint64_t index[NA_MAX_DIMENSION]; // indicies for each dimension
+    size_t shape[CUMO_NA_MAX_DIMENSION];   // # of elements for each dimension
+    uint64_t index[CUMO_NA_MAX_DIMENSION]; // indicies for each dimension
     uint64_t raw_index;
 } cumo_na_indexer_t;
 
@@ -27,7 +27,7 @@ typedef struct {
  */
 typedef struct {
     char* ptr;
-    ssize_t step[NA_MAX_DIMENSION]; // or strides
+    ssize_t step[CUMO_NA_MAX_DIMENSION]; // or strides
 } cumo_na_iarray_t;
 
 typedef struct {

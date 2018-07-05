@@ -16,8 +16,8 @@ typedef struct {
 } cumo_na_mdai_t;
 
 // Order of Ruby object.
-enum { NA_NONE, NA_BIT, NA_INT32, NA_INT64, NA_RATIONAL,
-       NA_DFLOAT, NA_DCOMPLEX, NA_ROBJ, NA_NTYPES };
+enum { CUMO_NA_NONE, CUMO_NA_BIT, CUMO_NA_INT32, CUMO_NA_INT64, CUMO_NA_RATIONAL,
+       CUMO_NA_DFLOAT, CUMO_NA_DCOMPLEX, CUMO_NA_ROBJ, CUMO_NA_NTYPES };
 
 static ID cumo_id_begin;
 static ID cumo_id_end;
@@ -39,62 +39,62 @@ static VALUE
 
     case T_TRUE:
     case T_FALSE:
-        if (type<NA_BIT)
-            return NA_BIT;
+        if (type<CUMO_NA_BIT)
+            return CUMO_NA_BIT;
         return type;
 
 #if SIZEOF_LONG == 4
     case T_FIXNUM:
-        if (type<NA_INT32)
-            return NA_INT32;
+        if (type<CUMO_NA_INT32)
+            return CUMO_NA_INT32;
         return type;
     case T_BIGNUM:
-        if (type<NA_INT64) {
+        if (type<CUMO_NA_INT64) {
             v = rb_funcall(v,cumo_id_abs,0);
             if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max))) {
-                if (type<NA_INT32)
-                    return NA_INT32;
+                if (type<CUMO_NA_INT32)
+                    return CUMO_NA_INT32;
             } else {
-                return NA_INT64;
+                return CUMO_NA_INT64;
             }
         }
         return type;
 
 #elif SIZEOF_LONG == 8
     case T_FIXNUM:
-        if (type<NA_INT64) {
+        if (type<CUMO_NA_INT64) {
             long x = NUM2LONG(v);
             if (x<0) x=-x;
             if (x<=2147483647) {
-                if (type<NA_INT32)
-                    return NA_INT32;
+                if (type<CUMO_NA_INT32)
+                    return CUMO_NA_INT32;
             } else {
-                return NA_INT64;
+                return CUMO_NA_INT64;
             }
         }
         return type;
     case T_BIGNUM:
-        if (type<NA_INT64)
-            return NA_INT64;
+        if (type<CUMO_NA_INT64)
+            return CUMO_NA_INT64;
         return type;
 #else
     case T_FIXNUM:
     case T_BIGNUM:
-        if (type<NA_INT64) {
+        if (type<CUMO_NA_INT64) {
             v = rb_funcall(v,cumo_id_abs,0);
             if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max))) {
-                if (type<NA_INT32)
-                    return NA_INT32;
+                if (type<CUMO_NA_INT32)
+                    return CUMO_NA_INT32;
             } else {
-                return NA_INT64;
+                return CUMO_NA_INT64;
             }
         }
         return type;
 #endif
 
     case T_FLOAT:
-        if (type<NA_DFLOAT)
-            return NA_DFLOAT;
+        if (type<CUMO_NA_DFLOAT)
+            return CUMO_NA_DFLOAT;
         return type;
 
     case T_NIL:
@@ -102,10 +102,10 @@ static VALUE
 
     default:
         if (CLASS_OF(v) == rb_const_get( rb_cObject, cumo_id_Complex )) {
-            return NA_DCOMPLEX;
+            return CUMO_NA_DCOMPLEX;
         }
     }
-    return NA_ROBJ;
+    return CUMO_NA_ROBJ;
 }
 
 
@@ -142,7 +142,7 @@ cumo_na_mdai_alloc(VALUE ary)
         mdai->item[i].val = Qnil;
     }
     mdai->item[0].val = ary;
-    mdai->type = NA_NONE;
+    mdai->type = CUMO_NA_NONE;
     mdai->na_type = Qnil;
 
     return mdai;
@@ -268,22 +268,22 @@ cumo_na_mdai_dtype_numeric(int type)
     VALUE tp;
     // DataType
     switch(type) {
-    case NA_BIT:
+    case CUMO_NA_BIT:
         tp = cumo_cBit;
         break;
-    case NA_INT32:
+    case CUMO_NA_INT32:
         tp = cumo_cInt32;
         break;
-    case NA_INT64:
+    case CUMO_NA_INT64:
         tp = cumo_cInt64;
         break;
-    case NA_DFLOAT:
+    case CUMO_NA_DFLOAT:
         tp = cumo_cDFloat;
         break;
-    case NA_DCOMPLEX:
+    case CUMO_NA_DCOMPLEX:
         tp = cumo_cDComplex;
         break;
-    case NA_ROBJ:
+    case CUMO_NA_ROBJ:
         tp = cumo_cRObject;
         break;
     default:
@@ -403,7 +403,7 @@ cumo_na_composition3(VALUE obj, VALUE *ptype, VALUE *pshape, VALUE *pnary)
         cumo_na_composition3_ary(obj, ptype, pshape, pnary);
     }
     else if (RTEST(rb_obj_is_kind_of(obj,rb_cNumeric))) {
-        dtype = cumo_na_mdai_dtype_numeric(cumo_na_mdai_object_type(NA_NONE, obj));
+        dtype = cumo_na_mdai_dtype_numeric(cumo_na_mdai_object_type(CUMO_NA_NONE, obj));
         dtype = update_type(ptype, dtype);
         if (pshape) {
             *pshape = rb_ary_new();

@@ -341,7 +341,7 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
         rb_raise(rb_eArgError, "No argrument");
     }
     CumoGetNArray(self,na);
-    if (NA_SIZE(na) == 0) {
+    if (CUMO_NA_SIZE(na) == 0) {
         rb_raise(rb_eRuntimeError, "cannot reshape empty array");
     }
 
@@ -364,12 +364,12 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
     }
 
     if (unfixed>=0) {
-        if (NA_SIZE(na) % total != 0) {
+        if (CUMO_NA_SIZE(na) % total != 0) {
             rb_raise(rb_eArgError, "Total size size must be divisor");
         }
-        shape[unfixed] = NA_SIZE(na) / total;
+        shape[unfixed] = CUMO_NA_SIZE(na) / total;
     }
-    else if (total !=  NA_SIZE(na)) {
+    else if (total !=  CUMO_NA_SIZE(na)) {
         rb_raise(rb_eArgError, "Total size must be same");
     }
 }

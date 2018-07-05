@@ -16,23 +16,23 @@ nst_allocate(VALUE self)
 
     CumoGetNArray(self,na);
 
-    switch(NA_TYPE(na)) {
+    switch(CUMO_NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
-        ptr = NA_DATA_PTR(na);
+        ptr = CUMO_NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             velmsz = rb_const_get(CLASS_OF(self), rb_intern("element_byte_size"));
             ptr = cumo_cuda_runtime_malloc(NUM2SIZET(velmsz) * na->size);
-            NA_DATA_PTR(na) = ptr;
+            CUMO_NA_DATA_PTR(na) = ptr;
         }
         break;
     case CUMO_NARRAY_VIEW_T:
-        rb_funcall(NA_VIEW_DATA(na), rb_intern("allocate"), 0);
+        rb_funcall(CUMO_NA_VIEW_DATA(na), rb_intern("allocate"), 0);
         break;
     case CUMO_NARRAY_FILEMAP_T:
         //ptr = ((cumo_narray_filemap_t*)na)->ptr;
         // to be implemented
     default:
-        rb_bug("invalid narray type : %d",NA_TYPE(na));
+        rb_bug("invalid narray type : %d",CUMO_NA_TYPE(na));
     }
     return self;
 }
@@ -333,7 +333,7 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
                 rb_raise(rb_eArgError,"multiple shape in struct definition");
             }
             ndim = RARRAY_LEN(argv[i]);
-            if (ndim > NA_MAX_DIMENSION) {
+            if (ndim > CUMO_NA_MAX_DIMENSION) {
                 rb_raise(rb_eArgError,"too large number of dimensions");
             }
             if (ndim == 0) {

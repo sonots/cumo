@@ -169,7 +169,7 @@ extern VALUE cumo_na_eDimensionError;
 extern VALUE cumo_na_eValueError;
 extern const rb_data_type_t cumo_na_data_type;
 
-//EXTERN const int cumo_na_sizeof[NA_NTYPES+1];
+//EXTERN const int cumo_na_sizeof[CUMO_NA_NTYPES+1];
 
 //#define cumo_na_upcast(x,y) cumo_na_upcast(x,y)
 
@@ -314,42 +314,42 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define CUMO_RNARRAY_VIEW_OFFSET(val) (CUMO_RNARRAY_VIEW(val)->offset)
 #define CUMO_RNARRAY_VIEW_STRIDX(val) (CUMO_RNARRAY_VIEW(val)->stridx)
 
-#define NA_NDIM(na)     (((cumo_narray_t*)na)->ndim)
-#define NA_TYPE(na)     (((cumo_narray_t*)na)->type)
-#define NA_SIZE(na)     (((cumo_narray_t*)na)->size)
-#define NA_SHAPE(na)    (((cumo_narray_t*)na)->shape)
-#define NA_REDUCE(na)   (((cumo_narray_t*)na)->reduce)
+#define CUMO_NA_NDIM(na)     (((cumo_narray_t*)na)->ndim)
+#define CUMO_NA_TYPE(na)     (((cumo_narray_t*)na)->type)
+#define CUMO_NA_SIZE(na)     (((cumo_narray_t*)na)->size)
+#define CUMO_NA_SHAPE(na)    (((cumo_narray_t*)na)->shape)
+#define CUMO_NA_REDUCE(na)   (((cumo_narray_t*)na)->reduce)
 
-#define NA_FLAG(obj)    (cumo_na_get_narray_t(obj)->flag)
-#define NA_FLAG0(obj)   (NA_FLAG(obj)[0])
-#define NA_FLAG1(obj)   (NA_FLAG(obj)[1])
+#define CUMO_NA_FLAG(obj)    (cumo_na_get_narray_t(obj)->flag)
+#define CUMO_NA_FLAG0(obj)   (CUMO_NA_FLAG(obj)[0])
+#define CUMO_NA_FLAG1(obj)   (CUMO_NA_FLAG(obj)[1])
 
-#define NA_DATA(na)             ((cumo_narray_data_t*)(na))
-#define NA_VIEW(na)             ((cumo_narray_view_t*)(na))
-#define NA_DATA_PTR(na)         (NA_DATA(na)->ptr)
-#define NA_VIEW_DATA(na)        (NA_VIEW(na)->data)
-#define NA_VIEW_OFFSET(na)      (NA_VIEW(na)->offset)
-#define NA_VIEW_STRIDX(na)      (NA_VIEW(na)->stridx)
+#define CUMO_NA_DATA(na)             ((cumo_narray_data_t*)(na))
+#define CUMO_NA_VIEW(na)             ((cumo_narray_view_t*)(na))
+#define CUMO_NA_DATA_PTR(na)         (CUMO_NA_DATA(na)->ptr)
+#define CUMO_NA_VIEW_DATA(na)        (CUMO_NA_VIEW(na)->data)
+#define CUMO_NA_VIEW_OFFSET(na)      (CUMO_NA_VIEW(na)->offset)
+#define CUMO_NA_VIEW_STRIDX(na)      (CUMO_NA_VIEW(na)->stridx)
 
-#define NA_IS_INDEX_AT(na,i)    (CUMO_SDX_IS_INDEX(NA_VIEW_STRIDX(na)[i]))
-#define NA_IS_STRIDE_AT(na,i)   (CUMO_SDX_IS_STRIDE(NA_VIEW_STRIDX(na)[i]))
-#define NA_INDEX_AT(na,i)       (CUMO_SDX_GET_INDEX(NA_VIEW_STRIDX(na)[i]))
-#define NA_STRIDE_AT(na,i)      (CUMO_SDX_GET_STRIDE(NA_VIEW_STRIDX(na)[i]))
+#define CUMO_NA_IS_INDEX_AT(na,i)    (CUMO_SDX_IS_INDEX(CUMO_NA_VIEW_STRIDX(na)[i]))
+#define CUMO_NA_IS_STRIDE_AT(na,i)   (CUMO_SDX_IS_STRIDE(CUMO_NA_VIEW_STRIDX(na)[i]))
+#define CUMO_NA_INDEX_AT(na,i)       (CUMO_SDX_GET_INDEX(CUMO_NA_VIEW_STRIDX(na)[i]))
+#define CUMO_NA_STRIDE_AT(na,i)      (CUMO_SDX_GET_STRIDE(CUMO_NA_VIEW_STRIDX(na)[i]))
 
-#define NA_FILEMAP_PTR(na)      (((cumo_narray_filemap_t*)na)->ptr)
+#define CUMO_NA_FILEMAP_PTR(na)      (((cumo_narray_filemap_t*)na)->ptr)
 
 
-#define NA_FL0_TEST(x,f) (NA_FLAG0(x)&(f))
-#define NA_FL1_TEST(x,f) (NA_FLAG1(x)&(f))
+#define CUMO_NA_FL0_TEST(x,f) (CUMO_NA_FLAG0(x)&(f))
+#define CUMO_NA_FL1_TEST(x,f) (CUMO_NA_FLAG1(x)&(f))
 
-#define NA_FL0_SET(x,f) do {NA_FLAG0(x) |= (f);} while(0)
-#define NA_FL1_SET(x,f) do {NA_FLAG1(x) |= (f);} while(0)
+#define CUMO_NA_FL0_SET(x,f) do {CUMO_NA_FLAG0(x) |= (f);} while(0)
+#define CUMO_NA_FL1_SET(x,f) do {CUMO_NA_FLAG1(x) |= (f);} while(0)
 
-#define NA_FL0_UNSET(x,f) do {NA_FLAG0(x) &= ~(f);} while(0)
-#define NA_FL1_UNSET(x,f) do {NA_FLAG1(x) &= ~(f);} while(0)
+#define CUMO_NA_FL0_UNSET(x,f) do {CUMO_NA_FLAG0(x) &= ~(f);} while(0)
+#define CUMO_NA_FL1_UNSET(x,f) do {CUMO_NA_FLAG1(x) &= ~(f);} while(0)
 
-#define NA_FL0_REVERSE(x,f) do {NA_FLAG0(x) ^= (f);} while(0)
-#define NA_FL1_REVERSE(x,f) do {NA_FLAG1(x) ^= (f);} while(0)
+#define CUMO_NA_FL0_REVERSE(x,f) do {CUMO_NA_FLAG0(x) ^= (f);} while(0)
+#define CUMO_NA_FL1_REVERSE(x,f) do {CUMO_NA_FLAG1(x) ^= (f);} while(0)
 
 
 /* FLAGS
@@ -360,36 +360,36 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
    - matrix or not
 */
 
-#define NA_FL0_BIG_ENDIAN     (0x1<<0)
-#define NA_FL0_COLUMN_MAJOR   (0x1<<1)
-#define NA_FL1_LOCK           (0x1<<0)
-#define NA_FL1_INPLACE        (0x1<<1)
+#define CUMO_NA_FL0_BIG_ENDIAN     (0x1<<0)
+#define CUMO_NA_FL0_COLUMN_MAJOR   (0x1<<1)
+#define CUMO_NA_FL1_LOCK           (0x1<<0)
+#define CUMO_NA_FL1_INPLACE        (0x1<<1)
 
-#define TEST_COLUMN_MAJOR(x)   NA_FL0_TEST(x,NA_FL0_COLUMN_MAJOR)
-#define SET_COLUMN_MAJOR(x)    NA_FL0_SET(x,NA_FL0_COLUMN_MAJOR)
-#define UNSET_COLUMN_MAJOR(x)  NA_FL0_UNSET(x,NA_FL0_COLUMN_MAJOR)
+#define TEST_COLUMN_MAJOR(x)   CUMO_NA_FL0_TEST(x,CUMO_NA_FL0_COLUMN_MAJOR)
+#define SET_COLUMN_MAJOR(x)    CUMO_NA_FL0_SET(x,CUMO_NA_FL0_COLUMN_MAJOR)
+#define UNSET_COLUMN_MAJOR(x)  CUMO_NA_FL0_UNSET(x,CUMO_NA_FL0_COLUMN_MAJOR)
 
 #define TEST_ROW_MAJOR(x)      (!TEST_COLUMN_MAJOR(x))
 #define SET_ROW_MAJOR(x)       UNSET_COLUMN_MAJOR(x)
 #define UNSET_ROW_MAJOR(x)     SET_COLUMN_MAJOR(x)
 
-#define TEST_BIG_ENDIAN(x)     NA_FL0_TEST(x,NA_FL0_BIG_ENDIAN)
-#define SET_BIG_ENDIAN(x)      NA_FL0_SET(x,NA_FL0_BIG_ENDIAN)
-#define UNSET_BIG_ENDIAN(x)    NA_FL0_UNSET(x,NA_FL0_BIG_ENDIAN)
+#define TEST_BIG_ENDIAN(x)     CUMO_NA_FL0_TEST(x,CUMO_NA_FL0_BIG_ENDIAN)
+#define SET_BIG_ENDIAN(x)      CUMO_NA_FL0_SET(x,CUMO_NA_FL0_BIG_ENDIAN)
+#define UNSET_BIG_ENDIAN(x)    CUMO_NA_FL0_UNSET(x,CUMO_NA_FL0_BIG_ENDIAN)
 
 #define TEST_LITTLE_ENDIAN(x)  (!TEST_BIG_ENDIAN(x))
 #define SET_LITTLE_ENDIAN(x)   UNSET_BIG_ENDIAN(x)
 #define UNSET_LITTLE_ENDIAN(x) SET_BIG_ENDIAN(x)
 
-#define REVERSE_ENDIAN(x)      NA_FL0_REVERSE((x),NA_FL0_BIG_ENDIAN)
+#define REVERSE_ENDIAN(x)      CUMO_NA_FL0_REVERSE((x),CUMO_NA_FL0_BIG_ENDIAN)
 
-#define TEST_LOCK(x)           NA_FL1_TEST(x,NA_FL1_LOCK)
-#define SET_LOCK(x)            NA_FL1_SET(x,NA_FL1_LOCK)
-#define UNSET_LOCK(x)          NA_FL1_UNSET(x,NA_FL1_LOCK)
+#define TEST_LOCK(x)           CUMO_NA_FL1_TEST(x,CUMO_NA_FL1_LOCK)
+#define SET_LOCK(x)            CUMO_NA_FL1_SET(x,CUMO_NA_FL1_LOCK)
+#define UNSET_LOCK(x)          CUMO_NA_FL1_UNSET(x,CUMO_NA_FL1_LOCK)
 
-#define TEST_INPLACE(x)        NA_FL1_TEST(x,NA_FL1_INPLACE)
-#define SET_INPLACE(x)         NA_FL1_SET(x,NA_FL1_INPLACE)
-#define UNSET_INPLACE(x)       NA_FL1_UNSET(x,NA_FL1_INPLACE)
+#define TEST_INPLACE(x)        CUMO_NA_FL1_TEST(x,CUMO_NA_FL1_INPLACE)
+#define SET_INPLACE(x)         CUMO_NA_FL1_SET(x,CUMO_NA_FL1_INPLACE)
+#define UNSET_INPLACE(x)       CUMO_NA_FL1_UNSET(x,CUMO_NA_FL1_INPLACE)
 
 #ifdef DYNAMIC_ENDIAN
 // not supported
@@ -401,7 +401,7 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define TEST_BYTE_SWAPPED(x)   TEST_LITTLE_ENDIAN(x)
 #define SET_BYTE_SWAPPED(x)    SET_LITTLE_ENDIAN(x)
 #define UNSET_BYTE_SWAPPED(x)  UNSET_LITTLE_ENDIAN(x)
-#define NA_FL0_INIT            NA_FL0_BIG_ENDIAN
+#define CUMO_NA_FL0_INIT            CUMO_NA_FL0_BIG_ENDIAN
 #else // LITTLE ENDIAN
 #define TEST_HOST_ORDER(x)     TEST_LITTLE_ENDIAN(x)
 #define SET_HOST_ORDER(x)      SET_LITTLE_ENDIAN(x)
@@ -409,27 +409,27 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define TEST_BYTE_SWAPPED(x)   TEST_BIG_ENDIAN(x)
 #define SET_BYTE_SWAPPED(x)    SET_BIG_ENDIAN(x)
 #define UNSET_BYTE_SWAPPED(x)  UNSET_BIG_ENDIAN(x)
-#define NA_FL0_INIT            0
+#define CUMO_NA_FL0_INIT            0
 #endif
 #endif
-#define NA_FL1_INIT            0
+#define CUMO_NA_FL1_INIT            0
 
 
 #define IsNArray(obj) (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
 
 #define DEBUG_PRINT(v) puts(StringValueCStr(rb_funcall(v,rb_intern("inspect"),0)))
 
-#define NA_IsNArray(obj) \
+#define CUMO_NA_IsNArray(obj) \
   (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
-#define NA_IsArray(obj) \
+#define CUMO_NA_IsArray(obj) \
   (TYPE(obj)==T_ARRAY || rb_obj_is_kind_of(obj,cNArray)==Qtrue)
 
 #define NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
 #define NUM2IMAG(v)  NUM2DBL( rb_funcall((v),cumo_na_id_imag,0) )
 
-//#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
-#define NA_MAX_DIMENSION 12
-#define NA_MAX_ELMSZ     65535
+//#define CUMO_NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
+#define CUMO_NA_MAX_DIMENSION 12
+#define CUMO_NA_MAX_ELMSZ     65535
 
 typedef unsigned int BIT_DIGIT;
 #define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
