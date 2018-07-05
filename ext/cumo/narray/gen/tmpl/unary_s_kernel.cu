@@ -29,30 +29,30 @@ __global__ void <%="cumo_#{c_iter}_stride_stride_kernel"%>(char *p1, char *p2, s
 
 void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, uint64_t n)
 {
-    size_t gridDim = get_gridDim(n);
-    size_t blockDim = get_blockDim(n);
-    <%="cumo_#{c_iter}_index_index_kernel"%><<<gridDim, blockDim>>>(p1,p2,idx1,idx2,n);
+    size_t grid_dim = cumo_get_grid_dim(n);
+    size_t block_dim = cumo_get_block_dim(n);
+    <%="cumo_#{c_iter}_index_index_kernel"%><<<grid_dim, block_dim>>>(p1,p2,idx1,idx2,n);
 }
 
 void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, uint64_t n)
 {
-    size_t gridDim = get_gridDim(n);
-    size_t blockDim = get_blockDim(n);
-    <%="cumo_#{c_iter}_index_stride_kernel"%><<<gridDim, blockDim>>>(p1,p2,idx1,s2,n);
+    size_t grid_dim = cumo_get_grid_dim(n);
+    size_t block_dim = cumo_get_block_dim(n);
+    <%="cumo_#{c_iter}_index_stride_kernel"%><<<grid_dim, block_dim>>>(p1,p2,idx1,s2,n);
 }
 
 void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, uint64_t n)
 {
-    size_t gridDim = get_gridDim(n);
-    size_t blockDim = get_blockDim(n);
-    <%="cumo_#{c_iter}_stride_index_kernel"%><<<gridDim, blockDim>>>(p1,p2,s1,idx2,n);
+    size_t grid_dim = cumo_get_grid_dim(n);
+    size_t block_dim = cumo_get_block_dim(n);
+    <%="cumo_#{c_iter}_stride_index_kernel"%><<<grid_dim, block_dim>>>(p1,p2,s1,idx2,n);
 }
 
 void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n)
 {
-    size_t gridDim = get_gridDim(n);
-    size_t blockDim = get_blockDim(n);
-    <%="cumo_#{c_iter}_stride_stride_kernel"%><<<gridDim, blockDim>>>(p1,p2,s1,s2,n);
+    size_t grid_dim = cumo_get_grid_dim(n);
+    size_t block_dim = cumo_get_block_dim(n);
+    <%="cumo_#{c_iter}_stride_stride_kernel"%><<<grid_dim, block_dim>>>(p1,p2,s1,s2,n);
 }
 
 <% end %>
