@@ -169,7 +169,7 @@ extern VALUE cumo_sym_init;
 #define NARRAY_VIEW_T     0x2
 #define NARRAY_FILEMAP_T  0x3
 
-typedef struct RNArray {
+typedef struct {
     unsigned char ndim;     // # of dimensions
     unsigned char type;
     unsigned char flag[2];  // flags
@@ -180,7 +180,7 @@ typedef struct RNArray {
 } cumo_narray_t;
 
 
-typedef struct RNArrayData {
+typedef struct {
     cumo_narray_t base;
     char    *ptr;
 } cumo_narray_data_t;
@@ -191,7 +191,7 @@ typedef union {
     size_t *index;
 } stridx_t;
 
-typedef struct RNArrayView {
+typedef struct {
     cumo_narray_t base;
     VALUE    data;       // data object
     size_t   offset;     // offset of start point from data pointer
@@ -204,7 +204,7 @@ typedef struct RNArrayView {
 
 
 // filemap is unimplemented
-typedef struct RNArrayFileMap {
+typedef struct {
     cumo_narray_t base;
     char    *ptr;
 #ifdef WIN32

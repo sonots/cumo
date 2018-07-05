@@ -1,13 +1,13 @@
 #ifndef CUMO_NDLOOP_H
 #define CUMO_NDLOOP_H
 
-typedef struct NA_LOOP_ITER {
+typedef struct {
     ssize_t    pos; // - required for each dimension.
     ssize_t    step;
     size_t    *idx;
 } cumo_na_loop_iter_t;
 
-typedef struct NA_LOOP_ARGS {
+typedef struct {
     VALUE    value;
     ssize_t  elmsz;      // element size in bytes, e.g., 4 for int, 8 for double
     char    *ptr;
@@ -19,7 +19,7 @@ typedef struct NA_LOOP_ARGS {
 } cumo_na_loop_args_t;
 
 // pass this structure to user iterator
-typedef struct NA_LOOP {
+typedef struct {
     int  narg;
     int  ndim;             // n of user dimention used at user function.
     size_t *n;             // n of elements for each dim (=shape)
@@ -70,20 +70,20 @@ typedef VALUE (*cumo_na_text_func_t) _((char *ptr, size_t pos, VALUE opt));
 //typedef void (*) void (*loop_func)(cumo_ndfunc_t*, cumo_na_md_loop_t*))
 
 
-typedef struct NDF_ARG_IN {
+typedef struct {
     VALUE   type;    // argument types
     int     dim;     // # of dimension of argument handled by user function
                      // if dim==-1, reduce dimension
 } cumo_ndfunc_arg_in_t;
 
-typedef struct NDF_ARG_OUT {
+typedef struct {
     VALUE   type;    // argument types
     int     dim;     // # of dimension of argument handled by user function
     size_t *shape;
 } cumo_ndfunc_arg_out_t;
 
 // spec of user function
-typedef struct NDFUNCTION {
+typedef struct {
     cumo_na_iter_func_t func;    // user function
     unsigned int flag;      // what kind of loop user function supports
     int nin;                // # of arguments
