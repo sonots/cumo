@@ -1,5 +1,5 @@
-typedef BIT_DIGIT dtype;
-typedef BIT_DIGIT rtype;
+typedef CUMO_BIT_DIGIT dtype;
+typedef CUMO_BIT_DIGIT rtype;
 #define cT  cumo_cBit
 #define cRT cT
 
@@ -30,7 +30,7 @@ typedef BIT_DIGIT rtype;
 #define m_count_false(x) ((x)==0)
 #define m_count_false_cpu(x) ((x)==0)
 
-static inline BIT_DIGIT m_num_to_data(VALUE num) {
+static inline CUMO_BIT_DIGIT m_num_to_data(VALUE num) {
     if (RTEST(num)) {
         if (!RTEST(rb_equal(num,INT2FIX(0)))) {
             return 1;

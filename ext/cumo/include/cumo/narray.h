@@ -431,11 +431,11 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define CUMO_NA_MAX_DIMENSION 12
 #define CUMO_NA_MAX_ELMSZ     65535
 
-typedef unsigned int BIT_DIGIT;
-#define BYTE_BIT_DIGIT sizeof(BIT_DIGIT)
-#define NB     (sizeof(BIT_DIGIT)*8)
-#define BALL   (~(BIT_DIGIT)0)
-#define SLB(n) (((n)==NB)?~(BIT_DIGIT)0:(~(~(BIT_DIGIT)0<<(n))))
+typedef unsigned int CUMO_BIT_DIGIT;
+#define CUMO_BYTE_BIT_DIGIT sizeof(CUMO_BIT_DIGIT)
+#define CUMO_NB     (sizeof(CUMO_BIT_DIGIT)*8)
+#define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
+#define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
 
 #define ELEMENT_BIT_SIZE  "ELEMENT_BIT_SIZE"
 #define ELEMENT_BYTE_SIZE "ELEMENT_BYTE_SIZE"

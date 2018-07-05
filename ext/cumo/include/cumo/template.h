@@ -37,16 +37,16 @@
 #define CUMO_INIT_PTR_BIT( lp, i, ad, ps, st )               \
     {                                                   \
         ps = ((lp)->args[i].iter[0]).pos;                       \
-        ad = (BIT_DIGIT*)(((lp)->args[i]).ptr) + ps/NB; \
-        ps %= NB;                                       \
+        ad = (CUMO_BIT_DIGIT*)(((lp)->args[i]).ptr) + ps/CUMO_NB; \
+        ps %= CUMO_NB;                                       \
         st = ((lp)->args[i].iter[0]).step;                      \
     }
 
 #define CUMO_INIT_PTR_BIT_IDX( lp, i, ad, ps, st, id )       \
     {                                                   \
         ps = ((lp)->args[i].iter[0]).pos;                       \
-        ad = (BIT_DIGIT*)(((lp)->args[i]).ptr) + ps/NB; \
-        ps %= NB;                                       \
+        ad = (CUMO_BIT_DIGIT*)(((lp)->args[i]).ptr) + ps/CUMO_NB; \
+        ps %= CUMO_NB;                                       \
         st = ((lp)->args[i].iter[0]).step;                      \
         id = ((lp)->args[i].iter[0]).idx;                       \
     }
@@ -87,32 +87,32 @@
 
 #define CUMO_LOAD_BIT( adr, pos, val )                       \
     {                                                   \
-        size_t dig = (pos) / NB;                        \
-        int    bit = (pos) % NB;                        \
-        val = (((BIT_DIGIT*)(adr))[dig]>>(bit)) & 1u;   \
+        size_t dig = (pos) / CUMO_NB;                        \
+        int    bit = (pos) % CUMO_NB;                        \
+        val = (((CUMO_BIT_DIGIT*)(adr))[dig]>>(bit)) & 1u;   \
     }
 
 #define CUMO_LOAD_BIT_STEP( adr, pos, step, idx, val )       \
     {                                                   \
         size_t dig; int bit;                            \
         if (idx) {                                      \
-            dig = ((pos) + *(idx)) / NB;                \
-            bit = ((pos) + *(idx)) % NB;                \
+            dig = ((pos) + *(idx)) / CUMO_NB;                \
+            bit = ((pos) + *(idx)) % CUMO_NB;                \
             idx++;                                      \
         } else {                                        \
-            dig = (pos) / NB;                           \
-            bit = (pos) % NB;                           \
+            dig = (pos) / CUMO_NB;                           \
+            bit = (pos) % CUMO_NB;                           \
             pos += step;                                \
         }                                               \
-        val = (((BIT_DIGIT*)(adr))[dig]>>bit) & 1u;     \
+        val = (((CUMO_BIT_DIGIT*)(adr))[dig]>>bit) & 1u;     \
     }
 
 #define CUMO_STORE_BIT(adr,pos,val)                  \
     {                                           \
-        size_t dig = (pos) / NB;                \
-        int    bit = (pos) % NB;                \
-        ((BIT_DIGIT*)(adr))[dig] =              \
-            (((BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
+        size_t dig = (pos) / CUMO_NB;                \
+        int    bit = (pos) % CUMO_NB;                \
+        ((CUMO_BIT_DIGIT*)(adr))[dig] =              \
+            (((CUMO_BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
     }
 // val -> val&1 ??
 
@@ -120,16 +120,16 @@
     {                                           \
         size_t dig; int bit;                    \
         if (idx) {                              \
-            dig = ((pos) + *(idx)) / NB;        \
-            bit = ((pos) + *(idx)) % NB;        \
+            dig = ((pos) + *(idx)) / CUMO_NB;        \
+            bit = ((pos) + *(idx)) % CUMO_NB;        \
             idx++;                              \
         } else {                                \
-            dig = (pos) / NB;                   \
-            bit = (pos) % NB;                   \
+            dig = (pos) / CUMO_NB;                   \
+            bit = (pos) % CUMO_NB;                   \
             pos += step;                        \
         }                                       \
-        ((BIT_DIGIT*)(adr))[dig] =              \
-            (((BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
+        ((CUMO_BIT_DIGIT*)(adr))[dig] =              \
+            (((CUMO_BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
     }
 // val -> val&1 ??
 

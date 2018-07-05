@@ -1,8 +1,8 @@
 //<% unless c_iter.include? 'robject' %>
-void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, size_t p2, BIT_DIGIT *a2, size_t *idx1, size_t *idx2, uint64_t n);
-void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, size_t p2, BIT_DIGIT *a2, ssize_t s1, size_t *idx2, uint64_t n);
-void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, size_t p2, BIT_DIGIT *a2, size_t *idx1, ssize_t s2, uint64_t n);
-void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, size_t p2, BIT_DIGIT *a2, ssize_t s1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, size_t p2, CUMO_BIT_DIGIT *a2, size_t *idx1, size_t *idx2, uint64_t n);
+void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, size_t p2, CUMO_BIT_DIGIT *a2, ssize_t s1, size_t *idx2, uint64_t n);
+void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, size_t p2, CUMO_BIT_DIGIT *a2, size_t *idx1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, size_t p2, CUMO_BIT_DIGIT *a2, ssize_t s1, ssize_t s2, uint64_t n);
 //<% end %>
 
 static void
@@ -13,7 +13,7 @@ static void
     size_t     p2;
     ssize_t    s1, s2;
     size_t    *idx1, *idx2;
-    BIT_DIGIT *a2;
+    CUMO_BIT_DIGIT *a2;
 
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
@@ -21,7 +21,7 @@ static void
 
     //<% if c_iter.include? 'robject' %>
     {
-        BIT_DIGIT x;
+        CUMO_BIT_DIGIT x;
         dtype y;
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");

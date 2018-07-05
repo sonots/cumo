@@ -2,11 +2,11 @@ static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t     i;
-    BIT_DIGIT *a1, *a2;
+    CUMO_BIT_DIGIT *a1, *a2;
     size_t     p1,  p2;
     ssize_t    s1,  s2;
     size_t    *idx1, *idx2;
-    BIT_DIGIT  x=0, y=0;
+    CUMO_BIT_DIGIT  x=0, y=0;
 
     // TODO(sonots): CUDA kernelize
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");

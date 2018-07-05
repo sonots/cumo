@@ -6,8 +6,8 @@ static void
     ssize_t s1, s3;
     size_t *idx1, *idx3;
     int     o1, l1, r1, len;
-    BIT_DIGIT *a1, *a3;
-    BIT_DIGIT  x;
+    CUMO_BIT_DIGIT *a1, *a3;
+    CUMO_BIT_DIGIT  x;
 
     // TODO(sonots): CUDA kernelize
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
@@ -22,28 +22,28 @@ static void
             CUMO_STORE_BIT_STEP(a3, p3, s3, idx3, x);
         }
     } else {
-        o1 =  p1 % NB;
+        o1 =  p1 % CUMO_NB;
         o1 -= p3;
-        l1 =  NB+o1;
-        r1 =  NB-o1;
-        if (p3>0 || n<NB) {
-            len = NB - p3;
+        l1 =  CUMO_NB+o1;
+        r1 =  CUMO_NB-o1;
+        if (p3>0 || n<CUMO_NB) {
+            len = CUMO_NB - p3;
             if ((int)n<len) len=n;
             if (o1>=0) x = *a1>>o1;
             else       x = *a1<<-o1;
-            if (p1+len>NB)  x |= *(a1+1)<<r1;
+            if (p1+len>CUMO_NB)  x |= *(a1+1)<<r1;
             a1++;
-            *a3 = (x & (SLB(len)<<p3)) | (*a3 & ~(SLB(len)<<p3));
+            *a3 = (x & (CUMO_SLB(len)<<p3)) | (*a3 & ~(CUMO_SLB(len)<<p3));
             a3++;
             n -= len;
         }
         if (o1==0) {
-            for (; n>=NB; n-=NB) {
+            for (; n>=CUMO_NB; n-=CUMO_NB) {
                 x = *(a1++);
                 *(a3++) = x;
             }
         } else {
-            for (; n>=NB; n-=NB) {
+            for (; n>=CUMO_NB; n-=CUMO_NB) {
                 x = *a1>>o1;
                 if (o1<0)  x |= *(a1-1)>>l1;
                 if (o1>0)  x |= *(a1+1)<<r1;
@@ -54,7 +54,7 @@ static void
         if (n>0) {
             x = *a1>>o1;
             if (o1<0)  x |= *(a1-1)>>l1;
-            *a3 = (x & SLB(n)) | (*a3 & BALL<<n);
+            *a3 = (x & CUMO_SLB(n)) | (*a3 & CUMO_BALL<<n);
         }
     }
 }

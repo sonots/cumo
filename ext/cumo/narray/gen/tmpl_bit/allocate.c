@@ -10,7 +10,7 @@ static VALUE
     case CUMO_NARRAY_DATA_T:
         ptr = CUMO_NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
-            ptr = cumo_cuda_runtime_malloc(((na->size-1)/8/sizeof(BIT_DIGIT)+1)*sizeof(BIT_DIGIT));
+            ptr = cumo_cuda_runtime_malloc(((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT));
             CUMO_NA_DATA_PTR(na) = ptr;
         }
         break;

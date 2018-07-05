@@ -6,8 +6,8 @@ static void
     char    *p2;
     size_t  *idx1, *idx2;
     <%=dtype%> x;
-    BIT_DIGIT *a1;
-    BIT_DIGIT  y;
+    CUMO_BIT_DIGIT *a1;
+    CUMO_BIT_DIGIT  y;
 
     // TODO(sonots): CUDA kernelize
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");

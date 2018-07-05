@@ -8,7 +8,7 @@ static size_t
 
     if (na->ptr != NULL) {
   <% if is_bit %>
-        size += ((na->base.size-1)/8/sizeof(BIT_DIGIT)+1)*sizeof(BIT_DIGIT);
+        size += ((na->base.size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
   <% else %>
         size += na->base.size * sizeof(dtype);
   <% end %>

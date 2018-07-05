@@ -2,11 +2,11 @@ static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
-    BIT_DIGIT *a;
+    CUMO_BIT_DIGIT *a;
     size_t  p1, p2;
     ssize_t s1, s2;
     size_t *idx1, *idx2, *pidx;
-    BIT_DIGIT x=0;
+    CUMO_BIT_DIGIT x=0;
     size_t  count;
     where_opt_t *g;
 

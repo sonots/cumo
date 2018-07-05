@@ -1,16 +1,16 @@
 #undef int_t
 #define int_t uint64_t
 
-void <%="cumo_#{c_iter}_index_kernel_launch"%>(size_t p1, char *p2, BIT_DIGIT *a1, size_t *idx1, uint64_t n);
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(size_t p1, char *p2, BIT_DIGIT *a1, ssize_t s1, uint64_t n);
-void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(size_t p1, char *p2, BIT_DIGIT *a1, size_t *idx1, ssize_t s2, uint64_t n);
-void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(size_t p1, char *p2, BIT_DIGIT *a1, ssize_t s1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_index_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, size_t *idx1, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, ssize_t s1, uint64_t n);
+void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, size_t *idx1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, ssize_t s1, ssize_t s2, uint64_t n);
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
     size_t  i;
-    BIT_DIGIT *a1;
+    CUMO_BIT_DIGIT *a1;
     size_t  p1;
     char   *p2;
     ssize_t s1, s2;
