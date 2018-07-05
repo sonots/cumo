@@ -206,7 +206,7 @@ cumo_na_swapaxes(VALUE self, VALUE a1, VALUE a2)
 {
     int  i, j, ndim;
     size_t tmp_shape;
-    stridx_t tmp_stridx;
+    cumo_stridx_t tmp_stridx;
     cumo_narray_view_t *na;
     volatile VALUE view;
 
@@ -232,7 +232,7 @@ cumo_na_transpose_map(VALUE self, int *map)
 {
     int  i, ndim;
     size_t *shape;
-    stridx_t *stridx;
+    cumo_stridx_t *stridx;
     cumo_narray_view_t *na;
     volatile VALUE view;
 
@@ -241,7 +241,7 @@ cumo_na_transpose_map(VALUE self, int *map)
 
     ndim = na->base.ndim;
     shape = ALLOCA_N(size_t,ndim);
-    stridx = ALLOCA_N(stridx_t,ndim);
+    stridx = ALLOCA_N(cumo_stridx_t,ndim);
 
     for (i=0; i<ndim; i++) {
 	shape[i] = na->base.shape[i];
@@ -435,7 +435,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
     size_t *c, *pos, *idx1, *idx2;
     size_t stride;
     size_t  *shape, size;
-    stridx_t sdx;
+    cumo_stridx_t sdx;
     cumo_narray_t *na;
     cumo_narray_view_t *na1, *na2;
     volatile VALUE view;
@@ -468,7 +468,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
 
     // new stride
     cumo_na_setup_shape((cumo_narray_t*)na2, sd+1, shape);
-    na2->stridx = ALLOC_N(stridx_t,sd+1);
+    na2->stridx = ALLOC_N(cumo_stridx_t,sd+1);
 
     switch(na->type) {
     case CUMO_NARRAY_DATA_T:
@@ -691,7 +691,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
 
     // new stride
     cumo_na_setup_shape((cumo_narray_t*)na2, nd-1, shape);
-    na2->stridx = ALLOC_N(stridx_t, nd-1);
+    na2->stridx = ALLOC_N(cumo_stridx_t, nd-1);
 
     switch(na->type) {
     case CUMO_NARRAY_DATA_T:
@@ -792,7 +792,7 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     cumo_narray_t *na;
     cumo_narray_view_t *na1, *na2;
     size_t shape_n;
-    stridx_t stridx_n;
+    cumo_stridx_t stridx_n;
     volatile VALUE view;
 
     GetNArray(self,na);
@@ -810,7 +810,7 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     }
     nd += len;
     shape = ALLOCA_N(size_t,nd);
-    na2->stridx = ALLOC_N(stridx_t,nd);
+    na2->stridx = ALLOC_N(cumo_stridx_t,nd);
 
     switch(na->type) {
     case CUMO_NARRAY_DATA_T:

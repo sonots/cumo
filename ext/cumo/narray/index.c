@@ -427,7 +427,7 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
     ssize_t total=1;
 
     for (i=j=0; i<ndim; i++) {
-        stridx_t sdx1 = na1->stridx[q[i].orig_dim];
+        cumo_stridx_t sdx1 = na1->stridx[q[i].orig_dim];
         ssize_t size;
 
         // numeric index -- trim dimension
@@ -583,7 +583,7 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
 
     cumo_na_alloc_shape((cumo_narray_t*)na2, ndim_new);
 
-    na2->stridx = ALLOC_N(stridx_t,ndim_new);
+    na2->stridx = ALLOC_N(cumo_stridx_t,ndim_new);
 
     elmsz = cumo_na_element_stride(self);
 
@@ -753,7 +753,7 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
     ssize_t x, s, m, pos, *idx;
     cumo_narray_t *na;
     cumo_narray_view_t *nv;
-    stridx_t sdx;
+    cumo_stridx_t sdx;
     VALUE a;
 
     GetNArray(self,na);

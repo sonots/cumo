@@ -516,7 +516,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
 {
     size_t n, s;
     int i, k, nd;
-    stridx_t sdx;
+    cumo_stridx_t sdx;
     cumo_narray_t *na;
 
     LARG(lp,j).value = vna;

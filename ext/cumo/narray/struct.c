@@ -81,7 +81,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     size_t *shape;
     size_t *idx1, *idx2;
     ssize_t stride;
-    stridx_t *stridx;
+    cumo_stridx_t *stridx;
     cumo_narray_t *na, *nt;
     cumo_narray_view_t *na1, *na2;
     VALUE klass;
@@ -103,7 +103,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
             shape[j] = nt->shape[k];
         }
         klass = CLASS_OF(dtype);
-        stridx = ALLOC_N(stridx_t, ndim);
+        stridx = ALLOC_N(cumo_stridx_t, ndim);
         stride = cumo_na_dtype_element_stride(klass);
         for (j=ndim,k=nt->ndim; k; ) {
             SDX_SET_STRIDE(stridx[--j],stride);
@@ -121,7 +121,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
                 klass = dtype;
             }
         }
-        stridx = ALLOC_N(stridx_t, ndim);
+        stridx = ALLOC_N(cumo_stridx_t, ndim);
     }
 
     view = cumo_na_s_allocate_view(klass);
@@ -357,7 +357,7 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
     type = cumo_na_view_new(type,ndim,shape);
     GetNArrayView(type,nt);
 
-    nt->stridx = ALLOC_N(stridx_t,ndim);
+    nt->stridx = ALLOC_N(cumo_stridx_t,ndim);
     stride = cumo_na_dtype_element_stride(CLASS_OF(type));
     for (j=ndim; j--; ) {
         SDX_SET_STRIDE(nt->stridx[j], stride);

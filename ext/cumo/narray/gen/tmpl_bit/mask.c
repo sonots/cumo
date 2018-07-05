@@ -92,7 +92,7 @@ static VALUE
     cumo_narray_view_t *nv;
     cumo_narray_t      *na;
     cumo_narray_view_t *na1;
-    stridx_t stridx0;
+    cumo_stridx_t stridx0;
     size_t n_1;
     where_opt_t g;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{Qnil,0}};
@@ -115,7 +115,7 @@ static VALUE
     SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
     nidx->ptr = NULL;
 
-    nv->stridx = ALLOC_N(stridx_t,1);
+    nv->stridx = ALLOC_N(cumo_stridx_t,1);
     nv->stridx[0] = stridx0;
     nv->offset = 0;
 

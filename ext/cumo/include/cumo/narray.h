@@ -222,7 +222,7 @@ typedef struct {
 typedef union {
     ssize_t stride;
     size_t *index;
-} stridx_t;
+} cumo_stridx_t;
 
 typedef struct {
     cumo_narray_t base;
@@ -232,7 +232,7 @@ typedef struct {
                          // address_unit  pointer_unit access_unit data_unit
                          // elm.step_unit = elm.bit_size / elm.access_unit
                          // elm.step_unit = elm.size_bits / elm.unit_bits
-    stridx_t *stridx;    // stride or indices of data pointer for each dimension
+    cumo_stridx_t *stridx;    // stride or indices of data pointer for each dimension
 } cumo_narray_view_t;
 
 
