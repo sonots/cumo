@@ -7,14 +7,14 @@ static VALUE
     GetNArray(self,na);
 
     switch(NA_TYPE(na)) {
-    case NARRAY_DATA_T:
+    case CUMO_NARRAY_DATA_T:
         ptr = NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             ptr = cumo_cuda_runtime_malloc(((na->size-1)/8/sizeof(BIT_DIGIT)+1)*sizeof(BIT_DIGIT));
             NA_DATA_PTR(na) = ptr;
         }
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         rb_funcall(NA_VIEW_DATA(na), rb_intern("allocate"), 0);
         break;
     default:

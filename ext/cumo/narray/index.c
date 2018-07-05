@@ -588,8 +588,8 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
     elmsz = cumo_na_element_stride(self);
 
     switch(na1->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         if (ndim == 0) {
             na2->offset = data->pos;
             na2->base.size = 1;
@@ -598,7 +598,7 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
         }
         na2->data = self;
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         if (ndim == 0) {
             na2->offset = ((cumo_narray_view_t *)na1)->offset + data->pos;
             na2->data = ((cumo_narray_view_t *)na1)->data;
@@ -673,13 +673,13 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
     data.keep_dim = keep_dim;
 
     switch(na1->type) {
-    case NARRAY_DATA_T:
+    case CUMO_NARRAY_DATA_T:
         data.pos = pos;
         break;
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_FILEMAP_T:
         data.pos = pos; // correct? I have never used..
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         {
             cumo_narray_view_t *nv;
             GetNArrayView(self,nv);
@@ -796,7 +796,7 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
     }
 
     switch(na->type) {
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(self,nv);
         pos = nv->offset;
         if (j == na->ndim) {

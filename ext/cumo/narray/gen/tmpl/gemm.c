@@ -122,10 +122,10 @@ is_f_contiguous(VALUE a)
     cumo_narray_t *na;
 
     switch(RNARRAY_TYPE(a)) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         return TEST_COLUMN_MAJOR(a);
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArray(a, na);
 
         // not contiguous if it has index

@@ -471,8 +471,8 @@ cumo_na_flatten_dim(VALUE self, int sd)
     na2->stridx = ALLOC_N(stridx_t,sd+1);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         stride = cumo_na_element_stride(self);
         for (i=sd+1; i--; ) {
             //printf("data: i=%d shpae[i]=%ld stride=%ld\n",i,shape[i],stride);
@@ -482,7 +482,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
         na2->offset = 0;
         na2->data = self;
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(self, na1);
         na2->data = na1->data;
         na2->offset = na1->offset;
@@ -694,8 +694,8 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
     na2->stridx = ALLOC_N(stridx_t, nd-1);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         na2->offset = 0;
         na2->data = self;
         stride = stride0 = stride1 = cumo_na_element_stride(self);
@@ -718,7 +718,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         SDX_SET_STRIDE(na2->stridx[nd-2],stride0+stride1);
         break;
 
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(self, na1);
         na2->data = na1->data;
         na2->offset = na1->offset;
@@ -813,8 +813,8 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     na2->stridx = ALLOC_N(stridx_t,nd);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         i = k = 0;
         while (i < nd) {
             if (i == pos && len > 0) {
@@ -834,7 +834,7 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
         na2->offset = 0;
         na2->data = self;
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(self, na1);
         i = k = 0;
         while (i < nd) {

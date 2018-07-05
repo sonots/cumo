@@ -121,10 +121,10 @@ static VALUE
 
     GetNArray(val, na);
     switch(NA_TYPE(na)) {
-    case NARRAY_DATA_T:
+    case CUMO_NARRAY_DATA_T:
         nv->data = val;
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(val, na1);
         nv->data = na1->data;
         break;

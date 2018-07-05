@@ -151,9 +151,9 @@ typedef struct { double dat[2]; } cumo_dcomplex;
 
 extern int cumo_na_debug_flag;
 
-#define NARRAY_DATA_T     0x1
-#define NARRAY_VIEW_T     0x2
-#define NARRAY_FILEMAP_T  0x3
+#define CUMO_NARRAY_DATA_T     0x1
+#define CUMO_NARRAY_VIEW_T     0x2
+#define CUMO_NARRAY_FILEMAP_T  0x3
 
 //#define NA_MAX_DIMENSION (int)(sizeof(VALUE)*8-2)
 #define NA_MAX_DIMENSION 12

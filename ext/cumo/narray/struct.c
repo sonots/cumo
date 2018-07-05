@@ -17,7 +17,7 @@ nst_allocate(VALUE self)
     GetNArray(self,na);
 
     switch(NA_TYPE(na)) {
-    case NARRAY_DATA_T:
+    case CUMO_NARRAY_DATA_T:
         ptr = NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             velmsz = rb_const_get(CLASS_OF(self), rb_intern("element_byte_size"));
@@ -25,10 +25,10 @@ nst_allocate(VALUE self)
             NA_DATA_PTR(na) = ptr;
         }
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         rb_funcall(NA_VIEW_DATA(na), rb_intern("allocate"), 0);
         break;
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_FILEMAP_T:
         //ptr = ((cumo_narray_filemap_t*)na)->ptr;
         // to be implemented
     default:
@@ -131,8 +131,8 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     na2->stridx = stridx;
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         stride = cumo_na_element_stride(self);
         for (j=na->ndim; j--;) {
             SDX_SET_STRIDE(na2->stridx[j], stride);
@@ -141,7 +141,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
         na2->offset = 0;
         na2->data = self;
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(self, na1);
         for (j=na1->base.ndim; j--; ) {
             if (SDX_IS_INDEX(na1->stridx[j])) {
@@ -424,7 +424,7 @@ cumo_na_original_data(VALUE self)
 
     GetNArray(self,na);
     switch(na->type) {
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(self, nv);
         return nv->data;
     }

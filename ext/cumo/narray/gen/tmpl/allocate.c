@@ -7,7 +7,7 @@ static VALUE
     GetNArray(self,na);
 
     switch(NA_TYPE(na)) {
-    case NARRAY_DATA_T:
+    case CUMO_NARRAY_DATA_T:
         ptr = NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             <% if is_object %>
@@ -24,10 +24,10 @@ static VALUE
             NA_DATA_PTR(na) = ptr;
         }
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         rb_funcall(NA_VIEW_DATA(na), rb_intern("allocate"), 0);
         break;
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_FILEMAP_T:
         //ptr = ((cumo_narray_filemap_t*)na)->ptr;
         // to be implemented
     default:

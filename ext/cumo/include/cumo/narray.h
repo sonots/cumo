@@ -198,9 +198,9 @@ extern VALUE cumo_sym_option;
 extern VALUE cumo_sym_loop_opt;
 extern VALUE cumo_sym_init;
 
-#define NARRAY_DATA_T     0x1
-#define NARRAY_VIEW_T     0x2
-#define NARRAY_FILEMAP_T  0x3
+#define CUMO_NARRAY_DATA_T     0x1
+#define CUMO_NARRAY_VIEW_T     0x2
+#define CUMO_NARRAY_FILEMAP_T  0x3
 
 typedef struct {
     unsigned char ndim;     // # of dimensions
@@ -281,9 +281,9 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
     return na;
 }
 
-#define cumo_na_get_narray_data_t(obj) (cumo_narray_data_t*)_cumo_na_get_narray_t(obj,NARRAY_DATA_T)
-#define cumo_na_get_narray_view_t(obj) (cumo_narray_view_t*)_cumo_na_get_narray_t(obj,NARRAY_VIEW_T)
-#define cumo_na_get_narray_filemap_t(obj) (cumo_narray_filemap_t*)_cumo_na_get_narray_t(obj,NARRAY_FILEMAP_T)
+#define cumo_na_get_narray_data_t(obj) (cumo_narray_data_t*)_cumo_na_get_narray_t(obj,CUMO_NARRAY_DATA_T)
+#define cumo_na_get_narray_view_t(obj) (cumo_narray_view_t*)_cumo_na_get_narray_t(obj,CUMO_NARRAY_VIEW_T)
+#define cumo_na_get_narray_filemap_t(obj) (cumo_narray_filemap_t*)_cumo_na_get_narray_t(obj,CUMO_NARRAY_FILEMAP_T)
 
 #define GetNArray(obj,var)      TypedData_Get_Struct(obj, cumo_narray_t, &cumo_na_data_type, var)
 #define GetNArrayView(obj,var)  TypedData_Get_Struct(obj, cumo_narray_view_t, &cumo_na_data_type, var)

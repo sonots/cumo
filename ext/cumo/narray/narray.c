@@ -120,11 +120,11 @@ cumo_na_debug_info(VALUE self)
     }
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         cumo_na_debug_info_nadata(self);
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         cumo_na_debug_info_naview(self);
         break;
     }
@@ -139,7 +139,7 @@ cumo_na_view_memsize(const void* ptr)
     size_t size = sizeof(cumo_narray_view_t);
     const cumo_narray_view_t *na = ptr;
 
-    assert(na->base.type == NARRAY_VIEW_T);
+    assert(na->base.type == CUMO_NARRAY_VIEW_T);
 
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
@@ -163,7 +163,7 @@ cumo_na_view_free(void* ptr)
     int i;
     cumo_narray_view_t *na = (cumo_narray_view_t*)ptr;
 
-    assert(na->base.type == NARRAY_VIEW_T);
+    assert(na->base.type == CUMO_NARRAY_VIEW_T);
 
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
@@ -191,7 +191,7 @@ cumo_na_view_free(void* ptr)
 static void
 cumo_na_view_gc_mark(void* na)
 {
-    if (((cumo_narray_t*)na)->type == NARRAY_VIEW_T) {
+    if (((cumo_narray_t*)na)->type == CUMO_NARRAY_VIEW_T) {
         rb_gc_mark(((cumo_narray_view_t*)na)->data);
     }
 }
@@ -208,7 +208,7 @@ cumo_na_s_allocate_view(VALUE klass)
     cumo_narray_view_t *na = ALLOC(cumo_narray_view_t);
 
     na->base.ndim = 0;
-    na->base.type = NARRAY_VIEW_T;
+    na->base.type = CUMO_NARRAY_VIEW_T;
     na->base.flag[0] = NA_FL0_INIT;
     na->base.flag[1] = NA_FL1_INIT;
     na->base.size = 0;
@@ -592,7 +592,7 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
     GetNArray(self,na);
 
     switch(NA_TYPE(na)) {
-    case NARRAY_DATA_T:
+    case CUMO_NARRAY_DATA_T:
         ptr = NA_DATA_PTR(na);
         if (NA_SIZE(na) > 0 && ptr == NULL) {
             if (flag & READ) {
@@ -604,14 +604,14 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
             }
         }
         return ptr;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         obj = NA_VIEW_DATA(na);
         if ((flag & WRITE) && OBJ_FROZEN(obj)) {
             rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
         }
         GetNArray(obj,na);
         switch(NA_TYPE(na)) {
-        case NARRAY_DATA_T:
+        case CUMO_NARRAY_DATA_T:
             ptr = NA_DATA_PTR(na);
             if (flag & (READ|WRITE)) {
                 if (NA_SIZE(na) > 0 && ptr == NULL) {
@@ -663,7 +663,7 @@ cumo_na_release_lock(VALUE self)
     GetNArray(self,na);
 
     switch(NA_TYPE(na)) {
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         cumo_na_release_lock(NA_VIEW_DATA(na));
         break;
     }
@@ -739,11 +739,11 @@ cumo_na_element_stride(VALUE v)
     cumo_narray_t *na;
 
     GetNArray(v,na);
-    if (na->type == NARRAY_VIEW_T) {
+    if (na->type == CUMO_NARRAY_VIEW_T) {
         v = NA_VIEW_DATA(na);
         GetNArray(v,na);
     }
-    assert(na->type == NARRAY_DATA_T);
+    assert(na->type == CUMO_NARRAY_DATA_T);
 
     info = (cumo_narray_type_info_t *)(RTYPEDDATA_TYPE(v)->data);
     return info->element_stride;
@@ -762,10 +762,10 @@ cumo_na_get_offset(VALUE self)
     GetNArray(self,na);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         return 0;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         return NA_VIEW_OFFSET(na);
     }
     return 0;
@@ -817,10 +817,10 @@ cumo_na_check_ladder(VALUE self, int start_dim)
     }
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         return Qtrue;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         // negative dim -> position from last dim
         if (start_dim < 0) {
             start_dim += NA_NDIM(na);
@@ -851,10 +851,10 @@ cumo_na_check_contiguous(VALUE self)
     GetNArray(self,na);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         return Qtrue;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         if (NA_VIEW_STRIDX(na)==0) {
             return Qtrue;
         }
@@ -899,8 +899,8 @@ cumo_na_make_view(VALUE self)
     na2->stridx = ALLOC_N(stridx_t,nd);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         stride = cumo_na_element_stride(self);
         for (i=nd; i--;) {
             SDX_SET_STRIDE(na2->stridx[i],stride);
@@ -909,7 +909,7 @@ cumo_na_make_view(VALUE self)
         na2->offset = 0;
         na2->data = self;
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(self, na1);
         for (i=0; i<nd; i++) {
             if (SDX_IS_INDEX(na1->stridx[i])) {
@@ -1030,8 +1030,8 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
     na2->stridx = ALLOC_N(stridx_t,nd);
 
     switch(na->type) {
-    case NARRAY_DATA_T:
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
         stride = cumo_na_element_stride(self);
         offset = 0;
         for (i=nd; i--;) {
@@ -1047,7 +1047,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
         na2->offset = offset;
         na2->data = self;
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         GetNArrayView(self, na1);
         offset = na1->offset;
         for (i=0; i<nd; i++) {
@@ -1294,7 +1294,7 @@ cumo_na_to_binary(VALUE self)
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     GetNArray(self,na);
-    if (na->type == NARRAY_VIEW_T) {
+    if (na->type == CUMO_NARRAY_VIEW_T) {
         if (cumo_na_check_contiguous(self)==Qtrue) {
             offset = NA_VIEW_OFFSET(na);
         } else {
@@ -1330,7 +1330,7 @@ cumo_na_marshal_dump(VALUE self)
         VALUE *ptr;
         size_t offset=0;
         GetNArray(self,na);
-        if (na->type == NARRAY_VIEW_T) {
+        if (na->type == CUMO_NARRAY_VIEW_T) {
             if (cumo_na_check_contiguous(self)==Qtrue) {
                 offset = NA_VIEW_OFFSET(na);
             } else {
@@ -1806,7 +1806,7 @@ cumo_na_free_data(VALUE self)
     cumo_narray_t *na;
     GetNArray(self, na);
 
-    if (na->type == NARRAY_DATA_T) {
+    if (na->type == CUMO_NARRAY_DATA_T) {
         void *ptr = NA_DATA_PTR(na);
         if (ptr != NULL) {
             if (cumo_cuda_runtime_is_device_memory(ptr)) {

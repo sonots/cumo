@@ -536,13 +536,13 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
     nd = LARG(lp,j).ndim;
 
     switch(NA_TYPE(na)) {
-    case NARRAY_DATA_T:
+    case CUMO_NARRAY_DATA_T:
         if (NA_DATA_PTR(na)==NULL && NA_SIZE(na)>0) {
             rb_bug("cannot read no-data NArray");
             rb_raise(rb_eRuntimeError,"cannot read no-data NArray");
         }
         // through
-    case NARRAY_FILEMAP_T:
+    case CUMO_NARRAY_FILEMAP_T:
         s = LARG(lp,j).elmsz;
         for (k=na->ndim; k--;) {
             n = na->shape[k];
@@ -557,7 +557,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
         }
         LITER(lp,0,j).pos = 0;
         break;
-    case NARRAY_VIEW_T:
+    case CUMO_NARRAY_VIEW_T:
         LITER(lp,0,j).pos = NA_VIEW_OFFSET(na);
         for (k=0; k<na->ndim; k++) {
             n = na->shape[k];
@@ -1629,7 +1629,7 @@ cumo_na_info_str(VALUE ary)
     nd = na->ndim;
 
     buf = rb_str_new2(rb_class2name(CLASS_OF(ary)));
-    if (NA_TYPE(na) == NARRAY_VIEW_T) {
+    if (NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
         rb_str_cat(buf,"(view)",6);
     }
     rb_str_cat(buf,"#shape=[",8);

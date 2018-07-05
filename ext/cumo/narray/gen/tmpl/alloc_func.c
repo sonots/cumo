@@ -4,7 +4,7 @@ static size_t
     size_t size = sizeof(cumo_narray_data_t);
     const cumo_narray_data_t *na = (const cumo_narray_data_t*)ptr;
 
-    assert(na->base.type == NARRAY_DATA_T);
+    assert(na->base.type == CUMO_NARRAY_DATA_T);
 
     if (na->ptr != NULL) {
   <% if is_bit %>
@@ -26,7 +26,7 @@ static void
 {
     cumo_narray_data_t *na = (cumo_narray_data_t*)ptr;
 
-    assert(na->base.type == NARRAY_DATA_T);
+    assert(na->base.type == CUMO_NARRAY_DATA_T);
 
     if (na->ptr != NULL) {
         cumo_cuda_runtime_free(na->ptr);
@@ -96,7 +96,7 @@ static VALUE
     cumo_narray_data_t *na = ALLOC(cumo_narray_data_t);
 
     na->base.ndim = 0;
-    na->base.type = NARRAY_DATA_T;
+    na->base.type = CUMO_NARRAY_DATA_T;
     na->base.flag[0] = NA_FL0_INIT;
     na->base.flag[1] = NA_FL1_INIT;
     na->base.size = 0;
