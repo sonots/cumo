@@ -437,10 +437,12 @@ typedef unsigned int CUMO_BIT_DIGIT;
 #define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
 #define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
 
+#ifndef IS_INTEGER_CLASS
 #ifdef RUBY_INTEGER_UNIFICATION
 #define IS_INTEGER_CLASS(c) ((c)==rb_cInteger)
 #else
 #define IS_INTEGER_CLASS(c) ((c)==rb_cFixnum||(c)==rb_cBignum)
+#endif
 #endif
 
 #include "cumo/ndloop.h"
