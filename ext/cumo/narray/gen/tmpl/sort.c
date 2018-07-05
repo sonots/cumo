@@ -6,9 +6,9 @@ static void
     char *ptr;
     ssize_t step;
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, ptr, step);
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR(lp, 0, ptr, step);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     <%=type_name%>_qsort<%=j%>(ptr, n, step);
 }
 <% end %>
@@ -30,8 +30,8 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     VALUE reduce;
-    cumo_ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{cumo_sym_reduce,0}};
-    cumo_ndfunc_t ndf = {0, STRIDE_LOOP|NDF_FLAT_REDUCE, 2,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_reduce,0}};
+    cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP|CUMO_NDF_FLAT_REDUCE, 2,0, ain,0};
 
     if (!TEST_INPLACE(self)) {
         self = cumo_na_copy(self);

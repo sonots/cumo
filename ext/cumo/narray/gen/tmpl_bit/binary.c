@@ -10,19 +10,19 @@ static void
     BIT_DIGIT  x, y;
 
     // TODO(sonots): CUDA kernelize
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
-    INIT_PTR_BIT_IDX(lp, 1, a2, p2, s2, idx2);
-    INIT_PTR_BIT_IDX(lp, 2, a3, p3, s3, idx3);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_PTR_BIT_IDX(lp, 1, a2, p2, s2, idx2);
+    CUMO_INIT_PTR_BIT_IDX(lp, 2, a3, p3, s3, idx3);
     if (s1!=1 || s2!=1 || s3!=1 || idx1 || idx2 || idx3) {
         for (; n--;) {
-            LOAD_BIT_STEP(a1, p1, s1, idx1, x);
-            LOAD_BIT_STEP(a2, p2, s2, idx2, y);
+            CUMO_LOAD_BIT_STEP(a1, p1, s1, idx1, x);
+            CUMO_LOAD_BIT_STEP(a2, p2, s2, idx2, y);
             x = m_<%=name%>(x,y);
-            STORE_BIT_STEP(a3, p3, s3, idx3, x);
+            CUMO_STORE_BIT_STEP(a3, p3, s3, idx3, x);
         }
     } else {
         o1 =  p1 % NB;
@@ -92,7 +92,7 @@ static VALUE
 {
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 2, 1, ain, aout };
 
     return cumo_na_ndloop(&ndf, 2, self, other);
 }

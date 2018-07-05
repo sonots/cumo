@@ -22,18 +22,18 @@ static void
     where_opt_t *g;
 
     // TODO(sonots): CUDA kernelize
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     g = (where_opt_t*)(lp->opt_ptr);
     count = g->count;
     idx1  = g->idx1;
     e     = g->elmsz;
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a, p, s, idx);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a, p, s, idx);
     if (idx) {
         for (; i--;) {
-            LOAD_BIT(a, p+*idx, x);
+            CUMO_LOAD_BIT(a, p+*idx, x);
             idx++;
             if (x!=0) {
                 STORE_INT(idx1,e,count);
@@ -43,7 +43,7 @@ static void
         }
     } else {
         for (; i--;) {
-            LOAD_BIT(a, p, x);
+            CUMO_LOAD_BIT(a, p, x);
             p+=s;
             if (x!=0) {
                 STORE_INT(idx1,e,count);
@@ -69,7 +69,7 @@ static VALUE
     where_opt_t *g;
 
     cumo_ndfunc_arg_in_t ain[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP, 1, 0, ain, 0 };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 1, 0, ain, 0 };
 
     size = RNARRAY_SIZE(self);
     n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, self));

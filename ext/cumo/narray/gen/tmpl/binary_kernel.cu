@@ -15,16 +15,16 @@ __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cum
 
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer)
 {
-    size_t gridDim = get_gridDim(indexer->total_size);
-    size_t blockDim = get_blockDim(indexer->total_size);
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
     <% (0..opt_indexer_ndim).each do |idim| %>
     case <%=idim%>:
-        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<gridDim, blockDim>>>(*a1,*a2,*a3,*indexer);
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
         break;
     <% end %>
     default:
-        <%="cumo_#{c_iter}_kernel_dim"%><<<gridDim, blockDim>>>(*a1,*a2,*a3,*indexer);
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
         break;
     }
 }

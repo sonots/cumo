@@ -49,9 +49,9 @@ static VALUE
         return cumo_na_aref_main(argc, argv, self, 0, nd, pos);
     } else {
         ptr = cumo_na_get_pointer_for_read(self);
-        SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-        LOAD_BIT(ptr,pos,x);
+        CUMO_LOAD_BIT(ptr,pos,x);
         return m_data_to_num(x);
     }
 }

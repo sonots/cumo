@@ -21,8 +21,8 @@ static void
     seq_count_t c;
     logseq_opt_t *g;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     g = (logseq_opt_t*)(lp->opt_ptr);
     beg  = g->beg;
     step = g->step;
@@ -31,7 +31,7 @@ static void
     <% if is_object %>
     {
         dtype x;
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         if (idx1) {
             for (; i--;) {
                 x = f_seq(beg,step,c++);
@@ -85,8 +85,8 @@ static VALUE
 {
     logseq_opt_t *g;
     VALUE vbeg, vstep, vbase;
-    cumo_ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,0}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
 
     g = ALLOCA_N(logseq_opt_t,1);
     rb_scan_args(argc, args, "21", &vbeg, &vstep, &vbase);

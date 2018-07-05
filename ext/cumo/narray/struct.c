@@ -461,7 +461,7 @@ cumo_na_struct_to_a(VALUE self)
     volatile VALUE opt;
     cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
     cumo_ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
-    cumo_ndfunc_t ndf = {iter_nstruct_to_a, NO_LOOP, 3, 1, ain, aout};
+    cumo_ndfunc_t ndf = {iter_nstruct_to_a, CUMO_NO_LOOP, 3, 1, ain, aout};
 
     opt = nst_create_member_views(self);
     return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, opt);
@@ -626,8 +626,8 @@ cumo_na_struct_cast_array(VALUE klass, VALUE rary)
     cumo_narray_t *na;
     //cumo_na_compose_t *nc;
     VALUE opt;
-    cumo_ndfunc_arg_in_t ain[3] = {{OVERWRITE,0},{rb_cArray,0},{cumo_sym_option}};
-    cumo_ndfunc_t ndf = {iter_nstruct_from_a, NO_LOOP, 3, 0, ain, 0};
+    cumo_ndfunc_arg_in_t ain[3] = {{CUMO_OVERWRITE,0},{rb_cArray,0},{cumo_sym_option}};
+    cumo_ndfunc_t ndf = {iter_nstruct_from_a, CUMO_NO_LOOP, 3, 0, ain, 0};
 
     //fprintf(stderr,"rary:");rb_p(rary);
     //fprintf(stderr,"class_of(rary):");rb_p(CLASS_OF(rary));
@@ -664,10 +664,10 @@ iter_struct_store_struct(cumo_na_loop_t *const lp)
     size_t  elmsz;
     char   *x, *y;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
-    INIT_PTR_IDX(lp, 1, p2, s2, idx2);
-    INIT_ELMSIZE(lp, 0, elmsz);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);
+    CUMO_INIT_ELMSIZE(lp, 0, elmsz);
     if (idx2) {
         if (idx1) {
             for (; i--;) {
@@ -703,8 +703,8 @@ iter_struct_store_struct(cumo_na_loop_t *const lp)
 static VALUE
 cumo_na_struct_store_struct(VALUE self, VALUE obj)
 {
-    cumo_ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{Qnil,0}};
-    cumo_ndfunc_t ndf = {iter_struct_store_struct, FULL_LOOP, 2, 0, ain, 0};
+    cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{Qnil,0}};
+    cumo_ndfunc_t ndf = {iter_struct_store_struct, CUMO_FULL_LOOP, 2, 0, ain, 0};
 
     cumo_na_ndloop(&ndf, 2, self, obj);
     return self;

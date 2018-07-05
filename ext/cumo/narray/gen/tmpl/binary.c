@@ -24,16 +24,16 @@ static void
         char    *p1, *p2, *p3;
         ssize_t  s1, s2, s3;
 
-        INIT_COUNTER(lp, n);
-        INIT_PTR(lp, 0, p1, s1);
-        INIT_PTR(lp, 1, p2, s2);
-        INIT_PTR(lp, 2, p3, s3);
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, p1, s1);
+        CUMO_INIT_PTR(lp, 1, p2, s2);
+        CUMO_INIT_PTR(lp, 2, p3, s3);
 
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         //<% if need_align %>
-        if (is_aligned(p1,sizeof(dtype)) &&
-            is_aligned(p2,sizeof(dtype)) &&
-            is_aligned(p3,sizeof(dtype)) ) {
+        if (cumo_is_aligned(p1,sizeof(dtype)) &&
+            cumo_is_aligned(p2,sizeof(dtype)) &&
+            cumo_is_aligned(p3,sizeof(dtype)) ) {
 
             if (s1 == sizeof(dtype) &&
                 s2 == sizeof(dtype) &&
@@ -52,9 +52,9 @@ static void
                 }
                 return;
             }
-            if (is_aligned_step(s1,sizeof(dtype)) &&
-                is_aligned_step(s2,sizeof(dtype)) &&
-                is_aligned_step(s3,sizeof(dtype)) ) {
+            if (cumo_is_aligned_step(s1,sizeof(dtype)) &&
+                cumo_is_aligned_step(s2,sizeof(dtype)) &&
+                cumo_is_aligned_step(s3,sizeof(dtype)) ) {
                 //<% end %>
 
                 if (s2 == 0){ // Broadcasting from scalar value.
@@ -102,11 +102,11 @@ static void
         }
         for (i=0; i<n; i++) {
             dtype x, y, z;
-            GET_DATA_STRIDE(p1,s1,dtype,x);
-            GET_DATA_STRIDE(p2,s2,dtype,y);
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p2,s2,dtype,y);
             check_intdivzero(y);
             z = m_<%=name%>(x,y);
-            SET_DATA_STRIDE(p3,s3,dtype,z);
+            CUMO_SET_DATA_STRIDE(p3,s3,dtype,z);
         }
         //<% end %>
     }
@@ -129,9 +129,9 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
     <% if type_name == 'robject' %>
-    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
     <% else %>
-    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP|NDF_INDEXER_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
     <% end %>
 
     return cumo_na_ndloop(&ndf, 2, self, other);

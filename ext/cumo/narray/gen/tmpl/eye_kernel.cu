@@ -11,9 +11,9 @@ __global__ void <%="cumo_#{c_iter}_stride_kernel"%>(char*ptr, ssize_t s0, ssize_
 void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t s0, ssize_t s1, ssize_t kofs, dtype data, uint64_t n0, uint64_t n1)
 {
     uint64_t n = n0 * n1;
-    size_t gridDim = get_gridDim(n);
-    size_t blockDim = get_blockDim(n);
-    <%="cumo_#{c_iter}_stride_kernel"%><<<gridDim, blockDim>>>(ptr,s0,s1,kofs,data,n0,n1,n);
+    size_t grid_dim = cumo_get_grid_dim(n);
+    size_t block_dim = cumo_get_block_dim(n);
+    <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim>>>(ptr,s0,s1,kofs,data,n0,n1,n);
 }
 <% end %>
 

@@ -7,6 +7,8 @@
 
 #include "cumo/indexer.h"
 
+namespace cumo_detail {
+
 static inline int64_t round_up_to_power_of_2(int64_t x) {
     --x;
     x |= x >> 1;
@@ -108,6 +110,8 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, ReductionIm
 
 static constexpr size_t max_block_size = 512;
 
+}  // cumo_detail
+
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
 void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
     cumo_na_indexer_t& out_indexer = arg.out_indexer;
@@ -115,12 +119,12 @@ void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
 
     using TypeReduce = decltype(impl.Identity());
 
-    size_t block_size = round_up_to_power_of_2(std::max(int64_t{1}, static_cast<int64_t>(reduce_indexer.total_size)));
-    block_size = std::min(max_block_size, block_size);
+    size_t block_size = cumo_detail::round_up_to_power_of_2(std::max(int64_t{1}, static_cast<int64_t>(reduce_indexer.total_size)));
+    block_size = std::min(cumo_detail::max_block_size, block_size);
     size_t grid_size = out_indexer.total_size;
     size_t shared_mem_size = sizeof(TypeReduce) * block_size;
 
-    reduction_kernel<TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, impl);
+    cumo_detail::reduction_kernel<TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, impl);
 }
 
 #endif // CUMO_REDUCE_KERNEL_H

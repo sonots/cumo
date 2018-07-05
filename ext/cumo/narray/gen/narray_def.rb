@@ -232,7 +232,7 @@ class Store < DefMethod
   def extract_data(ptr,pos,x)
     case type_name
     when "Bit"
-      "{BIT_DIGIT b; LOAD_BIT(#{ptr},#{pos},b); x = m_from_sint(b);}"
+      "{BIT_DIGIT b; CUMO_LOAD_BIT(#{ptr},#{pos},b); x = m_from_sint(b);}"
     when "RObject"
       "#{x} = m_num_to_data(*(#{dtype}*)(#{ptr}+#{pos}))"
     when /Complex/

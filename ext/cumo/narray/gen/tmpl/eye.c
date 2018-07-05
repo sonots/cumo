@@ -22,13 +22,13 @@ static void
     n1 = lp->args[0].shape[1];
     s0 = lp->args[0].iter[0].step;
     s1 = lp->args[0].iter[1].step;
-    p0 = NDL_PTR(lp,0);
+    p0 = CUMO_NDL_PTR(lp,0);
 
     <% if type_name == 'robject' %>
     {
         size_t i0, i1;
         char *p1;
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         for (i0=0; i0 < n0; i0++) {
             p1 = p0;
             for (i1=0; i1 < n1; i1++) {
@@ -55,8 +55,8 @@ static void
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
-    cumo_ndfunc_arg_in_t ain[1] = {{OVERWRITE,2}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, NO_LOOP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,2}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_NO_LOOP, 1,0, ain,0};
     ssize_t kofs;
     dtype data;
     char *g;

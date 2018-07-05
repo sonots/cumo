@@ -16,12 +16,12 @@ static void
         char    *d_ptr, *i_ptr, *o_ptr;
         ssize_t  d_step, i_step;
 
-        INIT_COUNTER(lp, n);
-        INIT_PTR(lp, 0, d_ptr, d_step);
-        INIT_PTR(lp, 1, i_ptr, i_step);
-        o_ptr = NDL_PTR(lp,2);
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, d_ptr, d_step);
+        CUMO_INIT_PTR(lp, 1, i_ptr, i_step);
+        o_ptr = CUMO_NDL_PTR(lp,2);
 
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         idx = f_<%=name%><%=nan%>(n,d_ptr,d_step);
         *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
     }
@@ -57,7 +57,7 @@ static VALUE
         VALUE idx, reduce;
         cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{Qnil,0},{cumo_sym_reduce,0}};
         cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
-        cumo_ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 3,1, ain,aout};
+        cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT, 3,1, ain,aout};
 
         GetNArray(self,na);
         if (na->ndim==0) {
@@ -92,7 +92,7 @@ static VALUE
         VALUE reduce;
         cumo_ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_reduce,0}};
         cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
-        cumo_ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT|NDF_INDEXER_LOOP, 2,1, ain,aout};
+        cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT|CUMO_NDF_INDEXER_LOOP, 2,1, ain,aout};
 
         GetNArray(self,na);
         if (na->size > (~(u_int32_t)0)) {

@@ -7,21 +7,21 @@ static void
     dtype x;
     VALUE y;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (idx1) {
         for (; i--;) {
-            GET_DATA_INDEX(p1,idx1,dtype,x);
+            CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             y = m_data_to_num(x);
             rb_yield(y);
         }
     } else {
         for (; i--;) {
-            GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
             y = m_data_to_num(x);
             rb_yield(y);
         }
@@ -40,7 +40,7 @@ static VALUE
 <%=c_func(0)%>(VALUE self)
 {
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 1,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 1,0, ain,0};
 
     cumo_na_ndloop(&ndf, 1, self);
     return self;

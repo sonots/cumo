@@ -10,20 +10,20 @@ static void
     BIT_DIGIT *a3;
     size_t  p3;
     ssize_t s1, s2, s3;
-    INIT_COUNTER(lp, i);
-    INIT_PTR(lp, 0, p1, s1);
-    INIT_PTR(lp, 1, p2, s2);
-    INIT_PTR_BIT(lp, 2, a3, p3, s3);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    CUMO_INIT_PTR_BIT(lp, 2, a3, p3, s3);
     <% if type_name == 'robject' %>
     {
         dtype x, y;
         BIT_DIGIT b;
-        SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         for (; i--;) {
-            GET_DATA_STRIDE(p1,s1,dtype,x);
-            GET_DATA_STRIDE(p2,s2,dtype,y);
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_GET_DATA_STRIDE(p2,s2,dtype,y);
             b = (m_<%=name%>(x,y)) ? 1:0;
-            STORE_BIT(a3,p3,b);
+            CUMO_STORE_BIT(a3,p3,b);
             p3+=s3;
         }
     }
@@ -39,7 +39,7 @@ static VALUE
 {
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cumo_cBit,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, STRIDE_LOOP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
 
     return cumo_na_ndloop(&ndf, 2, self, other);
 }

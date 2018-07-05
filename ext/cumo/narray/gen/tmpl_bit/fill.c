@@ -11,7 +11,7 @@ static void
     VALUE x = lp->option;
 
     // TODO(sonots): CUDA kernelize
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (x==INT2FIX(0) || x==Qfalse) {
@@ -23,17 +23,17 @@ static void
         rb_raise(rb_eArgError, "invalid value for Bit");
     }
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR_BIT_IDX(lp, 0, a3, p3, s3, idx3);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a3, p3, s3, idx3);
     if (idx3) {
         y = y&1;
         for (; n--;) {
-            STORE_BIT(a3, p3+*idx3, y); idx3++;
+            CUMO_STORE_BIT(a3, p3+*idx3, y); idx3++;
         }
     } else if (s3!=1) {
         y = y&1;
         for (; n--;) {
-            STORE_BIT(a3, p3, y); p3+=s3;
+            CUMO_STORE_BIT(a3, p3, y); p3+=s3;
         }
     } else {
         if (p3>0 || n<NB) {
@@ -61,8 +61,8 @@ static void
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE val)
 {
-    cumo_ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{cumo_sym_option}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 2,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_option}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 2,0, ain,0};
 
     cumo_na_ndloop(&ndf, 2, self, val);
     return self;

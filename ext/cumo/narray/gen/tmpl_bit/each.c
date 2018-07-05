@@ -8,21 +8,21 @@ static void
     size_t  *idx1;
     VALUE  y;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (idx1) {
         for (; i--;) {
-            LOAD_BIT(a1, p1+*idx1, x); idx1++;
+            CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             y = m_data_to_num(x);
             rb_yield(y);
         }
     } else {
         for (; i--;) {
-            LOAD_BIT(a1, p1, x); p1+=s1;
+            CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             y = m_data_to_num(x);
             rb_yield(y);
         }
@@ -41,7 +41,7 @@ static VALUE
 <%=c_func(0)%>(VALUE self)
 {
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 1,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 1,0, ain,0};
 
     cumo_na_ndloop(&ndf, 1, self);
     return self;

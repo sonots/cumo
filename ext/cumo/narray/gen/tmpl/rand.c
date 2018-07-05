@@ -84,25 +84,25 @@ static void
     <%=rand_type%> max;
     <%=shift_def%>
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     g = (rand_opt_t*)(lp->opt_ptr);
     low = g->low;
     max = g->max;
     <%=shift_set%>
 
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     if (idx1) {
         for (; i--;) {
             x = m_add(<%=m_rand%>,low);
-            SET_DATA_INDEX(p1,idx1,dtype,x);
+            CUMO_SET_DATA_INDEX(p1,idx1,dtype,x);
         }
     } else {
         for (; i--;) {
             x = m_add(<%=m_rand%>,low);
-            SET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_SET_DATA_STRIDE(p1,s1,dtype,x);
         }
     }
 }
@@ -131,8 +131,8 @@ static VALUE
     rand_opt_t g;
     VALUE v1=Qnil, v2=Qnil;
     dtype high;
-    cumo_ndfunc_arg_in_t ain[1] = {{OVERWRITE,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 1,0, ain,0};
+    cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,0}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
 
     <% if is_int && !is_object %>
     rb_scan_args(argc, args, "11", &v1, &v2);

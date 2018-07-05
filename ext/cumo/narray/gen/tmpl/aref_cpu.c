@@ -43,7 +43,7 @@ static VALUE
         return cumo_na_aref_main(argc, argv, self, 0, result_nd, pos);
     } else {
         ptr = cumo_na_get_pointer_for_read(self) + pos;
-        SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         return m_extract(ptr);
     }

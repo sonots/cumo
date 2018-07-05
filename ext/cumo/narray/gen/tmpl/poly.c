@@ -4,7 +4,7 @@ static void
     size_t  i;
     dtype  x, y, a;
 
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     x = *(dtype*)(lp->args[0].ptr + lp->args[0].iter[0].pos);
     i = lp->narg - 2;
     y = *(dtype*)(lp->args[i].ptr + lp->args[i].iter[0].pos);
@@ -31,7 +31,7 @@ static VALUE
     VALUE *argv;
     volatile VALUE v, a;
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, NO_LOOP, 0, 1, 0, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_NO_LOOP, 0, 1, 0, aout };
 
     argc = RARRAY_LEN(args);
     ndf.nin = argc+1;

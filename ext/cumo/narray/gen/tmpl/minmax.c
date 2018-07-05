@@ -7,10 +7,10 @@ static void
     ssize_t  s1;
     dtype    xmin,xmax;
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
 
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     f_<%=name%><%=j%>(n,p1,s1,&xmin,&xmax);
 
     *(dtype*)(lp->args[1].ptr + lp->args[1].iter[0].pos) = xmin;
@@ -36,7 +36,7 @@ static VALUE
     VALUE reduce;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[2] = {{cT,0},{cT,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_EXTRACT, 2,2, ain,aout};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT, 2,2, ain,aout};
 
   <% if is_float %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);

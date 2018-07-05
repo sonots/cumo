@@ -1290,7 +1290,7 @@ cumo_na_to_binary(VALUE self)
     VALUE str;
     cumo_narray_t *na;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     GetNArray(self,na);
@@ -1318,7 +1318,7 @@ cumo_na_marshal_dump(VALUE self)
 {
     VALUE a;
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_marshal_dump", "any");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_marshal_dump", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     a = rb_ary_new();
@@ -1556,7 +1556,7 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
         // option: keepdims
         if (opts[1] != Qundef) {
             if (RTEST(opts[1]))
-                ndf->flag |= NDF_KEEP_DIM;
+                ndf->flag |= CUMO_NDF_KEEP_DIM;
         }
     }
 

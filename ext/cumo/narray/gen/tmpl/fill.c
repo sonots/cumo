@@ -12,18 +12,18 @@ static void
     size_t  *idx1;
     VALUE    x = lp->option;
     dtype    y;
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     y = m_num_to_data(x);
     <% if type_name == 'robject' %>
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
-            SET_DATA_INDEX(p1,idx1,dtype,y);
+            CUMO_SET_DATA_INDEX(p1,idx1,dtype,y);
         }
     } else {
         for (; i--;) {
-            SET_DATA_STRIDE(p1,s1,dtype,y);
+            CUMO_SET_DATA_STRIDE(p1,s1,dtype,y);
         }
     }
     <% else %>
@@ -44,8 +44,8 @@ static void
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE val)
 {
-    cumo_ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{cumo_sym_option}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP, 2, 0, ain, 0 };
+    cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_option}};
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0 };
 
     cumo_na_ndloop(&ndf, 2, self, val);
     return self;

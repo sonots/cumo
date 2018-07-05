@@ -10,19 +10,19 @@ static void
     VALUE fmt = lp->option;
     volatile VALUE a;
 
-    INIT_COUNTER(lp, i);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     a = rb_ary_new2(i);
     rb_ary_push(lp->args[1].value, a);
     if (idx1) {
         for (; i--;) {
-            LOAD_BIT(a1, p1+*idx1, x); idx1++;
+            CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             y = format_bit(fmt, x);
             rb_ary_push(a,y);
         }
     } else {
         for (; i--;) {
-            LOAD_BIT(a1, p1, x); p1+=s1;
+            CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             y = format_bit(fmt, x);
             rb_ary_push(a,y);
         }
@@ -41,9 +41,9 @@ static VALUE
     VALUE fmt=Qnil;
     cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
     cumo_ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP_NIP, 3,1, ain,aout};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 3,1, ain,aout};
 
-    SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     rb_scan_args(argc, argv, "01", &fmt);

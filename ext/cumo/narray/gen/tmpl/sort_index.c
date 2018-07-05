@@ -9,10 +9,10 @@ static void
     ssize_t  d_step, i_step, o_step;
     char   **ptr;
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR(lp, 0, d_ptr, d_step);
-    INIT_PTR(lp, 1, i_ptr, i_step);
-    INIT_PTR(lp, 2, o_ptr, o_step);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR(lp, 0, d_ptr, d_step);
+    CUMO_INIT_PTR(lp, 1, i_ptr, i_step);
+    CUMO_INIT_PTR(lp, 2, o_ptr, o_step);
 
     ptr = (char**)(lp->opt_ptr);
 
@@ -66,7 +66,7 @@ static VALUE
     char *buf;
     cumo_ndfunc_arg_in_t ain[3] = {{cT,0},{0,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
-    cumo_ndfunc_t ndf = {0, STRIDE_LOOP_NIP|NDF_FLAT_REDUCE|NDF_CUM, 3,1, ain,aout};
+    cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM, 3,1, ain,aout};
 
     GetNArray(self,na);
     if (na->ndim==0) {
@@ -102,7 +102,7 @@ static VALUE
     size = na->size*sizeof(void*); // max capa
     buf = rb_alloc_tmp_buffer(&tmp, size);
 
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cudaDeviceSynchronize();
 
     res = cumo_na_ndloop3(&ndf, buf, 3, self, idx, reduce);

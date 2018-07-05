@@ -1,14 +1,14 @@
 #ifndef CUMO_TEMPLATE_KERNEL_H
 #define CUMO_TEMPLATE_KERNEL_H
 
-#define LOAD_BIT( adr, pos, val )                       \
+#define CUMO_LOAD_BIT( adr, pos, val )                       \
     {                                                   \
         size_t dig = (size_t)(pos) / NB;                \
         int    bit = (size_t)(pos) % NB;                \
         val = (((BIT_DIGIT*)(adr))[dig]>>(bit)) & 1u;   \
     }
 
-#define LOAD_BIT_STEP( adr, pos, step, idx, val )       \
+#define CUMO_LOAD_BIT_STEP( adr, pos, step, idx, val )       \
     {                                                   \
         size_t dig; int bit;                            \
         if (idx) {                                      \
@@ -23,7 +23,7 @@
         val = (((BIT_DIGIT*)(adr))[dig]>>bit) & 1u;     \
     }
 
-#define STORE_BIT(adr,pos,val)                                     \
+#define CUMO_STORE_BIT(adr,pos,val)                                     \
     {                                                              \
         size_t dig = (size_t)(pos) / NB;                           \
         int    bit = (size_t)(pos) % NB;                           \
@@ -35,7 +35,7 @@
     }
 // val -> val&1 ??
 
-#define STORE_BIT_STEP( adr, pos, step, idx, val )                 \
+#define CUMO_STORE_BIT_STEP( adr, pos, step, idx, val )                 \
     {                                                              \
         size_t dig; int bit;                                       \
         if (idx) {                                                 \
@@ -55,22 +55,22 @@
     }
 // val -> val&1 ??
 
-#define MAX_BLOCK_DIM 128
-#define MAX_GRID_DIM 2147483647 // ref. http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
+#define CUMO_MAX_BLOCK_DIM 128
+#define CUMO_MAX_GRID_DIM 2147483647 // ref. http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
 
 static inline size_t
-get_gridDim(size_t n)
+cumo_get_grid_dim(size_t n)
 {
-    size_t gridDim = (n / MAX_BLOCK_DIM) + 1;
-    if (gridDim > MAX_GRID_DIM) gridDim = MAX_GRID_DIM;
-    return gridDim;
+    size_t grid_dim = (n / CUMO_MAX_BLOCK_DIM) + 1;
+    if (grid_dim > CUMO_MAX_GRID_DIM) grid_dim = CUMO_MAX_GRID_DIM;
+    return grid_dim;
 }
 
 static inline size_t
-get_blockDim(size_t n)
+cumo_get_block_dim(size_t n)
 {
-    size_t blockDim = (n > MAX_BLOCK_DIM) ? MAX_BLOCK_DIM : n;
-    return blockDim;
+    size_t block_dim = (n > CUMO_MAX_BLOCK_DIM) ? CUMO_MAX_BLOCK_DIM : n;
+    return block_dim;
 }
 
 

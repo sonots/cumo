@@ -6,12 +6,12 @@ static void
     char *p1, *p2;
     dtype *buf;
 
-    INIT_COUNTER(lp, n);
+    CUMO_INIT_COUNTER(lp, n);
     p1 = (lp->args[0]).ptr + (lp->args[0].iter[0]).pos;
     p2 = (lp->args[1]).ptr + (lp->args[1].iter[0]).pos;
     buf = (dtype*)p1;
 
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     <%=type_name%>_qsort<%=j%>(buf, n, sizeof(dtype));
 
     <% if is_float %>
@@ -49,9 +49,9 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     VALUE v, reduce;
-    cumo_ndfunc_arg_in_t ain[2] = {{OVERWRITE,0},{cumo_sym_reduce,0}};
+    cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
-    cumo_ndfunc_t ndf = {0, NDF_HAS_LOOP|NDF_FLAT_REDUCE, 2,1, ain,aout};
+    cumo_ndfunc_t ndf = {0, CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE, 2,1, ain,aout};
 
     self = cumo_na_copy(self); // as temporary buffer
   <% if is_float %>

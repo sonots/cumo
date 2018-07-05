@@ -22,21 +22,21 @@ static void
     dtype *x;
     VALUE y;
     VALUE fmt = lp->option;
-    INIT_COUNTER(lp, i);
-    INIT_PTR_IDX(lp, 0, p1, s1, idx1);
-    INIT_PTR(lp, 1, p2, s2);
-    //SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR(lp, 1, p2, s2);
+    //CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             x = (dtype*)(p1+*idx1); idx1++;
             y = format_<%=type_name%>(fmt, x);
-            SET_DATA_STRIDE(p2, s2, VALUE, y);
+            CUMO_SET_DATA_STRIDE(p2, s2, VALUE, y);
         }
     } else {
         for (; i--;) {
             x = (dtype*)p1;         p1+=s1;
             y = format_<%=type_name%>(fmt, x);
-            SET_DATA_STRIDE(p2, s2, VALUE, y);
+            CUMO_SET_DATA_STRIDE(p2, s2, VALUE, y);
         }
     }
 }
@@ -54,7 +54,7 @@ static VALUE
 
     cumo_ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_option}};
     cumo_ndfunc_arg_out_t aout[1] = {{cumo_cRObject,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, FULL_LOOP_NIP, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP_NIP, 2, 1, ain, aout };
 
     rb_scan_args(argc, argv, "01", &fmt);
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());

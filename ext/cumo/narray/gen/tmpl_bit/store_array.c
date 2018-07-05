@@ -14,11 +14,11 @@ static void
     double beg, step;
 
     // TODO(sonots): CUDA kernelize
-    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-    INIT_COUNTER(lp, n);
-    INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     v1 = lp->args[1].value;
     i = 0;
 
@@ -57,13 +57,13 @@ static void
                 for (c=0; c<len && i<n; c++,i++) {
                     y = beg + step * c;
                     z = m_from_double(y);
-                    STORE_BIT(a1, p1+*idx1, z); idx1++;
+                    CUMO_STORE_BIT(a1, p1+*idx1, z); idx1++;
                 }
             }
             if (TYPE(x) != T_ARRAY) {
                 if (x == Qnil) x = INT2FIX(0);
                 z = m_num_to_data(x);
-                STORE_BIT(a1, p1+*idx1, z); idx1++;
+                CUMO_STORE_BIT(a1, p1+*idx1, z); idx1++;
             }
         }
     } else {
@@ -74,12 +74,12 @@ static void
                 for (c=0; c<len && i<n; c++,i++) {
                     y = beg + step * c;
                     z = m_from_double(y);
-                    STORE_BIT(a1, p1, z); p1+=s1;
+                    CUMO_STORE_BIT(a1, p1, z); p1+=s1;
                 }
             }
             if (TYPE(x) != T_ARRAY) {
                 z = m_num_to_data(x);
-                STORE_BIT(a1, p1, z); p1+=s1;
+                CUMO_STORE_BIT(a1, p1, z); p1+=s1;
             }
         }
     }
@@ -88,11 +88,11 @@ static void
     z = m_zero;
     if (idx1) {
         for (; i<n; i++) {
-            STORE_BIT(a1, p1+*idx1, z); idx1++;
+            CUMO_STORE_BIT(a1, p1+*idx1, z); idx1++;
         }
     } else {
         for (; i<n; i++) {
-            STORE_BIT(a1, p1, z); p1+=s1;
+            CUMO_STORE_BIT(a1, p1, z); p1+=s1;
         }
     }
 }
@@ -100,8 +100,8 @@ static void
 static VALUE
 <%=c_func(:nodef)%>(VALUE self, VALUE rary)
 {
-    cumo_ndfunc_arg_in_t ain[2] = {{OVERWRITE,0}, {rb_cArray,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, FULL_LOOP, 2, 0, ain, 0};
+    cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0}, {rb_cArray,0}};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0};
 
     cumo_na_ndloop_store_rarray(&ndf, self, rary);
     return self;

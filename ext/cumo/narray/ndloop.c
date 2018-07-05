@@ -30,7 +30,7 @@ typedef struct NA_BUFFER_COPY {
 typedef struct NA_LOOP_XARGS {
     cumo_na_loop_iter_t *iter;     // moved from cumo_na_loop_t
     cumo_na_buffer_copy_t *bufcp;  // copy data to buffer
-    int flag;                 // NDL_READ NDL_WRITE
+    int flag;                 // CUMO_NDL_READ CUMO_NDL_WRITE
     bool free_user_iter;   // alloc LARG(lp,j).iter=lp->xargs[j].iter
 } cumo_na_loop_xargs_t;
 
@@ -62,11 +62,11 @@ typedef struct NA_MD_LOOP {
 #define LITER_SRC(lp,idim) ((lp)->src_iter[idim])
 #define LBUFCP(lp,j) ((lp)->xargs[j].bufcp)
 
-#define CASTABLE(t) (RTEST(t) && (t)!=OVERWRITE)
+#define CASTABLE(t) (RTEST(t) && (t)!=CUMO_OVERWRITE)
 
-#define NDL_READ 1
-#define NDL_WRITE 2
-#define NDL_READ_WRITE (NDL_READ|NDL_WRITE)
+#define CUMO_NDL_READ 1
+#define CUMO_NDL_WRITE 2
+#define CUMO_NDL_READ_WRITE (CUMO_NDL_READ|CUMO_NDL_WRITE)
 
 static ID cumo_id_cast;
 static ID cumo_id_extract;
@@ -190,18 +190,18 @@ print_ndloop(cumo_na_md_loop_t *lp) {
 }
 
 
-// returns 0x01 if NDF_HAS_LOOP, but not supporting NDF_STRIDE_LOOP
-// returns 0x02 if NDF_HAS_LOOP, but not supporting NDF_INDEX_LOOP
+// returns 0x01 if CUMO_NDF_HAS_LOOP, but not supporting CUMO_NDF_STRIDE_LOOP
+// returns 0x02 if CUMO_NDF_HAS_LOOP, but not supporting CUMO_NDF_INDEX_LOOP
 static unsigned int
 ndloop_func_loop_spec(cumo_ndfunc_t *nf, int user_ndim)
 {
     unsigned int f=0;
     // If user function supports LOOP
-    if (user_ndim > 0 || NDF_TEST(nf,NDF_HAS_LOOP)) {
-        if (!NDF_TEST(nf,NDF_STRIDE_LOOP)) {
+    if (user_ndim > 0 || CUMO_NDF_TEST(nf,CUMO_NDF_HAS_LOOP)) {
+        if (!CUMO_NDF_TEST(nf,CUMO_NDF_STRIDE_LOOP)) {
             f |= 1;
         }
-        if (!NDF_TEST(nf,NDF_INDEX_LOOP)) {
+        if (!CUMO_NDF_TEST(nf,CUMO_NDF_INDEX_LOOP)) {
             f |= 2;
         }
     }
@@ -397,7 +397,7 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
         LARG(lp,j).ndim = 0;
         lp->xargs[j].iter = &(iter[(max_nd+1)*j]);
         lp->xargs[j].bufcp = NULL;
-        lp->xargs[j].flag = (j<lp->nin) ? NDL_READ : NDL_WRITE;
+        lp->xargs[j].flag = (j<lp->nin) ? CUMO_NDL_READ : CUMO_NDL_WRITE;
         lp->xargs[j].free_user_iter = 0;
     }
 
@@ -414,7 +414,7 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
     //              array          loop
     //           [*,+,*,+,*] => [*,*,*,+,+]
     // trans_map=[0,3,1,4,2] <= [0,1,2,3,4]
-    if (NDF_TEST(nf,NDF_FLAT_REDUCE) && RTEST(lp->reduce)) {
+    if (CUMO_NDF_TEST(nf,CUMO_NDF_FLAT_REDUCE) && RTEST(lp->reduce)) {
         trans_dim = 0;
         for (i=0; i<max_nd; i++) {
             if (cumo_na_test_reduce(lp->reduce, i)) {
@@ -521,13 +521,13 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
 
     LARG(lp,j).value = vna;
     LARG(lp,j).elmsz = cumo_na_element_stride(vna);
-    if (rwflag == NDL_READ) {
+    if (rwflag == CUMO_NDL_READ) {
         LARG(lp,j).ptr = cumo_na_get_pointer_for_read(vna);
     } else
-    if (rwflag == NDL_WRITE) {
+    if (rwflag == CUMO_NDL_WRITE) {
         LARG(lp,j).ptr = cumo_na_get_pointer_for_write(vna);
     } else
-    if (rwflag == NDL_READ_WRITE) {
+    if (rwflag == CUMO_NDL_READ_WRITE) {
         LARG(lp,j).ptr = cumo_na_get_pointer_for_read_write(vna);
     } else {
         rb_bug("invalid value for read-write flag");
@@ -573,7 +573,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
                 }
             } else if (n==1) {
                 if (SDX_IS_INDEX(sdx)) {
-                    SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_set_stepidx", "any");
+                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_set_stepidx", "any");
                     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     LITER(lp,0,j).pos += SDX_GET_INDEX(sdx)[0];
                 }
@@ -626,10 +626,10 @@ na->shape[i] == lp->n[ dim_map[i] ]
                 dim_map[i] = lp->trans_map[i+dim_beg];
                 //printf("dim_map[%d]=%d na->shape[%d]=%d\n",i,dim_map[i],i,na->shape[i]);
             }
-            if (nf->ain[j].type==OVERWRITE) {
-                lp->xargs[j].flag = flag = NDL_WRITE;
+            if (nf->ain[j].type==CUMO_OVERWRITE) {
+                lp->xargs[j].flag = flag = CUMO_NDL_WRITE;
             } else {
-                lp->xargs[j].flag = flag = NDL_READ;
+                lp->xargs[j].flag = flag = CUMO_NDL_READ;
             }
             LARG(lp,j).ndim = nf_dim;
             ndloop_set_stepidx(lp, j, v, dim_map, flag);
@@ -748,7 +748,7 @@ ndloop_set_output_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
     volatile VALUE v=Qnil;
     size_t *cumo_na_shape;
     int *dim_map;
-    int flag = NDL_READ_WRITE;
+    int flag = CUMO_NDL_READ_WRITE;
     int nd;
     int max_nd = lp->ndim + nf->aout[k].dim;
 
@@ -763,11 +763,11 @@ ndloop_set_output_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
         // cumo_na_shape[i] == lp->n[lp->trans_map[i]]
         lp_dim = lp->trans_map[i];
         //printf("i=%d lp_dim=%d\n",i,lp_dim);
-        if (NDF_TEST(nf,NDF_CUM)) {   // cumulate with shape kept
+        if (CUMO_NDF_TEST(nf,CUMO_NDF_CUM)) {   // cumulate with shape kept
             cumo_na_shape[cumo_na_ndim] = lp->n[lp_dim];
         } else
         if (cumo_na_test_reduce(lp->reduce,lp_dim)) {   // accumulate dimension
-            if (NDF_TEST(nf,NDF_KEEP_DIM)) {
+            if (CUMO_NDF_TEST(nf,CUMO_NDF_KEEP_DIM)) {
                 cumo_na_shape[cumo_na_ndim] = 1;         // leave it
             } else {
                 continue;  // delete dimension
@@ -787,13 +787,13 @@ ndloop_set_output_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
     }
 
     // find inplace from input arrays
-    if (k==0 && NDF_TEST(nf,NDF_INPLACE)) {
+    if (k==0 && CUMO_NDF_TEST(nf,CUMO_NDF_INPLACE)) {
         v = ndloop_find_inplace(nf,lp,type,cumo_na_ndim,cumo_na_shape,args);
     }
     if (!RTEST(v)) {
         // new object
         v = cumo_na_new(type, cumo_na_ndim, cumo_na_shape);
-        flag = NDL_WRITE;
+        flag = CUMO_NDL_WRITE;
     }
 
     j = lp->nin + k;
@@ -940,7 +940,7 @@ cumo_ndfunc_set_user_loop(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         // Increase user.ndim by number of dimensions to reduce for reduction function.
         ud = lp->reduce_dim;
     }
-    else if (lp->ndim > 0 && NDF_TEST(nf,NDF_HAS_LOOP)) {
+    else if (lp->ndim > 0 && CUMO_NDF_TEST(nf,CUMO_NDF_HAS_LOOP)) {
         // Set user.ndim to 1 (default is 0) for element-wise function.
         ud = 1;
     }
@@ -982,7 +982,7 @@ cumo_ndfunc_set_user_indexer_loop(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     lp->user.ndim = lp->ndim;
     lp->ndim = 0;
 
-    if (NDF_TEST(nf,NDF_FLAT_REDUCE)) {
+    if (CUMO_NDF_TEST(nf,CUMO_NDF_FLAT_REDUCE)) {
         // in
         LARG(lp,0).ndim = lp->user.ndim;
         LARG(lp,0).shape = &(lp->n[lp->ndim]);
@@ -1015,8 +1015,8 @@ cumo_ndfunc_set_user_indexer_loop(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 // Judge whether a (contiguous) buffer copy is required or not, and malloc if it is required.
 //
 // CASES TO REQUIRE A BUFFER COPY:
-// 1) ndloop has `idx` but does not support NDF_INDEX_LOOP.
-// 2) ndloop has non-contiguous arrays but does not support NDF_STRIDE_LOOP.
+// 1) ndloop has `idx` but does not support CUMO_NDF_INDEX_LOOP.
+// 2) ndloop has non-contiguous arrays but does not support CUMO_NDF_STRIDE_LOOP.
 static void
 cumo_ndfunc_set_bufcp(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
@@ -1195,7 +1195,7 @@ ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
         // i-th dimension
         for (; i<nd; i++) {
             if (LITER_SRC(lp,i).idx) {
-                SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_to_buffer", "any");
+                CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_to_buffer", "any");
                 cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).idx[c[i]];
             } else {
@@ -1318,7 +1318,7 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
     case 1:
         return RARRAY_AREF(results,0);
         // x = RARRAY_AREF(results,0);
-        // if (NDF_TEST(nf,NDF_EXTRACT)) {
+        // if (CUMO_NDF_TEST(nf,CUMO_NDF_EXTRACT)) {
         //     if (IsNArray(x)){
         //         GetNArray(x,na);
         //         if (NA_NDIM(na)==0) {
@@ -1328,7 +1328,7 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
         // }
         // return x;
     }
-    // if (NDF_TEST(nf,NDF_EXTRACT)) {
+    // if (CUMO_NDF_TEST(nf,CUMO_NDF_EXTRACT)) {
     //     n = RARRAY_LEN(results);
     //     for (i=0; i<n; i++) {
     //         x = RARRAY_AREF(results,i);
@@ -1390,7 +1390,7 @@ ndloop_run(VALUE vlp)
     //}
 
     // contract loop (compact dimessions)
-    if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE)) {
+    if (CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP) && CUMO_NDF_TEST(nf,CUMO_NDF_FLAT_REDUCE)) {
         // do nothing
         // TODO(sonots): support compacting dimensions in reduction indexer loop if it allows speed up.
     } else {
@@ -1404,7 +1404,7 @@ ndloop_run(VALUE vlp)
     }
 
     // setup lp->user
-    if (NDF_TEST(nf,NDF_INDEXER_LOOP)) {
+    if (CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP)) {
         cumo_ndfunc_set_user_indexer_loop(nf, lp);
         if (cumo_na_debug_flag) {
             printf("-- cumo_ndfunc_set_user_indexer_loop --\n");
@@ -1419,7 +1419,7 @@ ndloop_run(VALUE vlp)
     }
 
     // setup buffering during loop
-    if (NDF_TEST(nf,NDF_INDEXER_LOOP) && NDF_TEST(nf,NDF_FLAT_REDUCE) && !loop_is_using_idx(lp)) {
+    if (CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP) && CUMO_NDF_TEST(nf,CUMO_NDF_FLAT_REDUCE) && !loop_is_using_idx(lp)) {
         // do nothing
     } else {
         if (lp->loop_func == loop_narray) {
@@ -1459,7 +1459,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
     }
 
-    if (nd==0 || NDF_TEST(nf,NDF_INDEXER_LOOP)) {
+    if (nd==0 || CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP)) {
         for (j=0; j<lp->nin; j++) {
             if (lp->xargs[j].bufcp) {
                 //printf("copy_to_buffer j=%d\n",j);
@@ -1468,7 +1468,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         }
         (*(nf->func))(&(lp->user));
         for (j=0; j<lp->narg; j++) {
-            if (lp->xargs[j].bufcp && (lp->xargs[j].flag & NDL_WRITE)) {
+            if (lp->xargs[j].bufcp && (lp->xargs[j].flag & CUMO_NDL_WRITE)) {
                 //printf("copy_from_buffer j=%d\n",j);
                 // copy data to work buffer
                 ndloop_copy_from_buffer(lp->xargs[j].bufcp);
@@ -1505,7 +1505,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         }
         (*(nf->func))(&(lp->user));
         for (j=0; j<lp->narg; j++) {
-            if (lp->xargs[j].bufcp && (lp->xargs[j].flag & NDL_WRITE)) {
+            if (lp->xargs[j].bufcp && (lp->xargs[j].flag & CUMO_NDL_WRITE)) {
                 // copy data to work buffer
                 //printf("copy_from_buffer j=%d\n",j);
                 ndloop_copy_from_buffer(lp->xargs[j].bufcp);
@@ -1741,8 +1741,8 @@ cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
     cumo_na_md_loop_t lp;
     VALUE buf;
     cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
-    cumo_ndfunc_t nf = { (cumo_na_iter_func_t)func, NO_LOOP, 3, 0, ain, 0 };
-    //nf = cumo_ndfunc_alloc(NULL, NO_LOOP, 1, 0, Qnil);
+    cumo_ndfunc_t nf = { (cumo_na_iter_func_t)func, CUMO_NO_LOOP, 3, 0, ain, 0 };
+    //nf = cumo_ndfunc_alloc(NULL, CUMO_NO_LOOP, 1, 0, Qnil);
 
     buf = cumo_na_info_str(nary);
 
@@ -1792,7 +1792,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
         dim_map[i] = lp->trans_map[i+i0];
         //printf("dim_map[i=%d] = %d, i0=%d\n", i, dim_map[i], i0);
     }
-    ndloop_set_stepidx(lp, 1, a, dim_map, NDL_READ);
+    ndloop_set_stepidx(lp, 1, a, dim_map, CUMO_NDL_READ);
     LARG(lp,1).shape = &(na->shape[na->ndim-1]);
 
     // loop body
