@@ -10,7 +10,7 @@ static void
     CUMO_BIT_DIGIT  y;
 
     // TODO(sonots): CUDA kernelize
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     CUMO_INIT_COUNTER(lp, i);
