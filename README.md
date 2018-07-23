@@ -8,7 +8,7 @@ This library provides the benefit of speedup using GPU by replacing Numo with on
 
 ## Requirements
 
-* Ruby 2.0 or later
+* Ruby 2.5 or later
 * NVIDIA GPU Compute Capability 6.0 (Pascal) or later
 * CUDA 9.0 or later
 
