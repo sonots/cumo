@@ -1,4 +1,4 @@
-<% f = File.join(File.dirname(__FILE__), 'real_accum_kernel.cu'); ERB.new(File.read(f)).tap {|erb| erb.filename = f }.result(binding) %>
+<%= load_erb('real_accum').result(binding) %>
 
 #if defined(__cplusplus)
 #if 0
