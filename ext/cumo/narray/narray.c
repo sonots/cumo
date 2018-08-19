@@ -105,7 +105,7 @@ cumo_na_debug_info(VALUE self)
     cumo_narray_t *na;
     CumoGetNArray(self,na);
 
-    printf("%s:\n",rb_class2name(CLASS_OF(self)));
+    printf("%s:\n",rb_class2name(rb_obj_class(self)));
     printf("  id     = 0x%"PRI_VALUE_PREFIX"x\n", self);
     printf("  type   = %d\n", na->type);
     printf("  flag   = [%d,%d]\n", na->flag[0], na->flag[1]);
@@ -890,7 +890,7 @@ cumo_na_make_view(VALUE self)
     CumoGetNArray(self,na);
     nd = na->ndim;
 
-    view = cumo_na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(rb_obj_class(self));
 
     cumo_na_copy_flags(self, view);
     CumoGetNArrayView(view, na2);
@@ -1021,7 +1021,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
     CumoGetNArray(self,na);
     nd = na->ndim;
 
-    view = cumo_na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(rb_obj_class(self));
 
     cumo_na_copy_flags(self, view);
     CumoGetNArrayView(view, na2);
@@ -1121,7 +1121,7 @@ cumo_na_coerce(VALUE x, VALUE y)
 {
     VALUE type;
 
-    type = cumo_na_upcast(CLASS_OF(x), CLASS_OF(y));
+    type = cumo_na_upcast(rb_obj_class(x), rb_obj_class(y));
     y = rb_funcall(type,cumo_id_cast,1,y);
     return rb_assoc_new(y , x);
 }
@@ -1138,7 +1138,7 @@ cumo_na_byte_size(VALUE self)
     cumo_narray_t *na;
 
     CumoGetNArray(self,na);
-    velmsz = rb_const_get(CLASS_OF(self), cumo_id_element_byte_size);
+    velmsz = rb_const_get(rb_obj_class(self), cumo_id_element_byte_size);
     if (FIXNUM_P(velmsz)) {
         return SIZET2NUM(NUM2SIZET(velmsz) * na->size);
     }
@@ -1261,7 +1261,7 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
 
     CumoGetNArray(self,na);
     size = CUMO_NA_SIZE(na);
-    velmsz = rb_const_get(CLASS_OF(self), cumo_id_element_byte_size);
+    velmsz = rb_const_get(rb_obj_class(self), cumo_id_element_byte_size);
     if (FIXNUM_P(velmsz)) {
         byte_size = size * NUM2SIZET(velmsz);
     } else {
@@ -1325,7 +1325,7 @@ cumo_na_marshal_dump(VALUE self)
     rb_ary_push(a, INT2FIX(1));     // version
     rb_ary_push(a, cumo_na_shape(self));
     rb_ary_push(a, INT2FIX(CUMO_NA_FLAG0(self)));
-    if (CLASS_OF(self) == cumo_cRObject) {
+    if (rb_obj_class(self) == cumo_cRObject) {
         cumo_narray_t *na;
         VALUE *ptr;
         size_t offset=0;
@@ -1371,7 +1371,7 @@ cumo_na_marshal_load(VALUE self, VALUE a)
     cumo_na_initialize(self,RARRAY_AREF(a,1));
     CUMO_NA_FL0_SET(self,FIX2INT(RARRAY_AREF(a,2)));
     v = RARRAY_AREF(a,3);
-    if (CLASS_OF(self) == cumo_cRObject) {
+    if (rb_obj_class(self) == cumo_cRObject) {
         cumo_narray_t *na;
         char *ptr;
         if (TYPE(v) != T_ARRAY) {
@@ -1779,7 +1779,7 @@ cumo_na_equal(VALUE self, volatile VALUE other)
     CumoGetNArray(self,na1);
 
     if (!rb_obj_is_kind_of(other,cNArray)) {
-        other = rb_funcall(CLASS_OF(self), cumo_id_cast, 1, other);
+        other = rb_funcall(rb_obj_class(self), cumo_id_cast, 1, other);
     }
 
     CumoGetNArray(other,na2);

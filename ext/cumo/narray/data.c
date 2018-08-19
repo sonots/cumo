@@ -462,7 +462,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
     shape[sd] = size;
 
     // new object
-    view = cumo_na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(rb_obj_class(self));
     cumo_na_copy_flags(self, view);
     CumoGetNArrayView(view, na2);
 
@@ -685,7 +685,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
     shape[k] = diag_size;
 
     // new object
-    view = cumo_na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(rb_obj_class(self));
     cumo_na_copy_flags(self, view);
     CumoGetNArrayView(view, na2);
 
@@ -798,7 +798,7 @@ cumo_na_new_dimension_for_dot(VALUE self, int pos, int len, bool transpose)
     CumoGetNArray(self,na);
     nd = na->ndim;
 
-    view = cumo_na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(rb_obj_class(self));
 
     cumo_na_copy_flags(self, view);
     CumoGetNArrayView(view, na2);

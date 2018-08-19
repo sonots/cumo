@@ -171,7 +171,7 @@ static VALUE
             return <%=c_func%>_32(self, length);
         }
     } else {
-        wclass = CLASS_OF(weight);
+        wclass = rb_obj_class(weight);
         if (wclass == cumo_cSFloat) {
             return <%=c_func%>_sf(self, weight, length);
         } else {
