@@ -32,7 +32,19 @@ module MakeMakefileCuda
     # TODO(sonots): Make it possible to configure "nvcc" and additional arguments
     def nvcc_command
       s = MakeMakefileCuda::Nvcc.generate(argv)
-      ["nvcc " << s << " -arch=sm_35"]
+      cmd = "nvcc " << s
+      if ENV['CUMO_NVCC_GENERATE_CODE']
+        cmd << " --generate-code=#{ENV['CUMO_NVCC_GENERATE_CODE']}"
+      elsif ENV['DEBUG']
+        cmd << " -arch=sm_35"
+      else
+        cmd << " --generate-code=arch=compute_35,code=sm_35"
+        cmd << " --generate-code=arch=compute_50,code=sm_50"
+        cmd << " --generate-code=arch=compute_60,code=sm_60"
+        cmd << " --generate-code=arch=compute_70,code=sm_70"
+        cmd << " --generate-code=arch=compute_70,code=compute_70"
+      end
+      cmd
     end
 
     def c_command
