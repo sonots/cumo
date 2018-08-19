@@ -220,6 +220,14 @@ bundle exec gdb -x run.gdb --args ruby test/narray_test.rb
 
 You may put a breakpoint by calling `cumo_debug_breakpoint()` at C source codes.
 
+### Specify nvcc --generate-code options
+
+```
+bundle exec CUMO_NVCC_GENERATE_CODE=arch=compute_60,sm_60 rake compile
+```
+
+This is useful even on development because it makes possible to skip JIT compilation of PTX to cubin occurring on runtime.
+
 ### Run program always synchronizing CPU and GPU
 
 ```
