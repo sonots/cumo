@@ -184,25 +184,21 @@ ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/g++"
 ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/nvcc"
 ```
 
-## Run tests only a specific line
+### Build in parallel
 
-`--location` option is available as:
-
-```
-bundle exec ruby test/narray_test.rb --location 121
-```
-
-### Compile and run tests only a specific type
-
-`DTYPE` environment variable is available as:
+Use `MAKEFLAGS` environment variable to specify `make` command options. You can build in parallel as:
 
 ```
-bundle exec DTYPE=dfloat rake compile
+bundle exec MAKEFLAG=-j8 rake compile
 ```
 
+### Specify nvcc --generate-code options
+
 ```
-bundle exec DTYPE=dfloat ruby test/narray_test.rb
+bundle exec CUMO_NVCC_GENERATE_CODE=arch=compute_60,sm_60 rake compile
 ```
+
+This is useful even on development because it makes possible to skip JIT compilation of PTX to cubin occurring on runtime.
 
 ### Run tests with gdb
 
@@ -220,13 +216,24 @@ bundle exec gdb -x run.gdb --args ruby test/narray_test.rb
 
 You may put a breakpoint by calling `cumo_debug_breakpoint()` at C source codes.
 
-### Specify nvcc --generate-code options
+### Run tests only a specific line 
+`--location` option is available as:
 
 ```
-bundle exec CUMO_NVCC_GENERATE_CODE=arch=compute_60,sm_60 rake compile
+bundle exec ruby test/narray_test.rb --location 121
 ```
 
-This is useful even on development because it makes possible to skip JIT compilation of PTX to cubin occurring on runtime.
+### Compile and run tests only a specific type
+
+`DTYPE` environment variable is available as:
+
+```
+bundle exec DTYPE=dfloat rake compile
+```
+
+```
+bundle exec DTYPE=dfloat ruby test/narray_test.rb
+```
 
 ### Run program always synchronizing CPU and GPU
 
