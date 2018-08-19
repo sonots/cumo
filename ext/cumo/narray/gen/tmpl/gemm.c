@@ -27,7 +27,7 @@
 #define COL_SIZE(na) ((na)->shape[(na)->ndim-1])
 
 #define CHECK_NARRAY_TYPE(x,t)                                 \
-    if (CLASS_OF(x)!=(t)) {                                    \
+    if (rb_obj_class(x)!=(t)) {                                    \
         rb_raise(rb_eTypeError,"invalid NArray type (class)"); \
     }
 
@@ -93,7 +93,7 @@
 
 #define COPY_OR_CAST_TO(a,T)                            \
     {                                                   \
-        if (CLASS_OF(a) == (T)) {                       \
+        if (rb_obj_class(a) == (T)) {                       \
             if (!CUMO_TEST_INPLACE(a)) {                     \
                 a = cumo_na_copy(a);                    \
             }                                           \

@@ -107,7 +107,7 @@ static VALUE
     g.idx0 = NULL;
     cumo_na_ndloop3(&ndf, &g, 2, mask, val);
 
-    view = cumo_na_s_allocate_view(CLASS_OF(val));
+    view = cumo_na_s_allocate_view(rb_obj_class(val));
     CumoGetNArrayView(view, nv);
     cumo_na_setup_shape((cumo_narray_t*)nv, 1, &n_1);
 

@@ -214,7 +214,7 @@ ndloop_func_loop_spec(cumo_ndfunc_t *nf, int user_ndim)
 static int
 ndloop_cast_required(VALUE type, VALUE value)
 {
-    return CASTABLE(type) && type != CLASS_OF(value);
+    return CASTABLE(type) && type != rb_obj_class(value);
 }
 
 static int
@@ -664,7 +664,7 @@ ndloop_check_inplace(VALUE type, int cumo_na_ndim, size_t *cumo_na_shape, VALUE 
     cumo_narray_t *na;
 
     // type check
-    if (type != CLASS_OF(v)) {
+    if (type != rb_obj_class(v)) {
         return 0;
     }
     CumoGetNArray(v,na);
@@ -731,7 +731,7 @@ ndloop_get_arg_type(cumo_ndfunc_t *nf, VALUE args, VALUE t)
         t = nf->ain[i].type;
         // if i-th type is Qnil, get the type of i-th input value
         if (!CASTABLE(t)) {
-            t = CLASS_OF(RARRAY_AREF(args,i));
+            t = rb_obj_class(RARRAY_AREF(args,i));
         }
     }
     return t;
@@ -1628,7 +1628,7 @@ cumo_na_info_str(VALUE ary)
     CumoGetNArray(ary,na);
     nd = na->ndim;
 
-    buf = rb_str_new2(rb_class2name(CLASS_OF(ary)));
+    buf = rb_str_new2(rb_class2name(rb_obj_class(ary)));
     if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
         rb_str_cat(buf,"(view)",6);
     }
@@ -1778,8 +1778,8 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     int *dim_map;
     VALUE a_type;
 
-    a_type = CLASS_OF(LARG(lp,0).value);
-    if (CLASS_OF(a) != a_type) {
+    a_type = rb_obj_class(LARG(lp,0).value);
+    if (rb_obj_class(a) != a_type) {
         a = rb_funcall(a_type, cumo_id_cast, 1, a);
     }
     CumoGetNArray(a,na);

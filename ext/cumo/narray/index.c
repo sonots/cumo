@@ -576,7 +576,7 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
     } else {
         ndim_new = cumo_na_ndim_new_narray(ndim, q);
     }
-    view = cumo_na_s_allocate_view(CLASS_OF(self));
+    view = cumo_na_s_allocate_view(rb_obj_class(self));
 
     cumo_na_copy_flags(self, view);
     CumoGetNArrayView(view,na2);
@@ -652,7 +652,7 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
         if (rb_obj_is_kind_of(idx, cumo_cNArray)) {
             CumoGetNArray(idx,nidx);
             if (CUMO_NA_NDIM(nidx)>1) {
-                store = cumo_na_new(CLASS_OF(self),CUMO_NA_NDIM(nidx),CUMO_NA_SHAPE(nidx));
+                store = cumo_na_new(rb_obj_class(self),CUMO_NA_NDIM(nidx),CUMO_NA_SHAPE(nidx));
                 idx = cumo_na_flatten(idx);
                 RARRAY_ASET(args,0,idx);
             }
@@ -703,7 +703,7 @@ cumo_na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd,
         return rb_funcall(self,cumo_id_dup,0);
     }
     if (nidx==1) {
-        if (CLASS_OF(*idx)==cumo_cBit) {
+        if (rb_obj_class(*idx)==cumo_cBit) {
             return rb_funcall(*idx,cumo_id_mask,1,self);
         }
     }
