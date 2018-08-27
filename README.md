@@ -5,6 +5,7 @@
 Cumo (pronounced like "koomo") is CUDA-aware numerical library whose interface is highly compatible with [Ruby Numo](https://github.com/ruby-numo).
 This library provides the benefit of speedup using GPU by replacing Numo with only a small piece of codes.
 
+<img src="https://raw.githubusercontent.com/sonots/cumo-logo/master/logo_transparent.png" alt="cumo logo" title="cumo logo" width="50%">
 
 ## Requirements
 
