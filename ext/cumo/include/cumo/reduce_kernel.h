@@ -54,7 +54,9 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, int out_blo
         for (int64_t i_reduce = reduce_offset; i_reduce < reduce_indexer_total_size; i_reduce += reduce_block_size, i_in += reduce_block_size) {
             cumo_na_indexer_set_dim(&in_indexer, i_in);
             TypeIn* in_ptr = reinterpret_cast<TypeIn*>(cumo_na_iarray_at_dim(&in_iarray, &in_indexer));
-            impl.Reduce(impl.MapIn(*in_ptr, i_reduce), accum);
+            // Note that spec of (min|max)_index of cumo is different with arg(min|max) of cupy.
+            // Cumo returns index of input elements, CuPy returns index of reduction axis.
+            impl.Reduce(impl.MapIn(*in_ptr, in_ptr - reinterpret_cast<TypeIn*>(in_iarray.ptr)), accum);
             //printf("threadId.x:%d blockIdx.x:%d blockDim.x:%d gridDim.x:%d accum:%d i_in:%ld i_reduce:%ld i_out:%ld in:%p(%d)\n", threadIdx.x, blockIdx.x, blockDim.x, gridDim.x, accum, i_in, i_reduce, i_out, in_ptr, *in_ptr);
         }
 
