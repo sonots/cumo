@@ -9,6 +9,9 @@
 
 namespace cumo_detail {
 
+static constexpr int64_t max_block_size = 512;
+static constexpr int64_t max_grid_size = 0x7fffffff;
+
 static inline int64_t round_up_to_power_of_2(int64_t x) {
     --x;
     x |= x >> 1;
@@ -20,111 +23,84 @@ static inline int64_t round_up_to_power_of_2(int64_t x) {
     return x + 1;
 }
 
-#define _REDUCE(offset) \
-    if (tid < offset) { \
-        impl.Reduce(sdata[(tid + offset)], sdata[tid]); \
-    }
-
 // reference: cupy reduction kernel
 
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-__global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, ReductionImpl impl) {
+__global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, int out_block_size, int reduce_block_size, ReductionImpl impl) {
     cumo_na_iarray_t& in_iarray = arg.in;
     cumo_na_iarray_t& out_iarray = arg.out;
     cumo_na_indexer_t& in_indexer = arg.in_indexer;
     cumo_na_indexer_t& out_indexer = arg.out_indexer;
-    cumo_na_indexer_t& reduce_indexer = arg.reduce_indexer;
 
     using TypeReduce = decltype(impl.Identity());
 
     extern __shared__ __align__(8) char sdata_raw[];
-    TypeReduce* sdata = (TypeReduce*)sdata_raw;
+    TypeReduce* sdata = reinterpret_cast<TypeReduce*>(sdata_raw);
     unsigned int tid = threadIdx.x;
-    unsigned int block_size = blockDim.x;  // number of threads
 
-    for (uint64_t i_out = blockIdx.x; i_out < out_indexer.total_size; i_out += gridDim.x) {
+    int64_t reduce_block_offset = tid / out_block_size;
+    int64_t reduce_offset = reduce_block_offset * out_indexer.total_size;
+    int64_t reduce_stride = reduce_block_size * out_indexer.total_size;
+
+    int64_t out_offset = tid % out_block_size;
+    int64_t out_base = blockIdx.x * out_block_size;
+    int64_t out_stride = gridDim.x * out_block_size;
+
+    for (int64_t i_out = out_base + out_offset; i_out < out_indexer.total_size; i_out += out_stride) {
         cumo_na_indexer_set_dim(&out_indexer, i_out);
         TypeReduce accum = impl.Identity();
 
-        for (int8_t i_out_dim = 0; i_out_dim < out_indexer.ndim; ++i_out_dim) {
-            in_indexer.index[i_out_dim] = out_indexer.index[i_out_dim];
-        }
-        for (auto i_reduce = tid; i_reduce < reduce_indexer.total_size; i_reduce += block_size) {
-            cumo_na_indexer_set_dim(&reduce_indexer, i_reduce);
-            for (int8_t i_reduce_dim = 0; i_reduce_dim < reduce_indexer.ndim; ++i_reduce_dim) {
-                in_indexer.index[out_indexer.ndim + i_reduce_dim] = reduce_indexer.index[i_reduce_dim];
-            }
+        int64_t i_reduce = reduce_block_offset;
+        for (int64_t i_in = i_out + reduce_offset; i_in < in_indexer.total_size; i_in += reduce_stride, i_reduce += reduce_block_size) {
+            cumo_na_indexer_set_dim(&in_indexer, i_in);
             TypeIn* in_ptr = reinterpret_cast<TypeIn*>(cumo_na_iarray_at_dim(&in_iarray, &in_indexer));
-            uint64_t i_in = in_ptr - reinterpret_cast<TypeIn*>(in_iarray.ptr);
             impl.Reduce(impl.MapIn(*in_ptr, i_in), accum);
         }
 
-        if (block_size >= 2) {
+        if (out_block_size <= max_block_size / 2) {
             sdata[tid] = accum;
             __syncthreads();
-
-            if (block_size > 2) {
-                if (block_size > 4) {
-                    if (block_size > 8) {
-                        if (block_size > 16) {
-                            if (block_size > 32) {
-                                if (block_size > 64) {
-                                    if (block_size > 128) {
-                                        if (block_size > 256) {
-                                            _REDUCE(256);
-                                            __syncthreads();
-                                        }
-                                        _REDUCE(128);
-                                        __syncthreads();
-                                    }
-                                    _REDUCE(64);
-                                    __syncthreads();
-                                }
-                                _REDUCE(32);
-                                __syncthreads();
-                            }
-                            _REDUCE(16);
-                            __syncthreads();
-                        }
-                        _REDUCE(8);
-                        __syncthreads();
+            // NOTE: Compiler optimizes to unroll this loop
+            for (int stride = max_block_size / 2; stride > 0; stride >>= 1) {
+                if (out_block_size <= stride) {
+                    if (tid < stride) {
+                        impl.Reduce(sdata[tid + stride], sdata[tid]);
                     }
-                    _REDUCE(4);
                     __syncthreads();
                 }
-                _REDUCE(2);
-                __syncthreads();
             }
-            _REDUCE(1);
-            accum = sdata[0];
+            accum = sdata[tid];
+            __syncthreads();
         }
-        if (tid == 0) {
+        if (reduce_block_offset == 0 && i_out < out_indexer.total_size) {
             TypeOut* out_ptr = reinterpret_cast<TypeOut*>(cumo_na_iarray_at_dim(&out_iarray, &out_indexer));
             *out_ptr = impl.MapOut(accum);
-            //printf("threadId.x:%d blockIdx.x:%d blockDim.x:%d gridDim.x:%d block_size:%d accum:%d out:%p(%d)\n", threadIdx.x, blockIdx.x, blockDim.x, gridDim.x, block_size, accum, out_ptr, *out_ptr);
         }
     }
 }
 
-#undef _REDUCE
-
-static constexpr size_t max_block_size = 512;
-
 }  // cumo_detail
 
+// TODO(sonots): Optimize indexer by squashing (or reducing) dimensions
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
 void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
+    cumo_na_indexer_t& in_indexer = arg.in_indexer;
     cumo_na_indexer_t& out_indexer = arg.out_indexer;
-    cumo_na_indexer_t& reduce_indexer = arg.reduce_indexer;
 
-    using TypeReduce = decltype(impl.Identity());
+    if (out_indexer.total_size == 0) {
+        return;
+    }
 
-    size_t block_size = cumo_detail::round_up_to_power_of_2(std::max(int64_t{1}, static_cast<int64_t>(reduce_indexer.total_size)));
-    block_size = std::min(cumo_detail::max_block_size, block_size);
-    size_t grid_size = out_indexer.total_size;
-    size_t shared_mem_size = sizeof(TypeReduce) * block_size;
+    int64_t reduce_total_size_pow2 = cumo_detail::round_up_to_power_of_2(std::max(size_t{1}, in_indexer.total_size / out_indexer.total_size));
+    int64_t reduce_block_size = std::min(cumo_detail::max_block_size, reduce_total_size_pow2);
+    int64_t out_block_size = cumo_detail::max_block_size / reduce_block_size;
+    int64_t out_block_num = (out_indexer.total_size + out_block_size - 1) / out_block_size;
 
-    cumo_detail::reduction_kernel<TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, impl);
+    int64_t block_size = cumo_detail::max_block_size;
+    int64_t grid_size = std::min(cumo_detail::max_grid_size, out_block_num);
+    int64_t shared_mem_size = sizeof(decltype(impl.Identity())) * block_size;
+
+    cumo_detail::reduction_kernel<TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, out_block_size, reduce_block_size, impl);
 }
 
 #endif // CUMO_REDUCE_KERNEL_H
