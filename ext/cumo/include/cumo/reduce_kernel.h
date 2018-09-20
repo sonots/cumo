@@ -54,7 +54,8 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, int out_blo
         for (int64_t i_in = i_out + reduce_offset; i_in < in_indexer.total_size; i_in += reduce_stride, i_reduce += reduce_block_size) {
             cumo_na_indexer_set_dim(&in_indexer, i_in);
             TypeIn* in_ptr = reinterpret_cast<TypeIn*>(cumo_na_iarray_at_dim(&in_iarray, &in_indexer));
-            impl.Reduce(impl.MapIn(*in_ptr, i_in), accum);
+            impl.Reduce(impl.MapIn(*in_ptr, i_reduce), accum);
+            printf("threadId.x:%d blockIdx.x:%d blockDim.x:%d gridDim.x:%d accum:%d i_in:%ld i_reduce:%ld i_out:%ld in:%p(%d)\n", threadIdx.x, blockIdx.x, blockDim.x, gridDim.x, accum, i_in, i_reduce, i_out, in_ptr, *in_ptr);
         }
 
         if (out_block_size <= max_block_size / 2) {
@@ -75,6 +76,7 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, int out_blo
         if (reduce_block_offset == 0 && i_out < out_indexer.total_size) {
             TypeOut* out_ptr = reinterpret_cast<TypeOut*>(cumo_na_iarray_at_dim(&out_iarray, &out_indexer));
             *out_ptr = impl.MapOut(accum);
+            printf("threadId.x:%d blockIdx.x:%d blockDim.x:%d gridDim.x:%d accum:%d i_out:%ld out:%p(%d)\n", threadIdx.x, blockIdx.x, blockDim.x, gridDim.x, accum, i_out, out_ptr, *out_ptr);
         }
     }
 }
