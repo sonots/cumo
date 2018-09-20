@@ -23,7 +23,8 @@ static inline int64_t round_up_to_power_of_2(int64_t x) {
     return x + 1;
 }
 
-// reference: cupy reduction kernel
+// Reference: cupy reduction kernel
+// Note that reduction and out axis are inverse with cupy. Former axes are out axes, latters are reduce axes.
 
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
 __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, int out_block_size, int reduce_block_size, ReductionImpl impl) {
@@ -38,24 +39,23 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, int out_blo
     TypeReduce* sdata = reinterpret_cast<TypeReduce*>(sdata_raw);
     unsigned int tid = threadIdx.x;
 
-    int64_t reduce_block_offset = tid / out_block_size;
-    int64_t reduce_offset = reduce_block_offset * out_indexer.total_size;
-    int64_t reduce_stride = reduce_block_size * out_indexer.total_size;
+    int64_t reduce_indexer_total_size = in_indexer.total_size / out_indexer.total_size;
+    int64_t reduce_offset = tid / out_block_size; // # of cols == # of elems
 
-    int64_t out_offset = tid % out_block_size;
-    int64_t out_base = blockIdx.x * out_block_size;
-    int64_t out_stride = gridDim.x * out_block_size;
+    int64_t out_offset = tid % out_block_size; // # of rows
+    int64_t out_base = blockIdx.x * out_block_size; // # of rows
+    int64_t out_stride = gridDim.x * out_block_size; // # of rows
 
     for (int64_t i_out = out_base + out_offset; i_out < out_indexer.total_size; i_out += out_stride) {
         cumo_na_indexer_set_dim(&out_indexer, i_out);
         TypeReduce accum = impl.Identity();
 
-        int64_t i_reduce = reduce_block_offset;
-        for (int64_t i_in = i_out + reduce_offset; i_in < in_indexer.total_size; i_in += reduce_stride, i_reduce += reduce_block_size) {
+        int64_t i_in = i_out * reduce_indexer_total_size + reduce_offset;
+        for (int64_t i_reduce = reduce_offset; i_reduce < reduce_indexer_total_size; i_reduce += reduce_block_size, i_in += reduce_block_size) {
             cumo_na_indexer_set_dim(&in_indexer, i_in);
             TypeIn* in_ptr = reinterpret_cast<TypeIn*>(cumo_na_iarray_at_dim(&in_iarray, &in_indexer));
             impl.Reduce(impl.MapIn(*in_ptr, i_reduce), accum);
-            printf("threadId.x:%d blockIdx.x:%d blockDim.x:%d gridDim.x:%d accum:%d i_in:%ld i_reduce:%ld i_out:%ld in:%p(%d)\n", threadIdx.x, blockIdx.x, blockDim.x, gridDim.x, accum, i_in, i_reduce, i_out, in_ptr, *in_ptr);
+            //printf("threadId.x:%d blockIdx.x:%d blockDim.x:%d gridDim.x:%d accum:%d i_in:%ld i_reduce:%ld i_out:%ld in:%p(%d)\n", threadIdx.x, blockIdx.x, blockDim.x, gridDim.x, accum, i_in, i_reduce, i_out, in_ptr, *in_ptr);
         }
 
         if (out_block_size <= max_block_size / 2) {
@@ -73,10 +73,10 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, int out_blo
             accum = sdata[tid];
             __syncthreads();
         }
-        if (reduce_block_offset == 0 && i_out < out_indexer.total_size) {
+        if (reduce_offset == 0 && i_out < out_indexer.total_size) {
             TypeOut* out_ptr = reinterpret_cast<TypeOut*>(cumo_na_iarray_at_dim(&out_iarray, &out_indexer));
             *out_ptr = impl.MapOut(accum);
-            printf("threadId.x:%d blockIdx.x:%d blockDim.x:%d gridDim.x:%d accum:%d i_out:%ld out:%p(%d)\n", threadIdx.x, blockIdx.x, blockDim.x, gridDim.x, accum, i_out, out_ptr, *out_ptr);
+            //printf("threadId.x:%d blockIdx.x:%d blockDim.x:%d gridDim.x:%d accum:%d i_out:%ld out:%p(%d)\n", threadIdx.x, blockIdx.x, blockDim.x, gridDim.x, accum, i_out, out_ptr, *out_ptr);
         }
     }
 }
