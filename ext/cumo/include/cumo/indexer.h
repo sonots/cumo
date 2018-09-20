@@ -35,7 +35,6 @@ typedef struct {
     cumo_na_iarray_t out;
     cumo_na_indexer_t in_indexer;
     cumo_na_indexer_t out_indexer;
-    cumo_na_indexer_t reduce_indexer;
 } cumo_na_reduction_arg_t;
 
 #ifndef __CUDACC__
@@ -78,8 +77,6 @@ print_cumo_na_reduction_arg_t(cumo_na_reduction_arg_t* arg)
     print_cumo_na_indexer_t(&arg->in_indexer);
     printf("--out_indexer--\n");
     print_cumo_na_indexer_t(&arg->out_indexer);
-    printf("--reduce_indexer--\n");
-    print_cumo_na_indexer_t(&arg->reduce_indexer);
     printf("}\n");
 }
 
@@ -129,16 +126,10 @@ cumo_na_make_reduction_arg(cumo_na_loop_t* lp_user)
     arg.in = cumo_na_make_iarray(&lp_user->args[0]);
     arg.in_indexer = cumo_na_make_indexer(&lp_user->args[0]);
 
-    arg.reduce_indexer.ndim = 0;
-    arg.reduce_indexer.total_size = 1;
     arg.out_indexer.ndim = 0;
     arg.out_indexer.total_size = 1;
     for (i = 0; i < in_ndim; ++i) {
-        if (cumo_na_test_reduce(lp_user->reduce, i)) {
-            arg.reduce_indexer.shape[arg.reduce_indexer.ndim] = arg.in_indexer.shape[i];
-            arg.reduce_indexer.total_size *= arg.in_indexer.shape[i];
-            ++arg.reduce_indexer.ndim;
-        } else {
+        if (!cumo_na_test_reduce(lp_user->reduce, i)) {
             arg.out_indexer.shape[arg.out_indexer.ndim] = arg.in_indexer.shape[i];
             arg.out_indexer.total_size *= arg.in_indexer.shape[i];
             ++arg.out_indexer.ndim;
@@ -149,9 +140,6 @@ cumo_na_make_reduction_arg(cumo_na_loop_t* lp_user)
     if (cumo_na_debug_flag) {
         print_cumo_na_reduction_arg_t(&arg);
     }
-
-    assert(arg.reduce_indexer.ndim == lp_user->reduce_dim);
-    assert(arg.in_indexer.ndim == arg.reduce_indexer.ndim + arg.out_indexer.ndim);
 
     return arg;
 }
