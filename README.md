@@ -196,7 +196,7 @@ bundle exec MAKEFLAG=-j8 rake compile
 ### Specify nvcc --generate-code options
 
 ```
-bundle exec CUMO_NVCC_GENERATE_CODE=arch=compute_60,sm_60 rake compile
+bundle exec env CUMO_NVCC_GENERATE_CODE=arch=compute_60,code=sm_60 rake compile
 ```
 
 This is useful even on development because it makes possible to skip JIT compilation of PTX to cubin occurring on runtime.
