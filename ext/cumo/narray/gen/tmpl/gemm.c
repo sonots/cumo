@@ -206,6 +206,8 @@ static void
     cublasHandle_t handle = 0;
     cublasStatus_t status = 0;
     cumo_narray_t* nc;
+    int stridec = 0;
+    int batch_count = 0;
 
     // Note that cuBLAS uses the column major matrix representation.
     // We use technic which following site describes:
@@ -222,8 +224,8 @@ static void
     b_layout = make_gemm_layout(b);
 
     CumoGetNArray(c, nc);
-    int stridec = ROW_SIZE(nc) * COL_SIZE(nc);
-    int batch_count = CUMO_NA_SIZE(nc) / stridec;
+    stridec = ROW_SIZE(nc) * COL_SIZE(nc);
+    batch_count = CUMO_NA_SIZE(nc) / stridec;
 
     if (cumo_na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
     handle = cumo_cuda_cublas_handle();
