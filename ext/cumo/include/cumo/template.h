@@ -147,10 +147,16 @@ cumo_is_aligned_step(const ssize_t step, const size_t alignment)
 
 #define CUMO_SHOW_WARNING_ONCE( c_str ) \
     { \
-        static bool show_warning = true; \
-        if (show_warning) { \
-            fprintf(stderr, (c_str)); \
-            show_warning = false; \
+        if (cumo_show_warning_enabled_p()) { \
+            if (cumo_warning_once_enabled_p()) { \
+                static bool show_warning = true; \
+                if (show_warning) { \
+                    fprintf(stderr, (c_str)); \
+                    show_warning = false; \
+                } \
+            } else { \
+                fprintf(stderr, (c_str)); \
+            } \
         } \
     }
 

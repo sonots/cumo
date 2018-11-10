@@ -47,6 +47,20 @@ bool cumo_compatible_mode_enabled_p()
     return cumo_compatible_mode_enabled;
 }
 
+static bool cumo_show_warning_enabled;
+
+bool cumo_show_warning_enabled_p()
+{
+    return cumo_show_warning_enabled;
+}
+
+static bool cumo_warning_once_enabled;
+
+bool cumo_warning_once_enabled_p()
+{
+    return cumo_warning_once_enabled;
+}
+
 /*
   Enable Numo NArray compatible mode.
 
@@ -109,6 +123,14 @@ Init_cumo()
     // default is false
     env = getenv("CUMO_COMPATIBLE_MODE");
     cumo_compatible_mode_enabled = (env != NULL && strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
+
+    // default is true
+    env = getenv("CUMO_SHOW_WARNING");
+    cumo_show_warning_enabled = env == NULL || (strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
+
+    // default is true
+    env = getenv("CUMO_WARNING_ONCE");
+    cumo_warning_once_enabled = env == NULL || (strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
 
     Init_cumo_narray();
 

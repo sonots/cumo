@@ -190,7 +190,7 @@ ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/nvcc"
 Use `MAKEFLAGS` environment variable to specify `make` command options. You can build in parallel as:
 
 ```
-bundle exec MAKEFLAG=-j8 rake compile
+bundle exec env MAKEFLAG=-j8 rake compile
 ```
 
 ### Specify nvcc --generate-code options
@@ -240,6 +240,23 @@ bundle exec DTYPE=dfloat ruby test/narray_test.rb
 
 ```
 bundle exec CUDA_LAUNCH_BLOCKING=1
+```
+
+### Disable Cumo warnings
+
+As default, cumo shows some warnings once for each.
+
+It is possible to disable by followings:
+
+```
+export CUMO_SHOW_WARNING=OFF
+```
+
+You may want to show warnings everytime rather than once:
+
+```
+export CUMO_SHOW_WARNING=ON
+export CUMO_WARNING_ONCE=OFF
 ```
 
 ## Contributing
