@@ -92,7 +92,6 @@ static void
     <%=shift_set%>
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     if (idx1) {
         for (; i--;) {
