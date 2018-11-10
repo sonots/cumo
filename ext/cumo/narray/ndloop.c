@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"

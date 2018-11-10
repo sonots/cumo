@@ -1,5 +1,6 @@
 #include <string.h>
 #include <ruby.h>
+#include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/cuda/runtime.h"
 #include "cumo/template.h"
