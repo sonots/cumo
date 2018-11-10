@@ -16,7 +16,7 @@ get_cublas_error_msg(cublasStatus_t error) {
     switch (error) {
 #define RETURN_MSG(msg) \
     case msg:                              \
-        return #msg
+        return (char*)#msg
 
         RETURN_MSG(CUBLAS_STATUS_SUCCESS);
         RETURN_MSG(CUBLAS_STATUS_NOT_INITIALIZED);
@@ -47,6 +47,7 @@ cublasHandle_t
 cumo_cuda_cublas_handle()
 {
     static cublasHandle_t *handles = 0;  // handle is never destroyed
+    int device;
     if (handles == 0) {
         int i;
         int device_count = cumo_cuda_runtime_get_device_count();
@@ -55,7 +56,7 @@ cumo_cuda_cublas_handle()
             handles[i] = 0;
         }
     }
-    int device = cumo_cuda_runtime_get_device();
+    device = cumo_cuda_runtime_get_device();
     if (handles[device] == 0) {
         cublasCreate(&handles[device]);
     }

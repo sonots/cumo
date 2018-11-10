@@ -387,6 +387,9 @@ rb_cuModuleUnload(VALUE self, VALUE hmod)
 void
 Init_cumo_cuda_driver()
 {
+    CUdevice cuDevice;
+    CUcontext context;
+
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     mDriver = rb_define_module_under(mCUDA, "Driver");
@@ -413,8 +416,6 @@ Init_cumo_cuda_driver()
     rb_define_const(mDriver, "CU_JIT_INPUT_OBJECT", INT2NUM(CU_JIT_INPUT_OBJECT));
     rb_define_const(mDriver, "CU_JIT_INPUT_PTX", INT2NUM(CU_JIT_INPUT_PTX));
 
-    CUdevice cuDevice;
-    CUcontext context;
     cuInit(0);
     cuDeviceGet(&cuDevice, 0);
     cuCtxCreate(&context, 0, cuDevice);
