@@ -145,25 +145,4 @@ cumo_is_aligned_step(const ssize_t step, const size_t alignment)
     return ((step) & ((alignment)-1)) == 0;
 }
 
-#define CUMO_SHOW_WARNING_ONCE( c_str ) \
-    { \
-        if (cumo_show_warning_enabled_p()) { \
-            if (cumo_warning_once_enabled_p()) { \
-                static bool show_warning = true; \
-                if (show_warning) { \
-                    fprintf(stderr, (c_str)); \
-                    show_warning = false; \
-                } \
-            } else { \
-                fprintf(stderr, (c_str)); \
-            } \
-        } \
-    }
-
-#define CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE( func_name, type_name ) \
-    CUMO_SHOW_WARNING_ONCE("Warning: FIXME: Method \"" func_name "\" for dtype \"" type_name "\" synchronizes with CPU.\n")
-
-#define CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE( func_name, type_name ) \
-    CUMO_SHOW_WARNING_ONCE("Warning: Method \"" func_name "\" for dtype \"" type_name "\" synchronizes with CPU.\n")
-
 #endif /* ifndef CUMO_TEMPLATE_H */
