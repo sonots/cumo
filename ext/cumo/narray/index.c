@@ -664,12 +664,7 @@ cumo_na_aref_md_ensure(VALUE data_value)
     cumo_na_aref_md_data_t *data = (cumo_na_aref_md_data_t*)(data_value);
     int i;
     for (i=0; i<data->ndim; i++) {
-        if (cumo_cuda_runtime_is_device_memory(data->q[i].idx)) {
-            cumo_cuda_runtime_free((char*)(data->q[i].idx));
-        } else {
-            // TODO(sonots): Remove xfree path
-            xfree(data->q[i].idx);
-        }
+        cumo_cuda_runtime_free((char*)(data->q[i].idx));
     }
     if (data->q) xfree(data->q);
     return Qnil;

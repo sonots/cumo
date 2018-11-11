@@ -168,12 +168,8 @@ cumo_na_view_free(void* ptr)
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
             if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
-                void *p = CUMO_SDX_GET_INDEX(na->stridx[i]);
-                if (cumo_cuda_runtime_is_device_memory(p)) {
-                    cumo_cuda_runtime_free(p);
-                } else {
-                    xfree(p);
-                }
+                void *idx = CUMO_SDX_GET_INDEX(na->stridx[i]);
+                cumo_cuda_runtime_free(idx);
             }
         }
         xfree(na->stridx);
