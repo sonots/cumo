@@ -162,13 +162,14 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
     q->orig_dim = orig_dim;
 }
 
+// copy narray to idx
 static void
 cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
     VALUE idx;
     cumo_narray_t *na;
     cumo_narray_data_t *nidx;
-    size_t k, n;
+    size_t n;
     ssize_t *nidxp;
 
     CumoGetNArray(a,na);
@@ -180,16 +181,14 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     cumo_na_store(idx,a);
 
     CumoGetNArrayData(idx,nidx);
-    nidxp   = (ssize_t*)nidx->ptr;
-    q->idx  = ALLOC_N(size_t, n);
+    nidxp   = (ssize_t*)nidx->ptr; // Cumo::NArray data resides on GPU
+    //q->idx  = ALLOC_N(size_t, n);
+    //for (k=0; k<n; k++) {
+    //    q->idx[k] = na_range_check(nidxp[k], size, orig_dim);
+    //}
+    q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+    cumo_cuda_runtime_check_status(cudaMemcpyAsync(q->idx,nidxp,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
 
-    // ndixp is cuda memory (cuda narray)
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-    for (k=0; k<n; k++) {
-        q->idx[k] = cumo_na_range_check(nidxp[k], size, orig_dim);
-    }
     q->n    = n;
     q->beg  = 0;
     q->step = 1;
