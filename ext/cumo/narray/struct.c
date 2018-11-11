@@ -76,7 +76,7 @@ void cumo_na_copy_array_structure(VALUE self, VALUE view);
 static VALUE
 cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
 {
-    size_t i, n;
+    size_t n;
     int j, k, ndim;
     size_t *shape;
     size_t *idx1, *idx2;
@@ -147,10 +147,12 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
             if (CUMO_SDX_IS_INDEX(na1->stridx[j])) {
                 n = na1->base.shape[j];
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[j]);
-                idx2 = ALLOC_N(size_t, na1->base.shape[j]);
-                for (i=0; i<n; i++) {
-                    idx2[i] = idx1[i];
-                }
+                // idx2 = ALLOC_N(size_t, na1->base.shape[j]);
+                // for (i=0; i<n; i++) {
+                //     idx2[i] = idx1[i];
+                // }
+                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
                 CUMO_SDX_SET_INDEX(na2->stridx[j],idx2);
             } else {
                 na2->stridx[j] = na1->stridx[j];
