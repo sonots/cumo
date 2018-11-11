@@ -1,4 +1,6 @@
 #include <ruby.h>
+#include "cumo.h"
+#include "cumo/cuda/runtime.h"
 #include "cumo/narray.h"
 #include "cumo/template.h"
 
@@ -56,7 +58,8 @@ iter_copy_bytes(cumo_na_loop_t *const lp)
 {
     size_t e;
     e = lp->args[0].elmsz;
-    // TODO(sonots): CUDA kernelize
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("iter_copy_bytes", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     LOOP_UNARY_PTR(lp,m_memcpy);
 }
 
@@ -99,6 +102,8 @@ iter_swap_byte(cumo_na_loop_t *const lp)
     e = lp->args[0].elmsz;
     b1 = ALLOCA_N(char, e);
     b2 = ALLOCA_N(char, e);
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("iter_swap_bytes", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     LOOP_UNARY_PTR(lp,m_swap_byte);
 }
 
@@ -725,6 +730,9 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         for (i=k=0; i<nd; i++) {
             if (i != ax[0] && i != ax[1]) {
                 if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_diagonal", "any");
+                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
                     idx0 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                     idx1 = ALLOC_N(size_t, na->shape[i]);
                     for (j=0; j<na->shape[i]; j++) {
@@ -738,6 +746,9 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
             }
         }
         if (CUMO_SDX_IS_INDEX(na1->stridx[ax[0]])) {
+            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_diagonal", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             idx0 = CUMO_SDX_GET_INDEX(na1->stridx[ax[0]]);
             diag_idx = ALLOC_N(size_t, diag_size);
             if (CUMO_SDX_IS_INDEX(na1->stridx[ax[1]])) {
@@ -755,6 +766,9 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         } else {
             stride0 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[0]]);
             if (CUMO_SDX_IS_INDEX(na1->stridx[ax[1]])) {
+                CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_diagonal", "any");
+                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
                 diag_idx = ALLOC_N(size_t, diag_size);
                 for (j=0; j<diag_size; j++) {
