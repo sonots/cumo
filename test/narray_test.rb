@@ -278,6 +278,21 @@ class NArrayTest < Test::Unit::TestCase
         v[0] = 13
         assert { v == [13,7,11] }
         assert { a == [[1,2,3],[13,7,11]] }
+
+        a = init.call(dtype, src)
+        a[[1,2,3]] = 13
+        assert { a[[1,2,3]] == [13,13,13] }
+        assert { a == [[1,13,13],[13,7,11]] }
+
+        a = init.call(dtype, src)
+        a[1,[0,2]] = [13,13]
+        assert { a[1,[0,2]] == [13,13] }
+        assert { a == [[1,2,3],[13,7,13]] }
+
+        a = init.call(dtype, src)
+        a[1,true] = 13
+        assert { a[1,true] == [13,13,13] }
+        assert { a == [[1,2,3],[13,13,13]] }
       end
 
     end
@@ -463,6 +478,12 @@ class NArrayTest < Test::Unit::TestCase
       unless [Cumo::DComplex, Cumo::SComplex].include?(dtype)
         assert_nothing_raised { dtype.ones(2,3,9,4,2).max_index(2) }
       end
+    end
+
+    test "#{dtype},advanced indexing" do
+      a = dtype[[1,2,3],[4,5,6]]
+      assert { a[[0,1],[0,1]].dup == [[1,2],[4,5]] }
+      assert { a[[0,1],[0,1]].sum == 12 }
     end
   end
 end
