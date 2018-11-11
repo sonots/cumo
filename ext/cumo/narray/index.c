@@ -425,6 +425,9 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
 
         // array index
         if (q[i].idx != NULL) {
+            SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_nadata", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             index = q[i].idx;
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
             q[i].idx = NULL;
@@ -480,6 +483,10 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             // index <- index
             int k;
             size_t *index = q[i].idx;
+
+            SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             CUMO_SDX_SET_INDEX(na2->stridx[j], index);
             q[i].idx = NULL;
 
@@ -491,6 +498,10 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             // index <- step
             ssize_t stride1 = CUMO_SDX_GET_STRIDE(sdx1);
             size_t *index = q[i].idx;
+
+            SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
             q[i].idx = NULL;
 
@@ -538,7 +549,6 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
     }
     na2->base.size = total;
 }
-
 
 static int
 cumo_na_ndim_new_narray(int ndim, const cumo_na_index_arg_t *q)
@@ -649,7 +659,12 @@ cumo_na_aref_md_ensure(VALUE data_value)
     cumo_na_aref_md_data_t *data = (cumo_na_aref_md_data_t*)(data_value);
     int i;
     for (i=0; i<data->ndim; i++) {
-        xfree(data->q[i].idx);
+        if (cumo_cuda_runtime_is_device_memory(data->q[i].idx)) {
+            cumo_cuda_runtime_free((char*)(data->q[i].idx));
+        } else {
+            // TODO(sonots): Remove xfree path
+            xfree(data->q[i].idx);
+        }
     }
     if (data->q) xfree(data->q);
     return Qnil;
