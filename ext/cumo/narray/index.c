@@ -529,8 +529,13 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             int k;
             size_t beg  = q[i].beg;
             ssize_t step = q[i].step;
-            size_t *index = ALLOC_N(size_t, size);
+            // size_t *index = ALLOC_N(size_t, size);
+            size_t *index = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*size);
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
+
+            SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             for (k=0; k<size; k++) {
                 index[k] = CUMO_SDX_GET_INDEX(sdx1)[beg+step*k];
             }
