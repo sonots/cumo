@@ -880,7 +880,6 @@ VALUE
 cumo_na_make_view(VALUE self)
 {
     int i, nd;
-    size_t  j;
     size_t *idx1, *idx2;
     ssize_t stride;
     cumo_narray_t *na;
@@ -914,10 +913,12 @@ cumo_na_make_view(VALUE self)
         for (i=0; i<nd; i++) {
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                idx2 = ALLOC_N(size_t,na1->base.shape[i]);
-                for (j=0; j<na1->base.shape[i]; j++) {
-                    idx2[j] = idx1[j];
-                }
+                // idx2 = ALLOC_N(size_t,na1->base.shape[i]);
+                // for (j=0; j<na1->base.shape[i]; j++) {
+                //     idx2[j] = idx1[j];
+                // }
+                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*na1->base.shape[i]);
+                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*na1->base.shape[i],cudaMemcpyDeviceToDevice,0));
                 CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
                 na2->stridx[i] = na1->stridx[i];
