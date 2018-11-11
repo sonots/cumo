@@ -3,6 +3,7 @@
 #include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/cuda/runtime.h"
+#include "cumo/cuda/memory_pool.h"
 #include "cumo/template.h"
 
 #if   SIZEOF_VOIDP == 8
@@ -52,7 +53,8 @@ print_index_arg(cumo_na_index_arg_t *q, int n)
         printf("  q[%d].n=%"SZF"d\n",i,q[i].n);
         printf("  q[%d].beg=%"SZF"d\n",i,q[i].beg);
         printf("  q[%d].step=%"SZF"d\n",i,q[i].step);
-        printf("  q[%d].idx=0x%"SZF"x\n",i,(size_t)q[i].idx);
+        printf("  q[%d].idx=0x%"SZF"x (cumo:%d)\n",i,(size_t)q[i].idx, cumo_cuda_runtime_is_device_memory(q[i].idx));
+        // printf("  q[%d].idx=0x%"SZF"x\n",i,(size_t)q[i].idx);
         printf("  q[%d].reduce=0x%x\n",i,q[i].reduce);
         printf("  q[%d].orig_dim=%d\n",i,q[i].orig_dim);
     }
@@ -121,15 +123,38 @@ cumo_na_range_check(ssize_t pos, ssize_t size, int dim)
     return idx;
 }
 
+static void CUDART_CB
+cumo_na_parse_array_callback(cudaStream_t stream, cudaError_t status, void *data)
+{
+    cudaFreeHost(data);
+}
+
+// copy ruby array to idx
 static void
 cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
     int k;
+    size_t* idx;
+    cudaError_t status;
     int n = RARRAY_LEN(ary);
-    q->idx = ALLOC_N(size_t, n);
+    //q->idx = ALLOC_N(size_t, n);
+    //for (k=0; k<n; k++) {
+    //    q->idx[k] = na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
+    //}
+    // make a contiguous pinned memory on host => copy to device => release pinned memory after copy finished on callback
+    q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+    cudaHostAlloc((void**)&idx, sizeof(size_t)*n, cudaHostAllocDefault);
     for (k=0; k<n; k++) {
-        q->idx[k] = cumo_na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
+        idx[k] = cumo_na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
     }
+    status = cudaMemcpyAsync(q->idx,idx,sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
+    if (status == 0) {
+        cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,cumo_na_parse_array_callback,idx,0));
+    } else {
+        cudaFreeHost(idx);
+    }
+    cumo_cuda_runtime_check_status(status);
+
     q->n    = n;
     q->beg  = 0;
     q->step = 1;
