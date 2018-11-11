@@ -1055,15 +1055,25 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
             n = na1->base.shape[i];
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                idx2 = ALLOC_N(size_t,n);
+                // idx2 = ALLOC_N(size_t,n);
+                // if (cumo_na_test_reduce(reduce,i)) {
+                //     for (j=0; j<n; j++) {
+                //         idx2[n-1-j] = idx1[j];
+                //     }
+                // } else {
+                //     for (j=0; j<n; j++) {
+                //         idx2[j] = idx1[j];
+                //     }
+                // }
+                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
                 if (cumo_na_test_reduce(reduce,i)) {
+                    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_reverse", "any");
+                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     for (j=0; j<n; j++) {
                         idx2[n-1-j] = idx1[j];
                     }
                 } else {
-                    for (j=0; j<n; j++) {
-                        idx2[j] = idx1[j];
-                    }
+                    cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
                 }
                 CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
