@@ -53,7 +53,7 @@ print_index_arg(cumo_na_index_arg_t *q, int n)
         printf("  q[%d].n=%"SZF"d\n",i,q[i].n);
         printf("  q[%d].beg=%"SZF"d\n",i,q[i].beg);
         printf("  q[%d].step=%"SZF"d\n",i,q[i].step);
-        printf("  q[%d].idx=0x%"SZF"x (cumo:%d)\n",i,(size_t)q[i].idx, cumo_cuda_runtime_is_device_memory(q[i].idx));
+        printf("  q[%d].idx=0x%"SZF"x (cuda:%d)\n",i,(size_t)q[i].idx, cumo_cuda_runtime_is_device_memory(q[i].idx));
         // printf("  q[%d].idx=0x%"SZF"x\n",i,(size_t)q[i].idx);
         printf("  q[%d].reduce=0x%x\n",i,q[i].reduce);
         printf("  q[%d].orig_dim=%d\n",i,q[i].orig_dim);
