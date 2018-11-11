@@ -512,7 +512,8 @@ cumo_na_flatten_dim(VALUE self, int sd)
             na2->stridx[sd] = na1->stridx[nd-1];
         } else {
             // set index
-            idx2 = ALLOC_N(size_t, shape[sd]);
+            // idx2 = ALLOC_N(size_t, shape[sd]);
+            idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*shape[sd]);
             CUMO_SDX_SET_INDEX(na2->stridx[sd],idx2);
             // init for md-loop
             fd = nd-sd;
@@ -521,6 +522,8 @@ cumo_na_flatten_dim(VALUE self, int sd)
             pos = ALLOC_N(size_t, fd+1);
             pos[0] = 0;
             // md-loop
+            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_flatten_dim", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
             for (i=j=0;;) {
                 for (; i<fd; i++) {
                     sdx = na1->stridx[i+sd];
