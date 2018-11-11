@@ -944,8 +944,8 @@ static VALUE
 cumo_na_expand_dims(VALUE self, VALUE vdim)
 {
     int  i, j, nd, dim;
-    size_t *shape, *cumo_na_shape;
-    cumo_stridx_t *stridx, *cumo_na_stridx;
+    size_t *shape, *na2_shape;
+    cumo_stridx_t *stridx, *na2_stridx;
     cumo_narray_t *na;
     cumo_narray_view_t *na2;
     VALUE view;
@@ -967,25 +967,25 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
 
     shape = ALLOC_N(size_t,nd+1);
     stridx = ALLOC_N(cumo_stridx_t,nd+1);
-    cumo_na_shape = na2->base.shape;
-    cumo_na_stridx = na2->stridx;
+    na2_shape = na2->base.shape;
+    na2_stridx = na2->stridx;
 
     for (i=j=0; i<=nd; i++) {
         if (i==dim) {
             shape[i] = 1;
             CUMO_SDX_SET_STRIDE(stridx[i],0);
         } else {
-            shape[i] = cumo_na_shape[j];
-            stridx[i] = cumo_na_stridx[j];
+            shape[i] = na2_shape[j];
+            stridx[i] = na2_stridx[j];
             j++;
         }
     }
 
     na2->stridx = stridx;
-    xfree(cumo_na_stridx);
+    xfree(na2_stridx);
     na2->base.shape = shape;
-    if (cumo_na_shape != &(na2->base.size)) {
-        xfree(cumo_na_shape);
+    if (na2_shape != &(na2->base.size)) {
+        xfree(na2_shape);
     }
     na2->base.ndim++;
     return view;
