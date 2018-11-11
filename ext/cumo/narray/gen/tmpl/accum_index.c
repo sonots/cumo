@@ -113,7 +113,12 @@ static VALUE
             <% end %>
         }
 
-        return cumo_na_ndloop(&ndf, 2, self, reduce);
+        if (cumo_na_has_idx_p(self)) {
+            VALUE copy = cumo_na_copy(self); // reduction does not support idx, make conttiguous
+            return cumo_na_ndloop(&ndf, 2, copy, reduce);
+        } else {
+            return cumo_na_ndloop(&ndf, 2, self, reduce);
+        }
     }
     <% end %>
 }
