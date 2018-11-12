@@ -256,7 +256,7 @@ You may want to show warnings everytime rather than once:
 
 ```
 export CUMO_SHOW_WARNING=ON
-export CUMO_WARNING_ONCE=OFF
+export CUMO_SHOW_WARNING_ONCE=OFF
 ```
 
 ## Contributing

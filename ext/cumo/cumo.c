@@ -129,7 +129,7 @@ Init_cumo()
     cumo_show_warning_enabled = env == NULL || (strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
 
     // default is true
-    env = getenv("CUMO_WARNING_ONCE");
+    env = getenv("CUMO_SHOW_WARNING_ONCE");
     cumo_warning_once_enabled = env == NULL || (strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
 
     Init_cumo_narray();
