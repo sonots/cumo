@@ -444,6 +444,11 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
 }
 
 
+void cumo_na_index_aref_naview_index_index_kernel_launch(size_t *idx, size_t *idx1, uint64_t n);
+void cumo_na_index_aref_naview_index_stride_last_kernel_launch(size_t *idx, ssize_t s1, size_t last, uint64_t n);
+void cumo_na_index_aref_naview_index_stride_kernel_launch(size_t *idx, ssize_t s1, uint64_t n);
+void cumo_na_index_aref_naview_index_index_beg_step_kernel_launch(size_t *idx, size_t *idx1, size_t beg, ssize_t step, uint64_t n);
+
 static void
 cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
                      cumo_na_index_arg_t *q, ssize_t elmsz, int ndim, int keep_dim)
@@ -478,64 +483,41 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
         }
         else if (q[i].idx != NULL && CUMO_SDX_IS_INDEX(sdx1)) {
             // index <- index
-            int k;
             size_t *index = q[i].idx;
-
-            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
+            size_t *index1 = CUMO_SDX_GET_INDEX(sdx1);
             CUMO_SDX_SET_INDEX(na2->stridx[j], index);
             q[i].idx = NULL;
-
-            for (k=0; k<size; k++) {
-                index[k] = CUMO_SDX_GET_INDEX(sdx1)[index[k]];
-            }
+            cumo_na_index_aref_naview_index_index_kernel_launch(index, index1, size);
         }
         else if (q[i].idx != NULL && CUMO_SDX_IS_STRIDE(sdx1)) {
             // index <- step
             ssize_t stride1 = CUMO_SDX_GET_STRIDE(sdx1);
             size_t *index = q[i].idx;
-
-            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
             q[i].idx = NULL;
 
             if (stride1<0) {
                 size_t  last;
-                int k;
                 stride1 = -stride1;
                 last = na1->base.shape[q[i].orig_dim] - 1;
                 if (na2->offset < last * stride1) {
                     rb_raise(rb_eStandardError,"bug: negative offset");
                 }
                 na2->offset -= last * stride1;
-                for (k=0; k<size; k++) {
-                    index[k] = (last - index[k]) * stride1;
-                }
+                cumo_na_index_aref_naview_index_stride_last_kernel_launch(index, stride1, last, size);
             } else {
-                int k;
-                for (k=0; k<size; k++) {
-                    index[k] = index[k] * stride1;
-                }
+                cumo_na_index_aref_naview_index_stride_kernel_launch(index, stride1, size);
             }
         }
         else if (q[i].idx == NULL && CUMO_SDX_IS_INDEX(sdx1)) {
             // step <- index
-            int k;
             size_t beg  = q[i].beg;
             ssize_t step = q[i].step;
             // size_t *index = ALLOC_N(size_t, size);
             size_t *index = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*size);
+            size_t *index1 = CUMO_SDX_GET_INDEX(sdx1);
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
-
-            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-            for (k=0; k<size; k++) {
-                index[k] = CUMO_SDX_GET_INDEX(sdx1)[beg+step*k];
-            }
+            cumo_na_index_aref_naview_index_index_beg_step_kernel_launch(index, index1, beg, step, size);
         }
         else if (q[i].idx == NULL && CUMO_SDX_IS_STRIDE(sdx1)) {
             // step <- step
