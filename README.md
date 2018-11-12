@@ -78,13 +78,13 @@ If you want to switch Numo and Cumo dynamically, following snippets should work:
 ```ruby
 if gpu
   require 'cumo/narray'
-  Xumo = Cumo
+  xm = Cumo
 else
   require 'numo/narray'
-  Xumo = Numo
+  xm = Numo
 end
 
-a = Xumo::DFloat.new(3,5).seq
+a = xm::DFloat.new(3,5).seq
 ```
 
 ### Incompatibility With Numo
