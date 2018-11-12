@@ -1,3 +1,12 @@
+# 0.2.2 (2018-11-13)
+
+Enhancements:
+
+* CUDA kernelize na\_index\_aref\_naview
+* CUDA kernelize na\_index\_aref\_nadata
+* CUDA kernelize diagonal
+* CUDA kernelize copy
+
 # 0.2.1 (2018-11-12)
 
 Enhancements:
