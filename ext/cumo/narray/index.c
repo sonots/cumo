@@ -3,6 +3,7 @@
 #include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/cuda/runtime.h"
+#include "cumo/cuda/memory_pool.h"
 #include "cumo/template.h"
 
 #if   SIZEOF_VOIDP == 8
@@ -52,7 +53,8 @@ print_index_arg(cumo_na_index_arg_t *q, int n)
         printf("  q[%d].n=%"SZF"d\n",i,q[i].n);
         printf("  q[%d].beg=%"SZF"d\n",i,q[i].beg);
         printf("  q[%d].step=%"SZF"d\n",i,q[i].step);
-        printf("  q[%d].idx=0x%"SZF"x\n",i,(size_t)q[i].idx);
+        printf("  q[%d].idx=0x%"SZF"x (cuda:%d)\n",i,(size_t)q[i].idx, cumo_cuda_runtime_is_device_memory(q[i].idx));
+        // printf("  q[%d].idx=0x%"SZF"x\n",i,(size_t)q[i].idx);
         printf("  q[%d].reduce=0x%x\n",i,q[i].reduce);
         printf("  q[%d].orig_dim=%d\n",i,q[i].orig_dim);
     }
@@ -121,15 +123,38 @@ cumo_na_range_check(ssize_t pos, ssize_t size, int dim)
     return idx;
 }
 
+static void CUDART_CB
+cumo_na_parse_array_callback(cudaStream_t stream, cudaError_t status, void *data)
+{
+    cudaFreeHost(data);
+}
+
+// copy ruby array to idx
 static void
 cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
     int k;
+    size_t* idx;
+    cudaError_t status;
     int n = RARRAY_LEN(ary);
-    q->idx = ALLOC_N(size_t, n);
+    //q->idx = ALLOC_N(size_t, n);
+    //for (k=0; k<n; k++) {
+    //    q->idx[k] = na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
+    //}
+    // make a contiguous pinned memory on host => copy to device => release pinned memory after copy finished on callback
+    q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+    cudaHostAlloc((void**)&idx, sizeof(size_t)*n, cudaHostAllocDefault);
     for (k=0; k<n; k++) {
-        q->idx[k] = cumo_na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
+        idx[k] = cumo_na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
     }
+    status = cudaMemcpyAsync(q->idx,idx,sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
+    if (status == 0) {
+        cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,cumo_na_parse_array_callback,idx,0));
+    } else {
+        cudaFreeHost(idx);
+    }
+    cumo_cuda_runtime_check_status(status);
+
     q->n    = n;
     q->beg  = 0;
     q->step = 1;
@@ -137,13 +162,14 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
     q->orig_dim = orig_dim;
 }
 
+// copy narray to idx
 static void
 cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
     VALUE idx;
     cumo_narray_t *na;
     cumo_narray_data_t *nidx;
-    size_t k, n;
+    size_t n;
     ssize_t *nidxp;
 
     CumoGetNArray(a,na);
@@ -155,16 +181,14 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     cumo_na_store(idx,a);
 
     CumoGetNArrayData(idx,nidx);
-    nidxp   = (ssize_t*)nidx->ptr;
-    q->idx  = ALLOC_N(size_t, n);
+    nidxp   = (ssize_t*)nidx->ptr; // Cumo::NArray data resides on GPU
+    //q->idx  = ALLOC_N(size_t, n);
+    //for (k=0; k<n; k++) {
+    //    q->idx[k] = na_range_check(nidxp[k], size, orig_dim);
+    //}
+    q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+    cumo_cuda_runtime_check_status(cudaMemcpyAsync(q->idx,nidxp,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
 
-    // ndixp is cuda memory (cuda narray)
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-    for (k=0; k<n; k++) {
-        q->idx[k] = cumo_na_range_check(nidxp[k], size, orig_dim);
-    }
     q->n    = n;
     q->beg  = 0;
     q->step = 1;
@@ -401,6 +425,9 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
 
         // array index
         if (q[i].idx != NULL) {
+            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_nadata", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             index = q[i].idx;
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
             q[i].idx = NULL;
@@ -456,6 +483,10 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             // index <- index
             int k;
             size_t *index = q[i].idx;
+
+            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             CUMO_SDX_SET_INDEX(na2->stridx[j], index);
             q[i].idx = NULL;
 
@@ -467,6 +498,10 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             // index <- step
             ssize_t stride1 = CUMO_SDX_GET_STRIDE(sdx1);
             size_t *index = q[i].idx;
+
+            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
             q[i].idx = NULL;
 
@@ -494,8 +529,13 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             int k;
             size_t beg  = q[i].beg;
             ssize_t step = q[i].step;
-            size_t *index = ALLOC_N(size_t, size);
+            // size_t *index = ALLOC_N(size_t, size);
+            size_t *index = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*size);
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
+
+            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_naview", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
             for (k=0; k<size; k++) {
                 index[k] = CUMO_SDX_GET_INDEX(sdx1)[beg+step*k];
             }
@@ -514,7 +554,6 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
     }
     na2->base.size = total;
 }
-
 
 static int
 cumo_na_ndim_new_narray(int ndim, const cumo_na_index_arg_t *q)
@@ -625,7 +664,7 @@ cumo_na_aref_md_ensure(VALUE data_value)
     cumo_na_aref_md_data_t *data = (cumo_na_aref_md_data_t*)(data_value);
     int i;
     for (i=0; i<data->ndim; i++) {
-        xfree(data->q[i].idx);
+        cumo_cuda_runtime_free((char*)(data->q[i].idx));
     }
     if (data->q) xfree(data->q);
     return Qnil;

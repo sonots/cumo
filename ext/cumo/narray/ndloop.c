@@ -164,7 +164,8 @@ print_ndloop(cumo_na_md_loop_t *lp) {
                 printf(" &user.args[%d].iter[%d] = 0x%"SZF"x\n", j,i, (size_t)&lp->user.args[j].iter[i]);
                 printf("  user.args[%d].iter[%d].pos = %"SZF"u\n", j,i, lp->user.args[j].iter[i].pos);
                 printf("  user.args[%d].iter[%d].step = %"SZF"u\n", j,i, lp->user.args[j].iter[i].step);
-                printf("  user.args[%d].iter[%d].idx = 0x%"SZF"x\n", j,i, (size_t)lp->user.args[j].iter[i].idx);
+                printf("  user.args[%d].iter[%d].idx = 0x%"SZF"x (cuda:%d)\n", j,i, (size_t)lp->user.args[j].iter[i].idx, cumo_cuda_runtime_is_device_memory(lp->user.args[j].iter[i].idx));
+                // printf("  user.args[%d].iter[%d].idx = 0x%"SZF"x\n", j,i, (size_t)lp->user.args[j].iter[i].idx);
             }
         }
         //
@@ -174,7 +175,8 @@ print_ndloop(cumo_na_md_loop_t *lp) {
             printf(" &xargs[%d].iter[%d] = 0x%"SZF"x\n", j,i, (size_t)&LITER(lp,i,j));
             printf("  xargs[%d].iter[%d].pos = %"SZF"u\n", j,i, LITER(lp,i,j).pos);
             printf("  xargs[%d].iter[%d].step = %"SZF"u\n", j,i, LITER(lp,i,j).step);
-            printf("  xargs[%d].iter[%d].idx = 0x%"SZF"x\n", j,i, (size_t)LITER(lp,i,j).idx);
+            printf("  xargs[%d].iter[%d].idx = 0x%"SZF"x (cuda:%d)\n", j,i, (size_t)LITER(lp,i,j).idx, cumo_cuda_runtime_is_device_memory(LITER(lp,i,j).idx));
+            // printf("  xargs[%d].iter[%d].idx = 0x%"SZF"x\n", j,i, (size_t)LITER(lp,i,j).idx);
         }
         printf("  xargs[%d].bufcp = 0x%"SZF"x\n", j, (size_t)lp->xargs[j].bufcp);
         if (lp->xargs[j].bufcp) {
@@ -1489,6 +1491,8 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
             // j-th argument
             for (j=0; j<lp->narg; j++) {
                 if (LITER(lp,i,j).idx) {
+                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("loop_narrayx", "any");
+                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     LITER(lp,i+1,j).pos = LITER(lp,i,j).pos + LITER(lp,i,j).idx[c[i]];
                 } else {
                     LITER(lp,i+1,j).pos = LITER(lp,i,j).pos + LITER(lp,i,j).step*c[i];

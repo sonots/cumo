@@ -6,14 +6,14 @@
 #endif
 
 struct cumo_<%=type_name%>_sum_impl {
-    __device__ <%=dtype%> Identity() { return m_zero; }
+    __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_zero; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, <%=dtype%>& accum) { accum = m_add(next, accum); }
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_prod_impl {
-    __device__ <%=dtype%> Identity() { return m_one; }
+    __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_one; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, <%=dtype%>& accum) { accum = m_mul(next, accum); }
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }

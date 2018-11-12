@@ -168,12 +168,8 @@ cumo_na_view_free(void* ptr)
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
             if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
-                void *p = CUMO_SDX_GET_INDEX(na->stridx[i]);
-                if (cumo_cuda_runtime_is_device_memory(p)) {
-                    cumo_cuda_runtime_free(p);
-                } else {
-                    xfree(p);
-                }
+                void *idx = CUMO_SDX_GET_INDEX(na->stridx[i]);
+                cumo_cuda_runtime_free(idx);
             }
         }
         xfree(na->stridx);
@@ -880,7 +876,6 @@ VALUE
 cumo_na_make_view(VALUE self)
 {
     int i, nd;
-    size_t  j;
     size_t *idx1, *idx2;
     ssize_t stride;
     cumo_narray_t *na;
@@ -914,10 +909,12 @@ cumo_na_make_view(VALUE self)
         for (i=0; i<nd; i++) {
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                idx2 = ALLOC_N(size_t,na1->base.shape[i]);
-                for (j=0; j<na1->base.shape[i]; j++) {
-                    idx2[j] = idx1[j];
-                }
+                // idx2 = ALLOC_N(size_t,na1->base.shape[i]);
+                // for (j=0; j<na1->base.shape[i]; j++) {
+                //     idx2[j] = idx1[j];
+                // }
+                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*na1->base.shape[i]);
+                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*na1->base.shape[i],cudaMemcpyDeviceToDevice,0));
                 CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
                 na2->stridx[i] = na1->stridx[i];
@@ -947,8 +944,8 @@ static VALUE
 cumo_na_expand_dims(VALUE self, VALUE vdim)
 {
     int  i, j, nd, dim;
-    size_t *shape, *cumo_na_shape;
-    cumo_stridx_t *stridx, *cumo_na_stridx;
+    size_t *shape, *na2_shape;
+    cumo_stridx_t *stridx, *na2_stridx;
     cumo_narray_t *na;
     cumo_narray_view_t *na2;
     VALUE view;
@@ -970,25 +967,25 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
 
     shape = ALLOC_N(size_t,nd+1);
     stridx = ALLOC_N(cumo_stridx_t,nd+1);
-    cumo_na_shape = na2->base.shape;
-    cumo_na_stridx = na2->stridx;
+    na2_shape = na2->base.shape;
+    na2_stridx = na2->stridx;
 
     for (i=j=0; i<=nd; i++) {
         if (i==dim) {
             shape[i] = 1;
             CUMO_SDX_SET_STRIDE(stridx[i],0);
         } else {
-            shape[i] = cumo_na_shape[j];
-            stridx[i] = cumo_na_stridx[j];
+            shape[i] = na2_shape[j];
+            stridx[i] = na2_stridx[j];
             j++;
         }
     }
 
     na2->stridx = stridx;
-    xfree(cumo_na_stridx);
+    xfree(na2_stridx);
     na2->base.shape = shape;
-    if (cumo_na_shape != &(na2->base.size)) {
-        xfree(cumo_na_shape);
+    if (na2_shape != &(na2->base.size)) {
+        xfree(na2_shape);
     }
     na2->base.ndim++;
     return view;
@@ -1054,15 +1051,25 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
             n = na1->base.shape[i];
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                idx2 = ALLOC_N(size_t,n);
+                // idx2 = ALLOC_N(size_t,n);
+                // if (cumo_na_test_reduce(reduce,i)) {
+                //     for (j=0; j<n; j++) {
+                //         idx2[n-1-j] = idx1[j];
+                //     }
+                // } else {
+                //     for (j=0; j<n; j++) {
+                //         idx2[j] = idx1[j];
+                //     }
+                // }
+                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
                 if (cumo_na_test_reduce(reduce,i)) {
+                    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_reverse", "any");
+                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     for (j=0; j<n; j++) {
                         idx2[n-1-j] = idx1[j];
                     }
                 } else {
-                    for (j=0; j<n; j++) {
-                        idx2[j] = idx1[j];
-                    }
+                    cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
                 }
                 CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {

@@ -77,7 +77,12 @@ static VALUE
   <% else %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    v =  cumo_na_ndloop(&ndf, 2, self, reduce);
+    if (cumo_na_has_idx_p(self)) {
+        VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous
+        v =  cumo_na_ndloop(&ndf, 2, copy, reduce);
+    } else {
+        v =  cumo_na_ndloop(&ndf, 2, self, reduce);
+    }
   <% if result_class == "cT" %>
     return <%=type_name%>_extract(v);
   <% else %>

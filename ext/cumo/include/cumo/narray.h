@@ -427,10 +427,26 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 
 #define CUMO_DEBUG_PRINT(v) puts(StringValueCStr(rb_funcall(v,rb_intern("inspect"),0)))
 
-#define CUMO_NA_CumoIsNArray(obj) \
-  (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
-#define CUMO_NA_IsArray(obj) \
-  (TYPE(obj)==T_ARRAY || rb_obj_is_kind_of(obj,cNArray)==Qtrue)
+#define CUMO_NA_CumoIsNArray(obj) (rb_obj_is_kind_of(obj,cNArray)==Qtrue)
+#define CUMO_NA_IsArray(obj) (TYPE(obj)==T_ARRAY || rb_obj_is_kind_of(obj,cNArray)==Qtrue)
+
+static inline bool
+cumo_na_has_idx_p(VALUE obj)
+{
+    cumo_narray_t *na;
+    cumo_narray_view_t *nv;
+    int i = 0;
+    CumoGetNArray(obj, na);
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        CumoGetNArrayView(obj, nv);
+        for (; i < nv->base.ndim; ++i) {
+            if (nv->stridx[i].index) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 #define CUMO_NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
 #define CUMO_NUM2IMAG(v)  NUM2DBL( rb_funcall((v),cumo_na_id_imag,0) )
