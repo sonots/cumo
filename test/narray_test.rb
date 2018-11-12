@@ -478,6 +478,9 @@ class NArrayTest < Test::Unit::TestCase
       unless [Cumo::DComplex, Cumo::SComplex].include?(dtype)
         assert_nothing_raised { dtype.ones(2,3,9,4,2).max_index(2) }
       end
+      if [Cumo::DFloat, Cumo::SFloat].include?(dtype)
+        assert { dtype[[-Float::INFINITY, 0, 1, -Float::INFINITY]].max_index(0) == [0,1,2,3] }
+      end
     end
 
     test "#{dtype},advanced indexing" do

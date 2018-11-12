@@ -6,28 +6,28 @@
 #endif
 
 struct cumo_<%=type_name%>_sum_impl {
-    __device__ <%=dtype%> Identity() { return m_zero; }
+    __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_zero; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, <%=dtype%>& accum) { accum += next; }
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_prod_impl {
-    __device__ <%=dtype%> Identity() { return m_one; }
+    __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_one; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, <%=dtype%>& accum) { accum *= next; }
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_min_impl {
-    __device__ dtype Identity() { return DATA_MAX; }
+    __device__ dtype Identity(int64_t /*index*/) { return DATA_MAX; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, dtype& accum) { accum = next < accum ? next : accum; }
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_max_impl {
-    __device__ dtype Identity() { return DATA_MIN; }
+    __device__ dtype Identity(int64_t /*index*/) { return DATA_MIN; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, dtype& accum) { accum = next < accum ? accum : next; }
     __device__ dtype MapOut(dtype accum) { return accum; }
