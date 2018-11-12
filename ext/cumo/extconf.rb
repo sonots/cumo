@@ -68,6 +68,7 @@ narray/step
 narray/index
 narray/ndloop
 narray/data
+narray/data_kernel
 narray/types/bit
 narray/types/int8
 narray/types/int16

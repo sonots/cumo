@@ -9,6 +9,7 @@ static void
     CUMO_INIT_COUNTER(lp, n);
     CUMO_INIT_PTR(lp, 0, ptr, step);
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     <%=type_name%>_qsort<%=j%>(ptr, n, step);
 }
 <% end %>

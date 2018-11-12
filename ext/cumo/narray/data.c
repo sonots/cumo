@@ -53,15 +53,23 @@ static ID cumo_id_swap_byte;
     }                                              \
 }
 
-#define m_memcpy(src,dst) memcpy(dst,src,e)
+void cumo_iter_copy_bytes_kernel_launch(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t *idx1, size_t *idx2, size_t n, int elmsz);
+// #define m_memcpy(src,dst) memcpy(dst,src,e)
+
 static void
 iter_copy_bytes(cumo_na_loop_t *const lp)
 {
-    size_t e;
-    e = lp->args[0].elmsz;
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("iter_copy_bytes", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    LOOP_UNARY_PTR(lp,m_memcpy);
+    size_t  n;
+    ssize_t s1, s2;
+    char   *p1, *p2;
+    size_t *idx1, *idx2;
+    CUMO_INIT_COUNTER(lp, n);
+    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);
+    cumo_iter_copy_bytes_kernel_launch(p1, p2, s1, s2, idx1, idx2, n, lp->args[0].elmsz);
+    // size_t e;
+    // e = lp->args[0].elmsz;
+    // LOOP_UNARY_PTR(lp,m_memcpy);
 }
 
 VALUE
