@@ -570,6 +570,10 @@ cumo_na_flatten(VALUE self)
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
+void cumo_na_diagonal_index_index_kernel_launch(size_t *idx, size_t *idx0, size_t *idx1, size_t k0, size_t k1, uint64_t n);
+void cumo_na_diagonal_index_stride_kernel_launch(size_t *idx, size_t *idx0, ssize_t s1, size_t k0, size_t k1, uint64_t n);
+void cumo_na_diagonal_stride_index_kernel_launch(size_t *idx, ssize_t s0, size_t *idx1, size_t k0, size_t k1, uint64_t n);
+
 /*
   Returns a diagonal view of NArray
   @overload  diagonal([offset,axes])
@@ -609,7 +613,6 @@ static VALUE
 cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
 {
     int  i, k, nd;
-    size_t  j;
     size_t *idx0, *idx1, *diag_idx;
     size_t *shape;
     size_t  diag_size;
@@ -762,20 +765,12 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
             idx0 = CUMO_SDX_GET_INDEX(na1->stridx[ax[0]]);
             // diag_idx = ALLOC_N(size_t, diag_size);
             diag_idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*diag_size);
-
-            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_diagonal", "any");
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
             if (CUMO_SDX_IS_INDEX(na1->stridx[ax[1]])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
-                for (j=0; j<diag_size; j++) {
-                    diag_idx[j] = idx0[j+k0] + idx1[j+k1];
-                }
+                cumo_na_diagonal_index_index_kernel_launch(diag_idx, idx0, idx1, k0, k1, diag_size);
             } else {
                 stride1 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[1]]);
-                for (j=0; j<diag_size; j++) {
-                    diag_idx[j] = idx0[j+k0] + stride1*(j+k1);
-                }
+                cumo_na_diagonal_index_stride_kernel_launch(diag_idx, idx0, stride1, k0, k1, diag_size);
             }
             CUMO_SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
         } else {
@@ -784,13 +779,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
                 // diag_idx = ALLOC_N(size_t, diag_size);
                 diag_idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*diag_size);
-
-                CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_diagonal", "any");
-                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-                for (j=0; j<diag_size; j++) {
-                    diag_idx[j] = stride0*(j+k0) + idx1[j+k1];
-                }
+                cumo_na_diagonal_stride_index_kernel_launch(diag_idx, stride0, idx1, k0, k1, diag_size);
                 CUMO_SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
             } else {
                 stride1 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[1]]);
