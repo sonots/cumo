@@ -391,12 +391,14 @@ cumo_na_get_strides_nadata(const cumo_narray_data_t *na, ssize_t *strides, ssize
     }
 }
 
+void cumo_na_index_aref_nadata_index_stride_kernel_launch(size_t *idx, ssize_t s1, uint64_t n);
+
 static void
 cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
                      cumo_na_index_arg_t *q, ssize_t elmsz, int ndim, int keep_dim)
 {
     int i, j;
-    ssize_t size, k, total=1;
+    ssize_t size, total=1;
     ssize_t stride1;
     ssize_t *strides_na1;
     size_t  *index;
@@ -425,15 +427,10 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
 
         // array index
         if (q[i].idx != NULL) {
-            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_index_aref_nadata", "any");
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
             index = q[i].idx;
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
             q[i].idx = NULL;
-            for (k=0; k<size; k++) {
-                index[k] = index[k] * stride1;
-            }
+            cumo_na_index_aref_nadata_index_stride_kernel_launch(index, stride1, size);
         } else {
             beg  = q[i].beg;
             step = q[i].step;
