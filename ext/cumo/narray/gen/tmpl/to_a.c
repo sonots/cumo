@@ -11,7 +11,6 @@ static void
     CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     a = rb_ary_new2(i);
     rb_ary_push(lp->args[1].value, a);
-    //CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (idx1) {
         for (; i--;) {
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
@@ -38,6 +37,7 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
     cumo_ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP_NIP, 3, 1, ain, aout };
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, Qnil);
 }
