@@ -131,14 +131,12 @@ where `id` is an integer.
 
 ### Disable GPU Memory Pool
 
-Set `CUMO_MEMORY_POOL=OFF` environment variable , or
+GPU memory pool is enabled as default. To disable, set `CUMO_MEMORY_POOL=OFF` environment variable , or
 
 ```
 require 'cumo'
 Cumo::CUDA::MemoryPool.disable
 ```
-
-if you found GPU memory pool implementation has a bug.
 
 ## Documentation
 
