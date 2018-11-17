@@ -487,6 +487,10 @@ class NArrayTest < Test::Unit::TestCase
       a = dtype[[1,2,3],[4,5,6]]
       assert { a[[0,1],[0,1]].dup == [[1,2],[4,5]] }
       assert { a[[0,1],[0,1]].sum == 12 }
+      assert { a[[0,1],[0,1]].diagonal == [1, 5] }
+      diag = a.dup[[0,1],[0,1]].diagonal
+      diag.inplace - 1
+      assert { diag == [0, 4] }
     end
   end
 end
