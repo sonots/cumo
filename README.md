@@ -1,5 +1,3 @@
-**This project is still under development. This project received grant from [Ruby Association Grant 2017](http://www.ruby.or.jp/ja/news/20171206).**
-
 # Cumo
 
 Cumo (pronounced like "koomo") is CUDA-aware numerical library whose interface is highly compatible with [Ruby Numo](https://github.com/ruby-numo).
@@ -141,6 +139,10 @@ Cumo::CUDA::MemoryPool.disable
 ## Documentation
 
 See https://github.com/ruby-numo/numo-narray#documentation and replace Numo to Cumo.
+
+## Contributions
+
+This project is still under development. See [issues](https://github.com/sonots/cumo/issues) for future works.
 
 ## Development
 
