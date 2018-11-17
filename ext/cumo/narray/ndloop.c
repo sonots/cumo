@@ -183,6 +183,9 @@ print_ndloop(cumo_na_md_loop_t *lp) {
             printf("  xargs[%d].bufcp->ndim = %d\n", j, lp->xargs[j].bufcp->ndim);
             printf("  xargs[%d].bufcp->elmsz = %"SZF"d\n", j, lp->xargs[j].bufcp->elmsz);
             printf("  xargs[%d].bufcp->n = 0x%"SZF"x\n", j, (size_t)lp->xargs[j].bufcp->n);
+            for (i=0; i<=lp->xargs[j].bufcp->ndim; i++) {
+                printf("  xargs[%d].bufcp->n[%d] = %"SZF"u\n", j, i, lp->xargs[j].bufcp->n[i]);
+            }
             printf("  xargs[%d].bufcp->src_ptr = 0x%"SZF"x\n", j, (size_t)lp->xargs[j].bufcp->src_ptr);
             printf("  xargs[%d].bufcp->buf_ptr = 0x%"SZF"x\n", j, (size_t)lp->xargs[j].bufcp->buf_ptr);
             printf("  xargs[%d].bufcp->src_iter = 0x%"SZF"x\n", j, (size_t)lp->xargs[j].bufcp->src_iter);
