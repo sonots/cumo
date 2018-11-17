@@ -1264,6 +1264,8 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
         // i-th dimension
         for (; i<nd; i++) {
             if (LITER_SRC(lp,i).idx) {
+                CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_from_buffer", "any");
+                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).idx[c[i]];
             } else {
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).step*c[i];
