@@ -1,3 +1,9 @@
+# 0.2.3 (2018-11-17)
+
+Enhancements:
+
+* Add some missing `synchronize` workarounds
+
 # 0.2.2 (2018-11-13)
 
 Enhancements:
