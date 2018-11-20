@@ -104,9 +104,9 @@ You may enable or disable `compatible_mode` as:
 ```
 require 'cumo'
 Cumo.enable_compatible_mode # enable
-Cumo.compattible_mode_enabled? #=> true
+Cumo.compatible_mode_enabled? #=> true
 Cumo.disable_compatible_mode # disable
-Cumo.compattible_mode_enabled? #=> false
+Cumo.compatible_mode_enabled? #=> false
 ```
 
 You can also use following methods which behaves as Numo NArray's methods. Behaviors of these methods do not depend on `compatible_mode`.
