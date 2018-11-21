@@ -1,3 +1,9 @@
+# 0.2.4 (2018-11-21)
+
+Changes:
+
+* Turn off `CUMO_SHOW_WARNING` as default
+
 # 0.2.3 (2018-11-17)
 
 Enhancements:
@@ -17,8 +23,7 @@ Enhancements:
 
 Enhancements:
 
-* Add `CUMO_SHOW_WARNING` and `CUMO_SHOW_WARNING_ONCE` environment variables to suppress cumo warnings.
-   * They are only for debug purpose, would be removed in future.
+* Add `CUMO_SHOW_WARNING` and `CUMO_SHOW_WARNING_ONCE` environment variables to suppress cumo warnings (They are only for debug purpose, would be removed in future).
 
 # 0.2.0 (2018-11-12)
 
