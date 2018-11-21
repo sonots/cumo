@@ -31,6 +31,11 @@ typedef struct {
 } cumo_na_iarray_t;
 
 typedef struct {
+    char* ptr;
+    cumo_stridx_t stridx[CUMO_NA_MAX_DIMENSION];
+} cumo_na_iarray_stridx_t;
+
+typedef struct {
     cumo_na_iarray_t in;
     cumo_na_iarray_t out;
     cumo_na_indexer_t in_indexer;
@@ -215,6 +220,54 @@ static inline char*
 cumo_na_iarray_at_dim1(cumo_na_iarray_t* iarray, cumo_na_indexer_t* indexer) {
     return iarray->ptr + iarray->step[0] * indexer->raw_index;
 }
+
+__host__ __device__
+static inline char*
+cumo_na_iarray_stridx_at_dim(cumo_na_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer) {
+    char* ptr = iarray->ptr;
+    for (int idim = 0; idim < indexer->ndim; ++idim) {
+        if (CUMO_SDX_IS_INDEX(iarray->stridx[idim])) {
+            ptr += CUMO_SDX_GET_INDEX(iarray->stridx[idim])[indexer->index[idim]];
+        } else {
+            ptr += CUMO_SDX_GET_STRIDE(iarray->stridx[idim]) * indexer->index[idim];
+        }
+    }
+    return ptr;
+}
+
+// TODO(sonots): Use optimized indexer
+#if 0
+// Let compiler optimize
+#define CUMO_NA_IARRAY_STRIDX_AT(NDIM) \
+__host__ __device__ \
+static inline char* \
+cumo_na_iarray_stridx_at_dim##NDIM(cumo_na_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer) { \
+    char* ptr = iarray->ptr; \
+    for (int idim = 0; idim < NDIM; ++idim) { \
+        if (CUMO_SDX_IS_INDEX(iarray->stridx[idim])) { \
+            ptr += CUMO_SDX_GET_INDEX(iarray->stridx[idim])[indexer->index[idim]]; \
+        } else { \
+            ptr += CUMO_SDX_GET_STRIDE(iarray->stridx[idim]) * indexer->index[idim]; \
+        } \
+    } \
+    return ptr; \
+}
+
+CUMO_NA_IARRAY_STRIDX_AT(4)
+CUMO_NA_IARRAY_STRIDX_AT(3)
+CUMO_NA_IARRAY_STRIDX_AT(2)
+CUMO_NA_IARRAY_STRIDX_AT(0)
+
+__host__ __device__
+static inline char*
+cumo_na_iarray_stridx_at_dim1(cumo_na_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer) {
+    if (CUMO_SDX_IS_INDEX(iarray->stridx[0])) {
+        return iarray->ptr + CUMO_SDX_GET_INDEX(iarray->stridx[0])[indexer->raw_index];
+    } else {
+        return iarray->ptr + CUMO_SDX_GET_STRIDE(iarray->stridx[0]) * indexer->raw_index;
+    }
+}
+#endif
 
 #endif // #ifdef __CUDACC__
 
