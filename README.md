@@ -242,17 +242,16 @@ bundle exec DTYPE=dfloat ruby test/narray_test.rb
 bundle exec CUDA_LAUNCH_BLOCKING=1
 ```
 
-### Disable Cumo warnings
+### Show GPU synchnoziation warnings
 
-As default, cumo shows some warnings once for each.
-
-It is possible to disable by followings:
+Cumo shows warnings if CPU and GPU synchronization occurs if:
 
 ```
-export CUMO_SHOW_WARNING=OFF
+export CUMO_SHOW_WARNING=ON
 ```
 
-You may want to show warnings everytime rather than once:
+As default, it shows warnings occurred at the same place only once.
+You may want to show warnings everytime rather than once as:
 
 ```
 export CUMO_SHOW_WARNING=ON
