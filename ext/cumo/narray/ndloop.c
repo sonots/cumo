@@ -1259,7 +1259,7 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(src))[j]);});
         goto loop_end;
     }
-    // initialize loop counter
+    // initialize loop counter. c[i] indicates an element index of i-th dim.
     c = ALLOCA_N(size_t, nd+1);
     for (i=0; i<=nd; i++) c[i]=0;
     // loop body
@@ -1286,6 +1286,8 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(src))[j]);});
         buf_pos += elmsz;
         // count up
+        // ++c[i] and goes to the next element of i-th dim if c[i] < lp->n[i]
+        // If c[i] == lp->n[i], a loop for i-th dim ends. Goes to (i-1)-th dim.
         for (;;) {
             if (i<=0) goto loop_end;
             i--;
