@@ -165,6 +165,16 @@ typedef unsigned int CUMO_BIT_DIGIT;
 #define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
 #define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
 
+typedef union {
+    ssize_t stride;
+    size_t *index;
+} cumo_stridx_t;
+
+#define CUMO_SDX_IS_STRIDE(x) ((x).stride&0x1)
+#define CUMO_SDX_IS_INDEX(x)  (!CUMO_SDX_IS_STRIDE(x))
+#define CUMO_SDX_GET_STRIDE(x) ((x).stride>>1)
+#define CUMO_SDX_GET_INDEX(x)  ((x).index)
+
 #include "cumo/indexer.h"
 #include "cumo/intern_kernel.h"
 

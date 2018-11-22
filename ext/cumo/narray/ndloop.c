@@ -1,5 +1,6 @@
 #include <ruby.h>
 #include "cumo.h"
+#include "cumo/indexer.h"
 #include "cumo/narray.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
@@ -1164,11 +1165,48 @@ cumo_ndfunc_set_bufcp(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     }
 }
 
+static cumo_na_iarray_stridx_t
+cumo_na_make_iarray_buffer_copy(cumo_na_buffer_copy_t* lp)
+{
+    cumo_na_iarray_stridx_t iarray;
+    int i;
+    int ndim = lp->ndim;
+    iarray.ptr = lp->src_ptr + lp->src_iter[0].pos;
+    for (i = 0; i < ndim; ++i) {
+        if (LITER_SRC(lp,i).idx) {
+            CUMO_SDX_SET_INDEX(iarray.stridx[i], LITER_SRC(lp,i).idx);
+        } else {
+            CUMO_SDX_SET_STRIDE(iarray.stridx[i], LITER_SRC(lp,i).step);
+        }
+    }
+    return iarray;
+}
+
+static cumo_na_indexer_t
+cumo_na_make_indexer_buffer_copy(cumo_na_buffer_copy_t* lp)
+{
+    cumo_na_indexer_t indexer;
+    int i;
+    indexer.ndim = lp->ndim;
+    indexer.total_size = 1;
+    for (i = 0; i< lp->ndim; ++i) {
+        indexer.shape[i] = lp->n[i];
+        indexer.total_size *= lp->n[i];
+    }
+    return indexer;
+}
+
+void cumo_ndloop_copy_to_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_na_indexer_t* indexer, char *buf, size_t elmsz);
 
 // Make contiguous memory for ops not supporting index or stride (step) loop
 static void
 ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
 {
+    cumo_na_iarray_stridx_t a = cumo_na_make_iarray_buffer_copy(lp);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer_buffer_copy(lp);
+    cumo_ndloop_copy_to_buffer_kernel_launch(&a, &indexer, lp->buf_ptr, lp->elmsz);
+
+#if 0
     size_t *c;
     char *src, *buf;
     int  i;
@@ -1230,11 +1268,19 @@ ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
  loop_end:
     ;
     DBG(printf("]\n"));
+#endif
 }
+
+void cumo_ndloop_copy_from_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_na_indexer_t* indexer, char *buf, size_t elmsz);
 
 static void
 ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
 {
+    cumo_na_iarray_stridx_t a = cumo_na_make_iarray_buffer_copy(lp);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer_buffer_copy(lp);
+    cumo_ndloop_copy_from_buffer_kernel_launch(&a, &indexer, lp->buf_ptr, lp->elmsz);
+
+#if 0
     size_t *c;
     char *src, *buf;
     int  i;
@@ -1291,12 +1337,14 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
         for (;;) {
             if (i<=0) goto loop_end;
             i--;
-            if (++c[i] < lp->n[i]) break;
+            ++c[i];
+            if (c[i] < lp->n[i]) break;
             c[i] = 0;
         }
     }
  loop_end:
     DBG(printf("]\n"));
+#endif
 }
 
 

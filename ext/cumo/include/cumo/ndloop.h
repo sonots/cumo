@@ -2,7 +2,7 @@
 #define CUMO_NDLOOP_H
 
 typedef struct {
-    ssize_t    pos; // - required for each dimension.
+    ssize_t    pos; // not used in cumo.
     ssize_t    step;
     size_t    *idx;
 } cumo_na_loop_iter_t;
