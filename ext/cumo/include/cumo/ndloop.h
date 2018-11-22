@@ -2,7 +2,7 @@
 #define CUMO_NDLOOP_H
 
 typedef struct {
-    ssize_t    pos; // not used in cumo.
+    ssize_t    pos; // only iter[0].pos is used in cumo as an offset.
     ssize_t    step;
     size_t    *idx;
 } cumo_na_loop_iter_t;
