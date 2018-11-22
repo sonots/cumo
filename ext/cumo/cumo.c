@@ -54,11 +54,11 @@ bool cumo_show_warning_enabled_p()
     return cumo_show_warning_enabled;
 }
 
-static bool cumo_warning_once_enabled;
+static bool cumo_show_warning_once_enabled;
 
-bool cumo_warning_once_enabled_p()
+bool cumo_show_warning_once_enabled_p()
 {
-    return cumo_warning_once_enabled;
+    return cumo_show_warning_once_enabled;
 }
 
 /*
@@ -130,7 +130,7 @@ Init_cumo()
 
     // default is true
     env = getenv("CUMO_SHOW_WARNING_ONCE");
-    cumo_warning_once_enabled = env == NULL || (strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
+    cumo_show_warning_once_enabled = env == NULL || (strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
 
     Init_cumo_narray();
 

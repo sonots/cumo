@@ -15,12 +15,12 @@ extern "C" {
 
 bool cumo_compatible_mode_enabled_p();
 bool cumo_show_warning_enabled_p();
-bool cumo_warning_once_enabled_p();
+bool cumo_show_warning_once_enabled_p();
 
 #define CUMO_SHOW_WARNING_ONCE( c_str ) \
     { \
         if (cumo_show_warning_enabled_p()) { \
-            if (cumo_warning_once_enabled_p()) { \
+            if (cumo_show_warning_once_enabled_p()) { \
                 static bool show_warning = true; \
                 if (show_warning) { \
                     fprintf(stderr, (c_str)); \
