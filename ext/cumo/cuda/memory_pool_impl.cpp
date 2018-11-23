@@ -139,6 +139,8 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
             if (e.status() != cudaErrorMemoryAllocation) {
                 throw;
             }
+            // Retry after free all free blocks.
+            // NOTE: Anotehr retry after GC is done at cumo_cuda_runtime_malloc.
             FreeAllBlocks();
             try {
                 mem = std::make_shared<Memory>(size);
@@ -146,21 +148,8 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
                 if (e.status() != cudaErrorMemoryAllocation) {
                     throw;
                 }
-#ifdef NO_RUBY // cpp test does not bind with libruby
                 size_t total = size + GetTotalBytes();
                 throw OutOfMemoryError(size, total);
-#else
-                rb_funcall(rb_define_module("GC"), rb_intern("start"), 0);
-                try {
-                    mem = std::make_shared<Memory>(size);
-                } catch (const CUDARuntimeError& e) {
-                    if (e.status() != cudaErrorMemoryAllocation) {
-                        throw;
-                    }
-                    size_t total = size + GetTotalBytes();
-                    throw OutOfMemoryError(size, total);
-                }
-#endif
             }
         }
         chunk = std::make_shared<Chunk>(mem, 0, size, stream_ptr);
