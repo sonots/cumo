@@ -29,7 +29,15 @@ cumo_cuda_runtime_malloc(size_t size)
         } catch (const cumo::internal::CUDARuntimeError& e) {
             cumo_cuda_runtime_check_status(e.status());
         } catch (const cumo::internal::OutOfMemoryError& e) {
-            rb_raise(cumo_cuda_eOutOfMemoryError, "%s", e.what());
+            // retry after GC
+            rb_funcall(rb_define_module("GC"), rb_intern("start"), 0);
+            try {
+                return reinterpret_cast<char*>(pool.Malloc(size));
+            } catch (const cumo::internal::CUDARuntimeError& e) {
+                cumo_cuda_runtime_check_status(e.status());
+            } catch (const cumo::internal::OutOfMemoryError& e) {
+                rb_raise(cumo_cuda_eOutOfMemoryError, "%s", e.what());
+            }
         }
     } else {
         void *ptr = 0;
