@@ -94,8 +94,8 @@ Following methods behave incompatibly with Numo as default for performance.
 * `count_true`
 * `count_false`
 
-Numo returns a Ruby numeric object for 0-dimensional NArray, but Cumo returns the 0-dimensional NArray instead of a Ruby numeric object.
-This is to avoid synchnoziation between CPU and GPU for performance.
+Numo returns a Ruby numeric object for 0-dimensional NArray, while Cumo returns the 0-dimensional NArray instead of a Ruby numeric object.
+This difference was introduced for Cumo to avoid synchnoziation and trasfer of data between CPU and GPU.
 
 You may set `CUMO_COMPATIBLE_MODE=ON` environment variable to force Cumo NArray behave compatibly with Numo NArray.
 
