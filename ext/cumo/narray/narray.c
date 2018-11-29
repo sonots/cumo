@@ -5,6 +5,7 @@
 #include "cumo/narray.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
+#include "numo/narray.h"
 
 /* global variables within this module */
 VALUE cumo_cNArray;
@@ -1414,6 +1415,39 @@ cumo_na_cast_to(VALUE obj, VALUE type)
     return rb_funcall(type, cumo_id_cast, 1, obj);
 }
 
+/*
+  Returns a new Cumo array initialized from Numo narray.
+  @param [Numo::NArray] numo_array Numo::NArray.
+  @return [Cumo::NArray] Cumo::NArray 
+ */
+static VALUE
+cumo_na_s_from_numo(VALUE numo_array)
+{
+    narray_t *numo_na;
+    VALUE cumo_narray;
+
+    GetNArray(numo_narray, numo_na);
+// typedef struct {
+//     unsigned char ndim;     // # of dimensions
+//     unsigned char type;
+//     unsigned char flag[2];  // flags
+//     unsigned short elmsz;    // element size
+//     size_t   size;          // # of total elements
+//     size_t  *shape;         // # of elements for each dimension
+//     VALUE    reduce;
+// } cumo_narray_t;
+
+
+    // TODO(sonots): If not DATA_TYPE, copy
+    // AsContiguousArray
+
+    VALUE cumo_narray = cumo_na_new(klass, NA_NDIM(numo_na), NA_SHAPE(numo_na));
+    void* cumo_ptr = cumo_na_get_pointer_for_write(cumo_narray);
+
+    cumo_cuda_runtime_check_status(cudaMemcpyAsync(cumo_ptr, numo_ptr, total_bytes, cudaMemcpyHostToDevice,0));
+
+    return cumo_narray;
+}
 
 
 // reduce is dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
@@ -1906,6 +1940,8 @@ Init_cumo_narray()
     rb_define_alias (cNArray, "to_string", "to_binary");
     rb_define_method(cNArray, "marshal_dump",  cumo_na_marshal_dump, 0);
     rb_define_method(cNArray, "marshal_load",  cumo_na_marshal_load, 1);
+
+    rb_define_singleton_method(cNArray, "from_numo", cumo_na_s_from_numo, 1);
 
     rb_define_method(cNArray, "byte_size",  cumo_na_byte_size, 0);
 
