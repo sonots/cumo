@@ -3,6 +3,7 @@ require 'benchmark'
 
 NUM = (ARGV.first || 100).to_i
 
+# warm up
 a = Cumo::Float32.new(10).seq(1)
 b = Cumo::Float32.new(10).seq(10,10)
 c = a + b
