@@ -211,27 +211,27 @@ module Cumo
 
     # Iterate over an axis
     # @ example
-    #   > a = Numo::DFloat.new(2,2,2).seq
+    #   > a = Cumo::DFloat.new(2,2,2).seq
     #   > p a
-    #   Numo::DFloat#shape=[2,2,2]
+    #   Cumo::DFloat#shape=[2,2,2]
     #   [[[0, 1],
     #     [2, 3]],
     #    [[4, 5],
     #     [6, 7]]]
     #
     #   > a.each_over_axis{|i| p i}
-    #   Numo::DFloat(view)#shape=[2,2]
+    #   Cumo::DFloat(view)#shape=[2,2]
     #   [[0, 1],
     #    [2, 3]]
-    #   Numo::DFloat(view)#shape=[2,2]
+    #   Cumo::DFloat(view)#shape=[2,2]
     #   [[4, 5],
     #    [6, 7]]
     #
     #   > a.each_over_axis(1){|i| p i}
-    #   Numo::DFloat(view)#shape=[2,2]
+    #   Cumo::DFloat(view)#shape=[2,2]
     #   [[0, 1],
     #    [4, 5]]
-    #   Numo::DFloat(view)#shape=[2,2]
+    #   Cumo::DFloat(view)#shape=[2,2]
     #   [[2, 3],
     #    [6, 7]]
 
