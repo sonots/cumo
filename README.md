@@ -1,7 +1,6 @@
 # Cumo
 
-Cumo (pronounced like "koomo") is CUDA-aware numerical library whose interface is highly compatible with [Ruby Numo](https://github.com/ruby-numo).
-This library provides the benefit of speedup using GPU by replacing Numo with only a small piece of codes.
+Cumo (pronounced "koomo") is a CUDA-aware, GPU-optimized numerical library that offers a significant performance boost over [Ruby Numo](https://github.com/ruby-numo), while (mostly) maintaining drop-in compatibility.
 
 <img src="https://raw.githubusercontent.com/sonots/cumo-logo/master/logo_transparent.png" alt="cumo logo" title="cumo logo" width="50%">
 
@@ -13,7 +12,7 @@ This library provides the benefit of speedup using GPU by replacing Numo with on
 
 ## Preparation
 
-Install CUDA and setup environment variables as follows:
+Install CUDA and set your environment variables as follows:
 
 ```bash
 export CUDA_PATH="/usr/local/cuda"
@@ -25,7 +24,7 @@ export LIBRARY_PATH="$CUDA_PATH/lib64:$CUDA_PATH/lib:$LIBRARY_PATH"
 
 ## Installation
 
-Add a following line to your Gemfile:
+Add the following line to your Gemfile:
 
 ```ruby
 gem 'cumo'
@@ -63,15 +62,15 @@ An example:
 => 15
 ```
 
-### How to switch from Numo to Cumo
+### Switching from Numo to Cumo
 
-Basically, following command should make it work with Cumo.
+The following find-and-replace should just work:
 
 ```
 find . -type f | xargs sed -i -e 's/Numo/Cumo/g' -e 's/numo/cumo/g'
 ```
 
-If you want to switch Numo and Cumo dynamically, following snippets should work:
+If you want to dynamically switch between Numo and Cumo, something like the following will work:
 
 ```ruby
 if gpu
@@ -87,7 +86,7 @@ a = xm::DFloat.new(3,5).seq
 
 ### Incompatibility With Numo
 
-Following methods behave incompatibly with Numo as default for performance.
+The following methods behave incompatibly with Numo by default for performance reasons:
 
 * `extract`
 * `[]`
@@ -95,9 +94,9 @@ Following methods behave incompatibly with Numo as default for performance.
 * `count_false`
 
 Numo returns a Ruby numeric object for 0-dimensional NArray, while Cumo returns the 0-dimensional NArray instead of a Ruby numeric object.
-This difference was introduced for Cumo to avoid synchnoziation and trasfer of data between CPU and GPU.
+Cumo differs in this way to avoid synchronization and minimize CPU ⇄ GPU data transfer.
 
-You may set `CUMO_COMPATIBLE_MODE=ON` environment variable to force Cumo NArray behave compatibly with Numo NArray.
+Set the `CUMO_COMPATIBLE_MODE` environment variable to `ON` to force Numo NArray compatibility (for worse performance).
 
 You may enable or disable `compatible_mode` as:
 
@@ -109,7 +108,7 @@ Cumo.disable_compatible_mode # disable
 Cumo.compatible_mode_enabled? #=> false
 ```
 
-You can also use following methods which behaves as Numo NArray's methods. Behaviors of these methods do not depend on `compatible_mode`.
+You can also use the following methods which behave like Numo's NArray methods. The behavior of these methods does not depend on `compatible_mode`.
 
 * `extract_cpu`
 * `aref_cpu(*idx)`
@@ -118,7 +117,7 @@ You can also use following methods which behaves as Numo NArray's methods. Behav
 
 ### Select a GPU device ID
 
-Set `CUDA_VISIBLE_DEVICES=id` environment variable, or
+Set the `CUDA_VISIBLE_DEVICES=id` environment variable, or
 
 ```
 require 'cumo'
@@ -129,7 +128,7 @@ where `id` is an integer.
 
 ### Disable GPU Memory Pool
 
-GPU memory pool is enabled as default. To disable, set `CUMO_MEMORY_POOL=OFF` environment variable , or
+GPU memory pool is enabled by default. To disable it, set `CUMO_MEMORY_POOL=OFF`, or:
 
 ```
 require 'cumo'
@@ -138,11 +137,11 @@ Cumo::CUDA::MemoryPool.disable
 
 ## Documentation
 
-See https://github.com/ruby-numo/numo-narray#documentation and replace Numo to Cumo.
+See https://github.com/ruby-numo/numo-narray#documentation, replacing Numo with Cumo.
 
 ## Contributions
 
-This project is still under development. See [issues](https://github.com/sonots/cumo/issues) for future works.
+This project is under active development. See [issues](https://github.com/sonots/cumo/issues) for future works.
 
 ## Development
 
@@ -170,12 +169,12 @@ Generate docs:
 bundle exec rake docs
 ```
 
-## Advanced Tips on Development
+## Advanced Development Tips
 
 ### ccache
 
 [ccache](https://ccache.samba.org/) would be useful to speedup compilation time.
-Install ccache and setup as:
+Install ccache and configure with:
 
 
 ```bash
@@ -187,7 +186,7 @@ ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/nvcc"
 
 ### Build in parallel
 
-Use `MAKEFLAGS` environment variable to specify `make` command options. You can build in parallel as:
+Set `MAKEFLAGS` to specify `make` command options. You can build in parallel as:
 
 ```
 bundle exec env MAKEFLAG=-j8 rake compile
@@ -199,11 +198,11 @@ bundle exec env MAKEFLAG=-j8 rake compile
 bundle exec env CUMO_NVCC_GENERATE_CODE=arch=compute_60,code=sm_60 rake compile
 ```
 
-This is useful even on development because it makes possible to skip JIT compilation of PTX to cubin occurring on runtime.
+This is useful even on development because it makes it possible to skip JIT compilation of PTX to cubin during runtime.
 
 ### Run tests with gdb
 
-Compile with debug option:
+Compile with debugging enabled:
 
 ```
 bundle exec DEBUG=1 rake compile
@@ -242,7 +241,7 @@ bundle exec DTYPE=dfloat ruby test/narray_test.rb
 bundle exec CUDA_LAUNCH_BLOCKING=1
 ```
 
-### Show GPU synchnoziation warnings
+### Show GPU synchronization warnings
 
 Cumo shows warnings if CPU and GPU synchronization occurs if:
 
@@ -250,8 +249,8 @@ Cumo shows warnings if CPU and GPU synchronization occurs if:
 export CUMO_SHOW_WARNING=ON
 ```
 
-As default, it shows warnings occurred at the same place only once.
-You may want to show warnings everytime rather than once as:
+By default, Cumo shows warnings that occurred at the same place only once.
+To show all, multiple warnings, set:
 
 ```
 export CUMO_SHOW_WARNING=ON
