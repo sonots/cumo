@@ -65,7 +65,11 @@ static void
         if (idx1) {
             for (i=i1=0; i1<n1 && i<n; i++,i1++) {
                 x = ptr[i1];
-                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, cumo_na_cStep)) {
+#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
+                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq)) {
+#else
+                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cEnumerator)) {
+#endif
                     cumo_na_step_sequence(x,&len,&beg,&step);
                     for (c=0; c<len && i<n; c++,i++) {
                         y = beg + step * c;
@@ -81,7 +85,11 @@ static void
         } else {
             for (i=i1=0; i1<n1 && i<n; i++,i1++) {
                 x = ptr[i1];
-                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, cumo_na_cStep)) {
+#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
+                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq)) {
+#else
+                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cEnumerator)) {
+#endif
                     cumo_na_step_sequence(x,&len,&beg,&step);
                     for (c=0; c<len && i<n; c++,i++) {
                         y = beg + step * c;
@@ -110,7 +118,11 @@ static void
         dtype* host_z = ALLOC_N(dtype, n);
         for (i=i1=0; i1<n1 && i<n; i1++) {
             x = ptr[i1];
-            if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, cumo_na_cStep)) {
+#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
+            if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq)) {
+#else
+            if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cEnumerator)) {
+#endif
                 cumo_na_step_sequence(x,&len,&beg,&step);
                 for (c=0; c<len && i<n; c++,i++) {
                     y = beg + step * c;

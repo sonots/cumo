@@ -200,6 +200,9 @@ extern VALUE cumo_na_cStep;
 #ifndef HAVE_RB_CCOMPLEX
 extern VALUE rb_cComplex;
 #endif
+#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
+VALUE rb_cArithSeq;
+#endif
 
 extern VALUE cumo_sym_reduce;
 extern VALUE cumo_sym_option;
@@ -265,6 +268,23 @@ typedef struct {
     unsigned int element_stride;
 } cumo_narray_type_info_t;
 
+// from ruby/enumerator.c
+struct enumerator {
+    VALUE obj;
+    ID    meth;
+    VALUE args;
+    // use only above in this source
+    VALUE fib;
+    VALUE dst;
+    VALUE lookahead;
+    VALUE feedvalue;
+    VALUE stop_exc;
+    VALUE size;
+    // incompatible below depending on ruby version
+    //VALUE procs;                      // ruby 2.4
+    //rb_enumerator_size_func *size_fn; // ruby 2.1-2.4
+    //VALUE (*size_fn)(ANYARGS);        // ruby 2.0
+};
 
 static inline cumo_narray_t *
 cumo_na_get_narray_t(VALUE obj)
