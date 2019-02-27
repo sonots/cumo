@@ -179,5 +179,8 @@ have_library('nvrtc')
 have_library('cublas')
 # have_library('cusolver')
 # have_library('curand')
+if have_library('cudnn') # TODO(sonots): cuDNN version check
+  $stderr.puts "cudnn found"
+end
 
 create_makefile('cumo')
