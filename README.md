@@ -22,6 +22,14 @@ export PATH="$CUDA_PATH/bin:$PATH"
 export LIBRARY_PATH="$CUDA_PATH/lib64:$CUDA_PATH/lib:$LIBRARY_PATH"
 ```
 
+To use cuDNN features, install cuDNN and set your environment variables as follows:
+
+```
+export CUDNN_ROOT_DIR=/path/to/cudnn
+```
+
+FYI: I use [cudnnenv](https://github.com/unnonouno/cudnnenv) to install cudnn under my home directory like `export CUDNN_ROOT_DIR=/home/sonots/.cudnn/active/cuda`.
+
 ## Installation
 
 Add the following line to your Gemfile:
@@ -216,7 +224,7 @@ bundle exec gdb -x run.gdb --args ruby test/narray_test.rb
 
 You may put a breakpoint by calling `cumo_debug_breakpoint()` at C source codes.
 
-### Run tests only a specific line 
+### Run tests only a specific line
 `--location` option is available as:
 
 ```
