@@ -26,6 +26,9 @@ To use cuDNN features, install cuDNN and set your environment variables as follo
 
 ```
 export CUDNN_ROOT_DIR=/path/to/cudnn
+export CPATH=$CUDNN_ROOT_DIR/include:$CPATH
+export LD_LIBRARY_PATH=$CUDNN_ROOT_DIR/lib64:$LD_LIBRARY_PATH
+export LIBRARY_PATH=$CUDNN_ROOT_DIR/lib64:$LIBRARY_PATH
 ```
 
 FYI: I use [cudnnenv](https://github.com/unnonouno/cudnnenv) to install cudnn under my home directory like `export CUDNN_ROOT_DIR=/home/sonots/.cudnn/active/cuda`.
