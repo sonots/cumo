@@ -201,7 +201,7 @@ extern VALUE cumo_na_cStep;
 extern VALUE rb_cComplex;
 #endif
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
-VALUE rb_cArithSeq;
+extern VALUE rb_cArithSeq;
 #endif
 
 extern VALUE cumo_sym_reduce;
