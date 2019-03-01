@@ -196,7 +196,6 @@ extern VALUE cumo_cUInt32;
 extern VALUE cumo_cUInt16;
 extern VALUE cumo_cUInt8;
 extern VALUE cumo_cRObject;
-extern VALUE cumo_na_cStep;
 #ifndef HAVE_RB_CCOMPLEX
 extern VALUE rb_cComplex;
 #endif
