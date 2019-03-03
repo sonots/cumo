@@ -249,7 +249,7 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
 }
 
 void
-cumo_na_parse_enumerator_step(VALUE enum_obj, VALUE *pstep )
+cumo_na_parse_enumerator_step(VALUE enum_obj, VALUE *pstep)
 {
     int len;
     VALUE step;
