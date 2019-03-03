@@ -53,6 +53,10 @@ end
 if (is_float || is_complex) && !is_object
   def_id "gemm"
 end
+# cudnn
+if is_float && !is_object
+  def_id "conv"
+end
 
 if is_int && !is_object
   def_id "minlength" # for bincount
@@ -329,6 +333,11 @@ cum "cumprod","mul"
 accum_binary "mulsum"
 if (is_float || is_complex) && !is_object
   def_method "gemm"
+end
+
+# cudnn
+if is_float && !is_object
+  def_method "conv"
 end
 
 # rmsdev
