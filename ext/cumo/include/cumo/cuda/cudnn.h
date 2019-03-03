@@ -1,8 +1,8 @@
-#ifndef CUMO_CUDA_CUBLAS_H
-#define CUMO_CUDA_CUBLAS_H
+#ifndef CUMO_CUDA_CUDNN_H
+#define CUMO_CUDA_CUDNN_H
 
 #include <ruby.h>
-#include "cublas_v2.h"
+#include "cudnn.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -12,13 +12,10 @@ extern "C" {
 #endif
 
 void
-cumo_cuda_cublas_check_status(cublasStatus_t status);
+cumo_cuda_cudnn_check_status(cudnnStatus_t status);
 
-cublasHandle_t
-cumo_cuda_cublas_handle();
-
-VALUE
-cumo_cuda_cublas_option_value(VALUE value, VALUE default_value);
+cudnnHandle_t
+cumo_cuda_cudnn_handle();
 
 #if defined(__cplusplus)
 #if 0
@@ -27,4 +24,4 @@ cumo_cuda_cublas_option_value(VALUE value, VALUE default_value);
 }  /* extern "C" { */
 #endif
 
-#endif /* ifndef CUMO_CUDA_CUBLAS_H */
+#endif /* ifndef CUMO_CUDA_CUDNN_H */
