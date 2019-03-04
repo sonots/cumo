@@ -54,13 +54,13 @@ cumo_na_step_array_index(VALUE obj, size_t ary_size,
     vbeg = x.begin;
     vend = x.end;
 #else
-    struct enumerator *e;
+    cumo_enumerator_t *e;
 
     if (rb_obj_is_kind_of(obj, rb_cRange)) {
         vstep = rb_ivar_get(obj, cumo_id_step);
     } else { // Enumerator
         cumo_na_parse_enumerator_step(obj, &vstep);
-        e = (struct enumerator *)DATA_PTR(obj);
+        e = (cumo_enumerator_t *)DATA_PTR(obj);
         obj =  e->obj; // Range
     }
 
@@ -202,13 +202,13 @@ cumo_na_step_sequence( VALUE obj, size_t *plen, double *pbeg, double *pstep )
     dbeg = NUM2DBL(x.begin);
     vend = x.end;
 #else
-    struct enumerator *e;
+    cumo_enumerator_t *e;
 
     if (rb_obj_is_kind_of(obj, rb_cRange)) {
         vstep = rb_ivar_get(obj, cumo_id_step);
     } else { // Enumerator
         cumo_na_parse_enumerator_step(obj, &vstep);
-        e = (struct enumerator *)DATA_PTR(obj);
+        e = (cumo_enumerator_t *)DATA_PTR(obj);
         obj =  e->obj; // Range
     }
 

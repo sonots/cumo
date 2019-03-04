@@ -268,7 +268,7 @@ typedef struct {
 } cumo_narray_type_info_t;
 
 // from ruby/enumerator.c
-struct enumerator {
+typedef struct {
     VALUE obj;
     ID    meth;
     VALUE args;
@@ -283,7 +283,7 @@ struct enumerator {
     //VALUE procs;                      // ruby 2.4
     //rb_enumerator_size_func *size_fn; // ruby 2.1-2.4
     //VALUE (*size_fn)(ANYARGS);        // ruby 2.0
-};
+} cumo_enumerator_t;
 
 static inline cumo_narray_t *
 cumo_na_get_narray_t(VALUE obj)
