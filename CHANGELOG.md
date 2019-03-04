@@ -1,3 +1,9 @@
+# 0.2.5 (2019-03-04)-
+
+Enhancements:
+
+* Support arithmetic sequence, which is available in ruby >= 2.6.0 (thanks to naitoh)
+
 # 0.2.4 (2018-11-21)
 
 Changes:
