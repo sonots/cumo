@@ -40,9 +40,11 @@ VALUE cumo_sym_option;
 VALUE cumo_sym_loop_opt;
 VALUE cumo_sym_init;
 
-VALUE cumo_na_cStep;
 #ifndef HAVE_RB_CCOMPLEX
 VALUE rb_cComplex;
+#endif
+#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
+VALUE rb_cArithSeq;
 #endif
 
 int cumo_na_inspect_rows_=20;
@@ -1512,7 +1514,11 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
             step = 0;
             //printf("beg=%d step=%d len=%d\n",beg,step,len);
         } else if (rb_obj_is_kind_of(v,rb_cRange) ||
-                   rb_obj_is_kind_of(v,cumo_na_cStep)) {
+#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
+                   rb_obj_is_kind_of(v,rb_cArithSeq)) {
+#else
+                   rb_obj_is_kind_of(v,rb_cEnumerator)) {
+#endif
             cumo_na_step_array_index( v, ndim, &len, &beg, &step );
         } else {
             rb_raise(cumo_na_eDimensionError, "invalid dimension argument %s",
@@ -1848,6 +1854,9 @@ Init_cumo_narray()
 #ifndef HAVE_RB_CCOMPLEX
     rb_require("complex");
     rb_cComplex = rb_const_get(rb_cObject, rb_intern("Complex"));
+#endif
+#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
+    rb_cArithSeq = rb_path2class("Enumerator::ArithmeticSequence");
 #endif
 
     rb_define_const(cNArray, "VERSION", rb_str_new2(CUMO_VERSION));

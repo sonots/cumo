@@ -69,6 +69,7 @@ bool cumo_na_test_reduce(VALUE reduce, int dim);
 
 void cumo_na_step_array_index(VALUE self, size_t ary_size, size_t *plen, ssize_t *pbeg, ssize_t *pstep);
 void cumo_na_step_sequence(VALUE self, size_t *plen, double *pbeg, double *pstep);
+void cumo_na_parse_enumerator_step(VALUE enum_obj, VALUE *pstep);
 
 // used in aref, aset
 int cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_t *pos_idx);
