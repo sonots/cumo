@@ -1,4 +1,4 @@
-#include "chainerx/cuda/cuda_conv.h"
+#include "cuda_conv.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -10,23 +10,23 @@
 
 #include <nonstd/optional.hpp>
 
-#include "chainerx/array.h"
-#include "chainerx/backend_util.h"
-#include "chainerx/cuda/cuda_backend.h"
-#include "chainerx/cuda/cuda_device.h"
-#include "chainerx/cuda/cuda_set_device_scope.h"
-#include "chainerx/cuda/cudnn.h"
-#include "chainerx/device.h"
-#include "chainerx/dtype.h"
-#include "chainerx/error.h"
-#include "chainerx/hash_combine.h"
-#include "chainerx/macro.h"
-#include "chainerx/routines/connection.h"
-#include "chainerx/routines/creation.h"
-#include "chainerx/shape.h"
-#include "chainerx/stack_vector.h"
+#include "cumo/array.h"
+#include "cumo/backend_util.h"
+#include "cumo/cuda/cuda_backend.h"
+#include "cumo/cuda/cuda_device.h"
+#include "cumo/cuda/cuda_set_device_scope.h"
+#include "cumo/cuda/cudnn.h"
+#include "cumo/device.h"
+#include "cumo/dtype.h"
+#include "cumo/error.h"
+#include "cumo/hash_combine.h"
+#include "cumo/macro.h"
+#include "cumo/routines/connection.h"
+#include "cumo/routines/creation.h"
+#include "cumo/shape.h"
+#include "cumo/stack_vector.h"
 
-namespace chainerx {
+namespace cumo {
 namespace cuda {
 namespace {
 
@@ -526,4 +526,4 @@ Array CudaConv::ConvGradWeight(
 
 }  // namespace cuda_internal
 }  // namespace cuda
-}  // namespace chainerx
+}  // namespace cumo

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CUMO_CUDA_CUDNN_CONV_IMPL_H
+#define CUMO_CUDA_CUDNN_CONV_IMPL_H
 
 #include <cstddef>
 #include <cstdint>
@@ -9,14 +10,14 @@
 #include <cudnn.h>
 #include <nonstd/optional.hpp>
 
-#include "chainerx/array.h"
-#include "chainerx/constant.h"
-#include "chainerx/cuda/cudnn.h"
-#include "chainerx/dtype.h"
-#include "chainerx/shape.h"
-#include "chainerx/stack_vector.h"
+#include "cumo/array.h"
+#include "cumo/constant.h"
+#include "cumo/cuda/cudnn.h"
+#include "cumo/dtype.h"
+#include "cumo/shape.h"
+#include "cumo/stack_vector.h"
 
-namespace chainerx {
+namespace cumo {
 namespace cuda {
 
 class CudaDevice;
@@ -132,4 +133,6 @@ private:
 
 }  // namespace cuda_internal
 }  // namespace cuda
-}  // namespace chainerx
+}  // namespace cumo
+
+#endif /* ifdef CUMO_CUDA_CUDNN_CONV_IMPL_H %/
