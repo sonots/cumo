@@ -90,6 +90,43 @@ createCudnnTensorDescriptor(VALUE a) {
     return desc;
 }
 
+static cudnnFilterDescriptor_t
+createCudnnFilterDescriptor(VALUE a) {
+    cudnnFilterDescriptor_t desc;
+    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
+
+    cumo_narray_t *na;
+    int ndim;
+    size_t *shape;
+
+    CumoGetNArray(a, na);
+    ndim = (int)(na->ndim);
+    shape = na->shape;
+
+    assert(cumo_na_check_contiguous(a) == Qtrue);
+    CheckCudnnError(cudnnCreateFilterDescriptor(&desc));
+
+    if (ndim == 4) {
+        int nchw[4];
+        nchw[0] = shape[0];
+        nchw[1] = shape[1];
+        nchw[2] = shape[2];
+        nchw[3] = shape[3];
+        // TODO: dtor desc
+        CheckCudnnError(cudnnSetFilter4dDescriptor(desc, cudnn_dtype, CUDNN_TENSOR_NCHW, nchw[0], nchw[1], nchw[2], nchw[3]));
+    } else {
+        int int_shape[CUMO_NA_MAX_DIMENSION];
+        int idim = 0;
+        for (idim = 0; idim < ndim; ++idim) {
+            int_shape[idim] = (int)(shape[idim]);
+        }
+        // TODO: dtor desc
+        CheckCudnnError(cudnnSetFilterNdDescriptor(desc, cudnn_dtype, CUDNN_TENSOR_NCHW, ndim, &int_shape[0]));
+    }
+
+    return desc;
+}
+
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -107,6 +144,7 @@ static VALUE
     VALUE x_cont, w_cont;
     cudnnTensorDescriptor_t x_desc;
     cudnnTensorDescriptor_t y_desc;
+    cudnnFilterDescriptor_t w_desc;
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
@@ -156,7 +194,7 @@ static VALUE
 
     x_desc = createCudnnTensorDescriptor(x_cont);
     y_desc = createCudnnTensorDescriptor(y);
-    // cudnn filter descriptr for w
+    w_desc = createCudnnFilterDescriptor(w_cont);
     // cudnn conv descriptor for convdtype, pad, stride, null, 1
 
     // TODO: get max workspace size
