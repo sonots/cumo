@@ -127,6 +127,45 @@ createCudnnFilterDescriptor(VALUE a) {
     return desc;
 }
 
+static cudnnConvolutionDescriptor_t
+createCudnnConvolutionDescriptor(size_t ndim, VALUE stride, VALUE pad) {
+    cudnnConvolutionDescriptor_t desc;
+    cudnnDataType_t compute_type = <%= cudnn_dtype %>;
+
+    int int_stride[CUMO_NA_MAX_DIMENSION];
+    int int_pad[CUMO_NA_MAX_DIMENSION];
+    int int_dilation[CUMO_NA_MAX_DIMENSION];
+
+    CHECK_DIM_EQ((size_t)(RARRAY_LEN(stride)), ndim);
+    CHECK_DIM_EQ((size_t)(RARRAY_LEN(pad)), ndim);
+
+    for (size_t idim = 0; idim < ndim; ++idim) {
+        int_stride[idim]= NUM2INT(rb_ary_entry(stride, (long)idim));
+        int_pad[idim]= NUM2INT(rb_ary_entry(pad, (long)idim));
+        int_dilation[idim] = 1;
+    }
+
+    if (ndim == 2) {
+        // TODO: dtor desc
+        CheckCudnnError(cudnnSetConvolution2dDescriptor(
+                desc,
+                int_pad[0],
+                int_pad[1],
+                int_stride[0],
+                int_stride[1],
+                int_dilation[0],
+                int_dilation[1],
+                CUDNN_CROSS_CORRELATION,
+                compute_type));
+    } else {
+        // TODO: dtor desc
+        CheckCudnnError(cudnnSetConvolutionNdDescriptor(
+                desc, ndim, &int_pad[0], &int_stride[0], &int_dilation[0], CUDNN_CROSS_CORRELATION, compute_type));
+    }
+
+    return desc;
+}
+
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -145,6 +184,7 @@ static VALUE
     cudnnTensorDescriptor_t x_desc;
     cudnnTensorDescriptor_t y_desc;
     cudnnFilterDescriptor_t w_desc;
+    cudnnConvolutionDescriptor_t conv_desc;
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
@@ -195,7 +235,7 @@ static VALUE
     x_desc = createCudnnTensorDescriptor(x_cont);
     y_desc = createCudnnTensorDescriptor(y);
     w_desc = createCudnnFilterDescriptor(w_cont);
-    // cudnn conv descriptor for convdtype, pad, stride, null, 1
+    conv_desc = createCudnnConvolutionDescriptor(ndim, pad, stride);
 
     // TODO: get max workspace size
     // TODO: autotune
