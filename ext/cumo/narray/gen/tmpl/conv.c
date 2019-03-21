@@ -1,3 +1,25 @@
+<%
+  cudnn_dtype =
+    case type_name
+    when 'sfloat'
+      'CUDNN_DATA_FLOAT'
+    when 'dfloat'
+      'CUDNN_DATA_DOUBLE'
+    else
+      # CUDNN_DATA_HALF
+      raise 'not supported'
+    end
+%>
+
+#define CHECK_DIM_EQ(nd1,nd2)                        \
+    if ((nd1) != (nd2)) {                            \
+        rb_raise(cumo_na_eShapeError,                \
+                 "dimention mismatch: %d != %d",     \
+                 (int)(nd1), (int)(nd2));            \
+    }
+
+#define CheckCudnnError cumo_cuda_cudnn_check_status
+
 static VALUE
 cumo_option_value(VALUE value, VALUE default_value)
 {
@@ -8,13 +30,6 @@ cumo_option_value(VALUE value, VALUE default_value)
     }
     return value;
 }
-
-#define CHECK_DIM_EQ(nd1,nd2)                        \
-    if ((nd1) != (nd2)) {                            \
-        rb_raise(cumo_na_eShapeError,                \
-                 "dimention mismatch: %d != %d",     \
-                 (int)(nd1), (int)(nd2));            \
-    }
 
 static size_t
 GetConvOutDim(size_t in_dim, size_t kernel_size, size_t stride, size_t pad) {
@@ -31,6 +46,50 @@ GetConvOutDim(size_t in_dim, size_t kernel_size, size_t stride, size_t pad) {
     return (size_t)(numerator / stride + 1);
 }
 
+static cudnnTensorDescriptor_t
+createCudnnTensorDescriptor(VALUE a) {
+    cudnnTensorDescriptor_t desc;
+    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
+
+    cumo_narray_t *na;
+    int ndim;
+    size_t *shape;
+
+    CumoGetNArray(a, na);
+    ndim = (int)(na->ndim);
+    shape = na->shape;
+
+    assert(cumo_na_check_contiguous(a) == Qtrue);
+    CheckCudnnError(cudnnCreateTensorDescriptor(&desc));
+
+    if (ndim == 4) {
+        int nchw[4];
+        nchw[0] = shape[0];
+        nchw[1] = shape[1];
+        nchw[2] = shape[2];
+        nchw[3] = shape[3];
+        // TODO: dtor desc
+        CheckCudnnError(cudnnSetTensor4dDescriptor(desc, CUDNN_TENSOR_NCHW, cudnn_dtype, nchw[0], nchw[1], nchw[2], nchw[3]));
+    }
+    else {
+        int int_strides[CUMO_NA_MAX_DIMENSION]; // strides divided by item size
+        int int_shape[CUMO_NA_MAX_DIMENSION];
+        int idim = 0;
+        int stride = 1;
+        for (idim = 0; idim < ndim; ++idim) {
+            int_shape[idim] = (int)(shape[idim]);
+        }
+        for (idim = ndim - 1; idim >= 0; --idim) {
+            int_strides[idim] = stride;
+            stride *= int_shape[idim];
+        }
+        // TODO: dtor desc
+        CheckCudnnError(cudnnSetTensorNdDescriptor(desc, cudnn_dtype, ndim, &int_shape[0], &int_strides[0]));
+    }
+
+    return desc;
+}
+
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -44,6 +103,10 @@ static VALUE
     size_t ndim;
     size_t *x_shape, *w_shape;
     size_t out_channels, batch_size;
+
+    VALUE x_cont, w_cont;
+    cudnnTensorDescriptor_t x_desc;
+    cudnnTensorDescriptor_t y_desc;
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
@@ -88,11 +151,11 @@ static VALUE
         y = cumo_na_new(cT, ndim + 2, y_shape);
     }
 
-    // cast x into contiguous array
-    // cast w into contiguous array
+    x_cont = cumo_na_check_contiguous(x) == Qtrue ? x : rb_funcall(x, rb_intern("dup"), 0);
+    w_cont = cumo_na_check_contiguous(w) == Qtrue ? w : rb_funcall(w, rb_intern("dup"), 0);
 
-    // cudnn tensor descriptr for x_cont
-    // cudnn tensor descriptr for y
+    x_desc = createCudnnTensorDescriptor(x_cont);
+    y_desc = createCudnnTensorDescriptor(y);
     // cudnn filter descriptr for w
     // cudnn conv descriptor for convdtype, pad, stride, null, 1
 
@@ -107,3 +170,4 @@ static VALUE
 }
 
 #undef CHECK_DIM_EQ
+#undef CheckCudnnError

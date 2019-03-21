@@ -2,7 +2,7 @@
 #define CUMO_CUDA_CUDNN_H
 
 #include <ruby.h>
-#include "cudnn.h"
+#include <cudnn.h>
 
 #if defined(__cplusplus)
 extern "C" {
