@@ -24,8 +24,8 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
         cudnnTensorDescriptor_t y_sec,
         VALUE y,
         size_t max_workspace_size,
-        VALUE pad,
-        VALUE stride);
+        int* int_stride,
+        int* int_pad);
 
 #if defined(__cplusplus)
 #if 0

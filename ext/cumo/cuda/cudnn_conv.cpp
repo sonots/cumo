@@ -6,6 +6,7 @@
 #include "cumo/narray.h"
 #include "cumo/template.h"
 #include "cumo/cuda/runtime.h"
+#include "cumo/cuda/memory_pool.h"
 
 #include <unordered_map>
 
@@ -108,8 +109,8 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
         cudnnTensorDescriptor_t y_desc,
         VALUE y,
         size_t max_workspace_size,
-        VALUE pad,
-        VALUE stride)
+        int* int_stride,
+        int* int_pad)
 {
     cudnnConvolutionFwdAlgoPerf_t perf_result{};
 
@@ -126,8 +127,8 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
         key.y_shape[idim] = ny->shape[idim];
     }
     for (size_t idim = 0; idim < ndim; ++idim) {
-        key.pad[idim]= NUM2INT(rb_ary_entry(pad, (long)idim));
-        key.stride[idim]= NUM2INT(rb_ary_entry(stride, (long)idim));
+        key.pad[idim]= int_pad[idim];
+        key.stride[idim]= int_stride[idim];
     }
     key.dtype = cudnn_dtype;
     key.max_workspace_size = max_workspace_size;
@@ -142,23 +143,27 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
         return perf_result;
     }
 
-    void* workspace = ALLOCA_N(int8_t, max_workspace_size);
-    int returned_algo_count{};
+    char* x_ptr = cumo_na_get_pointer_for_read(x) + cumo_na_get_offset(x);
+    char* w_ptr = cumo_na_get_pointer_for_read(w) + cumo_na_get_offset(w);
+    char* y_ptr = cumo_na_get_pointer_for_read(y) + cumo_na_get_offset(y);
 
+    char* workspace = cumo_cuda_runtime_malloc(max_workspace_size);
+    int returned_algo_count{};
     cumo_cuda_cudnn_check_status(cudnnFindConvolutionForwardAlgorithmEx(
                 handle,
                 x_desc,
-                (void*)CUMO_NA_DATA_PTR(nx),
+                (void*)x_ptr,
                 w_desc,
-                (void*)CUMO_NA_DATA_PTR(nw),
+                (void*)w_ptr,
                 conv_desc,
                 y_desc,
-                (void*)CUMO_NA_DATA_PTR(ny),
+                (void*)y_ptr,
                 1,  // requested algo count,
                 &returned_algo_count,
                 &perf_result,
-                workspace,
-                max_workspace_size));
+                NULL, // (void*)workspace,
+                0)); // max_workspace_size));
+    cumo_cuda_runtime_free(workspace);
     assert(returned_algo_count == 1);
 
     // TODO: thread-safe
