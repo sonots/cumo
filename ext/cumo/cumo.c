@@ -33,6 +33,8 @@ void Init_cumo_cuda_driver();
 void Init_cumo_cuda_memory_pool();
 void Init_cumo_cuda_runtime();
 void Init_cumo_cuda_nvrtc();
+void Init_cumo_cuda_cublas();
+void Init_cumo_cuda_cudnn();
 
 void
 cumo_debug_breakpoint(void)
@@ -167,4 +169,7 @@ Init_cumo()
     Init_cumo_cuda_memory_pool();
     Init_cumo_cuda_runtime();
     Init_cumo_cuda_nvrtc();
+
+    Init_cumo_cuda_cublas();
+    Init_cumo_cuda_cudnn();
 }
