@@ -1,3 +1,5 @@
+#ifdef CUDNN_FOUND
+
 <%
   cudnn_dtype =
     case type_name
@@ -256,3 +258,13 @@ CONV_ERROR:
 
 #undef CHECK_NARRAY_TYPE
 #undef CHECK_DIM_EQ
+
+#else // CUDNN_FOUND
+VALUE cumo_cuda_eCudnnError;
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCudnnError, "cuDNN is not available");
+}
+#endif // CUDNN_FOUND

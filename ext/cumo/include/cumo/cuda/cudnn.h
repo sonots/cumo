@@ -2,7 +2,9 @@
 #define CUMO_CUDA_CUDNN_H
 
 #include <ruby.h>
+#ifdef CUDNN_FOUND
 #include <cudnn.h>
+#endif // CUDNN_FOUND
 
 #if defined(__cplusplus)
 extern "C" {
@@ -10,6 +12,8 @@ extern "C" {
 } /* satisfy cc-mode */
 #endif
 #endif
+
+#ifdef CUDNN_FOUND
 
 void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status);
@@ -54,6 +58,8 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
         int* int_pad,
         size_t ndim,
         cudnnDataType_t cudnn_dtype);
+
+#endif // CUDNN_FOUND
 
 #if defined(__cplusplus)
 #if 0

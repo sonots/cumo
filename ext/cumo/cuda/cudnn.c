@@ -11,6 +11,8 @@ VALUE cumo_cuda_mCudnn;
 #define eCudnnError cumo_cuda_eCudnnError
 #define mCudnn cumo_cuda_mCudnn
 
+#ifdef CUDNN_FOUND
+
 void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status)
 {
@@ -40,6 +42,23 @@ cumo_cuda_cudnn_handle()
     return handles[device];
 }
 
+#endif // CUDNN_FOUND
+
+/*
+  Returns availability of cuDNN.
+
+  @return [Boolean] Returns true if cuDNN is available
+ */
+static VALUE
+rb_cudnn_available_p()
+{
+#if CUDNN_FOUND
+    return Qtrue;
+#else
+    return Qfalse;
+#endif
+}
+
 void
 Init_cumo_cuda_cudnn(void)
 {
@@ -51,4 +70,6 @@ Init_cumo_cuda_cudnn(void)
     */
     mCudnn = rb_define_module_under(mCUDA, "Cudnn");
     eCudnnError = rb_define_class_under(mCUDA, "CudnnError", rb_eStandardError);
+
+    rb_define_singleton_method(mCudnn, "available?", RUBY_METHOD_FUNC(rb_cudnn_available_p), 0);
 }

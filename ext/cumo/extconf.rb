@@ -47,9 +47,9 @@ rm_f 'include/cumo/extconf.h'
 MakeMakefileCuda.install!(cxx: true)
 
 if ENV['DEBUG']
-  $CFLAGS="-g -O0 -Wall"
+  $CFLAGS << " -g -O0 -Wall"
 end
-$CXXFLAGS += " -std=c++14 "
+$CXXFLAGS << " -std=c++14"
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
 $INCFLAGS = "-Iinclude -Inarray -Icuda #{$INCFLAGS}"
@@ -182,7 +182,8 @@ have_library('cublas')
 # have_library('cusolver')
 # have_library('curand')
 if have_library('cudnn') # TODO(sonots): cuDNN version check
-  $stderr.puts "cudnn found"
+  $CFLAGS << " -DCUDNN_FOUND"
+  $CXXFLAGS << " -DCUDNN_FOUND"
 end
 
 create_makefile('cumo')

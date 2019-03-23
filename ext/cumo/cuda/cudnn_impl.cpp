@@ -1,3 +1,5 @@
+#ifdef CUDNN_FOUND
+
 #include "cumo/cuda/cudnn.h"
 
 #include <assert.h>
@@ -292,3 +294,5 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
 #endif
 }  /* extern "C" { */
 #endif
+
+#endif // CUDNN_FOUND
