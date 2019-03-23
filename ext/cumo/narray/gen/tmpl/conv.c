@@ -129,7 +129,7 @@ createCudnnFilterDescriptor(VALUE a) {
 
 static cudnnConvolutionDescriptor_t
 createCudnnConvolutionDescriptor(size_t ndim, VALUE stride, VALUE pad) {
-    cudnnConvolutionDescriptor_t desc;
+    cudnnConvolutionDescriptor_t desc = 0;
     cudnnDataType_t compute_type = <%= cudnn_dtype %>;
 
     int int_stride[CUMO_NA_MAX_DIMENSION];
@@ -166,7 +166,7 @@ createCudnnConvolutionDescriptor(size_t ndim, VALUE stride, VALUE pad) {
     return desc;
 }
 
-static size_t kCudnnDefaultMaxWorkspaceSize = 8 * 1024 * 1024:
+static size_t kCudnnDefaultMaxWorkspaceSize = 8 * 1024 * 1024;
 
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
@@ -185,8 +185,8 @@ static VALUE
     size_t *x_shape, *w_shape;
     size_t out_channels, batch_size;
 
-    VALUE x_cont, w_cont;
-    cumo_narray_t *nx_cont, *nw_cont;
+    VALUE x_cont, w_cont, b_cont;
+    cumo_narray_t *nx_cont, *nw_cont, *nb_cont;
     cudnnTensorDescriptor_t x_desc;
     cudnnTensorDescriptor_t y_desc;
     cudnnFilterDescriptor_t w_desc;
@@ -259,55 +259,59 @@ static VALUE
     // TODO: cache algo
     workspace = ALLOCA_N(int8_t, max_workspace_size);
     CheckCudnnError(cudnnFindConvolutionForwardAlgorithmEx(
-        handle,
-        x_desc,
-        CUMO_NA_DATA_PTR(nx_cont),
-        w_desc,
-        CUMO_NA_DATA_PTR(nw_cont),
-        conv_desc,
-        y_desc,
-        CUMO_NA_DATA_PTR(ny),
-        1,  // requested algo count,
-        &returned_algo_count,
-        &perf_result,
-        workspace,
-        max_workspace_size));
+                handle,
+                x_desc,
+                (void*)CUMO_NA_DATA_PTR(nx_cont),
+                w_desc,
+                (void*)CUMO_NA_DATA_PTR(nw_cont),
+                conv_desc,
+                y_desc,
+                (void*)CUMO_NA_DATA_PTR(ny),
+                1,  // requested algo count,
+                &returned_algo_count,
+                &perf_result,
+                workspace,
+                max_workspace_size));
     algo = perf_result.algo;
     workspace_size = perf_result.memory;
 
     CheckCudnnError(cudnnConvolutionForward(
-        &alpha,
-        x_desc,
-        CUMO_NA_DATA_PTR(nx_cont),
-        w_desc,
-        CUMO_NA_DATA_PTR(nw_cont),
-        conv_desc,
-        algo,
-        workspace,
-        workspace_size,
-        &beta,
-        y_desc,
-        CUMO_NA_DATA_PTR(ny)));
+                handle,
+                (void*)&alpha,
+                x_desc,
+                (void*)CUMO_NA_DATA_PTR(nx_cont),
+                w_desc,
+                (void*)CUMO_NA_DATA_PTR(nw_cont),
+                conv_desc,
+                algo,
+                workspace,
+                workspace_size,
+                (void*)&beta,
+                y_desc,
+                (void*)CUMO_NA_DATA_PTR(ny)));
 
     if (b != Qnil) {
         size_t shape[CUMO_NA_MAX_DIMENSION];
+
         CumoGetNArray(b, nb);
         shape[0] = 1;
         shape[1] = nb->size;
         for (size_t i = 0; i < ndim; ++i) {
             shape[i + 2] = 1;
         }
-        VALUE b_cont =  cumo_na_check_contiguous(x) == Qtrue ? x : rb_funcall(x, rb_intern("dup"), 0);
-        cumo_na_setup_shape(nb, ndim + 2, shape);
+        b_cont =  cumo_na_check_contiguous(x) == Qtrue ? x : rb_funcall(x, rb_intern("dup"), 0);
+        CumoGetNArray(b_cont, nb_cont);
+        cumo_na_setup_shape(nb_cont, ndim + 2, shape);
 
         b_desc = createCudnnTensorDescriptor(b_cont);
         CheckCudnnError(cudnnAddTensor(
-            &alpha,
-            b_desc,
-            CUMO_NA_DATA_PTR(nb_cont),
-            &alpha,
-            y_desc,
-            CUMO_NA_DATA_PTR(ny)));
+                    handle,
+                    (void*)&alpha,
+                    b_desc,
+                    (void*)CUMO_NA_DATA_PTR(nb_cont),
+                    (void*)&alpha,
+                    y_desc,
+                    (void*)CUMO_NA_DATA_PTR(ny)));
     }
 
     return y;
