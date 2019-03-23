@@ -14,7 +14,7 @@ VALUE cumo_cuda_mCudnn;
 void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status)
 {
-    if (status != 0) {
+    if (status != CUDNN_STATUS_SUCCESS) {
         rb_raise(cumo_cuda_eCudnnError, "%s (error=%d)", cudnnGetErrorString(status), status);
     }
 }

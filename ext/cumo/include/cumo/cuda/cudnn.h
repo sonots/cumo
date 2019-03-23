@@ -20,17 +20,27 @@ cumo_cuda_cudnn_handle();
 size_t
 cumo_cuda_cudnn_GetConvOutDim(size_t in_dim, size_t kernel_size, size_t stride, size_t pad);
 
-cudnnTensorDescriptor_t
-cumo_cuda_cudnn_CreateTensorDescriptor(VALUE a, cudnnDataType_t cudnn_dtype);
+cudnnStatus_t
+cumo_cuda_cudnn_CreateTensorDescriptor(
+        cudnnTensorDescriptor_t *desc,
+        VALUE a,
+        cudnnDataType_t cudnn_dtype);
 
-cudnnFilterDescriptor_t
-cumo_cuda_cudnn_CreateFilterDescriptor(VALUE a, cudnnDataType_t cudnn_dtype);
+cudnnStatus_t
+cumo_cuda_cudnn_CreateFilterDescriptor(
+        cudnnFilterDescriptor_t *desc,
+        VALUE a,
+        cudnnDataType_t cudnn_dtype);
 
-cudnnConvolutionDescriptor_t
-cumo_cuda_cudnn_CreateConvolutionDescriptor(size_t ndim, int* int_stride, int* int_pad, cudnnDataType_t cudnn_dtype);
+cudnnStatus_t
+cumo_cuda_cudnn_CreateConvolutionDescriptor(
+        cudnnConvolutionDescriptor_t *desc,
+        size_t ndim, int* int_stride, int* int_pad,
+        cudnnDataType_t cudnn_dtype);
 
-cudnnConvolutionFwdAlgoPerf_t
+cudnnStatus_t
 cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
+        cudnnConvolutionFwdAlgoPerf_t *perf_result,
         cudnnHandle_t handle,
         cudnnTensorDescriptor_t x_desc,
         VALUE x,

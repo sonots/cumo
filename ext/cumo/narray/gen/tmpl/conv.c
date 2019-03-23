@@ -81,6 +81,8 @@ cumo_na_get_offset_pointer_for_write(VALUE a)
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
+    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
+    cudnnStatus_t status = 0;
     cudnnHandle_t handle = 0;
     dtype alpha = 1;
     dtype beta = 0;
@@ -96,18 +98,18 @@ static VALUE
     size_t out_channels, batch_size;
 
     VALUE x_cont, w_cont;
-    cudnnTensorDescriptor_t x_desc;
-    cudnnTensorDescriptor_t y_desc;
-    cudnnFilterDescriptor_t w_desc;
-    cudnnConvolutionDescriptor_t conv_desc;
+    cudnnTensorDescriptor_t x_desc = 0;
+    cudnnTensorDescriptor_t y_desc = 0;
+    cudnnTensorDescriptor_t b_desc = 0;
+    cudnnFilterDescriptor_t w_desc = 0;
+    cudnnConvolutionDescriptor_t conv_desc = 0;
     char *x_cont_ptr, *w_cont_ptr, *y_ptr;
 
     cudnnConvolutionFwdAlgoPerf_t perf_result;
-    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
-    size_t max_workspace_size = kDefaultMaxWorkspaceSize;
-    char* workspace;
     cudnnConvolutionFwdAlgo_t algo;
+    size_t max_workspace_size = kDefaultMaxWorkspaceSize;
     size_t workspace_size;
+    char* workspace = 0;
 
     int int_stride[CUMO_NA_MAX_DIMENSION];
     int int_pad[CUMO_NA_MAX_DIMENSION];
@@ -161,15 +163,20 @@ static VALUE
     w_cont_ptr = cumo_na_get_offset_pointer_for_read(w_cont);
     y_ptr = cumo_na_get_offset_pointer_for_write(y);
 
-    x_desc = cumo_cuda_cudnn_CreateTensorDescriptor(x_cont, cudnn_dtype);
-    y_desc = cumo_cuda_cudnn_CreateTensorDescriptor(y, cudnn_dtype);
-    w_desc = cumo_cuda_cudnn_CreateFilterDescriptor(w_cont, cudnn_dtype);
-    conv_desc = cumo_cuda_cudnn_CreateConvolutionDescriptor(ndim, int_stride, int_pad, cudnn_dtype);
+    status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    status = cumo_cuda_cudnn_CreateTensorDescriptor(&y_desc, y, cudnn_dtype);
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    status = cumo_cuda_cudnn_CreateFilterDescriptor(&w_desc, w_cont, cudnn_dtype);
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, cudnn_dtype);
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
 
     handle = cumo_cuda_cudnn_handle();
 
     // auto tune
-    perf_result = cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
+    status = cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
+            &perf_result,
             handle,
             x_desc,
             x_cont,
@@ -183,32 +190,32 @@ static VALUE
             int_pad,
             ndim,
             cudnn_dtype);
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
     algo = perf_result.algo;
     workspace_size = perf_result.memory;
 
     workspace = cumo_cuda_runtime_malloc(max_workspace_size);
-    cumo_cuda_cudnn_check_status(cudnnConvolutionForward(
-                handle,
-                (void*)&alpha,
-                x_desc,
-                (void*)x_cont_ptr,
-                w_desc,
-                (void*)w_cont_ptr,
-                conv_desc,
-                algo,
-                (void*)workspace,
-                workspace_size,
-                (void*)&beta,
-                y_desc,
-                (void*)y_ptr));
-    cumo_cuda_runtime_free(workspace);
+    status = cudnnConvolutionForward(
+            handle,
+            (void*)&alpha,
+            x_desc,
+            (void*)x_cont_ptr,
+            w_desc,
+            (void*)w_cont_ptr,
+            conv_desc,
+            algo,
+            (void*)workspace,
+            workspace_size,
+            (void*)&beta,
+            y_desc,
+            (void*)y_ptr);
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
 
     if (b != Qnil) {
         size_t b_shape[CUMO_NA_MAX_DIMENSION];
         VALUE b_cont;
         char* b_cont_ptr;
         cumo_narray_t *nb, *nb_cont;
-        cudnnTensorDescriptor_t b_desc;
 
         CHECK_NARRAY_TYPE(b, cT);
         CumoGetNArray(b, nb);
@@ -221,17 +228,28 @@ static VALUE
         b_cont_ptr = cumo_na_get_offset_pointer_for_read(b_cont);
         CumoGetNArray(b_cont, nb_cont);
         cumo_na_setup_shape(nb_cont, ndim + 2, b_shape);
-        b_desc = cumo_cuda_cudnn_CreateTensorDescriptor(b_cont, cudnn_dtype);
+        status = cumo_cuda_cudnn_CreateTensorDescriptor(&b_desc, b_cont, cudnn_dtype);
+        if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
 
-        cumo_cuda_cudnn_check_status(cudnnAddTensor(
+        status = cudnnAddTensor(
                     handle,
                     (void*)&alpha,
                     b_desc,
                     (void*)b_cont_ptr,
                     (void*)&alpha,
                     y_desc,
-                    (void*)y_ptr));
+                    (void*)y_ptr);
+        if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
     }
+
+CONV_ERROR:
+    if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
+    if (y_desc) cudnnDestroyTensorDescriptor(y_desc);
+    if (b_desc) cudnnDestroyTensorDescriptor(b_desc);
+    if (w_desc) cudnnDestroyFilterDescriptor(w_desc);
+    if (conv_desc) cudnnDestroyConvolutionDescriptor(conv_desc);
+    if (workspace) cumo_cuda_runtime_free(workspace);
+    cumo_cuda_cudnn_check_status(status);
 
     return y;
 }
