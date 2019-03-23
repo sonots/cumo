@@ -169,9 +169,12 @@ createCudnnConvolutionDescriptor(size_t ndim, VALUE stride, VALUE pad) {
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
+    cudnnHandle_t handle = 0;
+    dtype alpha = 1;
+    dtype beta = 0;
     // cover_all is not supported with CuDNN
     VALUE x=self, w, b, y, stride, pad;
-    cumo_narray_t *nx, *nw, *nb;
+    cumo_narray_t *nx, *nw, *ny, *nb;
 
     VALUE kw_hash = Qnil;
     ID kw_table[5] = {rb_intern("b"), rb_intern("stride"), rb_intern("pad")};
@@ -181,10 +184,12 @@ static VALUE
     size_t out_channels, batch_size;
 
     VALUE x_cont, w_cont;
+    cumo_narray_t *nx_cont, *nw_cont;
     cudnnTensorDescriptor_t x_desc;
     cudnnTensorDescriptor_t y_desc;
     cudnnFilterDescriptor_t w_desc;
     cudnnConvolutionDescriptor_t conv_desc;
+    cudnnTensorDescriptor_t b_desc;
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
@@ -228,9 +233,12 @@ static VALUE
         }
         y = cumo_na_new(cT, ndim + 2, y_shape);
     }
+    CumoGetNArray(y, ny);
 
     x_cont = cumo_na_check_contiguous(x) == Qtrue ? x : rb_funcall(x, rb_intern("dup"), 0);
     w_cont = cumo_na_check_contiguous(w) == Qtrue ? w : rb_funcall(w, rb_intern("dup"), 0);
+    CumoGetNArray(x_cont, nx_cont);
+    CumoGetNArray(w_cont, nw_cont);
 
     x_desc = createCudnnTensorDescriptor(x_cont);
     y_desc = createCudnnTensorDescriptor(y);
@@ -240,9 +248,41 @@ static VALUE
     // TODO: get max workspace size
     // TODO: autotune
     //
-    // Get cudnn handle
-    // call conv
-    // add bias
+    handle = cumo_cuda_cudnn_handle();
+    cudnnConvolutionForward(
+        &alpha,
+        x_desc,
+        CUMO_NA_DATA_PTR(nx_cont),
+        w_desc,
+        CUMO_NA_DATA_PTR(nw_cont),
+        conv_desc,
+        algo,
+        workspace.get(),
+        workspace_size,
+        &beta,
+        y_desc,
+        CUMO_NA_DATA_PTR(ny));
+
+    if (b != Qnil) {
+        size_t shape[CUMO_NA_MAX_DIMENSION];
+        CumoGetNArray(b, nb);
+        shape[0] = 1;
+        shape[1] = nb->size;
+        for (size_t i = 0; i < ndim; ++i) {
+            shape[i + 2] = 1;
+        }
+        VALUE b_cont =  cumo_na_check_contiguous(x) == Qtrue ? x : rb_funcall(x, rb_intern("dup"), 0);
+        cumo_na_setup_shape(nb, ndim + 2, shape);
+
+        b_desc = createCudnnTensorDescriptor(b_cont);
+        cudnnAddTensor(
+            &alpha,
+            b_desc,
+            CUMO_NA_DATA_PTR(nb_cont),
+            &alpha,
+            y_desc,
+            CUMO_NA_DATA_PTR(ny));
+    }
 
     return y;
 }
