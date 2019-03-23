@@ -17,6 +17,138 @@ extern "C" {
 #endif
 #endif
 
+ size_t
+cumo_cuda_cudnn_GetConvOutDim(size_t in_dim, size_t kernel_size, size_t stride, size_t pad) {
+    // assert(stride > 0);
+    int64_t numerator;
+    // if (cover_all) {
+    //     numerator = in_dim + pad * 2 - kernel_size + stride - 1;
+    // } else {
+    numerator = in_dim + pad * 2 - kernel_size;
+    // }
+    // if (numerator < 0) {
+    //     throw DimensionError{"Output size should be positive."};
+    // }
+    return (size_t)(numerator / stride + 1);
+}
+
+cudnnTensorDescriptor_t
+cumo_cuda_cudnn_CreateTensorDescriptor(VALUE a, cudnnDataType_t cudnn_dtype);
+
+cudnnFilterDescriptor_t
+cumo_cuda_cudnn_CreateFilterDescriptor(VALUE a, cudnnDataType_t cudnn_dtype);
+
+cudnnTensorDescriptor_t
+cumo_cuda_cudnn_CreateTensorDescriptor(VALUE a, cudnnDataType_t cudnn_dtype) {
+    cudnnTensorDescriptor_t desc;
+
+    cumo_narray_t *na;
+    int ndim;
+    size_t *shape;
+
+    CumoGetNArray(a, na);
+    ndim = (int)(na->ndim);
+    shape = na->shape;
+
+    assert(cumo_na_check_contiguous(a) == Qtrue);
+    cumo_cuda_cudnn_check_status(cudnnCreateTensorDescriptor(&desc));
+
+    if (ndim == 4) {
+        int nchw[4];
+        nchw[0] = shape[0];
+        nchw[1] = shape[1];
+        nchw[2] = shape[2];
+        nchw[3] = shape[3];
+        // TODO: dtor desc
+        cumo_cuda_cudnn_check_status(cudnnSetTensor4dDescriptor(desc, CUDNN_TENSOR_NCHW, cudnn_dtype, nchw[0], nchw[1], nchw[2], nchw[3]));
+    }
+    else {
+        int int_strides[CUMO_NA_MAX_DIMENSION]; // strides divided by item size
+        int int_shape[CUMO_NA_MAX_DIMENSION];
+        int idim = 0;
+        int stride = 1;
+        for (idim = 0; idim < ndim; ++idim) {
+            int_shape[idim] = (int)(shape[idim]);
+        }
+        for (idim = ndim - 1; idim >= 0; --idim) {
+            int_strides[idim] = stride;
+            stride *= int_shape[idim];
+        }
+        // TODO: dtor desc
+        cumo_cuda_cudnn_check_status(cudnnSetTensorNdDescriptor(desc, cudnn_dtype, ndim, &int_shape[0], &int_strides[0]));
+    }
+
+    return desc;
+}
+
+cudnnFilterDescriptor_t
+cumo_cuda_cudnn_CreateFilterDescriptor(VALUE a, cudnnDataType_t cudnn_dtype) {
+    cudnnFilterDescriptor_t desc;
+
+    cumo_narray_t *na;
+    int ndim;
+    size_t *shape;
+
+    CumoGetNArray(a, na);
+    ndim = (int)(na->ndim);
+    shape = na->shape;
+
+    assert(cumo_na_check_contiguous(a) == Qtrue);
+    cumo_cuda_cudnn_check_status(cudnnCreateFilterDescriptor(&desc));
+
+    if (ndim == 4) {
+        int nchw[4];
+        nchw[0] = shape[0];
+        nchw[1] = shape[1];
+        nchw[2] = shape[2];
+        nchw[3] = shape[3];
+        // TODO: dtor desc
+        cumo_cuda_cudnn_check_status(cudnnSetFilter4dDescriptor(desc, cudnn_dtype, CUDNN_TENSOR_NCHW, nchw[0], nchw[1], nchw[2], nchw[3]));
+    } else {
+        int int_shape[CUMO_NA_MAX_DIMENSION];
+        int idim = 0;
+        for (idim = 0; idim < ndim; ++idim) {
+            int_shape[idim] = (int)(shape[idim]);
+        }
+        // TODO: dtor desc
+        cumo_cuda_cudnn_check_status(cudnnSetFilterNdDescriptor(desc, cudnn_dtype, CUDNN_TENSOR_NCHW, ndim, &int_shape[0]));
+    }
+
+    return desc;
+}
+
+cudnnConvolutionDescriptor_t
+cumo_cuda_cudnn_CreateConvolutionDescriptor(size_t ndim, int* int_stride, int* int_pad, cudnnDataType_t cudnn_dtype) {
+    cudnnConvolutionDescriptor_t desc = 0;
+
+    int int_dilation[CUMO_NA_MAX_DIMENSION];
+    for (size_t idim = 0; idim < ndim; ++idim) {
+        int_dilation[idim] = 1;
+    }
+
+    cumo_cuda_cudnn_check_status(cudnnCreateConvolutionDescriptor(&desc));
+
+    if (ndim == 2) {
+        // TODO: dtor desc
+        cumo_cuda_cudnn_check_status(cudnnSetConvolution2dDescriptor(
+                desc,
+                int_pad[0],
+                int_pad[1],
+                int_stride[0],
+                int_stride[1],
+                int_dilation[0],
+                int_dilation[1],
+                CUDNN_CROSS_CORRELATION,
+                cudnn_dtype));
+    } else {
+        // TODO: dtor desc
+        cumo_cuda_cudnn_check_status(cudnnSetConvolutionNdDescriptor(
+                desc, ndim, &int_pad[0], &int_stride[0], &int_dilation[0], CUDNN_CROSS_CORRELATION, cudnn_dtype));
+    }
+
+    return desc;
+}
+
 // Borrowed from boost::hash_combine
 //
 // TODO(sonots): hash combine in 64bit
@@ -99,8 +231,6 @@ static BwdFilterAlgoCacheMap bwd_filter_algo_cache_map_{};
 cudnnConvolutionFwdAlgoPerf_t
 cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
         cudnnHandle_t handle,
-        size_t ndim,
-        cudnnDataType_t cudnn_dtype,
         cudnnTensorDescriptor_t x_desc,
         VALUE x,
         cudnnFilterDescriptor_t w_desc,
@@ -110,7 +240,9 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
         VALUE y,
         size_t max_workspace_size,
         int* int_stride,
-        int* int_pad)
+        int* int_pad,
+        size_t ndim,
+        cudnnDataType_t cudnn_dtype)
 {
     cudnnConvolutionFwdAlgoPerf_t perf_result{};
 

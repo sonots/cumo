@@ -110,7 +110,7 @@ cuda/memory_pool_impl
 cuda/runtime
 cuda/nvrtc
 cuda/cudnn
-cuda/cudnn_conv
+cuda/cudnn_impl
 )
 
 if RUBY_VERSION[0..3] == "2.1."

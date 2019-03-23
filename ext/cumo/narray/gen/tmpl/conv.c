@@ -34,136 +34,7 @@ cumo_option_value(VALUE value, VALUE default_value)
     return value;
 }
 
-static size_t
-GetConvOutDim(size_t in_dim, size_t kernel_size, size_t stride, size_t pad) {
-    // assert(stride > 0);
-    int64_t numerator;
-    // if (cover_all) {
-    //     numerator = in_dim + pad * 2 - kernel_size + stride - 1;
-    // } else {
-    numerator = in_dim + pad * 2 - kernel_size;
-    // }
-    // if (numerator < 0) {
-    //     throw DimensionError{"Output size should be positive."};
-    // }
-    return (size_t)(numerator / stride + 1);
-}
-
-static cudnnTensorDescriptor_t
-createCudnnTensorDescriptor(VALUE a) {
-    cudnnTensorDescriptor_t desc;
-    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
-
-    cumo_narray_t *na;
-    int ndim;
-    size_t *shape;
-
-    CumoGetNArray(a, na);
-    ndim = (int)(na->ndim);
-    shape = na->shape;
-
-    assert(cumo_na_check_contiguous(a) == Qtrue);
-    cumo_cuda_cudnn_check_status(cudnnCreateTensorDescriptor(&desc));
-
-    if (ndim == 4) {
-        int nchw[4];
-        nchw[0] = shape[0];
-        nchw[1] = shape[1];
-        nchw[2] = shape[2];
-        nchw[3] = shape[3];
-        // TODO: dtor desc
-        cumo_cuda_cudnn_check_status(cudnnSetTensor4dDescriptor(desc, CUDNN_TENSOR_NCHW, cudnn_dtype, nchw[0], nchw[1], nchw[2], nchw[3]));
-    }
-    else {
-        int int_strides[CUMO_NA_MAX_DIMENSION]; // strides divided by item size
-        int int_shape[CUMO_NA_MAX_DIMENSION];
-        int idim = 0;
-        int stride = 1;
-        for (idim = 0; idim < ndim; ++idim) {
-            int_shape[idim] = (int)(shape[idim]);
-        }
-        for (idim = ndim - 1; idim >= 0; --idim) {
-            int_strides[idim] = stride;
-            stride *= int_shape[idim];
-        }
-        // TODO: dtor desc
-        cumo_cuda_cudnn_check_status(cudnnSetTensorNdDescriptor(desc, cudnn_dtype, ndim, &int_shape[0], &int_strides[0]));
-    }
-
-    return desc;
-}
-
-static cudnnFilterDescriptor_t
-createCudnnFilterDescriptor(VALUE a) {
-    cudnnFilterDescriptor_t desc;
-    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
-
-    cumo_narray_t *na;
-    int ndim;
-    size_t *shape;
-
-    CumoGetNArray(a, na);
-    ndim = (int)(na->ndim);
-    shape = na->shape;
-
-    assert(cumo_na_check_contiguous(a) == Qtrue);
-    cumo_cuda_cudnn_check_status(cudnnCreateFilterDescriptor(&desc));
-
-    if (ndim == 4) {
-        int nchw[4];
-        nchw[0] = shape[0];
-        nchw[1] = shape[1];
-        nchw[2] = shape[2];
-        nchw[3] = shape[3];
-        // TODO: dtor desc
-        cumo_cuda_cudnn_check_status(cudnnSetFilter4dDescriptor(desc, cudnn_dtype, CUDNN_TENSOR_NCHW, nchw[0], nchw[1], nchw[2], nchw[3]));
-    } else {
-        int int_shape[CUMO_NA_MAX_DIMENSION];
-        int idim = 0;
-        for (idim = 0; idim < ndim; ++idim) {
-            int_shape[idim] = (int)(shape[idim]);
-        }
-        // TODO: dtor desc
-        cumo_cuda_cudnn_check_status(cudnnSetFilterNdDescriptor(desc, cudnn_dtype, CUDNN_TENSOR_NCHW, ndim, &int_shape[0]));
-    }
-
-    return desc;
-}
-
-static cudnnConvolutionDescriptor_t
-createCudnnConvolutionDescriptor(size_t ndim, int* int_stride, int* int_pad) {
-    cudnnConvolutionDescriptor_t desc = 0;
-    cudnnDataType_t compute_type = <%= cudnn_dtype %>;
-
-    int int_dilation[CUMO_NA_MAX_DIMENSION];
-    for (size_t idim = 0; idim < ndim; ++idim) {
-        int_dilation[idim] = 1;
-    }
-
-    cumo_cuda_cudnn_check_status(cudnnCreateConvolutionDescriptor(&desc));
-
-    if (ndim == 2) {
-        // TODO: dtor desc
-        cumo_cuda_cudnn_check_status(cudnnSetConvolution2dDescriptor(
-                desc,
-                int_pad[0],
-                int_pad[1],
-                int_stride[0],
-                int_stride[1],
-                int_dilation[0],
-                int_dilation[1],
-                CUDNN_CROSS_CORRELATION,
-                compute_type));
-    } else {
-        // TODO: dtor desc
-        cumo_cuda_cudnn_check_status(cudnnSetConvolutionNdDescriptor(
-                desc, ndim, &int_pad[0], &int_stride[0], &int_dilation[0], CUDNN_CROSS_CORRELATION, compute_type));
-    }
-
-    return desc;
-}
-
-static size_t kCudnnDefaultMaxWorkspaceSize = 8 * 1024 * 1024;
+static size_t cumo_cuda_cudnn_kDefaultMaxWorkspaceSize = 8 * 1024 * 1024;
 
 // cover_all is not supported with CuDNN
 // x.conv(w, stride:, pad:, b: nil, y: nil)
@@ -193,7 +64,7 @@ static VALUE
 
     cudnnConvolutionFwdAlgoPerf_t perf_result;
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
-    size_t max_workspace_size = kCudnnDefaultMaxWorkspaceSize;
+    size_t max_workspace_size = cumo_cuda_cudnn_kDefaultMaxWorkspaceSize;
     char* workspace;
     cudnnConvolutionFwdAlgo_t algo;
     size_t workspace_size;
@@ -271,7 +142,8 @@ static VALUE
         y_shape[0] = batch_size;
         y_shape[1] = out_channels;
         for (size_t i = 0; i < ndim; ++i) {
-            y_shape[i + 2] = GetConvOutDim(x_shape[i + 2], w_shape[i + 2], int_stride[i], int_pad[i]);
+            y_shape[i + 2] = cumo_cuda_cudnn_GetConvOutDim(
+                    x_shape[i + 2], w_shape[i + 2], int_stride[i], int_pad[i]);
         }
         y = cumo_na_new(cT, ndim + 2, y_shape);
     }
@@ -283,18 +155,16 @@ static VALUE
     w_cont_ptr = cumo_na_get_pointer_for_read(w_cont) + cumo_na_get_offset(w_cont);
     y_ptr = cumo_na_get_pointer_for_write(y) + cumo_na_get_offset(y);
 
-    x_desc = createCudnnTensorDescriptor(x_cont);
-    y_desc = createCudnnTensorDescriptor(y);
-    w_desc = createCudnnFilterDescriptor(w_cont);
-    conv_desc = createCudnnConvolutionDescriptor(ndim, int_stride, int_pad);
+    x_desc = cumo_cuda_cudnn_CreateTensorDescriptor(x_cont, cudnn_dtype);
+    y_desc = cumo_cuda_cudnn_CreateTensorDescriptor(y, cudnn_dtype);
+    w_desc = cumo_cuda_cudnn_CreateFilterDescriptor(w_cont, cudnn_dtype);
+    conv_desc = cumo_cuda_cudnn_CreateConvolutionDescriptor(ndim, int_stride, int_pad, cudnn_dtype);
 
     handle = cumo_cuda_cudnn_handle();
 
     // auto tune
     perf_result = cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
             handle,
-            ndim,
-            cudnn_dtype,
             x_desc,
             x_cont,
             w_desc,
@@ -304,7 +174,9 @@ static VALUE
             y,
             max_workspace_size,
             int_stride,
-            int_pad);
+            int_pad,
+            ndim,
+            cudnn_dtype);
     algo = perf_result.algo;
     workspace_size = perf_result.memory;
 
@@ -343,7 +215,7 @@ static VALUE
         b_cont_ptr = cumo_na_get_pointer_for_read(b_cont) + cumo_na_get_offset(b_cont);
         CumoGetNArray(b_cont, nb_cont);
         cumo_na_setup_shape(nb_cont, ndim + 2, b_shape);
-        b_desc = createCudnnTensorDescriptor(b_cont);
+        b_desc = cumo_cuda_cudnn_CreateTensorDescriptor(b_cont, cudnn_dtype);
 
         cumo_cuda_cudnn_check_status(cudnnAddTensor(
                     handle,
