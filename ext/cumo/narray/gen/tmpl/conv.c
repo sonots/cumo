@@ -59,9 +59,21 @@ get_int_ary(int* int_ary, VALUE ary, size_t ndim, int default_value)
 }
 
 static VALUE
-as_contiguous_array(VALUE a)
+cumo_na_as_contiguous_array(VALUE a)
 {
     return cumo_na_check_contiguous(a) == Qtrue ? a : rb_funcall(a, rb_intern("dup"), 0);
+}
+
+static char*
+cumo_na_get_offset_pointer_for_read(VALUE a)
+{
+    return cumo_na_get_pointer_for_read(a) + cumo_na_get_offset(a);
+}
+
+static char*
+cumo_na_get_offset_pointer_for_write(VALUE a)
+{
+    return cumo_na_get_pointer_for_write(a) + cumo_na_get_offset(a);
 }
 
 // cover_all is not supported with CuDNN
@@ -142,12 +154,12 @@ static VALUE
         y = cumo_na_new(cT, ndim + 2, y_shape);
     }
 
-    x_cont = as_contiguous_array(x);
-    w_cont = as_contiguous_array(w);
+    x_cont = cumo_na_as_contiguous_array(x);
+    w_cont = cumo_na_as_contiguous_array(w);
 
-    x_cont_ptr = cumo_na_get_pointer_for_read(x_cont) + cumo_na_get_offset(x_cont);
-    w_cont_ptr = cumo_na_get_pointer_for_read(w_cont) + cumo_na_get_offset(w_cont);
-    y_ptr = cumo_na_get_pointer_for_write(y) + cumo_na_get_offset(y);
+    x_cont_ptr = cumo_na_get_offset_pointer_for_read(x_cont);
+    w_cont_ptr = cumo_na_get_offset_pointer_for_read(w_cont);
+    y_ptr = cumo_na_get_offset_pointer_for_write(y);
 
     x_desc = cumo_cuda_cudnn_CreateTensorDescriptor(x_cont, cudnn_dtype);
     y_desc = cumo_cuda_cudnn_CreateTensorDescriptor(y, cudnn_dtype);
@@ -205,8 +217,8 @@ static VALUE
         for (size_t i = 0; i < ndim; ++i) {
             b_shape[i + 2] = 1;
         }
-        b_cont =  as_contiguous_array(b);
-        b_cont_ptr = cumo_na_get_pointer_for_read(b_cont) + cumo_na_get_offset(b_cont);
+        b_cont =  cumo_na_as_contiguous_array(b);
+        b_cont_ptr = cumo_na_get_offset_pointer_for_read(b_cont);
         CumoGetNArray(b_cont, nb_cont);
         cumo_na_setup_shape(nb_cont, ndim + 2, b_shape);
         b_desc = cumo_cuda_cudnn_CreateTensorDescriptor(b_cont, cudnn_dtype);
