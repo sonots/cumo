@@ -168,19 +168,21 @@ createCudnnConvolutionDescriptor(size_t ndim, VALUE stride, VALUE pad) {
 
 static size_t kCudnnDefaultMaxWorkspaceSize = 8 * 1024 * 1024;
 
+// cover_all is not supported with CuDNN
+// x.conv(w, stride:, pad:, b: nil, y: nil)
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
     cudnnHandle_t handle = 0;
     dtype alpha = 1;
     dtype beta = 0;
-    // cover_all is not supported with CuDNN
-    VALUE x=self, w, b, y, stride, pad;
-    cumo_narray_t *nx, *nw, *ny, *nb;
 
+    VALUE x=self, w, b, stride, pad, y;
     VALUE kw_hash = Qnil;
-    ID kw_table[5] = {rb_intern("b"), rb_intern("stride"), rb_intern("pad")};
-    VALUE opts[5] = {Qundef, Qundef, Qundef, Qundef, Qundef};
+    ID kw_table[4] = {rb_intern("stride"), rb_intern("pad"), rb_intern("b"), rb_intern("y")};
+    VALUE opts[4] = {Qundef, Qundef, Qundef, Qundef};
+
+    cumo_narray_t *nx, *nw, *ny, *nb;
     size_t ndim;
     size_t *x_shape, *w_shape;
     size_t out_channels, batch_size;
@@ -202,10 +204,10 @@ static VALUE
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
-    b = cumo_option_value(opts[0], Qnil);
-    stride = cumo_option_value(opts[1], Qnil);
-    pad = cumo_option_value(opts[2], Qnil);
-    y = cumo_option_value(opts[4], Qnil);
+    stride = cumo_option_value(opts[0], Qnil);
+    pad = cumo_option_value(opts[1], Qnil);
+    b = cumo_option_value(opts[2], Qnil);
+    y = cumo_option_value(opts[3], Qnil);
 
     CumoGetNArray(x, nx);
     CumoGetNArray(w, nw);
