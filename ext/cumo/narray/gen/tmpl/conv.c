@@ -129,9 +129,9 @@ static VALUE
     w_shape = nw->shape;
 
     // w.shape = (out_channels, _, k_1, k_2, ..., k_N)
-    out_channels = x_shape[0];
+    out_channels = w_shape[0];
     // x_shape = (batch_size, in_channels, d_1, d_2, ..., d_N)
-    batch_size = w_shape[0];
+    batch_size = x_shape[0];
 
     if (y != Qnil) {
         CHECK_NARRAY_TYPE(y, cT);
