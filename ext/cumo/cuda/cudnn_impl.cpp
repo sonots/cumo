@@ -275,8 +275,8 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
                 1,  // requested algo count,
                 &returned_algo_count,
                 perf_result,
-                NULL, // (void*)workspace,
-                0); // max_workspace_size));
+                (void*)workspace,
+                max_workspace_size);
     cumo_cuda_runtime_free(workspace);
     if (status != CUDNN_STATUS_SUCCESS) return status;
     assert(returned_algo_count == 1);
