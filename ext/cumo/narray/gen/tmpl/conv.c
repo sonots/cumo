@@ -166,6 +166,8 @@ createCudnnConvolutionDescriptor(size_t ndim, VALUE stride, VALUE pad) {
     return desc;
 }
 
+static size_t kCudnnDefaultMaxWorkspaceSize = 8 * 1024 * 1024:
+
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -190,6 +192,13 @@ static VALUE
     cudnnFilterDescriptor_t w_desc;
     cudnnConvolutionDescriptor_t conv_desc;
     cudnnTensorDescriptor_t b_desc;
+
+    cudnnConvolutionFwdAlgoPerf_t perf_result;
+    int returned_algo_count;
+    size_t max_workspace_size = kCudnnDefaultMaxWorkspaceSize;
+    void* workspace;
+    cudnnConvolutionFwdAlgo_t algo;
+    size_t workspace_size;
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
@@ -245,11 +254,28 @@ static VALUE
     w_desc = createCudnnFilterDescriptor(w_cont);
     conv_desc = createCudnnConvolutionDescriptor(ndim, pad, stride);
 
-    // TODO: get max workspace size
-    // TODO: autotune
-    //
     handle = cumo_cuda_cudnn_handle();
-    cudnnConvolutionForward(
+
+    // TODO: cache algo
+    workspace = ALLOCA_N(int8_t, max_workspace_size);
+    CheckCudnnError(cudnnFindConvolutionForwardAlgorithmEx(
+        handle,
+        x_desc,
+        CUMO_NA_DATA_PTR(nx_cont),
+        w_desc,
+        CUMO_NA_DATA_PTR(nw_cont),
+        conv_desc,
+        y_desc,
+        CUMO_NA_DATA_PTR(ny),
+        1,  // requested algo count,
+        &returned_algo_count,
+        &perf_result,
+        workspace,
+        max_workspace_size));
+    algo = perf_result.algo;
+    workspace_size = perf_result.memory;
+
+    CheckCudnnError(cudnnConvolutionForward(
         &alpha,
         x_desc,
         CUMO_NA_DATA_PTR(nx_cont),
@@ -257,11 +283,11 @@ static VALUE
         CUMO_NA_DATA_PTR(nw_cont),
         conv_desc,
         algo,
-        workspace.get(),
+        workspace,
         workspace_size,
         &beta,
         y_desc,
-        CUMO_NA_DATA_PTR(ny));
+        CUMO_NA_DATA_PTR(ny)));
 
     if (b != Qnil) {
         size_t shape[CUMO_NA_MAX_DIMENSION];
@@ -275,13 +301,13 @@ static VALUE
         cumo_na_setup_shape(nb, ndim + 2, shape);
 
         b_desc = createCudnnTensorDescriptor(b_cont);
-        cudnnAddTensor(
+        CheckCudnnError(cudnnAddTensor(
             &alpha,
             b_desc,
             CUMO_NA_DATA_PTR(nb_cont),
             &alpha,
             y_desc,
-            CUMO_NA_DATA_PTR(ny));
+            CUMO_NA_DATA_PTR(ny)));
     }
 
     return y;
