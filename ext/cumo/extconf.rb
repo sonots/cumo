@@ -47,9 +47,9 @@ rm_f 'include/cumo/extconf.h'
 MakeMakefileCuda.install!(cxx: true)
 
 if ENV['DEBUG']
-  $CFLAGS="-g -O0 -Wall"
+  $CFLAGS << " -g -O0 -Wall"
 end
-$CXXFLAGS += " -std=c++14 "
+$CXXFLAGS << " -std=c++14"
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
 $INCFLAGS = "-Iinclude -Inarray -Icuda #{$INCFLAGS}"
@@ -109,6 +109,8 @@ cuda/memory_pool
 cuda/memory_pool_impl
 cuda/runtime
 cuda/nvrtc
+cuda/cudnn
+cuda/cudnn_impl
 )
 
 if RUBY_VERSION[0..3] == "2.1."
@@ -179,5 +181,9 @@ have_library('nvrtc')
 have_library('cublas')
 # have_library('cusolver')
 # have_library('curand')
+if have_library('cudnn') # TODO(sonots): cuDNN version check
+  $CFLAGS << " -DCUDNN_FOUND"
+  $CXXFLAGS << " -DCUDNN_FOUND"
+end
 
 create_makefile('cumo')

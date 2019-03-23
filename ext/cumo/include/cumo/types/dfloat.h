@@ -7,6 +7,7 @@ typedef double rtype;
 #include "float_macro.h"
 #include "cublas_v2.h"
 #include "cumo/cuda/cublas.h"
+#include "cumo/cuda/cudnn.h"
 
 #ifdef SFMT_H
 /* generates a random number on [0,1)-real-interval */

@@ -345,3 +345,17 @@ static VALUE
     <%=c_iter%>(a, b, c, &g);
     return c;
 }
+
+#undef ROW_SIZE
+#undef COL_SIZE
+#undef CHECK_NARRAY_TYPE
+#undef CHECK_DIM_GE
+#undef CHECK_DIM_EQ
+#undef CHECK_SQUARE
+#undef CHECK_SIZE_GE
+#undef CHECK_NON_EMPTY
+#undef CHECK_SIZE_EQ
+#undef CHECK_SAME_SHAPE
+#undef CHECK_INT_EQ
+#undef CHECK_LEADING_GE
+#undef COPY_OR_CAST_TO
