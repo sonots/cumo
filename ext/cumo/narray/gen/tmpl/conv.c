@@ -24,7 +24,7 @@
     }
 
 static VALUE
-cumo_option_value(VALUE value, VALUE default_value)
+option_value(VALUE value, VALUE default_value)
 {
     switch(TYPE(value)) {
     case T_NIL:
@@ -34,7 +34,35 @@ cumo_option_value(VALUE value, VALUE default_value)
     return value;
 }
 
-static size_t cumo_cuda_cudnn_kDefaultMaxWorkspaceSize = 8 * 1024 * 1024;
+static size_t kDefaultMaxWorkspaceSize = 8 * 1024 * 1024;
+
+// VALUE is Ruby Array
+static void
+get_int_ary(int* int_ary, VALUE ary, size_t ndim, int default_value)
+{
+    if (ary == Qnil) {
+        // default to 1
+        for (size_t idim = 0; idim < ndim; ++idim) {
+            int_ary[idim] = default_value;
+        }
+    } else if (TYPE(ary) == T_FIXNUM) {
+        for (size_t idim = 0; idim < ndim; ++idim) {
+            int_ary[idim] = NUM2INT(ary);
+        }
+    } else {
+        Check_Type(ary, T_ARRAY);
+        CHECK_DIM_EQ((size_t)(RARRAY_LEN(ary)), ndim);
+        for (size_t idim = 0; idim < ndim; ++idim) {
+            int_ary[idim] = NUM2INT(rb_ary_entry(ary, idim));
+        }
+    }
+}
+
+static VALUE
+as_contiguous_array(VALUE a)
+{
+    return cumo_na_check_contiguous(a) == Qtrue ? a : rb_funcall(a, rb_intern("dup"), 0);
+}
 
 // cover_all is not supported with CuDNN
 // x.conv(w, stride:, pad:, b: nil, y: nil)
@@ -64,7 +92,7 @@ static VALUE
 
     cudnnConvolutionFwdAlgoPerf_t perf_result;
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
-    size_t max_workspace_size = cumo_cuda_cudnn_kDefaultMaxWorkspaceSize;
+    size_t max_workspace_size = kDefaultMaxWorkspaceSize;
     char* workspace;
     cudnnConvolutionFwdAlgo_t algo;
     size_t workspace_size;
@@ -74,10 +102,10 @@ static VALUE
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
-    stride = cumo_option_value(opts[0], Qnil);
-    pad = cumo_option_value(opts[1], Qnil);
-    b = cumo_option_value(opts[2], Qnil);
-    y = cumo_option_value(opts[3], Qnil);
+    stride = option_value(opts[0], Qnil);
+    pad = option_value(opts[1], Qnil);
+    b = option_value(opts[2], Qnil);
+    y = option_value(opts[3], Qnil);
 
     CumoGetNArray(x, nx);
     CumoGetNArray(w, nw);
@@ -91,47 +119,13 @@ static VALUE
     }
     ndim = nx->ndim - 2;  // Number of spatial dimensions
 
-    if (stride == Qnil) {
-        // default to 1
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_stride[idim] = 1;
-        }
-    } else if (TYPE(stride) == T_FIXNUM) {
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_stride[idim] = NUM2INT(stride);
-        }
-    } else {
-        Check_Type(stride, T_ARRAY);
-        CHECK_DIM_EQ((size_t)(RARRAY_LEN(stride)), ndim);
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_stride[idim] = NUM2INT(rb_ary_entry(stride, idim));
-        }
-    }
-
-    if (pad == Qnil) {
-        // default to 0
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_pad[idim] = 0;
-        }
-    } else if (TYPE(pad) == T_FIXNUM) {
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_pad[idim] = NUM2INT(pad);
-        }
-    } else {
-        Check_Type(pad, T_ARRAY);
-        CHECK_DIM_EQ((size_t)(RARRAY_LEN(pad)), ndim);
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_pad[idim] = NUM2INT(rb_ary_entry(pad, idim));
-        }
-    }
+    get_int_ary(int_stride, stride, ndim, 1);
+    get_int_ary(int_pad, pad, ndim, 0);
 
     x_shape = nx->shape;
     w_shape = nw->shape;
-
-    // w.shape = (out_channels, _, k_1, k_2, ..., k_N)
-    out_channels = w_shape[0];
-    // x_shape = (batch_size, in_channels, d_1, d_2, ..., d_N)
-    batch_size = x_shape[0];
+    batch_size = x_shape[0]; // x_shape = (batch_size, in_channels, d_1, d_2, ..., d_N)
+    out_channels = w_shape[0]; // w.shape = (out_channels, _, k_1, k_2, ..., k_N)
 
     if (y != Qnil) {
         CHECK_NARRAY_TYPE(y, cT);
@@ -148,8 +142,8 @@ static VALUE
         y = cumo_na_new(cT, ndim + 2, y_shape);
     }
 
-    x_cont = cumo_na_check_contiguous(x) == Qtrue ? x : rb_funcall(x, rb_intern("dup"), 0);
-    w_cont = cumo_na_check_contiguous(w) == Qtrue ? w : rb_funcall(w, rb_intern("dup"), 0);
+    x_cont = as_contiguous_array(x);
+    w_cont = as_contiguous_array(w);
 
     x_cont_ptr = cumo_na_get_pointer_for_read(x_cont) + cumo_na_get_offset(x_cont);
     w_cont_ptr = cumo_na_get_pointer_for_read(w_cont) + cumo_na_get_offset(w_cont);
@@ -211,7 +205,7 @@ static VALUE
         for (size_t i = 0; i < ndim; ++i) {
             b_shape[i + 2] = 1;
         }
-        b_cont =  cumo_na_check_contiguous(x) == Qtrue ? b : rb_funcall(b, rb_intern("dup"), 0);
+        b_cont =  as_contiguous_array(b);
         b_cont_ptr = cumo_na_get_pointer_for_read(b_cont) + cumo_na_get_offset(b_cont);
         CumoGetNArray(b_cont, nb_cont);
         cumo_na_setup_shape(nb_cont, ndim + 2, b_shape);
