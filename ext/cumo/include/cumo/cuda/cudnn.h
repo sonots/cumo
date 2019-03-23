@@ -3,6 +3,7 @@
 
 #include <ruby.h>
 #include <cudnn.h>
+#include "cumo/cuda/cudnn_conv.h"
 
 #if defined(__cplusplus)
 extern "C" {

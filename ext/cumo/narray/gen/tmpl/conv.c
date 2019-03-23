@@ -194,7 +194,7 @@ static VALUE
     cudnnTensorDescriptor_t b_desc;
 
     cudnnConvolutionFwdAlgoPerf_t perf_result;
-    int returned_algo_count;
+    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
     size_t max_workspace_size = kCudnnDefaultMaxWorkspaceSize;
     void* workspace;
     cudnnConvolutionFwdAlgo_t algo;
@@ -256,25 +256,25 @@ static VALUE
 
     handle = cumo_cuda_cudnn_handle();
 
-    // TODO: cache algo
-    workspace = ALLOCA_N(int8_t, max_workspace_size);
-    CheckCudnnError(cudnnFindConvolutionForwardAlgorithmEx(
-                handle,
-                x_desc,
-                (void*)CUMO_NA_DATA_PTR(nx_cont),
-                w_desc,
-                (void*)CUMO_NA_DATA_PTR(nw_cont),
-                conv_desc,
-                y_desc,
-                (void*)CUMO_NA_DATA_PTR(ny),
-                1,  // requested algo count,
-                &returned_algo_count,
-                &perf_result,
-                workspace,
-                max_workspace_size));
+    // auto tune
+    perf_result = cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
+            handle,
+            ndim,
+            cudnn_dtype,
+            x_desc,
+            x_cont,
+            w_desc,
+            w_cont,
+            conv_desc,
+            y_desc,
+            y,
+            max_workspace_size,
+            pad,
+            stride);
     algo = perf_result.algo;
     workspace_size = perf_result.memory;
 
+    workspace = ALLOCA_N(int8_t, workspace_size);
     CheckCudnnError(cudnnConvolutionForward(
                 handle,
                 (void*)&alpha,
