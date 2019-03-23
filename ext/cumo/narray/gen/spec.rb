@@ -54,7 +54,7 @@ if (is_float || is_complex) && !is_object
   def_id "gemm"
 end
 # cudnn
-if is_float && !is_object
+if is_float && !is_complex && !is_object
   def_id "conv"
 end
 
@@ -336,7 +336,7 @@ if (is_float || is_complex) && !is_object
 end
 
 # cudnn
-if is_float && !is_object
+if is_float && !is_complex && !is_object
   def_method "conv"
 end
 
