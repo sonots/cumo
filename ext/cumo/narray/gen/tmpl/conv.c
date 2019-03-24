@@ -78,8 +78,9 @@ cumo_na_get_offset_pointer_for_write(VALUE a)
     return cumo_na_get_pointer_for_write(a) + cumo_na_get_offset(a);
 }
 
-// cover_all is not supported with CuDNN
-// x.conv(w, stride:, pad:, b: nil, y: nil)
+// cover_all=true is not supported with CuDNN
+// dilation > 1 is not supported yet
+// x.conv(w, b: nil, stride: 1, pad: 0, y: nil)
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
