@@ -26,11 +26,16 @@ char *cumo_na_get_pointer_for_write(VALUE);
 char *cumo_na_get_pointer_for_read(VALUE);
 char *cumo_na_get_pointer_for_read_write(VALUE);
 size_t cumo_na_get_offset(VALUE self);
+char* cumo_na_get_offset_pointer(VALUE);
+char* cumo_na_get_offset_pointer_for_write(VALUE);
+char* cumo_na_get_offset_pointer_for_read(VALUE);
+char* cumo_na_get_offset_pointer_for_read_write(VALUE);
 
 void cumo_na_copy_flags(VALUE src, VALUE dst);
 
 VALUE cumo_na_check_ladder(VALUE self, int start_dim);
 VALUE cumo_na_check_contiguous(VALUE self);
+VALUE cumo_na_as_contiguous_array(VALUE a);
 
 VALUE cumo_na_flatten_dim(VALUE self, int sd);
 

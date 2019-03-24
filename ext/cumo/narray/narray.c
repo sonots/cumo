@@ -769,6 +769,29 @@ cumo_na_get_offset(VALUE self)
     return 0;
 }
 
+char*
+cumo_na_get_offset_pointer(VALUE a)
+{
+    return cumo_na_get_pointer(a) + cumo_na_get_offset(a);
+}
+
+char*
+cumo_na_get_offset_pointer_for_write(VALUE a)
+{
+    return cumo_na_get_pointer_for_write(a) + cumo_na_get_offset(a);
+}
+
+char*
+cumo_na_get_offset_pointer_for_read(VALUE a)
+{
+    return cumo_na_get_pointer_for_read(a) + cumo_na_get_offset(a);
+}
+
+char*
+cumo_na_get_offset_pointer_for_read_write(VALUE a)
+{
+    return cumo_na_get_pointer_for_read_write(a) + cumo_na_get_offset(a);
+}
 
 void
 cumo_na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
@@ -864,6 +887,12 @@ cumo_na_check_contiguous(VALUE self)
         }
     }
     return Qfalse;
+}
+
+VALUE
+cumo_na_as_contiguous_array(VALUE a)
+{
+    return cumo_na_check_contiguous(a) == Qtrue ? a : rb_funcall(a, rb_intern("dup"), 0);
 }
 
 //----------------------------------------------------------------------

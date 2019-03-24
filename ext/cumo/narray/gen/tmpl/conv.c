@@ -60,24 +60,6 @@ get_int_ary(int* int_ary, VALUE ary, size_t ndim, int default_value)
     }
 }
 
-static VALUE
-cumo_na_as_contiguous_array(VALUE a)
-{
-    return cumo_na_check_contiguous(a) == Qtrue ? a : rb_funcall(a, rb_intern("dup"), 0);
-}
-
-static char*
-cumo_na_get_offset_pointer_for_read(VALUE a)
-{
-    return cumo_na_get_pointer_for_read(a) + cumo_na_get_offset(a);
-}
-
-static char*
-cumo_na_get_offset_pointer_for_write(VALUE a)
-{
-    return cumo_na_get_pointer_for_write(a) + cumo_na_get_offset(a);
-}
-
 // cover_all=true is not supported with CuDNN
 // dilation > 1 is not supported yet
 // x.conv(w, b: nil, stride: 1, pad: 0, y: nil)
