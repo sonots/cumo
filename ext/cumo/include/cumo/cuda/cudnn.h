@@ -39,7 +39,8 @@ cumo_cuda_cudnn_check_status(cudnnStatus_t status);
 cudnnHandle_t
 cumo_cuda_cudnn_handle();
 
-inline VALUE
+// TODO: Move to more generic proper place
+static inline VALUE
 cumo_cuda_cudnn_option_value(VALUE value, VALUE default_value)
 {
     switch(TYPE(value)) {
@@ -51,7 +52,7 @@ cumo_cuda_cudnn_option_value(VALUE value, VALUE default_value)
 }
 
 // VALUE is Ruby Array
-inline void
+static inline void
 cumo_cuda_cudnn_get_int_ary(int* int_ary, VALUE ary, size_t ndim, int default_value)
 {
     if (ary == Qnil) {

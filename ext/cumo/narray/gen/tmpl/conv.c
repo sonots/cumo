@@ -13,53 +13,6 @@
     end
 %>
 
-#define CHECK_NARRAY_TYPE(x,t)                                 \
-    if (rb_obj_class(x)!=(t)) {                                \
-        rb_raise(rb_eTypeError,"invalid NArray type (class)"); \
-    }
-
-#define CHECK_DIM_EQ(nd1,nd2)                        \
-    if ((nd1) != (nd2)) {                            \
-        rb_raise(cumo_na_eShapeError,                \
-                 "dimention mismatch: %d != %d",     \
-                 (int)(nd1), (int)(nd2));            \
-    }
-
-static VALUE
-option_value(VALUE value, VALUE default_value)
-{
-    switch(TYPE(value)) {
-    case T_NIL:
-    case T_UNDEF:
-        return default_value;
-    }
-    return value;
-}
-
-static size_t kDefaultMaxWorkspaceSize = 8 * 1024 * 1024;
-
-// VALUE is Ruby Array
-static void
-get_int_ary(int* int_ary, VALUE ary, size_t ndim, int default_value)
-{
-    if (ary == Qnil) {
-        // default to 1
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_ary[idim] = default_value;
-        }
-    } else if (TYPE(ary) == T_FIXNUM) {
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_ary[idim] = NUM2INT(ary);
-        }
-    } else {
-        Check_Type(ary, T_ARRAY);
-        CHECK_DIM_EQ((size_t)(RARRAY_LEN(ary)), ndim);
-        for (size_t idim = 0; idim < ndim; ++idim) {
-            int_ary[idim] = NUM2INT(rb_ary_entry(ary, idim));
-        }
-    }
-}
-
 // cover_all=true is not supported with CuDNN
 // dilation > 1 is not supported yet
 // x.conv(w, b: nil, stride: 1, pad: 0, y: nil)
@@ -92,7 +45,7 @@ static VALUE
 
     cudnnConvolutionFwdAlgoPerf_t perf_result;
     cudnnConvolutionFwdAlgo_t algo;
-    size_t max_workspace_size = kDefaultMaxWorkspaceSize;
+    size_t max_workspace_size = CUMO_CUDA_CUDNN_DEFAULT_MAX_WORKSPACE_SIZE;
     size_t workspace_size;
     char* workspace = 0;
 
@@ -101,25 +54,25 @@ static VALUE
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
-    stride = option_value(opts[0], Qnil);
-    pad = option_value(opts[1], Qnil);
-    b = option_value(opts[2], Qnil);
-    y = option_value(opts[3], Qnil);
+    stride = cumo_cuda_cudnn_option_value(opts[0], Qnil);
+    pad = cumo_cuda_cudnn_option_value(opts[1], Qnil);
+    b = cumo_cuda_cudnn_option_value(opts[2], Qnil);
+    y = cumo_cuda_cudnn_option_value(opts[3], Qnil);
 
     CumoGetNArray(x, nx);
     CumoGetNArray(w, nw);
 
-    CHECK_DIM_EQ(nx->ndim, nw->ndim);
-    CHECK_NARRAY_TYPE(x, cT);
-    CHECK_NARRAY_TYPE(w, cT);
+    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(nx->ndim, nw->ndim);
+    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(w, cT);
     if (nx->ndim - 2 < 2) {
         rb_raise(cumo_na_eShapeError, "CuDNN convolution requires number of spatial "
                 "dimensions to be greater than or equal to 2, but %d", nx->ndim - 2);
     }
     ndim = nx->ndim - 2;  // Number of spatial dimensions
 
-    get_int_ary(int_stride, stride, ndim, 1);
-    get_int_ary(int_pad, pad, ndim, 0);
+    cumo_cuda_cudnn_get_int_ary(int_stride, stride, ndim, 1);
+    cumo_cuda_cudnn_get_int_ary(int_pad, pad, ndim, 0);
 
     x_shape = nx->shape;
     w_shape = nw->shape;
@@ -127,7 +80,7 @@ static VALUE
     out_channels = w_shape[0]; // w.shape = (out_channels, _, k_1, k_2, ..., k_N)
 
     if (y != Qnil) {
-        CHECK_NARRAY_TYPE(y, cT);
+        CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(y, cT);
     }
     else {
         size_t *y_shape = ALLOCA_N(size_t, ndim + 2);
@@ -202,7 +155,7 @@ static VALUE
         char* b_cont_ptr;
         cumo_narray_t *nb, *nb_cont;
 
-        CHECK_NARRAY_TYPE(b, cT);
+        CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(b, cT);
         CumoGetNArray(b, nb);
         b_shape[0] = 1;
         b_shape[1] = nb->size;
@@ -238,9 +191,6 @@ CONV_ERROR:
 
     return y;
 }
-
-#undef CHECK_NARRAY_TYPE
-#undef CHECK_DIM_EQ
 
 #else // CUDNN_FOUND
 VALUE cumo_cuda_eCudnnError;
