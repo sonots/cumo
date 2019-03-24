@@ -56,6 +56,7 @@ end
 # cudnn
 if is_float && !is_complex && !is_object
   def_id "conv"
+  def_id "conv_transpose"
 end
 
 if is_int && !is_object
@@ -338,6 +339,7 @@ end
 # cudnn
 if is_float && !is_complex && !is_object
   def_method "conv"
+  def_method "conv_transpose"
 end
 
 # rmsdev
