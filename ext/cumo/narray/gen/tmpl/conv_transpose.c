@@ -102,6 +102,10 @@ static VALUE
     w_shape = nw->shape;
     batch_size = x_shape[0]; // x_shape = (batch_size, in_channels, d_1, d_2, ..., d_N)
     out_channels = w_shape[1]; // w.shape = (in_channels, out_channels, k_1, k_2, ..., k_N)
+    if (x_shape[1] != w_shape[0]) {
+        rb_raise(cumo_na_eShapeError, "x_shape[1]:%d does not match with w_shape[0]:%d",
+                (int)x_shape[1], (int)w_shape[0]);
+    }
 
     cumo_cuda_cudnn_get_int_ary(int_stride, stride, ndim, 1);
     cumo_cuda_cudnn_get_int_ary(int_pad, pad, ndim, 0);
@@ -178,6 +182,33 @@ static VALUE
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
 
     if (b != Qnil) {
+        size_t b_shape[CUMO_NA_MAX_DIMENSION];
+        VALUE b_cont;
+        char* b_cont_ptr;
+        cumo_narray_t *nb, *nb_cont;
+
+        CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(b, cT);
+        CumoGetNArray(b, nb);
+        b_shape[0] = 1;
+        b_shape[1] = nb->size;
+        for (size_t i = 0; i < ndim; ++i) {
+            b_shape[i + 2] = 1;
+        }
+        b_cont =  cumo_na_as_contiguous_array(b);
+        b_cont_ptr = cumo_na_get_offset_pointer_for_read(b_cont);
+        CumoGetNArray(b_cont, nb_cont);
+        cumo_na_setup_shape(nb_cont, ndim + 2, b_shape);
+        status = cumo_cuda_cudnn_CreateTensorDescriptor(&b_desc, b_cont, cudnn_dtype);
+        if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+
+        status = cudnnAddTensor(
+                    handle,
+                    (void*)&alpha,
+                    b_desc,
+                    (void*)b_cont_ptr,
+                    (void*)&alpha,
+                    y_desc,
+                    (void*)y_ptr);
         if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
     }
 

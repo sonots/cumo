@@ -77,7 +77,11 @@ static VALUE
     x_shape = nx->shape;
     w_shape = nw->shape;
     batch_size = x_shape[0]; // x_shape = (batch_size, in_channels, d_1, d_2, ..., d_N)
-    out_channels = w_shape[0]; // w.shape = (out_channels, _, k_1, k_2, ..., k_N)
+    out_channels = w_shape[0]; // w.shape = (out_channels, in_channels, k_1, k_2, ..., k_N)
+    if (x_shape[1] != w_shape[1]) {
+        rb_raise(cumo_na_eShapeError, "x_shape[1]:%d does not match with w_shape[1]:%d",
+                (int)x_shape[1], (int)w_shape[1]);
+    }
 
     if (y != Qnil) {
         CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(y, cT);
