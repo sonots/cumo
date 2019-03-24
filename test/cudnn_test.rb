@@ -38,10 +38,14 @@ class CudnnTest < Test::Unit::TestCase
         assert y.to_a.flatten.all? {|e| e.to_i == 20 }
       end
 
-      test "x.conv(w, b, stride, pad) #{dtype}" do
-        stride = [3, 2]
-        pad = [2, 0]
-        y = @x.conv(@w, b: @b, stride: stride, pad: pad)
+      test "x.conv(w, b, stride=int, pad=int) #{dtype}" do
+        y = @x.conv(@w, b: @b, stride: 2, pad: 2)
+        assert { y.shape == [@batch_size, @out_channels, 7, 5] }
+        assert y.to_a.flatten.all? {|e| e.to_i == 20 || e.to_i == 2 || e.to_i == 8 }
+      end
+
+      test "x.conv(w, b, stride=array, pad=array) #{dtype}" do
+        y = @x.conv(@w, b: @b, stride: [3, 2], pad: [2, 0])
         assert { y.shape == [@batch_size, @out_channels, 5, 3] }
         assert y.to_a.flatten.all? {|e| e.to_i == 20 || e.to_i == 2 }
       end
@@ -75,9 +79,7 @@ class CudnnTest < Test::Unit::TestCase
       end
 
       test "x.conv(w, b, stride, pad) #{dtype}" do
-        stride = [3, 2, 1]
-        pad = [2, 1, 0]
-        y = @x.conv(@w, b: @b, stride: stride, pad: pad)
+        y = @x.conv(@w, b: @b, stride: [3, 2, 1], pad: [2, 1, 0])
         assert { y.shape == [@batch_size, @out_channels, 3, 2, 2] }
         assert y.to_a.flatten.all? {|e| e.to_i == 14 || e.to_i == 2 }
       end
