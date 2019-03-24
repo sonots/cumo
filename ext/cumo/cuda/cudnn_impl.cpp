@@ -19,19 +19,41 @@ extern "C" {
 #endif
 #endif
 
- size_t
-cumo_cuda_cudnn_GetConvOutDim(size_t in_dim, size_t kernel_size, size_t stride, size_t pad) {
-    // assert(stride > 0);
+// cover_all=true is not supported
+size_t
+cumo_cuda_cudnn_GetConvOutDim(
+        size_t in_dim,
+        size_t kernel_size,
+        size_t stride,
+        size_t pad) {
     int64_t numerator;
+    assert(stride > 0);
     // if (cover_all) {
     //     numerator = in_dim + pad * 2 - kernel_size + stride - 1;
     // } else {
     numerator = in_dim + pad * 2 - kernel_size;
     // }
-    // if (numerator < 0) {
-    //     throw DimensionError{"Output size should be positive."};
-    // }
+    if (numerator < 0) {
+        rb_raise(rb_eRuntimeError, "Output size should be positive.");
+    }
     return (size_t)(numerator / stride + 1);
+}
+
+// cover_all=true is not supported
+size_t
+cumo_cuda_cudnn_GetConvTransposeOutDim(
+        size_t in_dim,
+        size_t kernel_size,
+        size_t stride,
+        size_t pad) {
+    // if (cover_all) {
+    //     return stride * (in_dim - 1) + kernel_size - stride + 1 - 2 * pad;
+    // }
+    int64_t out_size = stride * (in_dim - 1) + kernel_size - 2 * pad;
+    if (out_size < 0) {
+        rb_raise(rb_eRuntimeError, "Output size should be positive.");
+    }
+    return (size_t)out_size;
 }
 
 cudnnStatus_t
@@ -271,6 +293,82 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
                 (void*)x_ptr,
                 w_desc,
                 (void*)w_ptr,
+                conv_desc,
+                y_desc,
+                (void*)y_ptr,
+                1,  // requested algo count,
+                &returned_algo_count,
+                perf_result,
+                (void*)workspace,
+                max_workspace_size);
+    cumo_cuda_runtime_free(workspace);
+    if (status != CUDNN_STATUS_SUCCESS) return status;
+    assert(returned_algo_count == 1);
+
+    // TODO: thread-safe
+    algo_cache_map[key] = {perf_result->algo, perf_result->memory};
+    return status;
+}
+
+cudnnStatus_t
+cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
+        cudnnConvolutionBwdDataAlgoPerf_t *perf_result,
+        cudnnHandle_t handle,
+        cudnnFilterDescriptor_t w_desc,
+        VALUE w,
+        cudnnTensorDescriptor_t x_desc,
+        VALUE x,
+        cudnnConvolutionDescriptor_t conv_desc,
+        cudnnTensorDescriptor_t y_desc,
+        VALUE y,
+        size_t max_workspace_size,
+        int* int_stride,
+        int* int_pad,
+        size_t ndim,
+        cudnnDataType_t cudnn_dtype)
+{
+    cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
+    cumo_narray_t *nx, *nw, *ny;
+    CumoGetNArray(x, nx);
+    CumoGetNArray(w, nw);
+    CumoGetNArray(y, ny);
+
+    auto key = AlgoCacheKey{};
+    key.ndim = ndim;
+    for (size_t idim = 0; idim < ndim + 2; ++idim) {
+        key.x_shape[idim] = nx->shape[idim];
+        key.w_shape[idim] = nw->shape[idim];
+        key.y_shape[idim] = ny->shape[idim];
+    }
+    for (size_t idim = 0; idim < ndim; ++idim) {
+        key.pad[idim]= int_pad[idim];
+        key.stride[idim]= int_stride[idim];
+    }
+    key.dtype = cudnn_dtype;
+    key.max_workspace_size = max_workspace_size;
+
+    auto& algo_cache_map = bwd_data_algo_cache_map_;
+    // TODO: thread-safe
+    auto it = algo_cache_map.find(key);
+    if (it != algo_cache_map.end()) {
+        auto pair = it->second;
+        perf_result->algo = pair.first;
+        perf_result->memory = pair.second;
+        return CUDNN_STATUS_SUCCESS;
+    }
+
+    char* x_ptr = cumo_na_get_offset_pointer_for_read(x);
+    char* w_ptr = cumo_na_get_offset_pointer_for_read(w);
+    char* y_ptr = cumo_na_get_offset_pointer_for_read(y);
+
+    char* workspace = cumo_cuda_runtime_malloc(max_workspace_size);
+    int returned_algo_count{};
+    status = cudnnFindConvolutionBackwardDataAlgorithmEx(
+                handle,
+                w_desc,
+                (void*)w_ptr,
+                x_desc,
+                (void*)x_ptr,
                 conv_desc,
                 y_desc,
                 (void*)y_ptr,
