@@ -159,5 +159,23 @@ class CudnnTest < Test::Unit::TestCase
         assert y.to_a.flatten.all? {|e| [2,5,8].include?(e.to_i) }
       end
     end
+
+    sub_test_case "batch_norm" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @in_dims = [5, 3]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @reduced_shape = [1].concat(@shape[1..-1])
+        @x = dtype.ones(*@x_shape)
+        @gamma = dtype.ones(*@reduced_shape) * 2
+        @beta = dtype.ones(*@reduced_shape)
+      end
+
+      test "x.batch_norm(gamma, beta) #{dtype}" do
+        y = @x.batch_norm(@gamma, @beta, axis: [0])
+        assert { y.shape == [@batch_size, @out_channels, 6, 5] }
+      end
+    end
   end
 end
