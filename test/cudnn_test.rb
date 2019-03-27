@@ -160,7 +160,7 @@ class CudnnTest < Test::Unit::TestCase
       end
     end
 
-    sub_test_case "batch_norm" do
+    sub_test_case "batch_normalization_forward_training" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -172,36 +172,36 @@ class CudnnTest < Test::Unit::TestCase
         @beta = dtype.ones(*@reduced_shape)
       end
 
-      test "x.batch_norm(gamma, beta) #{dtype}" do
-        y = @x.batch_norm(@gamma, @beta)
+      test "x.batch_normalization_forward_training(gamma, beta) #{dtype}" do
+        y = @x.batch_normalization_forward_training(@gamma, @beta)
         assert { y.shape == @x_shape }
         assert { y == dtype.ones(*@x_shape) }
       end
 
-      test "x.batch_norm(gamma, beta, axis: [0]) #{dtype}" do
-        assert { @x.batch_norm(@gamma, @beta) == @x.batch_norm(@gamma, @beta, axis: [0]) }
+      test "x.batch_normalization_forward_training(gamma, beta, axis: [0]) #{dtype}" do
+        assert { @x.batch_normalization_forward_training(@gamma, @beta) == @x.batch_normalization_forward_training(@gamma, @beta, axis: [0]) }
       end
 
-      test "x.batch_norm(gamma, beta, axis: [0, 2, 3]) #{dtype}" do
+      test "x.batch_normalization_forward_training(gamma, beta, axis: [0, 2, 3]) #{dtype}" do
         reduced_shape = [1, @x_shape[1], 1, 1]
         gamma = dtype.ones(reduced_shape) * 2
         beta = dtype.ones(reduced_shape)
-        y = @x.batch_norm(gamma, beta, axis: [0, 2, 3])
+        y = @x.batch_normalization_forward_training(gamma, beta, axis: [0, 2, 3])
         assert { y.shape == @x_shape }
       end
 
-      test "x.batch_norm(gamma, beta, running_mean, running_var) #{dtype}" do
+      test "x.batch_normalization_forward_training(gamma, beta, running_mean, running_var) #{dtype}" do
         running_mean = dtype.ones(*@reduced_shape)
         running_var = dtype.ones(*@reduced_shape)
-        y = @x.batch_norm(@gamma, @beta, running_mean: running_mean, running_var: running_var)
+        y = @x.batch_normalization_forward_training(@gamma, @beta, running_mean: running_mean, running_var: running_var)
         assert { y.shape == @x_shape }
         assert { y == dtype.ones(*@x_shape) }
       end
 
-      test "x.batch_norm(gamma, beta, mean, inv_std) #{dtype}" do
+      test "x.batch_normalization_forward_training(gamma, beta, mean, inv_std) #{dtype}" do
         mean = dtype.new(*@reduced_shape)
         inv_std = dtype.new(*@reduced_shape)
-        y = @x.batch_norm(@gamma, @beta, mean: mean, inv_std: inv_std)
+        y = @x.batch_normalization_forward_training(@gamma, @beta, mean: mean, inv_std: inv_std)
         assert { y.shape == @x_shape }
         assert { mean.shape == @reduced_shape }
         assert { inv_std.shape == @reduced_shape }
