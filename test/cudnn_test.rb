@@ -207,5 +207,49 @@ class CudnnTest < Test::Unit::TestCase
         assert { inv_std.shape == @reduced_shape }
       end
     end
+
+    sub_test_case "batch_normalization_backward" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @in_dims = [5, 3]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @reduced_shape = [1].concat(@x_shape[1..-1])
+        @x = dtype.ones(*@x_shape) * 3
+        @gamma = dtype.ones(*@reduced_shape) * 2
+        @beta = dtype.ones(*@reduced_shape)
+        @gy = dtype.ones(*@x_shape)
+      end
+
+      test "x.batch_normalization_backward(gamma, gy) #{dtype}" do
+        y = @x.batch_normalization_forward_training(@gamma, @beta)
+        gx, ggamma, gbeta = @x.batch_normalization_backward(@gamma, @gy)
+        assert { gx.shape== @x_shape }
+        assert { ggamma.shape== @reduced_shape }
+        assert { gbeta.shape== @reduced_shape }
+      end
+
+      test "x.batch_normalization_backward(gamma, gy, axis: [0,2,3]) #{dtype}" do
+        @reduced_shape = [1, @x_shape[1], 1, 1]
+        @gamma = dtype.ones(@reduced_shape) * 2
+        @beta = dtype.ones(@reduced_shape)
+        y = @x.batch_normalization_forward_training(@gamma, @beta, axis: [0,2,3])
+        gx, ggamma, gbeta = @x.batch_normalization_backward(@gamma, @gy, axis: [0,2,3])
+        assert { gx.shape== @x_shape }
+        assert { ggamma.shape== @reduced_shape }
+        assert { gbeta.shape== @reduced_shape }
+      end
+
+      test "x.batch_normalization_backward(gamma, gy, mean:, inv_std:) #{dtype}" do
+        mean = dtype.new(*@reduced_shape)
+        inv_std = dtype.new(*@reduced_shape)
+        y = @x.batch_normalization_forward_training(@gamma, @beta, mean: mean, inv_std: inv_std)
+        gx, ggamma, gbeta = @x.batch_normalization_backward(@gamma, @gy, mean: mean, inv_std: inv_std)
+        assert { gx.shape== @x_shape }
+        assert { ggamma.shape== @reduced_shape }
+        assert { gbeta.shape== @reduced_shape }
+      end
+
+    end
   end
 end
