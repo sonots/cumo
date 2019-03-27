@@ -102,8 +102,19 @@ cumo_cuda_cudnn_CreateFilterDescriptor(
 cudnnStatus_t
 cumo_cuda_cudnn_CreateConvolutionDescriptor(
         cudnnConvolutionDescriptor_t *desc,
-        size_t ndim, int* int_stride, int* int_pad,
+        size_t ndim,
+        int* int_stride,
+        int* int_pad,
         cudnnDataType_t cudnn_dtype);
+
+cudnnStatus_t
+cumo_cuda_cudnn_CreatePoolingDescriptor(
+        cudnnPoolingDescriptor_t *desc,
+        cudnnPoolingMode_t mode,
+        size_t ndim,
+        int* int_kernel_size,
+        int* int_stride,
+        int* int_pad);
 
 cudnnStatus_t
 cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(

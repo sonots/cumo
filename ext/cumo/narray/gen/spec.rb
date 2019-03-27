@@ -59,6 +59,7 @@ if is_float && !is_complex && !is_object
   def_id "conv_transpose"
   def_id "batch_normalization_forward_training"
   def_id "batch_normalization_backward"
+  def_id "pooling_forward"
 end
 
 if is_int && !is_object
@@ -344,6 +345,7 @@ if is_float && !is_complex && !is_object
   def_method "conv_transpose"
   def_method "batch_normalization_forward_training"
   def_method "batch_normalization_backward"
+  def_method "pooling_forward"
 end
 
 # rmsdev
