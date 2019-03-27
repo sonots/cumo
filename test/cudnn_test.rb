@@ -166,15 +166,45 @@ class CudnnTest < Test::Unit::TestCase
         @in_channels = 3
         @in_dims = [5, 3]
         @x_shape = [@batch_size, @in_channels].concat(@in_dims)
-        @reduced_shape = [1].concat(@shape[1..-1])
-        @x = dtype.ones(*@x_shape)
+        @reduced_shape = [1].concat(@x_shape[1..-1])
+        @x = dtype.ones(*@x_shape) * 3
         @gamma = dtype.ones(*@reduced_shape) * 2
         @beta = dtype.ones(*@reduced_shape)
       end
 
       test "x.batch_norm(gamma, beta) #{dtype}" do
-        y = @x.batch_norm(@gamma, @beta, axis: [0])
-        assert { y.shape == [@batch_size, @out_channels, 6, 5] }
+        y = @x.batch_norm(@gamma, @beta)
+        assert { y.shape == @x_shape }
+        assert { y == dtype.ones(*@x_shape) }
+      end
+
+      test "x.batch_norm(gamma, beta, axis: [0]) #{dtype}" do
+        assert { @x.batch_norm(@gamma, @beta) == @x.batch_norm(@gamma, @beta, axis: [0]) }
+      end
+
+      test "x.batch_norm(gamma, beta, axis: [0, 2, 3]) #{dtype}" do
+        reduced_shape = [1, @x_shape[1], 1, 1]
+        gamma = dtype.ones(reduced_shape) * 2
+        beta = dtype.ones(reduced_shape)
+        y = @x.batch_norm(gamma, beta, axis: [0, 2, 3])
+        assert { y.shape == @x_shape }
+      end
+
+      test "x.batch_norm(gamma, beta, running_mean, running_var) #{dtype}" do
+        running_mean = dtype.ones(*@reduced_shape)
+        running_var = dtype.ones(*@reduced_shape)
+        y = @x.batch_norm(@gamma, @beta, running_mean: running_mean, running_var: running_var)
+        assert { y.shape == @x_shape }
+        assert { y == dtype.ones(*@x_shape) }
+      end
+
+      test "x.batch_norm(gamma, beta, mean, inv_std) #{dtype}" do
+        mean = dtype.new(*@reduced_shape)
+        inv_std = dtype.new(*@reduced_shape)
+        y = @x.batch_norm(@gamma, @beta, mean: mean, inv_std: inv_std)
+        assert { y.shape == @x_shape }
+        assert { mean.shape == @reduced_shape }
+        assert { inv_std.shape == @reduced_shape }
       end
     end
   end

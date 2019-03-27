@@ -23,10 +23,19 @@ static VALUE
     dtype coef_alpha = 1;
     dtype coef_beta = 0;
 
-    VALUE x=self, gamma, beta, running_mean, running_var, eps, decay, axis, y;
+    VALUE x=self, gamma, beta, running_mean, running_var, eps, decay, axis, mean, inv_std, y;
     VALUE kw_hash = Qnil;
-    ID kw_table[6] = {rb_intern("running_mean"), rb_intern("running_var"), rb_intern("eps"), rb_intern("decay"), rb_intern("axis"), rb_intern("y")};
-    VALUE opts[6] = {Qundef, Qundef, Qundef, Qundef, Qundef, Qundef};
+    ID kw_table[] = {
+        rb_intern("running_mean"),
+        rb_intern("running_var"),
+        rb_intern("mean"),
+        rb_intern("inv_std"),
+        rb_intern("eps"),
+        rb_intern("decay"),
+        rb_intern("axis"),
+        rb_intern("y")
+    };
+    VALUE opts[] = {Qundef, Qundef, Qundef, Qundef, Qundef, Qundef, Qundef, Qundef};
 
     cumo_narray_t *nx, *ngamma, *nbeta;
     size_t *x_shape, *gamma_shape, *beta_shape, reduced_shape[CUMO_NA_MAX_DIMENSION];
@@ -37,33 +46,40 @@ static VALUE
     cudnnTensorDescriptor_t bn_desc = 0;
     char *x_cont_ptr, *gamma_cont_ptr, *beta_cont_ptr, *y_ptr;
 
-    VALUE x_mean, x_inv_std;
-    char *x_mean_ptr, *x_inv_std_ptr;
-
     cudnnBatchNormMode_t mode;
 
     // default values
     char *running_mean_ptr=NULL;
     char *running_var_ptr=NULL;
+    char *mean_ptr=NULL;
+    char *inv_std_ptr=NULL;
     double double_eps = 2e-5;
     double double_decay = 0.9;
     int int_axis[CUMO_NA_MAX_DIMENSION] = {0};
     size_t axis_ndim = 1;
 
     rb_scan_args(argc, argv, "2:", &gamma, &beta, &kw_hash);
-    rb_get_kwargs(kw_hash, kw_table, 0, 5, opts);
+    rb_get_kwargs(kw_hash, kw_table, 0, 8, opts);
     running_mean = cumo_cuda_cudnn_option_value(opts[0], Qnil);
     running_var = cumo_cuda_cudnn_option_value(opts[1], Qnil);
-    eps = cumo_cuda_cudnn_option_value(opts[2], Qnil);
-    decay = cumo_cuda_cudnn_option_value(opts[3], Qnil);
-    axis = cumo_cuda_cudnn_option_value(opts[4], Qnil);
-    y = cumo_cuda_cudnn_option_value(opts[5], Qnil);
+    mean = cumo_cuda_cudnn_option_value(opts[2], Qnil);
+    inv_std = cumo_cuda_cudnn_option_value(opts[3], Qnil);
+    eps = cumo_cuda_cudnn_option_value(opts[4], Qnil);
+    decay = cumo_cuda_cudnn_option_value(opts[5], Qnil);
+    axis = cumo_cuda_cudnn_option_value(opts[6], Qnil);
+    y = cumo_cuda_cudnn_option_value(opts[7], Qnil);
 
     if (running_mean != Qnil) {
         running_mean_ptr = cumo_na_get_offset_pointer_for_read_write(running_mean);
     }
     if (running_var != Qnil) {
         running_var_ptr = cumo_na_get_offset_pointer_for_read_write(running_var);
+    }
+    if (mean != Qnil) {
+        mean_ptr = cumo_na_get_offset_pointer_for_write(mean);
+    }
+    if (inv_std != Qnil) {
+        inv_std_ptr = cumo_na_get_offset_pointer_for_write(inv_std);
     }
     if (eps != Qnil) {
         double_eps = NUM2DBL(eps);
@@ -104,15 +120,23 @@ static VALUE
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(beta, cT);
     if (running_mean != Qnil) CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(running_mean, cT);
     if (running_var != Qnil) CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(running_var, cT);
+    if (mean != Qnil) CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(mean, cT);
+    if (inv_std != Qnil) CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(inv_std, cT);
 
     x_cont = cumo_na_as_contiguous_array(x);
     gamma_cont = cumo_na_as_contiguous_array(gamma);
     beta_cont = cumo_na_as_contiguous_array(beta);
-    if (cumo_na_check_contiguous(running_mean) != Qtrue) {
+    if (running_mean != Qnil && cumo_na_check_contiguous(running_mean) != Qtrue) {
         rb_raise(rb_eRuntimeError, "running_mean must be contiguous");
     }
-    if (cumo_na_check_contiguous(running_var) != Qtrue) {
-        rb_raise(rb_eRuntimeError, "running_mean must be contiguous");
+    if (running_var != Qnil && cumo_na_check_contiguous(running_var) != Qtrue) {
+        rb_raise(rb_eRuntimeError, "running_var must be contiguous");
+    }
+    if (mean != Qnil && cumo_na_check_contiguous(mean) != Qtrue) {
+        rb_raise(rb_eRuntimeError, "mean must be contiguous");
+    }
+    if (inv_std != Qnil && cumo_na_check_contiguous(inv_std) != Qtrue) {
+        rb_raise(rb_eRuntimeError, "inv_std must be contiguous");
     }
 
     x_cont_ptr = cumo_na_get_offset_pointer_for_read(x_cont);
@@ -121,12 +145,7 @@ static VALUE
 
     // TODO: type and shape check
     if (y == Qnil) y = cumo_na_new(cT, x_ndim, x_shape);
-    x_mean = cumo_na_new(cT, gamma_ndim, gamma_shape);
-    x_inv_std = cumo_na_new(cT, gamma_ndim, gamma_shape);
-
     y_ptr = cumo_na_get_offset_pointer_for_write(y);
-    x_mean_ptr = cumo_na_get_offset_pointer_for_write(x_mean);
-    x_inv_std_ptr = cumo_na_get_offset_pointer_for_write(x_inv_std);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
@@ -154,8 +173,8 @@ static VALUE
             running_mean_ptr,
             running_var_ptr,
             double_eps,
-            x_mean_ptr,
-            x_inv_std_ptr);
+            mean_ptr,
+            inv_std_ptr);
     if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
 
 BATCH_NORM_ERROR:
