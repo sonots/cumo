@@ -386,6 +386,60 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
     return status;
 }
 
+// TODO(sonots): Support other than 4, 5 dimensional arrays by reshaping into 4-dimensional arrays as Chainer does.
+cudnnBatchNormMode_t
+cumo_cuda_cudnn_GetBatchNormMode(size_t ndim, int* axis) {
+    if (ndim == 1 && axis[0] == 0) {  // (1, channels, (depth, )height, width)
+        return CUDNN_BATCHNORM_PER_ACTIVATION;
+    }
+    if ((ndim == 3 && axis[0] == 0 && axis[1] == 2 && axis[2] == 3) ||
+        (ndim == 4 && axis[0] == 0 && axis[1] == 2 && axis[2] == 3 && axis[3] == 4)) {  // (1, channels, (1, )1, 1)
+        // TODO: Consider CUDNN_BATCHNORM_SPATIAL_PERSISTENT if we can afford to check for overflow, with or without blocking.
+        return CUDNN_BATCHNORM_SPATIAL;
+    }
+    rb_raise(rb_eRuntimeError, "Invalid axis for BatchNorm using cuDNN. Expected 1, 3 or 4 dimensions.");
+}
+
+cudnnStatus_t
+cumo_cuda_cudnn_CreateBNTensorDescriptor(
+        cudnnTensorDescriptor_t *desc,
+        cudnnTensorDescriptor_t x_desc,
+        cudnnBatchNormMode_t mode)
+{
+    cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
+    status = cudnnCreateTensorDescriptor(desc);
+    if (status = CUDNN_STATUS_SUCCESS) return status;
+
+    status = cudnnDeriveBNTensorDescriptor(*desc, x_desc, mode);
+    return status;
+}
+
+size_t
+cumo_cuda_cudnn_ReduceShape(
+        size_t *reduced_shape,
+        size_t shape_ndim,
+        size_t *shape,
+        size_t axes_ndim,
+        int *axes,
+        char keepdims) {
+    assert(shape_ndim >= axes_ndim);
+    size_t i_axis = 0;
+    size_t i_shape = 0;
+    for (size_t i = 0; i < shape_ndim; ++i) {
+        if (i_axis < axes_ndim && i == (size_t)axes[i_axis]) {
+            ++i_axis;
+            if (keepdims) {
+                reduced_shape[i_shape++] = 1;
+            }
+        } else {
+            reduced_shape[i_shape++] = shape[i];
+        }
+    }
+    assert(i_axis == axes_ndim);
+    assert(i_shape == shape_ndim - static_cast<int8_t>(!keepdims) * axes_ndim);
+    return i_shape;
+}
+
 #if defined(__cplusplus)
 #if 0
 { /* satisfy cc-mode */

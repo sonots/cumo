@@ -139,6 +139,24 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
         size_t ndim,
         cudnnDataType_t cudnn_dtype);
 
+cudnnBatchNormMode_t
+cumo_cuda_cudnn_GetBatchNormMode(size_t ndim, int* int_axis);
+
+cudnnStatus_t
+cumo_cuda_cudnn_CreateBNTensorDescriptor(
+        cudnnTensorDescriptor_t *desc,
+        cudnnTensorDescriptor_t x_desc,
+        cudnnBatchNormMode_t mode);
+
+size_t
+cumo_cuda_cudnn_ReduceShape(
+        size_t *reduced_shape,
+        size_t shape_ndim,
+        size_t *shape,
+        size_t axes_ndim,
+        int *axes,
+        char keepdims);
+
 #endif // CUDNN_FOUND
 
 #if defined(__cplusplus)
