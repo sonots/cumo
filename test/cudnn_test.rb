@@ -312,13 +312,71 @@ class CUDNNTest < Test::Unit::TestCase
         @x = dtype.ones(*@x_shape) * 3
       end
 
-      test "x.average_pool(ksize) #{dtype}" do
+      test "x.average_pool(ksize, stride:, pad:) #{dtype}" do
         stride = [2] * @in_dims.size
         pad = [1] * @in_dims.size
         y_pad_0 = @x.average_pool(@ksize, pad_value: 0, stride: stride, pad: pad)
         y_pad_nil = @x.average_pool(@ksize, pad_value: nil, stride: stride, pad: pad)
         assert { y_pad_0.shape == y_pad_nil.shape }
         assert { y_pad_0 != y_pad_nil }
+      end
+    end
+
+    sub_test_case "max_pool_backward" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @in_dims = [5, 3]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @ksize = [3] * @in_dims.size
+        @x = dtype.ones(*@x_shape) * 3
+      end
+
+      test "x.max_pool_backward(ksize) #{dtype}" do
+        y = @x.max_pool(@ksize)
+        gy = dtype.ones(*y.shape)
+        gx = @x.max_pool_backward(y, gy, @ksize)
+        assert { gx.shape == @x.shape }
+        # TODO: assert values
+      end
+
+      test "x.max_pool_backward(ksize, stride:, pad:) #{dtype}" do
+        stride = [2] * @in_dims.size
+        pad = [1] * @in_dims.size
+        y = @x.max_pool(@ksize, stride: stride, pad: pad)
+        gy = dtype.ones(*y.shape)
+        gx = @x.max_pool_backward(y, gy, @ksize, stride: stride, pad: pad)
+        assert { gx.shape == @x.shape }
+        # TODO: assert values
+      end
+    end
+
+    sub_test_case "average_pool_backward" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @in_dims = [5, 3]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @ksize = [3] * @in_dims.size
+        @x = dtype.ones(*@x_shape) * 3
+      end
+
+      test "x.average_pool_backward(ksize) #{dtype}" do
+        y = @x.average_pool(@ksize)
+        gy = dtype.ones(*y.shape)
+        gx = @x.average_pool_backward(y, gy, @ksize)
+        assert { gx.shape == @x.shape }
+        # TODO: assert values
+      end
+
+      test "x.average_pool_backward(ksize, stride:, pad:) #{dtype}" do
+        stride = [2] * @in_dims.size
+        pad = [1] * @in_dims.size
+        y = @x.average_pool(@ksize, stride: stride, pad: pad)
+        gy = dtype.ones(*y.shape)
+        gx = @x.average_pool_backward(y, gy, @ksize, stride: stride, pad: pad)
+        assert { gx.shape == @x.shape }
+        # TODO: assert values
       end
     end
   end
