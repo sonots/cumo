@@ -252,7 +252,7 @@ class CudnnTest < Test::Unit::TestCase
 
     end
 
-    sub_test_case "pooling_forward(max)" do
+    sub_test_case "max_pool" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -262,22 +262,22 @@ class CudnnTest < Test::Unit::TestCase
         @x = dtype.ones(*@x_shape) * 3
       end
 
-      test "x.pooling_forward(max, ksize) #{dtype}" do
-        y = @x.pooling_forward(Cumo::CUDA::Cudnn::CUDNN_POOLING_MAX, @ksize)
+      test "x.max_pool(ksize) #{dtype}" do
+        y = @x.max_pool(@ksize)
         assert { y.shape == [@batch_size, @in_channels, 1, 1] }
         assert y.to_a.flatten.all? {|e| e.to_i == 3 }
       end
 
-      test "x.pooling_forward(max, ksize, stride:, pad:) #{dtype}" do
+      test "x.max_pool(ksize, stride:, pad:) #{dtype}" do
         stride = [2] * @in_dims.size
         pad = [1] * @in_dims.size
-        y = @x.pooling_forward(Cumo::CUDA::Cudnn::CUDNN_POOLING_MAX, @ksize, stride: stride, pad: pad)
+        y = @x.max_pool(@ksize, stride: stride, pad: pad)
         assert { y.shape == [@batch_size, @in_channels, 3, 2] }
         assert y.to_a.flatten.all? {|e| e.to_i == 3 }
       end
     end
 
-    sub_test_case "pooling_forward(avg)" do
+    sub_test_case "average_pool(pad_value: nil)" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -287,18 +287,38 @@ class CudnnTest < Test::Unit::TestCase
         @x = dtype.ones(*@x_shape) * 3
       end
 
-      test "x.pooling_forward(max, ksize) #{dtype}" do
-        y = @x.pooling_forward(Cumo::CUDA::Cudnn::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING, @ksize)
+      test "x.average_pool(ksize) #{dtype}" do
+        y = @x.average_pool(@ksize)
         assert { y.shape == [@batch_size, @in_channels, 1, 1] }
         assert y.to_a.flatten.all? {|e| e.to_i == 3 }
       end
 
-      test "x.pooling_forward(max, ksize, stride:, pad:) #{dtype}" do
+      test "x.average_pool(ksize, stride:, pad:) #{dtype}" do
         stride = [2] * @in_dims.size
         pad = [1] * @in_dims.size
-        y = @x.pooling_forward(Cumo::CUDA::Cudnn::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING, @ksize, stride: stride, pad: pad)
+        y = @x.average_pool(@ksize, stride: stride, pad: pad)
         assert { y.shape == [@batch_size, @in_channels, 3, 2] }
         # TODO: assert values
+      end
+    end
+
+    sub_test_case "average_pool(pad_value: 0)" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @in_dims = [5, 3]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @ksize = [3] * @in_dims.size
+        @x = dtype.ones(*@x_shape) * 3
+      end
+
+      test "x.average_pool(ksize) #{dtype}" do
+        stride = [2] * @in_dims.size
+        pad = [1] * @in_dims.size
+        y_pad_0 = @x.average_pool(@ksize, pad_value: 0, stride: stride, pad: pad)
+        y_pad_nil = @x.average_pool(@ksize, pad_value: nil, stride: stride, pad: pad)
+        assert { y_pad_0.shape == y_pad_nil.shape }
+        assert { y_pad_0 != y_pad_nil }
       end
     end
   end
