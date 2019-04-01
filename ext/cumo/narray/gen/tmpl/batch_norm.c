@@ -13,7 +13,7 @@
     end
 %>
 
-// y = x.batch_normalization_forward_training(gamma, beta, running_mean:, running_var:, eps:, decay:, axis:, mean:, inv_std:)
+// y = x.batch_norm(gamma, beta, running_mean:, running_var:, eps:, decay:, axis:, mean:, inv_std:)
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {

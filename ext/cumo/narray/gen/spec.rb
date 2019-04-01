@@ -57,8 +57,8 @@ end
 if is_float && !is_complex && !is_object
   def_id "conv"
   def_id "conv_transpose"
-  def_id "batch_normalization_forward_training"
-  def_id "batch_normalization_backward"
+  def_id "batch_norm"
+  def_id "batch_norm_backward"
   def_id "pooling_forward"
   def_id "pooling_backward"
 end
@@ -344,8 +344,8 @@ end
 if is_float && !is_complex && !is_object
   def_method "conv"
   def_method "conv_transpose"
-  def_method "batch_normalization_forward_training"
-  def_method "batch_normalization_backward"
+  def_method "batch_norm"
+  def_method "batch_norm_backward"
   def_method "pooling_forward"
   def_method "pooling_backward"
 end
