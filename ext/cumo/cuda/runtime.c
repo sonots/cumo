@@ -142,6 +142,7 @@ Init_cumo_cuda_runtime()
 {
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
+    rb_define_const(mCumo, "Cuda", mCUDA); // alias
     mRuntime = rb_define_module_under(mCUDA, "Runtime");
     eRuntimeError = rb_define_class_under(mCUDA, "RuntimeError", rb_eStandardError);
 
