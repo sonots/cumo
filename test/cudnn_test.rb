@@ -1,6 +1,6 @@
 require_relative "test_helper"
 
-class CudnnTest < Test::Unit::TestCase
+class CUDNNTest < Test::Unit::TestCase
   float_types = [
     Cumo::SFloat,
     Cumo::DFloat,

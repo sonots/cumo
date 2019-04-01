@@ -13,7 +13,7 @@
     end
 %>
 
-// cover_all=true is not supported with CuDNN
+// cover_all=true is not supported with CUDNN
 // x.pooling_forward(mode, kernel_size, stride: 1, pad: 0, y: nil)
 //CUDNN_POOLING_MAX
 //CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
@@ -58,7 +58,7 @@ static VALUE
 
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
     if (nx->ndim - 2 < 2) {
-        rb_raise(cumo_na_eShapeError, "CuDNN pooling requires number of spatial "
+        rb_raise(cumo_na_eShapeError, "CUDNN pooling requires number of spatial "
                 "dimensions to be greater than or equal to 2, but %d", nx->ndim - 2);
     }
     ndim = nx->ndim - 2;  // Number of spatial dimensions
@@ -126,11 +126,11 @@ POOLING_ERROR:
 }
 
 #else // CUDNN_FOUND
-VALUE cumo_cuda_eCudnnError;
+VALUE cumo_cuda_eCUDNNError;
 
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
-    rb_raise(cumo_cuda_eCudnnError, "cuDNN is not available");
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
 }
 #endif // CUDNN_FOUND

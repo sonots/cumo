@@ -6,10 +6,10 @@
 #include "cumo/template.h"
 #include "cumo/cuda/runtime.h"
 
-VALUE cumo_cuda_eCudnnError;
-VALUE cumo_cuda_mCudnn;
-#define eCudnnError cumo_cuda_eCudnnError
-#define mCudnn cumo_cuda_mCudnn
+VALUE cumo_cuda_eCUDNNError;
+VALUE cumo_cuda_mCUDNN;
+#define eCUDNNError cumo_cuda_eCUDNNError
+#define mCUDNN cumo_cuda_mCUDNN
 
 #ifdef CUDNN_FOUND
 
@@ -17,7 +17,7 @@ void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status)
 {
     if (status != CUDNN_STATUS_SUCCESS) {
-        rb_raise(cumo_cuda_eCudnnError, "%s (error=%d)", cudnnGetErrorString(status), status);
+        rb_raise(cumo_cuda_eCUDNNError, "%s (error=%d)", cudnnGetErrorString(status), status);
     }
 }
 
@@ -66,14 +66,15 @@ Init_cumo_cuda_cudnn(void)
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
 
     /*
-      Document-module: Cumo::Cudnn
+      Document-module: Cumo::CUDNN
     */
-    mCudnn = rb_define_module_under(mCUDA, "Cudnn");
-    eCudnnError = rb_define_class_under(mCUDA, "CudnnError", rb_eStandardError);
+    mCUDNN = rb_define_module_under(mCUDA, "CUDNN");
+    rb_define_const(mCUDA, "Cudnn", mCUDNN); // alias
+    eCUDNNError = rb_define_class_under(mCUDA, "CUDNNError", rb_eStandardError);
 
-    rb_define_singleton_method(mCudnn, "available?", RUBY_METHOD_FUNC(rb_cudnn_available_p), 0);
-    rb_define_const(mCudnn, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));
-    rb_define_const(mCudnn, "CUDNN_POOLING_MAX_DETERMINISTIC", INT2NUM(CUDNN_POOLING_MAX_DETERMINISTIC));
-    rb_define_const(mCudnn, "CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING));
-    rb_define_const(mCudnn, "CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING));
+    rb_define_singleton_method(mCUDNN, "available?", RUBY_METHOD_FUNC(rb_cudnn_available_p), 0);
+    rb_define_const(mCUDNN, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));
+    rb_define_const(mCUDNN, "CUDNN_POOLING_MAX_DETERMINISTIC", INT2NUM(CUDNN_POOLING_MAX_DETERMINISTIC));
+    rb_define_const(mCUDNN, "CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING));
+    rb_define_const(mCUDNN, "CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING));
 }

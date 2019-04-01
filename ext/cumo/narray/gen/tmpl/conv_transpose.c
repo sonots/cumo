@@ -38,7 +38,7 @@ get_int_out_size(int* int_out_size, VALUE out_size, size_t ndim, size_t* x_shape
     }
 }
 
-// cover_all=true is not supported with CuDNN
+// cover_all=true is not supported with CUDNN
 // dilation > 1 is not supported yet
 // x.conv(w, b: nil, stride: 1, pad: 0, out_size: nil, y: nil)
 static VALUE
@@ -93,7 +93,7 @@ static VALUE
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(w, cT);
     if (nx->ndim - 2 < 2) {
-        rb_raise(cumo_na_eShapeError, "CuDNN convolution requires number of spatial "
+        rb_raise(cumo_na_eShapeError, "CUDNN convolution requires number of spatial "
                 "dimensions to be greater than or equal to 2, but %d", nx->ndim - 2);
     }
     ndim = nx->ndim - 2;  // Number of spatial dimensions
@@ -225,11 +225,11 @@ CONV_ERROR:
 }
 
 #else // CUDNN_FOUND
-VALUE cumo_cuda_eCudnnError;
+VALUE cumo_cuda_eCUDNNError;
 
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
-    rb_raise(cumo_cuda_eCudnnError, "cuDNN is not available");
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
 }
 #endif // CUDNN_FOUND

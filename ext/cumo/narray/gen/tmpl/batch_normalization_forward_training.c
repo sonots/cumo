@@ -186,11 +186,11 @@ BATCH_NORM_ERROR:
 }
 
 #else // CUDNN_FOUND
-VALUE cumo_cuda_eCudnnError;
+VALUE cumo_cuda_eCUDNNError;
 
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
-    rb_raise(cumo_cuda_eCudnnError, "cuDNN is not available");
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
 }
 #endif // CUDNN_FOUND
