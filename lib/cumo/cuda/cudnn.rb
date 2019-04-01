@@ -11,7 +11,7 @@ module Cumo
         self.pooling_backward(Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX, *args, **kwargs)
       end
 
-      def average_pool(*args, **kwargs)
+      def avg_pool(*args, **kwargs)
         pad_value = kwargs.delete(:pad_value)
         if pad_value == 0
           mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
@@ -23,7 +23,7 @@ module Cumo
         self.pooling_forward(mode, *args, **kwargs)
       end
 
-      def average_pool_backward(*args, **kwargs)
+      def avg_pool_backward(*args, **kwargs)
         pad_value = kwargs.delete(:pad_value)
         if pad_value == 0
           mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
@@ -66,12 +66,12 @@ module Cumo
           a.max_pool_backward(*args, **kwargs)
         end
 
-        def average_pool(a, *args, **kwargs)
-          a.average_pool(*args, **kwargs)
+        def avg_pool(a, *args, **kwargs)
+          a.avg_pool(*args, **kwargs)
         end
 
-        def average_pool_backward(a, *args, **kwargs)
-          a.average_pool_backward(*args, **kwargs)
+        def avg_pool_backward(a, *args, **kwargs)
+          a.avg_pool_backward(*args, **kwargs)
         end
       end
     end
