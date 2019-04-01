@@ -68,7 +68,7 @@ static VALUE
     cumo_cuda_cudnn_get_int_ary(int_kernel_size, kernel_size, ndim, 0);
     // default to kernel_size
     if (stride == Qnil) {
-        memcpy(int_stride, int_kernel_size, ndim);
+        memcpy(int_stride, int_kernel_size, sizeof(int) * ndim);
     } else {
         cumo_cuda_cudnn_get_int_ary(int_stride, stride, ndim, 0);
     }
@@ -98,14 +98,13 @@ static VALUE
     y_ptr = cumo_na_get_offset_pointer_for_write(y);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_ERROR;
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&y_desc, y, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
-    status = cumo_cuda_cudnn_CreatePoolingDescriptor(&pool_desc, ndim, int_mode, int_kernel_size, int_stride, int_pad);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_ERROR;
+    status = cumo_cuda_cudnn_CreatePoolingDescriptor(&pool_desc, int_mode, ndim, int_kernel_size, int_stride, int_pad);
+    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_ERROR;
 
     handle = cumo_cuda_cudnn_handle();
-
     status = cudnnPoolingForward(
             handle,
             pool_desc,
@@ -115,9 +114,9 @@ static VALUE
             (void*)&beta,
             y_desc,
             (void*)y_ptr);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_ERROR;
 
-CONV_ERROR:
+POOLING_ERROR:
     if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
     if (y_desc) cudnnDestroyTensorDescriptor(y_desc);
     if (pool_desc) cudnnDestroyPoolingDescriptor(pool_desc);
