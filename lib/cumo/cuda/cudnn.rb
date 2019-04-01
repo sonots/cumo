@@ -53,6 +53,10 @@ module Cumo
         end
         alias_method :conv_backward_data, :conv_transpose
 
+        def conv_backward_filter(a, *args, **kwargs)
+          a.conv_backward_filter(*args, **kwargs)
+        end
+
         def batch_norm(a, *args, **kwargs)
           a.batch_norm(*args, **kwargs)
         end
