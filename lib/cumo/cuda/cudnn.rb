@@ -35,3 +35,43 @@ module Cumo
     end
   end
 end
+
+module Cumo
+  module CUDA
+    module CUDNN
+      class << self
+        def conv(a, *args, **kwargs)
+          a.conv(*args, **kwargs)
+        end
+
+        def conv_transpose(a, *args, **args)
+          a.conv_transpose(*args, **kwargs)
+        end
+
+        def batch_norm(a, *args, **kwargs)
+          a.batch_norm(*args, **kwargs)
+        end
+
+        def batch_norm_backward(a, *args, **kwargs)
+          a.batch_norm_backward(*args, **kwargs)
+        end
+
+        def max_pool(a, *args, **kwargs)
+          a.max_pool(*args, **kwargs)
+        end
+
+        def max_pool_backward(a, *args, **kwargs)
+          a.max_pool_backward(*args, **kwargs)
+        end
+
+        def average_pool(a, *args, **kwargs)
+          a.average_pool(*args, **kwargs)
+        end
+
+        def average_pool_backward(a, *args, **kwargs)
+          a.average_pool_backward(*args, **kwargs)
+        end
+      end
+    end
+  end
+end
