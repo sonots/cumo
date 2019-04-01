@@ -125,7 +125,7 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
-    sub_test_case "conv_transpose_transpose_nd" do
+    sub_test_case "conv_transpose_nd" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -157,6 +157,72 @@ class CUDNNTest < Test::Unit::TestCase
         y = @x.conv_transpose(@w, b: @b, stride: [3, 2, 1], pad: [2, 1, 0])
         assert { y.shape == [@batch_size, @out_channels, 7, 5, 2] }
         assert y.to_a.flatten.all? {|e| [2,5,8].include?(e.to_i) }
+      end
+    end
+
+    sub_test_case "conv_backward_filter_2d" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @out_channels = 2
+        @in_dims = [10, 7]
+        @kernel_size = [2, 3]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @w_shape = [@out_channels, @in_channels].concat(@kernel_size)
+        @y_shape = [@batch_size, @out_channels, 9, 5]
+        @x = dtype.ones(*@x_shape)
+        @w = dtype.ones(*@w_shape)
+        @dy = dtype.ones(*@y_shape)
+      end
+
+      test "x.conv_backward_filter(w) #{dtype}" do
+        dw = @x.conv_backward_filter(@dy, @w_shape)
+        assert { dw.shape == @w_shape }
+        # TODO: assert values
+      end
+    end
+
+    sub_test_case "conv_backward_filter_nd" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @out_channels = 2
+        @in_dims = [4, 3, 2]
+        @kernel_size = [2, 3, 1]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @w_shape = [@out_channels, @in_channels].concat(@kernel_size)
+        @y_shape = [@batch_size, @out_channels, 3, 1, 2]
+        @x = dtype.ones(*@x_shape)
+        @w = dtype.ones(*@w_shape)
+        @dy = dtype.ones(*@y_shape)
+      end
+
+      test "x.conv_backward_filter(w) #{dtype}" do
+        dw = @x.conv_backward_filter(@dy, @w_shape)
+        assert { dw.shape == @w_shape }
+        # TODO: assert values
+      end
+    end
+
+    sub_test_case "conv_backward_filter_2d" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @out_channels = 2
+        @in_dims = [10, 7]
+        @kernel_size = [2, 3]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @w_shape = [@out_channels, @in_channels].concat(@kernel_size)
+        @y_shape = [@batch_size, @out_channels, 9, 5]
+        @x = dtype.ones(*@x_shape)
+        @w = dtype.ones(*@w_shape)
+        @dy = dtype.ones(*@y_shape)
+      end
+
+      test "x.conv_backward_filter(w) #{dtype}" do
+        dw = @x.conv_backward_filter(@dy, @w_shape)
+        assert { dw.shape == @w_shape }
+        # TODO: assert values
       end
     end
 
