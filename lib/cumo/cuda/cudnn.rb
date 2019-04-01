@@ -3,6 +3,8 @@ require 'cumo'
 module Cumo
   [SFloat, DFloat].each do |klass|
     klass.class_eval do
+      alias_method :conv_backward_data, :conv_transpose
+
       def max_pool(*args, **kwargs)
         self.pooling_forward(Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX, *args, **kwargs)
       end
@@ -49,6 +51,7 @@ module Cumo
         def conv_transpose(a, *args, **kwargs)
           a.conv_transpose(*args, **kwargs)
         end
+        alias_method :conv_backward_data, :conv_transpose
 
         def batch_norm(a, *args, **kwargs)
           a.batch_norm(*args, **kwargs)

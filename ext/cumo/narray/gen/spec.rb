@@ -343,10 +343,10 @@ end
 # cudnn
 if is_float && !is_complex && !is_object
   def_method "conv"
-  def_method "conv_transpose"
+  def_method "conv_transpose" # conv_backward_data
   def_method "batch_norm"
   def_method "batch_norm_backward"
-  def_method "pooling_forward"
+  def_method "pooling_forward" # max_pool, avg_pool
   def_method "pooling_backward"
 end
 
