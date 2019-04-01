@@ -125,7 +125,9 @@ cumo_cuda_cudnn_CreateFilterDescriptor(
 cudnnStatus_t
 cumo_cuda_cudnn_CreateConvolutionDescriptor(
         cudnnConvolutionDescriptor_t *desc,
-        size_t ndim, int* int_stride, int* int_pad,
+        size_t ndim,
+        int* int_stride,
+        int* int_pad,
         cudnnDataType_t cudnn_dtype) {
     cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
     int int_dilation[CUMO_NA_MAX_DIMENSION];
@@ -149,7 +151,51 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
                 cudnn_dtype);
     } else {
         status = cudnnSetConvolutionNdDescriptor(
-                *desc, ndim, int_pad, int_stride, int_dilation, CUDNN_CROSS_CORRELATION, cudnn_dtype);
+                *desc,
+                ndim,
+                int_pad,
+                int_stride,
+                int_dilation,
+                CUDNN_CROSS_CORRELATION,
+                cudnn_dtype);
+    }
+
+    return status;
+}
+
+cudnnStatus_t
+cumo_cuda_cudnn_CreatePoolingDescriptor(
+        cudnnPoolingDescriptor_t *desc,
+        cudnnPoolingMode_t mode,
+        size_t ndim,
+        int* int_kernel_size,
+        int* int_stride,
+        int* int_pad) {
+    cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
+
+    status = cudnnCreatePoolingDescriptor(desc);
+    if (status != CUDNN_STATUS_SUCCESS) return status;
+
+    if (ndim == 2) {
+        status = cudnnSetPooling2dDescriptor(
+                *desc,
+                mode,
+                CUDNN_NOT_PROPAGATE_NAN,
+                int_kernel_size[0],
+                int_kernel_size[1],
+                int_pad[0],
+                int_pad[1],
+                int_stride[0],
+                int_stride[1]);
+    } else {
+        status = cudnnSetPoolingNdDescriptor(
+                *desc,
+                mode,
+                CUDNN_NOT_PROPAGATE_NAN,
+                ndim,
+                int_kernel_size,
+                int_pad,
+                int_stride);
     }
 
     return status;
