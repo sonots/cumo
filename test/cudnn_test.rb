@@ -277,7 +277,7 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
-    sub_test_case "average_pool(pad_value: nil)" do
+    sub_test_case "avg_pool(pad_value: nil)" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -287,22 +287,22 @@ class CUDNNTest < Test::Unit::TestCase
         @x = dtype.ones(*@x_shape) * 3
       end
 
-      test "x.average_pool(ksize) #{dtype}" do
-        y = @x.average_pool(@ksize)
+      test "x.avg_pool(ksize) #{dtype}" do
+        y = @x.avg_pool(@ksize)
         assert { y.shape == [@batch_size, @in_channels, 1, 1] }
         assert y.to_a.flatten.all? {|e| e.to_i == 3 }
       end
 
-      test "x.average_pool(ksize, stride:, pad:) #{dtype}" do
+      test "x.avg_pool(ksize, stride:, pad:) #{dtype}" do
         stride = [2] * @in_dims.size
         pad = [1] * @in_dims.size
-        y = @x.average_pool(@ksize, stride: stride, pad: pad)
+        y = @x.avg_pool(@ksize, stride: stride, pad: pad)
         assert { y.shape == [@batch_size, @in_channels, 3, 2] }
         # TODO: assert values
       end
     end
 
-    sub_test_case "average_pool(pad_value: 0)" do
+    sub_test_case "avg_pool(pad_value: 0)" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -312,11 +312,11 @@ class CUDNNTest < Test::Unit::TestCase
         @x = dtype.ones(*@x_shape) * 3
       end
 
-      test "x.average_pool(ksize, stride:, pad:) #{dtype}" do
+      test "x.avg_pool(ksize, stride:, pad:) #{dtype}" do
         stride = [2] * @in_dims.size
         pad = [1] * @in_dims.size
-        y_pad_0 = @x.average_pool(@ksize, pad_value: 0, stride: stride, pad: pad)
-        y_pad_nil = @x.average_pool(@ksize, pad_value: nil, stride: stride, pad: pad)
+        y_pad_0 = @x.avg_pool(@ksize, pad_value: 0, stride: stride, pad: pad)
+        y_pad_nil = @x.avg_pool(@ksize, pad_value: nil, stride: stride, pad: pad)
         assert { y_pad_0.shape == y_pad_nil.shape }
         assert { y_pad_0 != y_pad_nil }
       end
@@ -351,7 +351,7 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
-    sub_test_case "average_pool_backward" do
+    sub_test_case "avg_pool_backward" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -361,20 +361,20 @@ class CUDNNTest < Test::Unit::TestCase
         @x = dtype.ones(*@x_shape) * 3
       end
 
-      test "x.average_pool_backward(ksize) #{dtype}" do
-        y = @x.average_pool(@ksize)
+      test "x.avg_pool_backward(ksize) #{dtype}" do
+        y = @x.avg_pool(@ksize)
         gy = dtype.ones(*y.shape)
-        gx = @x.average_pool_backward(y, gy, @ksize)
+        gx = @x.avg_pool_backward(y, gy, @ksize)
         assert { gx.shape == @x.shape }
         # TODO: assert values
       end
 
-      test "x.average_pool_backward(ksize, stride:, pad:) #{dtype}" do
+      test "x.avg_pool_backward(ksize, stride:, pad:) #{dtype}" do
         stride = [2] * @in_dims.size
         pad = [1] * @in_dims.size
-        y = @x.average_pool(@ksize, stride: stride, pad: pad)
+        y = @x.avg_pool(@ksize, stride: stride, pad: pad)
         gy = dtype.ones(*y.shape)
-        gx = @x.average_pool_backward(y, gy, @ksize, stride: stride, pad: pad)
+        gx = @x.avg_pool_backward(y, gy, @ksize, stride: stride, pad: pad)
         assert { gx.shape == @x.shape }
         # TODO: assert values
       end
