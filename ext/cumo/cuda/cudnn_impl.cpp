@@ -327,9 +327,9 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
         return CUDNN_STATUS_SUCCESS;
     }
 
-    char* x_ptr = cumo_na_get_pointer_for_read(x) + cumo_na_get_offset(x);
-    char* w_ptr = cumo_na_get_pointer_for_read(w) + cumo_na_get_offset(w);
-    char* y_ptr = cumo_na_get_pointer_for_read(y) + cumo_na_get_offset(y);
+    char* x_ptr = cumo_na_get_offset_pointer_for_read(x);
+    char* w_ptr = cumo_na_get_offset_pointer_for_read(w);
+    char* y_ptr = cumo_na_get_offset_pointer_for_read(y);
 
     char* workspace = cumo_cuda_runtime_malloc(max_workspace_size);
     int returned_algo_count{};
@@ -418,6 +418,82 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
                 conv_desc,
                 y_desc,
                 (void*)y_ptr,
+                1,  // requested algo count,
+                &returned_algo_count,
+                perf_result,
+                (void*)workspace,
+                max_workspace_size);
+    cumo_cuda_runtime_free(workspace);
+    if (status != CUDNN_STATUS_SUCCESS) return status;
+    assert(returned_algo_count == 1);
+
+    // TODO: thread-safe
+    algo_cache_map[key] = {perf_result->algo, perf_result->memory};
+    return status;
+}
+
+cudnnStatus_t
+cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
+        cudnnConvolutionBwdFilterAlgoPerf_t *perf_result,
+        cudnnHandle_t handle,
+        cudnnTensorDescriptor_t x_desc,
+        VALUE x,
+        cudnnTensorDescriptor_t gy_desc,
+        VALUE gy,
+        cudnnConvolutionDescriptor_t conv_desc,
+        cudnnFilterDescriptor_t gw_desc,
+        VALUE gw,
+        size_t max_workspace_size,
+        int* int_stride,
+        int* int_pad,
+        size_t ndim,
+        cudnnDataType_t cudnn_dtype)
+{
+    cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
+    cumo_narray_t *nx, *ngy, *ngw;
+    CumoGetNArray(x, nx);
+    CumoGetNArray(gy, ngy);
+    CumoGetNArray(gw, ngw);
+
+    auto key = AlgoCacheKey{};
+    key.ndim = ndim;
+    for (size_t idim = 0; idim < ndim + 2; ++idim) {
+        key.x_shape[idim] = nx->shape[idim];
+        key.w_shape[idim] = ngw->shape[idim];
+        key.y_shape[idim] = ngy->shape[idim];
+    }
+    for (size_t idim = 0; idim < ndim; ++idim) {
+        key.pad[idim]= int_pad[idim];
+        key.stride[idim]= int_stride[idim];
+    }
+    key.dtype = cudnn_dtype;
+    key.max_workspace_size = max_workspace_size;
+
+    auto& algo_cache_map = bwd_filter_algo_cache_map_;
+    // TODO: thread-safe
+    auto it = algo_cache_map.find(key);
+    if (it != algo_cache_map.end()) {
+        auto pair = it->second;
+        perf_result->algo = pair.first;
+        perf_result->memory = pair.second;
+        return CUDNN_STATUS_SUCCESS;
+    }
+
+    char* x_ptr = cumo_na_get_offset_pointer_for_read(x);
+    char* gy_ptr = cumo_na_get_offset_pointer_for_read(gy);
+    char* gw_ptr = cumo_na_get_offset_pointer_for_read(gw);
+
+    char* workspace = cumo_cuda_runtime_malloc(max_workspace_size);
+    int returned_algo_count{};
+    status = cudnnFindConvolutionBackwardFilterAlgorithmEx(
+                handle,
+                x_desc,
+                (void*)x_ptr,
+                gy_desc,
+                (void*)gy_ptr,
+                conv_desc,
+                gw_desc,
+                (void*)gw_ptr,
                 1,  // requested algo count,
                 &returned_algo_count,
                 perf_result,

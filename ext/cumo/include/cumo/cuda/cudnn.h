@@ -150,6 +150,23 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
         size_t ndim,
         cudnnDataType_t cudnn_dtype);
 
+cudnnStatus_t
+cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
+        cudnnConvolutionBwdFilterAlgoPerf_t *perf_result,
+        cudnnHandle_t handle,
+        cudnnTensorDescriptor_t x_desc,
+        VALUE x,
+        cudnnTensorDescriptor_t dy_desc,
+        VALUE dy,
+        cudnnConvolutionDescriptor_t conv_desc,
+        cudnnFilterDescriptor_t dw_desc,
+        VALUE dw,
+        size_t max_workspace_size,
+        int* int_stride,
+        int* int_pad,
+        size_t ndim,
+        cudnnDataType_t cudnn_dtype);
+
 cudnnBatchNormMode_t
 cumo_cuda_cudnn_GetBatchNormMode(size_t ndim, int* int_axis);
 
