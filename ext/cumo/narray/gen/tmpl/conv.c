@@ -154,23 +154,32 @@ static VALUE
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
 
     if (b != Qnil) {
-        size_t b_shape[CUMO_NA_MAX_DIMENSION];
+        size_t new_shape[CUMO_NA_MAX_DIMENSION];
         VALUE b_cont;
         char* b_cont_ptr;
         cumo_narray_t *nb, *nb_cont;
+        size_t *b_shape;
+        int b_ndim;
 
         CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(b, cT);
         CumoGetNArray(b, nb);
-        b_shape[0] = 1;
-        b_shape[1] = nb->size;
+        new_shape[0] = 1;
+        new_shape[1] = nb->size;
         for (size_t i = 0; i < ndim; ++i) {
-            b_shape[i + 2] = 1;
+            new_shape[i + 2] = 1;
         }
         b_cont =  cumo_na_as_contiguous_array(b);
         b_cont_ptr = cumo_na_get_offset_pointer_for_read(b_cont);
         CumoGetNArray(b_cont, nb_cont);
-        cumo_na_setup_shape(nb_cont, ndim + 2, b_shape);
+        b_shape = nb_cont->shape;
+        b_ndim = nb_cont->ndim;
+        // reshape b
+        nb_cont->ndim = ndim + 2;
+        nb_cont->shape = new_shape;
         status = cumo_cuda_cudnn_CreateTensorDescriptor(&b_desc, b_cont, cudnn_dtype);
+        // restore b.shape
+        nb_cont->ndim = b_ndim;
+        nb_cont->shape = b_shape;
         if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
 
         status = cudnnAddTensor(
