@@ -70,10 +70,10 @@ static VALUE
     y = cumo_cuda_cudnn_option_value(opts[7], Qnil);
 
     if (running_mean != Qnil) {
-        running_mean_ptr = cumo_na_get_offset_pointer_for_read_write(running_mean);
+        running_mean_ptr = cumo_na_get_offset_pointer_for_write(running_mean);
     }
     if (running_var != Qnil) {
-        running_var_ptr = cumo_na_get_offset_pointer_for_read_write(running_var);
+        running_var_ptr = cumo_na_get_offset_pointer_for_write(running_var);
     }
     if (mean != Qnil) {
         mean_ptr = cumo_na_get_offset_pointer_for_write(mean);
