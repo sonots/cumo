@@ -2,7 +2,7 @@
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
-cumo_version = File.read(File.join(__dir__, "ext/cumo/include/cumo.h")).match(/CUMO_VERSION "([\d.]+)"/)[1]
+cumo_version = File.read(File.join(__dir__, "ext/cumo/include/cumo.h")).match(/CUMO_VERSION "([^"]+)"/)[1]
 numo_narray_version = File.read(File.join(__dir__, "numo-narray-version")).strip
 
 Gem::Specification.new do |spec|
