@@ -1,4 +1,17 @@
-# 0.2.5 (2019-03-04)-
+# 0.3.0.pre1 (2019-04-09)
+
+Enhancements:
+
+* Support cuDNN
+  * conv (cudnnConvolution)
+  * conv\_transpose (cudnnConvolutionBackwardData)
+  * conv\_grad\_w (cudnnConvolutionBackwardFilter)
+  * batch\_norm (cudnnBatchNormalization)
+  * batch\_norm\_backward (cudnnBatchNormalizationBackward)
+  * avg\_pool and max\_pool (cudnnPoolingForward)
+  * avg\_pool\_backward and max\_pool\_backward (cudnnPoolingBackward)
+
+# 0.2.5 (2019-03-04)
 
 Enhancements:
 
