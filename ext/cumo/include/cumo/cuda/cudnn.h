@@ -26,6 +26,14 @@ VALUE cumo_na_eShapeError;
     }
 
 // TODO: Move to proper generic place
+#define CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(sz1,sz2)        \
+    if ((sz1) != (sz2)) {                            \
+        rb_raise(cumo_na_eShapeError,                \
+                 "size mismatch: %d != %d",     \
+                 (int)(sz1), (int)(sz2));            \
+    }
+
+// TODO: Move to proper generic place
 #define CUMO_CUDA_CUDNN_CHECK_DIM_EQ(nd1,nd2)        \
     if ((nd1) != (nd2)) {                            \
         rb_raise(cumo_na_eShapeError,                \

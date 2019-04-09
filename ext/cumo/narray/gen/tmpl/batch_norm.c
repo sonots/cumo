@@ -106,14 +106,15 @@ static VALUE
     beta_ndim = nbeta->ndim;
     beta_shape = nbeta->shape;
 
-    // TODO: Add ndim and shape (same with reduced) for running_mean and running_var if given
+    // TODO: Size check of gammma, beta, running_mean, running_var, mean, inv_std
+    // are equivalent with either of reduced_shape(keepdims: false) or reduced_shape(keepdims: true)
     reduced_ndim = cumo_cuda_cudnn_ReduceShape(reduced_shape, x_ndim, x_shape, axis_ndim, int_axis, 1);
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, gamma_ndim);
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, beta_ndim);
-    for (size_t idim = 0; idim < reduced_ndim; ++idim) {
-        CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], gamma_shape[idim]);
-        CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], beta_shape[idim]);
-    }
+    // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, gamma_ndim);
+    // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, beta_ndim);
+    // for (size_t idim = 0; idim < reduced_ndim; ++idim) {
+    //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], gamma_shape[idim]);
+    //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], beta_shape[idim]);
+    // }
 
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(gamma, cT);
