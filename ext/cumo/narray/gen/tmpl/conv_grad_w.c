@@ -24,7 +24,7 @@ cumo_cuda_cudnn_get_sizet_ary(size_t *sizet_ary, VALUE ary, size_t ndim)
 }
 
 // cover_all=true is not supported with CUDNN
-// gw = x.conv_backward_filter(gy, w_shape, stride: 1, pad: 0, gw: nil)
+// gw = x.conv_grad_w(gy, w_shape, stride: 1, pad: 0, gw: nil)
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -114,13 +114,13 @@ static VALUE
     gw_ptr = cumo_na_get_offset_pointer_for_write(gw);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_BACKWARD_FILTER_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&gy_desc, gy_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_BACKWARD_FILTER_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
     status = cumo_cuda_cudnn_CreateFilterDescriptor(&gw_desc, gw, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_BACKWARD_FILTER_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
     status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_BACKWARD_FILTER_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
 
     handle = cumo_cuda_cudnn_handle();
 
@@ -140,7 +140,7 @@ static VALUE
             int_pad,
             ndim,
             cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_BACKWARD_FILTER_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
     algo = perf_result.algo;
     workspace_size = perf_result.memory;
 
@@ -159,9 +159,9 @@ static VALUE
             (void*)&zero,
             gw_desc,
             (void*)gw_ptr);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_BACKWARD_FILTER_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
 
-CONV_BACKWARD_FILTER_ERROR:
+CONV_GRAD_W_ERROR:
     if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
     if (gy_desc) cudnnDestroyTensorDescriptor(gy_desc);
     if (gw_desc) cudnnDestroyFilterDescriptor(gw_desc);

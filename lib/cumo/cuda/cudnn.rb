@@ -4,6 +4,7 @@ module Cumo
   [SFloat, DFloat].each do |klass|
     klass.class_eval do
       alias_method :conv_backward_data, :conv_transpose
+      alias_method :conv_backward_filter, :conv_grad_w
 
       def max_pool(*args, **kwargs)
         self.pooling_forward(Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX, *args, **kwargs)
@@ -53,9 +54,10 @@ module Cumo
         end
         alias_method :conv_backward_data, :conv_transpose
 
-        def conv_backward_filter(a, *args, **kwargs)
-          a.conv_backward_filter(*args, **kwargs)
+        def conv_grad_w(a, *args, **kwargs)
+          a.conv_grad_w(*args, **kwargs)
         end
+        alias_method :conv_backward_filter, :conv_grad_w
 
         def batch_norm(a, *args, **kwargs)
           a.batch_norm(*args, **kwargs)

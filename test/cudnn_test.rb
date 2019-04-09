@@ -172,7 +172,7 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
-    sub_test_case "conv_backward_filter_2d" do
+    sub_test_case "conv_grad_w_2d" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -187,14 +187,14 @@ class CUDNNTest < Test::Unit::TestCase
         @dy = dtype.ones(*@y_shape)
       end
 
-      test "x.conv_backward_filter(w) #{dtype}" do
-        dw = @x.conv_backward_filter(@dy, @w_shape)
+      test "x.conv_grad_w(w) #{dtype}" do
+        dw = @x.conv_grad_w(@dy, @w_shape)
         assert { dw.shape == @w_shape }
         # TODO: assert values
       end
     end
 
-    sub_test_case "conv_backward_filter_nd" do
+    sub_test_case "conv_grad_w_nd" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -209,14 +209,14 @@ class CUDNNTest < Test::Unit::TestCase
         @dy = dtype.ones(*@y_shape)
       end
 
-      test "x.conv_backward_filter(w) #{dtype}" do
-        dw = @x.conv_backward_filter(@dy, @w_shape)
+      test "x.conv_grad_w(w) #{dtype}" do
+        dw = @x.conv_grad_w(@dy, @w_shape)
         assert { dw.shape == @w_shape }
         # TODO: assert values
       end
     end
 
-    sub_test_case "conv_backward_filter_2d" do
+    sub_test_case "conv_grad_w_2d" do
       setup do
         @batch_size = 2
         @in_channels = 3
@@ -231,8 +231,8 @@ class CUDNNTest < Test::Unit::TestCase
         @dy = dtype.ones(*@y_shape)
       end
 
-      test "x.conv_backward_filter(w) #{dtype}" do
-        dw = @x.conv_backward_filter(@dy, @w_shape)
+      test "x.conv_grad_w(w) #{dtype}" do
+        dw = @x.conv_grad_w(@dy, @w_shape)
         assert { dw.shape == @w_shape }
         # TODO: assert values
       end
