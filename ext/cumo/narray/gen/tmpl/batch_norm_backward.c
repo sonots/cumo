@@ -92,15 +92,17 @@ static VALUE
     gy_ndim = ngy->ndim;
     gy_shape = ngy->shape;
 
+    // TODO: Size check of gammma, beta, running_mean, running_var, mean, inv_std
+    // are equivalent with either of reduced_shape(keepdims: false) or reduced_shape(keepdims: true)
     reduced_ndim = cumo_cuda_cudnn_ReduceShape(reduced_shape, x_ndim, x_shape, axis_ndim, int_axis, 1);
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, gamma_ndim);
-    for (size_t idim = 0; idim < reduced_ndim; ++idim) {
-        CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], gamma_shape[idim]);
-    }
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(x_ndim, gy_ndim);
-    for (size_t idim = 0; idim < x_ndim; ++idim) {
-        CUMO_CUDA_CUDNN_CHECK_DIM_EQ(x_shape[idim], gy_shape[idim]);
-    }
+    // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, gamma_ndim);
+    // for (size_t idim = 0; idim < reduced_ndim; ++idim) {
+    //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], gamma_shape[idim]);
+    // }
+    // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(x_ndim, gy_ndim);
+    // for (size_t idim = 0; idim < x_ndim; ++idim) {
+    //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(x_shape[idim], gy_shape[idim]);
+    // }
 
     // TODO: Add ndim and shape (same with reduced) for mean and inv_std if given
 
