@@ -73,8 +73,10 @@ Init_cumo_cuda_cudnn(void)
     eCUDNNError = rb_define_class_under(mCUDA, "CUDNNError", rb_eStandardError);
 
     rb_define_singleton_method(mCUDNN, "available?", RUBY_METHOD_FUNC(rb_cudnn_available_p), 0);
+#ifdef CUDNN_FOUND
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX_DETERMINISTIC", INT2NUM(CUDNN_POOLING_MAX_DETERMINISTIC));
     rb_define_const(mCUDNN, "CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING));
     rb_define_const(mCUDNN, "CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING));
+#endif // CUDNN_FOUND
 }
