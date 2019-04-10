@@ -36,9 +36,9 @@ static VALUE
     };
     VALUE opts[] = {Qundef, Qundef, Qundef, Qundef, Qundef, Qundef, Qundef};
 
-    cumo_narray_t *nx, *ngamma, *ngy;
-    size_t *x_shape, *gamma_shape, *gy_shape, reduced_shape[CUMO_NA_MAX_DIMENSION];
-    size_t x_ndim, gamma_ndim, gy_ndim, reduced_ndim;
+    cumo_narray_t *nx, *ngamma; // , *ngy;
+    size_t *x_shape, *gamma_shape; // , *gy_shape, reduced_shape[CUMO_NA_MAX_DIMENSION];
+    size_t x_ndim, gamma_ndim; // , gy_ndim, reduced_ndim;
 
     VALUE x_cont, gamma_cont, gy_cont;
     cudnnTensorDescriptor_t x_desc = 0;
@@ -84,17 +84,17 @@ static VALUE
 
     CumoGetNArray(x, nx);
     CumoGetNArray(gamma, ngamma);
-    CumoGetNArray(gy, ngy);
+    // CumoGetNArray(gy, ngy);
     x_ndim = nx->ndim;
     x_shape = nx->shape;
     gamma_ndim = ngamma->ndim;
     gamma_shape = ngamma->shape;
-    gy_ndim = ngy->ndim;
-    gy_shape = ngy->shape;
+    // gy_ndim = ngy->ndim;
+    // gy_shape = ngy->shape;
 
     // TODO: Size check of gammma, beta, running_mean, running_var, mean, inv_std
     // are equivalent with either of reduced_shape(keepdims: false) or reduced_shape(keepdims: true)
-    reduced_ndim = cumo_cuda_cudnn_ReduceShape(reduced_shape, x_ndim, x_shape, axis_ndim, int_axis, 1);
+    // reduced_ndim = cumo_cuda_cudnn_ReduceShape(reduced_shape, x_ndim, x_shape, axis_ndim, int_axis, 1);
     // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, gamma_ndim);
     // for (size_t idim = 0; idim < reduced_ndim; ++idim) {
     //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], gamma_shape[idim]);
