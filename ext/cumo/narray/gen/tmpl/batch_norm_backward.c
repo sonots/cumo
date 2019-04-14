@@ -55,7 +55,7 @@ static VALUE
     size_t axis_ndim = 1;
 
     rb_scan_args(argc, argv, "2:", &gamma, &gy, &kw_hash);
-    rb_get_kwargs(kw_hash, kw_table, 0, 8, opts);
+    rb_get_kwargs(kw_hash, kw_table, 0, 7, opts);
     mean = cumo_cuda_cudnn_option_value(opts[0], Qnil);
     inv_std = cumo_cuda_cudnn_option_value(opts[1], Qnil);
     eps = cumo_cuda_cudnn_option_value(opts[2], Qnil);
