@@ -36,6 +36,10 @@ void <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel_launch"%>(char *p1, char *
 {
     ssize_t s1_idx = s1 / sizeof(dtype);
     ssize_t s2_idx = s2 / sizeof(dtype);
+    if (n == 1) { // when n == 1, s1 and s3 could be 0
+        s1_idx = 1;
+        s2_idx = 1;
+    }
     thrust::device_ptr<dtype> p1_begin = thrust::device_pointer_cast((dtype*)p1);
     thrust::device_ptr<dtype> p1_end   = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
     thrust::device_ptr<dtype> p2_begin = thrust::device_pointer_cast((dtype*)p2);
