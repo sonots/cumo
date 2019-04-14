@@ -88,12 +88,7 @@ static VALUE
         double_decay = NUM2DBL(decay);
     }
     if (axis != Qnil) {
-        Check_Type(axis, T_ARRAY);
-        axis_ndim = (size_t)(RARRAY_LEN(axis));
-        for (size_t idim = 0; idim < axis_ndim; ++idim) {
-            int_axis[idim] = NUM2INT(rb_ary_entry(axis, (long)idim));
-        }
-        // TODO: check axis is sorted
+        axis_ndim = cumo_cuda_cudnn_get_int_axis(int_axis, axis);
     }
 
     CumoGetNArray(x, nx);

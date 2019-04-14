@@ -81,6 +81,24 @@ cumo_cuda_cudnn_get_int_ary(int* int_ary, VALUE ary, size_t ndim, int default_va
     }
 }
 
+// VALUE is Ruby Array
+static inline size_t
+cumo_cuda_cudnn_get_int_axis(int* int_axis, VALUE axis)
+{
+    size_t axis_ndim;
+    Check_Type(axis, T_ARRAY);
+    axis_ndim = (size_t)(RARRAY_LEN(axis));
+    if (CUMO_NA_MAX_DIMENSION <= axis_ndim) {
+        rb_raise(rb_eArgError, "Size of axis must be smaller than %d, but was %d",
+                (int)CUMO_NA_MAX_DIMENSION, (int)axis_ndim);
+    }
+    for (size_t idim = 0; idim < axis_ndim; ++idim) {
+        int_axis[idim] = NUM2INT(rb_ary_entry(axis, (long)idim));
+    }
+    // TODO: check axis is sorted
+    return axis_ndim;
+}
+
 size_t
 cumo_cuda_cudnn_GetConvOutDim(
         size_t in_dim,
