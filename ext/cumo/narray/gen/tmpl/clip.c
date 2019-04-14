@@ -11,6 +11,7 @@ static void
     CUMO_INIT_PTR(lp, 2, p3, s3);
     CUMO_INIT_PTR(lp, 3, p4, s4);
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     for (; i--;) {
         CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
         CUMO_GET_DATA_STRIDE(p2,s2,dtype,min);
@@ -34,6 +35,7 @@ static void
     CUMO_INIT_PTR(lp, 1, p2, s2);
     CUMO_INIT_PTR(lp, 2, p3, s3);
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_min", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     for (; i--;) {
         CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
         CUMO_GET_DATA_STRIDE(p2,s2,dtype,min);
@@ -54,6 +56,7 @@ static void
     CUMO_INIT_PTR(lp, 1, p2, s2);
     CUMO_INIT_PTR(lp, 2, p3, s3);
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_max", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     for (; i--;) {
         CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
         CUMO_GET_DATA_STRIDE(p2,s2,dtype,max);
