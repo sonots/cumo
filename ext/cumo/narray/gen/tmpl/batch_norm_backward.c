@@ -55,7 +55,7 @@ static VALUE
     size_t axis_ndim = 1;
 
     rb_scan_args(argc, argv, "2:", &gamma, &gy, &kw_hash);
-    rb_get_kwargs(kw_hash, kw_table, 0, 8, opts);
+    rb_get_kwargs(kw_hash, kw_table, 0, 7, opts);
     mean = cumo_cuda_cudnn_option_value(opts[0], Qnil);
     inv_std = cumo_cuda_cudnn_option_value(opts[1], Qnil);
     eps = cumo_cuda_cudnn_option_value(opts[2], Qnil);
@@ -130,11 +130,11 @@ static VALUE
     gbeta_ptr = cumo_na_get_offset_pointer_for_write(gbeta);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_BACKWARD_ERROR;
 
     mode = cumo_cuda_cudnn_GetBatchNormMode(axis_ndim, int_axis);
     status = cumo_cuda_cudnn_CreateBNTensorDescriptor(&bn_desc, x_desc, mode);
-    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_BACKWARD_ERROR;
     // TODO: bn_desc may return another type, and may need to cast gamma, gy, mean, var
 
     handle = cumo_cuda_cudnn_handle();
@@ -159,9 +159,9 @@ static VALUE
             double_eps,
             mean_ptr,
             inv_std_ptr);
-    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_BACKWARD_ERROR;
 
-BATCH_NORM_ERROR:
+BATCH_NORM_BACKWARD_ERROR:
     if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
     if (bn_desc) cudnnDestroyTensorDescriptor(bn_desc);
     cumo_cuda_cudnn_check_status(status);

@@ -134,13 +134,13 @@ static VALUE
     y_ptr = cumo_na_get_offset_pointer_for_write(y);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&y_desc, y, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
     status = cumo_cuda_cudnn_CreateFilterDescriptor(&w_desc, w_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
     status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
 
     handle = cumo_cuda_cudnn_handle();
 
@@ -160,7 +160,7 @@ static VALUE
             int_pad,
             ndim,
             cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
     algo = perf_result.algo;
     workspace_size = perf_result.memory;
 
@@ -179,7 +179,7 @@ static VALUE
             (void*)&beta,
             y_desc,
             (void*)y_ptr);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
 
     if (b != Qnil) {
         size_t new_shape[CUMO_NA_MAX_DIMENSION];
@@ -208,7 +208,7 @@ static VALUE
         // restore b.shape
         nb_cont->ndim = b_ndim;
         nb_cont->shape = b_shape;
-        if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+        if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
 
         status = cudnnAddTensor(
                     handle,
@@ -218,10 +218,10 @@ static VALUE
                     (void*)&alpha,
                     y_desc,
                     (void*)y_ptr);
-        if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
+        if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
     }
 
-CONV_ERROR:
+CONV_TRANSPOSE_ERROR:
     if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
     if (y_desc) cudnnDestroyTensorDescriptor(y_desc);
     if (b_desc) cudnnDestroyTensorDescriptor(b_desc);

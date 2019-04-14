@@ -94,11 +94,11 @@ static VALUE
     gx_ptr = cumo_na_get_offset_pointer_for_write(gx);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_BACKAWARD_ERROR;
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&y_desc, y, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_BACKAWARD_ERROR;
     status = cumo_cuda_cudnn_CreatePoolingDescriptor(&pool_desc, int_mode, ndim, int_kernel_size, int_stride, int_pad);
-    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_BACKAWARD_ERROR;
 
     handle = cumo_cuda_cudnn_handle();
     status = cudnnPoolingBackward(
@@ -114,9 +114,9 @@ static VALUE
             (void*)&beta,
             x_desc,
             (void*)gx_ptr);
-    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto POOLING_BACKAWARD_ERROR;
 
-POOLING_ERROR:
+POOLING_BACKAWARD_ERROR:
     if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
     if (y_desc) cudnnDestroyTensorDescriptor(y_desc);
     if (pool_desc) cudnnDestroyPoolingDescriptor(pool_desc);
