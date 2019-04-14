@@ -1133,6 +1133,9 @@ module Cumo
 
     def dot(b)
       t = self.class::UPCAST[b.class]
+      if self.ndim == 0 and b.ndim == 0
+        return self * b
+      end
       if [SFloat, DFloat, SComplex, DComplex].include?(t)
         b = self.class.asarray(b)
         case self.ndim
