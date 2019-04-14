@@ -434,6 +434,17 @@ class NArrayTest < Test::Unit::TestCase
     end
 
     sub_test_case "#{dtype}, #dot" do
+      test "scalar.dot(scalar)" do
+        a = dtype[1].sum
+        b = dtype[3].sum
+        # It would be okay to support this
+        assert_raise { a.dot(b) }
+      end
+      test "vector.dot(vector) of 1-elem" do
+        a = dtype[1]
+        b = dtype[3]
+        assert { a.dot(b) == 1 * 3 }
+      end
       test "vector.dot(vector)" do
         a = dtype[1..3]
         b = dtype[2..4]
