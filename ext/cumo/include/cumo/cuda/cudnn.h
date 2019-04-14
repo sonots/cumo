@@ -5,6 +5,7 @@
 #ifdef CUDNN_FOUND
 #include <cudnn.h>
 #endif // CUDNN_FOUND
+#include "cumo/narray.h"
 
 #if defined(__cplusplus)
 extern "C" {
