@@ -1,3 +1,11 @@
+# 0.3.1 (2019-04-16)
+
+Fixes:
+
+* Fix batch\_norm\_backward
+* Fix scalar.dot(scalar)
+* Fix clip
+
 # 0.3.0 (2019-04-10)
 
 Enhancements:
