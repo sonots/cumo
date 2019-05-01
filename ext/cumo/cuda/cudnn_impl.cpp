@@ -210,6 +210,7 @@ static void HashCombine(std::size_t& seed, std::size_t hash_value) {
 
 // Partially Borrowed from ChainerX
 struct AlgoCacheKey {
+    int device_id;
     size_t ndim;  // # of spatial dimensions
     size_t x_shape[CUMO_NA_MAX_DIMENSION];
     size_t w_shape[CUMO_NA_MAX_DIMENSION];
@@ -220,6 +221,7 @@ struct AlgoCacheKey {
     size_t max_workspace_size;
 
     bool operator==(const AlgoCacheKey& other) const {
+        if (device_id != other.device_id) return false;
         if (ndim != other.ndim) return false;
         if (dtype != other.dtype) return false;
         if (max_workspace_size != other.max_workspace_size) return false;
@@ -249,6 +251,7 @@ struct AlgoCacheKeyHash {
     std::size_t operator()(const AlgoCacheKey& key) const {
         std::size_t seed = 0;
         size_t ndim = key.ndim;
+        HashCombine(seed, std::hash<int>()(key.device_id));
         HashCombine(seed, std::hash<size_t>()(key.ndim));
         for (size_t idim = 0; idim < ndim + 2; ++idim) {
             HashCombine(seed, std::hash<size_t>()(key.x_shape[idim]));
@@ -275,7 +278,6 @@ using FwdAlgoCacheMap = std::unordered_map<AlgoCacheKey, std::pair<cudnnConvolut
 using BwdDataAlgoCacheMap = std::unordered_map<AlgoCacheKey, std::pair<cudnnConvolutionBwdDataAlgo_t, size_t>, AlgoCacheKeyHash>;
 using BwdFilterAlgoCacheMap = std::unordered_map<AlgoCacheKey, std::pair<cudnnConvolutionBwdFilterAlgo_t, size_t>, AlgoCacheKeyHash>;
 
-// TODO: Another cache for another device
 static FwdAlgoCacheMap fwd_algo_cache_map_{};
 static BwdDataAlgoCacheMap bwd_data_algo_cache_map_{};
 static BwdFilterAlgoCacheMap bwd_filter_algo_cache_map_{};
@@ -304,6 +306,7 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
     CumoGetNArray(y, ny);
 
     auto key = AlgoCacheKey{};
+    cumo_cuda_runtime_check_status(cudaGetDevice(&(key.device_id)));
     key.ndim = ndim;
     for (size_t idim = 0; idim < ndim + 2; ++idim) {
         key.x_shape[idim] = nx->shape[idim];
