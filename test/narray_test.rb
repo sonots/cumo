@@ -25,6 +25,10 @@ class NArrayTest < Test::Unit::TestCase
     float_types.select!{|type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
   end
 
+  def setup
+    Cumo::NArray.srand(0)
+  end
+
   types.each do |dtype|
     test dtype do
       assert { dtype < Cumo::NArray }
@@ -592,6 +596,15 @@ class NArrayTest < Test::Unit::TestCase
       if [Cumo::DFloat, Cumo::SFloat].include?(dtype)
         assert { dtype[[-Float::INFINITY, 0, 1, -Float::INFINITY]].max_index(0) == [0,1,2,3] }
       end
+
+      a = dtype[[[-6, -8, -5],
+                 [-2, 5, 6],
+                 [4, -5, 5]],
+               [[-7, -4, -3],
+                [9, 1, 0],
+                [4, -1, -6]]]
+      assert { a.max_index(2) == [[2, 5, 8], [11, 12, 15]] }
+      assert { a.max(2) == [[-5, 6, 5], [-3, 9, 4]] }
     end
 
     test "#{dtype},advanced indexing" do
