@@ -45,5 +45,5 @@ inline static void m_rand_norm(dtype mu, dtype sigma, dtype *a0, dtype *a1)
 #define M_MIN     rb_float_new(1.1754943508222875e-38)
 #define M_MAX     rb_float_new(3.4028234663852886e+38)
 
-#define DATA_MIN FLT_MIN
+#define DATA_MIN -FLT_MAX
 #define DATA_MAX FLT_MAX
