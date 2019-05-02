@@ -1,3 +1,9 @@
+# 0.3.2 (2019-05-02)
+
+Fixes:
+
+* Fix max and max\_index for sfloat and dfloat
+
 # 0.3.1 (2019-04-16)
 
 Fixes:
