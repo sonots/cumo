@@ -33,10 +33,10 @@ static void
     c[nd] = 0;
 
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (idx1) {
         for (; i--;) {
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             yield_each_with_index(x,c,a,nd,md);
             c[nd]++;
