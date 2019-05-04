@@ -327,7 +327,42 @@ class CUDNNTest < Test::Unit::TestCase
         assert { ggamma.shape== @reduced_shape }
         assert { gbeta.shape== @reduced_shape }
       end
+    end
 
+    sub_test_case "fixed_batch_norm" do
+      setup do
+        @batch_size = 2
+        @in_channels = 3
+        @in_dims = [5, 3]
+        @x_shape = [@batch_size, @in_channels].concat(@in_dims)
+        @reduced_shape = [1].concat(@x_shape[1..-1])
+        @x = dtype.ones(*@x_shape) * 3
+        @gamma = dtype.ones(*@reduced_shape) * 2
+        @beta = dtype.ones(*@reduced_shape)
+        @mean = dtype.ones(*@reduced_shape)
+        @var = dtype.ones(*@reduced_shape)
+      end
+
+      test "x.fixed_batch_norm(gamma, beta, mean, var) #{dtype}" do
+        y = @x.fixed_batch_norm(@gamma, @beta, @mean, @var)
+        assert { y.shape == @x_shape }
+        # TODO: check output values
+      end
+
+      test "x.fixed_batch_norm(gamma, beta, mean, var, axis: [0]) #{dtype}" do
+        assert { @x.fixed_batch_norm(@gamma, @beta, @mean, @var) == @x.fixed_batch_norm(@gamma, @beta, @mean, @var, axis: [0]) }
+      end
+
+      test "x.fixed_batch_norm(gamma, beta, mean, var, axis: [0, 2, 3]) #{dtype}" do
+        reduced_shape = [1, @x_shape[1], 1, 1]
+        gamma = dtype.ones(reduced_shape) * 2
+        beta = dtype.ones(reduced_shape)
+        mean = dtype.ones(reduced_shape) * 2
+        var = dtype.ones(reduced_shape)
+        y = @x.fixed_batch_norm(gamma, beta, mean, var, axis: [0, 2, 3])
+        assert { y.shape == @x_shape }
+        # TODO: check output values
+      end
     end
 
     sub_test_case "max_pool" do
