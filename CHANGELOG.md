@@ -1,3 +1,9 @@
+# 0.3.5 (2019-05-04)
+
+Fixes:
+
+* Fix `each_with_index` to synchronize on each element
+
 # 0.3.4 (2019-05-04)
 
 Enhancements:
@@ -8,7 +14,7 @@ Enhancements:
 
 Fixes:
 
-* Fix each and `each_with_index` to synchronize on each element
+* Fix each to synchronize on each element
 
 # 0.3.2 (2019-05-02)
 
