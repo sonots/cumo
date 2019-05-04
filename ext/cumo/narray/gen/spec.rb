@@ -60,6 +60,7 @@ if is_float && !is_complex && !is_object
   def_id "conv_grad_w"
   def_id "batch_norm"
   def_id "batch_norm_backward"
+  def_id "fixed_batch_norm"
   def_id "pooling_forward"
   def_id "pooling_backward"
 end
@@ -348,6 +349,7 @@ if is_float && !is_complex && !is_object
   def_method "conv_grad_w" # conv_backward_filter
   def_method "batch_norm"
   def_method "batch_norm_backward"
+  def_method "fixed_batch_norm"
   def_method "pooling_forward" # max_pool, avg_pool
   def_method "pooling_backward"
 end
