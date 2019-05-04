@@ -7,7 +7,7 @@ Cumo (pronounced "koomo") is a CUDA-aware, GPU-optimized numerical library that 
 ## Requirements
 
 * Ruby 2.5 or later
-* NVIDIA GPU Compute Capability 6.0 (Pascal) or later
+* NVIDIA GPU Compute Capability 3.5 (Kepler) or later
 * CUDA 9.0 or later
 
 ## Preparation
