@@ -599,21 +599,34 @@ class NArrayTest < Test::Unit::TestCase
       assert { dtype.ones(5,3,4,2,1).sum(axis: [0,3,4]) == [[10,10,10,10],[10,10,10,10],[10,10,10,10]] }
       assert { dtype[[1,2,3],[4,5,6]].sum(axis: 1) == [6,15] }
       assert { dtype[[1,2,3],[4,5,6]].sum(axis: 1, keepdims: true) == [[6],[15]] }
+
       unless [Cumo::DComplex, Cumo::SComplex].include?(dtype)
         assert_nothing_raised { dtype.ones(2,3,9,4,2).max_index(2) }
-      end
-      if [Cumo::DFloat, Cumo::SFloat].include?(dtype)
-        assert { dtype[[-Float::INFINITY, 0, 1, -Float::INFINITY]].max_index(0) == [0,1,2,3] }
-      end
 
-      a = dtype[[[-6, -8, -5],
-                 [-2, 5, 6],
-                 [4, -5, 5]],
-               [[-7, -4, -3],
-                [9, 1, 0],
-                [4, -1, -6]]]
-      assert { a.max_index(2) == [[2, 5, 8], [11, 12, 15]] }
-      assert { a.max(2) == [[-5, 6, 5], [-3, 9, 4]] }
+        a = dtype[[[6, 8, 5],
+                   [2, 5, 6],
+                   [4, 5, 5]],
+                  [[7, 4, 3],
+                   [9, 1, 0],
+                   [4, 1, 6]]]
+        assert { a.max_index(2) == [[1, 5, 8], [9, 12, 17]] }
+        assert { a.max(2) == [[8, 6, 5], [7, 9, 6]] }
+
+        unless [Cumo::UInt64, Cumo::UInt32, Cumo::UInt16, Cumo::UInt8].include?(dtype)
+          a = dtype[[[-6, -8, -5],
+                     [-2, 5, 6],
+                     [4, -5, 5]],
+                    [[-7, -4, -3],
+                     [9, 1, 0],
+                     [4, -1, -6]]]
+          assert { a.max_index(2) == [[2, 5, 8], [11, 12, 15]] }
+          assert { a.max(2) == [[-5, 6, 5], [-3, 9, 4]] }
+        end
+
+        if [Cumo::DFloat, Cumo::SFloat].include?(dtype)
+          assert { dtype[[-Float::INFINITY, 0, 1, Float::INFINITY]].max_index(0) == [0,1,2,3] }
+        end
+      end
     end
 
     test "#{dtype},advanced indexing" do
