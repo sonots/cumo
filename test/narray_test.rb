@@ -383,7 +383,8 @@ class NArrayTest < Test::Unit::TestCase
     end
 
     test "#{dtype},[[[1,2],[3,4]],[[5,6],[7,8]]]" do
-      a = dtype[[[1,2],[3,4]],[[5,6],[7,8]]]
+      arr = [[[1,2],[3,4]],[[5,6],[7,8]]]
+      a = dtype[*arr]
 
       assert { a[0, 1, 1] == 4 }
       assert { a[:rest] == a }
@@ -418,6 +419,14 @@ class NArrayTest < Test::Unit::TestCase
       assert { a.reverse(0,2)      == [[[6,5],[8,7]],[[2,1],[4,3]]] }
       assert { a.reverse((0..2) % 2) == [[[6,5],[8,7]],[[2,1],[4,3]]] }
       assert { a.reverse((0..2).step(2)) == [[[6,5],[8,7]],[[2,1],[4,3]]] }
+
+      enum = arr.flatten.to_enum
+      a.each do |e|
+        assert { e  == enum.next }
+      end
+      a.each_with_index do |e, *i|
+        assert { e == a[*i] }
+      end
     end
 
     sub_test_case "#{dtype}, #mulsum" do
