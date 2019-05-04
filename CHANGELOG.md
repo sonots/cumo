@@ -1,3 +1,9 @@
+# 0.3.4 (2019-05-04)
+
+Enhancements:
+
+* Support cuDNN fixed\_batch\_norm (cudnnBatchNormalizationForwardInference)
+
 # 0.3.3 (2019-05-02)
 
 Fixes:
@@ -26,7 +32,7 @@ Enhancements:
   * conv (cudnnConvolution)
   * conv\_transpose (cudnnConvolutionBackwardData)
   * conv\_grad\_w (cudnnConvolutionBackwardFilter)
-  * batch\_norm (cudnnBatchNormalization)
+  * batch\_norm (cudnnBatchNormalizationForwardTraining)
   * batch\_norm\_backward (cudnnBatchNormalizationBackward)
   * avg\_pool and max\_pool (cudnnPoolingForward)
   * avg\_pool\_backward and max\_pool\_backward (cudnnPoolingBackward)
