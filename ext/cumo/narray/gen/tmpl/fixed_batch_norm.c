@@ -104,11 +104,11 @@ static VALUE
     y_ptr = cumo_na_get_offset_pointer_for_write(y);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto FIXED_BATCH_NORM_ERROR;
 
     mode = cumo_cuda_cudnn_GetBatchNormMode(axis_ndim, int_axis);
     status = cumo_cuda_cudnn_CreateBNTensorDescriptor(&bn_desc, x_desc, mode);
-    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto FIXED_BATCH_NORM_ERROR;
     // TODO: bn_desc may return another type, and may need to cast gamma, beta, mean, var
 
     handle = cumo_cuda_cudnn_handle();
@@ -128,9 +128,9 @@ static VALUE
             mean_cont_ptr,
             var_cont_ptr,
             double_eps);
-    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
+    if (status != CUDNN_STATUS_SUCCESS) goto FIXED_BATCH_NORM_ERROR;
 
-BATCH_NORM_ERROR:
+FIXED_BATCH_NORM_ERROR:
     if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
     if (bn_desc) cudnnDestroyTensorDescriptor(bn_desc);
     cumo_cuda_cudnn_check_status(status);
