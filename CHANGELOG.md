@@ -1,3 +1,9 @@
+# 0.4.1 (2019-05-06)
+
+Fixes:
+
+* Fix `fixed_batch_norm`
+
 # 0.4.0 (2019-05-04)
 
 Released (same with 0.3.5)
