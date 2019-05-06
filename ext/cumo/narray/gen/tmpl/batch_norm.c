@@ -20,8 +20,8 @@ static VALUE
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
     cudnnStatus_t status = 0;
     cudnnHandle_t handle = 0;
-    dtype coef_alpha = 1;
-    dtype coef_beta = 0;
+    dtype coef_one = 1;
+    dtype coef_zero = 0;
 
     VALUE x=self, gamma, beta, running_mean, running_var, eps, decay, axis, mean, inv_std, y;
     VALUE kw_hash = Qnil;
@@ -167,8 +167,8 @@ static VALUE
     status = cudnnBatchNormalizationForwardTraining(
             handle,
             mode,
-            (void*)&coef_alpha,
-            (void*)&coef_beta,
+            (void*)&coef_one,
+            (void*)&coef_zero,
             x_desc,
             x_cont_ptr,
             x_desc,
