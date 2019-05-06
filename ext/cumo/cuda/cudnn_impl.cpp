@@ -540,29 +540,40 @@ cumo_cuda_cudnn_CreateBNTensorDescriptor(
 }
 
 size_t
+cumo_cuda_cudnn_GetTotalSize(cumo_cuda_cudnn_shape_t *shape)
+{
+    size_t i = 0;
+    size_t total_size = 1;
+    for (i = 0; i < shape->ndim; ++i) {
+        total_size *= shape->data[i];
+    }
+    return total_size;
+}
+
+cumo_cuda_cudnn_shape_t
 cumo_cuda_cudnn_ReduceShape(
-        size_t *reduced_shape,
         size_t shape_ndim,
         size_t *shape,
         size_t axes_ndim,
         int *axes,
-        char keepdims) {
-    assert(shape_ndim >= axes_ndim);
+        char keepdims)
+{
+    cumo_cuda_cudnn_shape_t reduced_shape{};
     size_t i_axis = 0;
-    size_t i_shape = 0;
+    assert(shape_ndim >= axes_ndim);
     for (size_t i = 0; i < shape_ndim; ++i) {
         if (i_axis < axes_ndim && i == (size_t)axes[i_axis]) {
             ++i_axis;
             if (keepdims) {
-                reduced_shape[i_shape++] = 1;
+                reduced_shape.data[reduced_shape.ndim++] = 1;
             }
         } else {
-            reduced_shape[i_shape++] = shape[i];
+            reduced_shape.data[reduced_shape.ndim++] = shape[i];
         }
     }
     assert(i_axis == axes_ndim);
-    assert(i_shape == shape_ndim - static_cast<int8_t>(!keepdims) * axes_ndim);
-    return i_shape;
+    assert(reduced_shape.ndim == shape_ndim - static_cast<int8_t>(!keepdims) * axes_ndim);
+    return reduced_shape;
 }
 
 #if defined(__cplusplus)

@@ -37,8 +37,8 @@ static VALUE
     };
     VALUE opts[] = {Qundef, Qundef, Qundef, Qundef, Qundef, Qundef, Qundef, Qundef};
 
-    cumo_narray_t *nx; // , *ngamma, *nbeta;
-    size_t *x_shape; // *gamma_shape, *beta_shape, reduced_shape[CUMO_NA_MAX_DIMENSION];
+    cumo_narray_t *nx;
+    size_t *x_shape;
     size_t x_ndim;
 
     VALUE x_cont, gamma_cont, beta_cont;
@@ -92,24 +92,35 @@ static VALUE
     }
 
     CumoGetNArray(x, nx);
-    // CumoGetNArray(gamma, ngamma);
-    // CumoGetNArray(beta, nbeta);
     x_ndim = nx->ndim;
     x_shape = nx->shape;
-    // gamma_ndim = ngamma->ndim;
-    // gamma_shape = ngamma->shape;
-    // beta_ndim = nbeta->ndim;
-    // beta_shape = nbeta->shape;
 
-    // TODO: Size check of gammma, beta, running_mean, running_var, mean, inv_std
-    // are equivalent with either of reduced_shape(keepdims: false) or reduced_shape(keepdims: true)
-    // reduced_ndim = cumo_cuda_cudnn_ReduceShape(reduced_shape, x_ndim, x_shape, axis_ndim, int_axis, 1);
-    // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, gamma_ndim);
-    // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, beta_ndim);
-    // for (size_t idim = 0; idim < reduced_ndim; ++idim) {
-    //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], gamma_shape[idim]);
-    //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], beta_shape[idim]);
-    // }
+    {
+        cumo_narray_t *ngamma, *nbeta, *nrunning_mean, *nrunning_var, *nmean, *ninv_std;
+        cumo_cuda_cudnn_shape_t reduced_shape = cumo_cuda_cudnn_ReduceShape(x_ndim, x_shape, axis_ndim, int_axis, 1);
+        size_t reduced_total_size = cumo_cuda_cudnn_GetTotalSize(&reduced_shape);
+
+        CumoGetNArray(gamma, ngamma);
+        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(ngamma->size, reduced_total_size);
+        CumoGetNArray(beta, nbeta);
+        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nbeta->size, reduced_total_size);
+        if (running_mean != Qnil) {
+            CumoGetNArray(running_mean, nrunning_mean);
+            CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nrunning_mean->size, reduced_total_size);
+        }
+        if (running_var != Qnil) {
+            CumoGetNArray(running_var, nrunning_var);
+            CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nrunning_var->size, reduced_total_size);
+        }
+        if (mean != Qnil) {
+            CumoGetNArray(mean, nmean);
+            CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nmean->size, reduced_total_size);
+        }
+        if (inv_std != Qnil) {
+            CumoGetNArray(inv_std, ninv_std);
+            CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(ninv_std->size, reduced_total_size);
+        }
+    }
 
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(gamma, cT);

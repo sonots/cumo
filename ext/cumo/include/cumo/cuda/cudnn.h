@@ -203,9 +203,17 @@ cumo_cuda_cudnn_CreateBNTensorDescriptor(
         cudnnTensorDescriptor_t x_desc,
         cudnnBatchNormMode_t mode);
 
+
+typedef struct {
+    size_t ndim;
+    size_t data[CUMO_NA_MAX_DIMENSION];
+} cumo_cuda_cudnn_shape_t;
+
 size_t
+cumo_cuda_cudnn_GetTotalSize(cumo_cuda_cudnn_shape_t *shape);
+
+cumo_cuda_cudnn_shape_t
 cumo_cuda_cudnn_ReduceShape(
-        size_t *reduced_shape,
         size_t shape_ndim,
         size_t *shape,
         size_t axes_ndim,
