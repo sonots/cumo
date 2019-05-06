@@ -32,8 +32,8 @@ static VALUE
     };
     VALUE opts[] = {Qundef, Qundef, Qundef};
 
-    cumo_narray_t *nx; // , *ngamma, *nbeta;
-    size_t *x_shape; // *gamma_shape, *beta_shape, reduced_shape[CUMO_NA_MAX_DIMENSION];
+    cumo_narray_t *nx;
+    size_t *x_shape;
     size_t x_ndim;
 
     VALUE x_cont, gamma_cont, beta_cont, mean_cont, var_cont;
@@ -62,24 +62,24 @@ static VALUE
     }
 
     CumoGetNArray(x, nx);
-    // CumoGetNArray(gamma, ngamma);
-    // CumoGetNArray(beta, nbeta);
     x_ndim = nx->ndim;
     x_shape = nx->shape;
-    // gamma_ndim = ngamma->ndim;
-    // gamma_shape = ngamma->shape;
-    // beta_ndim = nbeta->ndim;
-    // beta_shape = nbeta->shape;
 
-    // TODO: Size check of gammma, beta, running_mean, running_var, mean, inv_std
-    // are equivalent with either of reduced_shape(keepdims: false) or reduced_shape(keepdims: true)
-    // reduced_ndim = cumo_cuda_cudnn_ReduceShape(reduced_shape, x_ndim, x_shape, axis_ndim, int_axis, 1);
-    // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, gamma_ndim);
-    // CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_ndim, beta_ndim);
-    // for (size_t idim = 0; idim < reduced_ndim; ++idim) {
-    //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], gamma_shape[idim]);
-    //     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(reduced_shape[idim], beta_shape[idim]);
-    // }
+    {
+        cumo_narray_t *ngamma, *nbeta, *nmean, *nvar;
+        cumo_cuda_cudnn_shape_t reduced_shape = cumo_cuda_cudnn_ReduceShape(x_ndim, x_shape, axis_ndim, int_axis, 1);
+        size_t reduced_total_size = cumo_cuda_cudnn_GetTotalSize(&reduced_shape);
+
+        CumoGetNArray(gamma, ngamma);
+        CumoGetNArray(beta, nbeta);
+        CumoGetNArray(mean, nmean);
+        CumoGetNArray(var, nvar);
+
+        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(ngamma->size, reduced_total_size);
+        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nbeta->size, reduced_total_size);
+        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nmean->size, reduced_total_size);
+        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nvar->size, reduced_total_size);
+    }
 
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
     CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(gamma, cT);
