@@ -1,3 +1,11 @@
+# 0.4.2 (2019-01-11)
+
+Fixes:
+
+* cond_unary.c: add cudaDeviceSynchronize to avoid bus error
+* index.c: add cudaDeviceSynchronize to avoid bus error
+* cum.c: add cudaDeviceSynchronize to avoid bus error
+
 # 0.4.1 (2019-05-06)
 
 Fixes:
