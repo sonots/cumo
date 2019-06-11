@@ -12,10 +12,12 @@ static void
     CUMO_INIT_PTR(lp, 1, p2, s2);
     //printf("i=%lu p1=%lx s1=%lu p2=%lx s2=%lu\n",i,(size_t)p1,s1,(size_t)p2,s2);
 
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
     CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
     //printf("i=%lu x=%f\n",i,x);
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     for (i--; i--;) {
         CUMO_GET_DATA_STRIDE(p1,s1,dtype,y);
         m_<%=name%><%=j%>(x,y);
