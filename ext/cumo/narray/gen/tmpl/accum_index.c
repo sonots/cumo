@@ -89,7 +89,7 @@ static VALUE
     <% else %>
     {
         cumo_narray_t *na;
-        VALUE reduce;
+        VALUE reduce, ret;
         cumo_ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_reduce,0}};
         cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
         cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT|CUMO_NDF_INDEXER_LOOP, 2,1, ain,aout};
@@ -115,9 +115,14 @@ static VALUE
 
         if (cumo_na_has_idx_p(self)) {
             VALUE copy = cumo_na_copy(self); // reduction does not support idx, make conttiguous
-            return cumo_na_ndloop(&ndf, 2, copy, reduce);
+            ret = cumo_na_ndloop(&ndf, 2, copy, reduce);
         } else {
-            return cumo_na_ndloop(&ndf, 2, self, reduce);
+            ret = cumo_na_ndloop(&ndf, 2, self, reduce);
+        }
+        if (cumo_compatible_mode_enabled_p()) {
+            return rb_funcall(ret, rb_intern("extract_cpu"), 0);
+        } else {
+            return ret;
         }
     }
     <% end %>
