@@ -1,4 +1,10 @@
-# 0.4.2 (2019-01-11)
+# 0.4.3 (2019-06-11)
+
+Fixes:
+
+* Fix max|min\_index to behave like numo with CUMO\_COMPATIBLE\_MODE=ON
+
+# 0.4.2 (2019-06-11)
 
 Fixes:
 
