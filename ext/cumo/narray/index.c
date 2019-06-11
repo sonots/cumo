@@ -857,6 +857,8 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
                 x = cumo_na_range_check(idx[i], na->shape[i], i);
                 sdx = nv->stridx[i];
                 if (CUMO_SDX_IS_INDEX(sdx)) {
+                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_get_result_dimension");
+                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     pos += CUMO_SDX_GET_INDEX(sdx)[x];
                 } else {
                     pos += CUMO_SDX_GET_STRIDE(sdx)*x;
@@ -872,6 +874,8 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
                 x = x / s;
                 sdx = nv->stridx[i];
                 if (CUMO_SDX_IS_INDEX(sdx)) {
+                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_get_result_dimension");
+                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     pos += CUMO_SDX_GET_INDEX(sdx)[m];
                 } else {
                     pos += CUMO_SDX_GET_STRIDE(sdx)*m;
