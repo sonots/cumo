@@ -13,6 +13,7 @@ static void
     CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     CUMO_INIT_PTR_BIT(lp, 1, a2, p2, s2);
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     if (idx1) {
         for (; i--;) {
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
