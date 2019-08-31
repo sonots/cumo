@@ -79,6 +79,7 @@ void cumo_na_parse_enumerator_step(VALUE enum_obj, VALUE *pstep);
 // used in aref, aset
 int cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, size_t *pos_idx);
 VALUE cumo_na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, size_t pos);
+VALUE cumo_na_at_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, size_t pos);
 
 // defined in array, used in math
 VALUE cumo_na_ary_composition_dtype(VALUE ary);
