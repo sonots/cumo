@@ -73,6 +73,19 @@ class NArrayTest < Test::Unit::TestCase
         assert { a[5] == 11 }
         assert { a[5].size == 1 }
         assert { a[-1] == 11 }
+
+        assert { a.at([3, 4]) == [5,7] }
+        assert { a.view.at([3, 4]) == [5,7] }
+        assert { a[2..-1].at([1, 2]) == [5,7] }
+        assert { a.at(Cumo::Int32.cast([3, 4])) == [5,7] }
+        assert { a.view.at(Cumo::Int32.cast([3, 4])) == [5,7] }
+        assert { a.at(3..4) == [5,7] }
+        assert { a.view.at(3..4) == [5,7] }
+        assert { a.at([5]) == [11] }
+        assert { a.view.at([5]) == [11] }
+        assert { a.at([-1]) == [11] }
+        assert { a.view.at([-1]) == [11] }
+
         assert { a[(0..-1).each] == [1,2,3,5,7,11] }
         assert { a[(0...-1).each] == [1,2,3,5,7] }
 
@@ -226,6 +239,20 @@ class NArrayTest < Test::Unit::TestCase
         assert { a[1,2] == src[1][2] }
         assert { a[3..4] == [5,7] }
         assert { a[0,1..2] == [2,3] }
+
+        assert { a.at([0,1],[1,2]) == [2,11] }
+        assert { a.view.at([0,1],[1,2]) == [2,11] }
+        assert { a.at([0,1],(0..2) % 2) == [1,11] }
+        assert { a.view.at([0,1],(0..2) % 2) == [1,11] }
+        assert { a.at((0..1) % 1,[0,2]) == [1,11] }
+        assert { a.view.at((0..1) % 1,[0,2]) == [1,11] }
+        assert { a.at(Cumo::Int32.cast([0,1]),Cumo::Int32.cast([1,2])) == [2,11] }
+        assert { a.view.at(Cumo::Int32.cast([0,1]),Cumo::Int32.cast([1,2])) == [2,11] }
+        assert { a[[0,1],[0,2]].at([0,1],[0,1]) == [1,11] }
+        assert { a[[0,1],(0..2) % 2].at([0,1],[0,1]) == [1,11] }
+        assert { a[(0..1) % 1,[0,2]].at([0,1],[0,1]) == [1,11] }
+        assert { a[(0..1) % 1,(0..2) % 2].at([0,1],[0,1]) == [1,11] }
+
         assert { a[0,:*] == src[0] }
         assert { a[1,:*] == src[1] }
         assert { a[:*,1] == [src[0][1],src[1][1]] }
@@ -399,6 +426,9 @@ class NArrayTest < Test::Unit::TestCase
       assert_raise(IndexError) { a[1, 1, 1, 1, :rest] }
       assert_raise(IndexError) { a[1, 1, 1, :rest, 1] }
       assert_raise(IndexError) { a[:rest, 1, :rest, 0] }
+
+      assert { a.at([0,1],[1,0], [0,1]) == [3,6] }
+      assert { a.view.at([0,1],[1,0],[0,1]) == [3,6] }
 
       assert { a.transpose == [[[1,5],[3,7]],[[2,6],[4,8]]] }
       assert { a.transpose(2,1,0) == [[[1,5],[3,7]],[[2,6],[4,8]]] }
@@ -637,6 +667,11 @@ class NArrayTest < Test::Unit::TestCase
       diag = a.dup[[0,1],[0,1]].diagonal
       diag.inplace - 1
       assert { diag == [0, 4] }
+
+      assert { a.at([0,1],[0,1]).dup == [1, 5] }
+      at   = a.dup
+      at.at([0,1],[0,1]).inplace - 1
+      assert { at == [[0,2,3],[4,4,6]] }
     end
   end
 end
