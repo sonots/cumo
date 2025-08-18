@@ -118,9 +118,9 @@ Init_cumo()
 
     rb_define_const(mCumo, "VERSION", rb_str_new2(CUMO_VERSION));
 
-    rb_define_singleton_method(mCumo, "enable_compatible_mode", RUBY_METHOD_FUNC(rb_enable_compatible_mode), 0);
-    rb_define_singleton_method(mCumo, "disable_compatible_mode", RUBY_METHOD_FUNC(rb_disable_compatible_mode), 0);
-    rb_define_singleton_method(mCumo, "compatible_mode_enabled?", RUBY_METHOD_FUNC(rb_compatible_mode_enabled_p), 0);
+    rb_define_singleton_method(mCumo, "enable_compatible_mode", rb_enable_compatible_mode, 0);
+    rb_define_singleton_method(mCumo, "disable_compatible_mode", rb_disable_compatible_mode, 0);
+    rb_define_singleton_method(mCumo, "compatible_mode_enabled?", rb_compatible_mode_enabled_p, 0);
 
     // default is false
     env = getenv("CUMO_COMPATIBLE_MODE");

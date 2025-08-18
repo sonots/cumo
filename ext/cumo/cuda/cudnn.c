@@ -50,7 +50,7 @@ cumo_cuda_cudnn_handle()
   @return [Boolean] Returns true if cuDNN is available
  */
 static VALUE
-rb_cudnn_available_p()
+rb_cudnn_available_p(VALUE self)
 {
 #if CUDNN_FOUND
     return Qtrue;
@@ -72,7 +72,7 @@ Init_cumo_cuda_cudnn(void)
     rb_define_const(mCUDA, "Cudnn", mCUDNN); // alias
     eCUDNNError = rb_define_class_under(mCUDA, "CUDNNError", rb_eStandardError);
 
-    rb_define_singleton_method(mCUDNN, "available?", RUBY_METHOD_FUNC(rb_cudnn_available_p), 0);
+    rb_define_singleton_method(mCUDNN, "available?", rb_cudnn_available_p, 0);
 #ifdef CUDNN_FOUND
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX_DETERMINISTIC", INT2NUM(CUDNN_POOLING_MAX_DETERMINISTIC));
