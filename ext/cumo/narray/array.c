@@ -366,7 +366,7 @@ cumo_na_composition3_ary(VALUE ary, VALUE *ptype, VALUE *pshape, VALUE *pnary)
     VALUE dtype, dshape;
 
     mdai = cumo_na_mdai_alloc(ary);
-    vmdai = TypedData_Wrap_Struct(rb_cData, &mdai_data_type, (void*)mdai);
+    vmdai = TypedData_Wrap_Struct(rb_cObject, &mdai_data_type, (void*)mdai);
     if ( cumo_na_mdai_investigate(mdai, 1) ) {
         // empty
         dtype = update_type(ptype, cumo_cInt32);
@@ -612,7 +612,7 @@ cumo_na_ary_composition_for_struct(VALUE nstruct, VALUE ary)
 
     mdai = cumo_na_mdai_alloc(ary);
     mdai->na_type = nstruct;
-    vmdai = TypedData_Wrap_Struct(rb_cData, &mdai_data_type, (void*)mdai);
+    vmdai = TypedData_Wrap_Struct(rb_cObject, &mdai_data_type, (void*)mdai);
     cumo_na_mdai_for_struct(mdai, 0);
     nc = cumo_na_compose_alloc();
     vnc = WrapCompose(nc);

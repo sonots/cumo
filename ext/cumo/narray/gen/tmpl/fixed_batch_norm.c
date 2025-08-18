@@ -139,7 +139,7 @@ FIXED_BATCH_NORM_ERROR:
 }
 
 #else // CUDNN_FOUND
-VALUE cumo_cuda_eCUDNNError;
+#include "cumo/cuda/cudnn.h"
 
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)

@@ -110,9 +110,9 @@ module MakeMakefileCuda
 
     def compiler_bin(opt_h)
       if opt_h["--mkmf-cu-ext"][0] == "c"
-        " --compiler-bindir " + RbConfig::CONFIG["CC"]
+        " --compiler-bindir " + ENV.fetch("NVCC_CCBIN", RbConfig::CONFIG["CC"])
       elsif opt_h["--mkmf-cu-ext"][0] == "cxx"
-        " --compiler-bindir " + RbConfig::CONFIG["CXX"]
+        " --compiler-bindir " + ENV.fetch("NVCC_CCBIN", RbConfig::CONFIG["CXX"])
       end
     end
 

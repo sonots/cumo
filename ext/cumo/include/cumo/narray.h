@@ -329,6 +329,12 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define CUMO_RNARRAY_VIEW(val)       ((cumo_narray_view_t*)DATA_PTR(val))
 #define CUMO_RNARRAY_FILEMAP(val)    ((cumo_narray_filemap_t*)DATA_PTR(val))
 
+#ifdef HAVE_RTYPEDDATA_GET_DATA
+#define CUMO_RENUMERATOR_PTR(ptr)    ((cumo_enumerator_t *)RTYPEDDATA_GET_DATA(ptr))
+#else
+#define CUMO_RENUMERATOR_PTR(ptr)    ((cumo_enumerator_t *)DATA_PTR(ptr))
+#endif
+
 #define CUMO_RNARRAY_NDIM(val)       (CUMO_RNARRAY(val)->ndim)
 #define CUMO_RNARRAY_TYPE(val)       (CUMO_RNARRAY(val)->type)
 #define CUMO_RNARRAY_FLAG(val)       (CUMO_RNARRAY(val)->flag)

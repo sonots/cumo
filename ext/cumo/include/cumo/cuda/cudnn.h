@@ -14,6 +14,8 @@ extern "C" {
 #endif
 #endif
 
+extern VALUE cumo_cuda_eCUDNNError;
+
 #ifdef CUDNN_FOUND
 
 VALUE cumo_na_eShapeError;

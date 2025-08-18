@@ -162,6 +162,7 @@ unless have_type("u_int64_t", stdint)
 end
 have_func("exp10")
 have_func("rb_arithmetic_sequence_extract")
+have_func("RTYPEDDATA_GET_DATA")
 
 have_var("rb_cComplex")
 have_func("rb_thread_call_without_gvl")
@@ -185,5 +186,7 @@ if have_library('cudnn') # TODO(sonots): cuDNN version check
   $CFLAGS << " -DCUDNN_FOUND"
   $CXXFLAGS << " -DCUDNN_FOUND"
 end
+
+have_library('stdc++')
 
 create_makefile('cumo')

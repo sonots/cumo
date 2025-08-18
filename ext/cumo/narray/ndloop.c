@@ -56,7 +56,7 @@ typedef struct CUMO_NA_MD_LOOP {
                               // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
     VALUE  loop_opt;
     cumo_ndfunc_t  *ndfunc;
-    void (*loop_func)();
+    void (*loop_func)(cumo_ndfunc_t *, struct CUMO_NA_MD_LOOP *);
 } cumo_na_md_loop_t;
 
 #define LARG(lp,iarg) ((lp)->user.args[iarg])
