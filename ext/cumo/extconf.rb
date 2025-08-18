@@ -187,4 +187,6 @@ if have_library('cudnn') # TODO(sonots): cuDNN version check
   $CXXFLAGS << " -DCUDNN_FOUND"
 end
 
+have_library('stdc++')
+
 create_makefile('cumo')
