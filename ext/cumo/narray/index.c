@@ -258,7 +258,7 @@ cumo_na_parse_enumerator_step(VALUE enum_obj, VALUE *pstep)
     if (!RB_TYPE_P(enum_obj, T_DATA)) {
         rb_raise(rb_eTypeError,"wrong argument type (not T_DATA)");
     }
-    e = (cumo_enumerator_t *)DATA_PTR(enum_obj);
+    e = CUMO_RENUMERATOR_PTR(enum_obj);
 
     if (!rb_obj_is_kind_of(e->obj, rb_cRange)) {
         rb_raise(rb_eTypeError,"not Range object");
@@ -292,7 +292,7 @@ cumo_na_parse_enumerator(VALUE enum_obj, int orig_dim, ssize_t size, cumo_na_ind
         rb_raise(rb_eTypeError,"wrong argument type (not T_DATA)");
     }
     cumo_na_parse_enumerator_step(enum_obj, &step);
-    e = (cumo_enumerator_t *)DATA_PTR(enum_obj);
+    e = CUMO_RENUMERATOR_PTR(enum_obj);
     cumo_na_parse_range(e->obj, NUM2SSIZET(step), orig_dim, size, q); // e->obj : Range Object
 }
 
