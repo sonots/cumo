@@ -38,7 +38,6 @@ module MakeMakefileCuda
       elsif ENV['DEBUG']
         cmd << " -arch=sm_35"
       else
-        cmd << " --generate-code=arch=compute_35,code=sm_35"
         cmd << " --generate-code=arch=compute_50,code=sm_50"
         cmd << " --generate-code=arch=compute_60,code=sm_60"
         cmd << " --generate-code=arch=compute_70,code=sm_70"
