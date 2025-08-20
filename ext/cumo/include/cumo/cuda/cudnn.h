@@ -18,7 +18,7 @@ extern VALUE cumo_cuda_eCUDNNError;
 
 #ifdef CUDNN_FOUND
 
-VALUE cumo_na_eShapeError;
+extern VALUE cumo_na_eShapeError;
 
 #define CUMO_CUDA_CUDNN_DEFAULT_MAX_WORKSPACE_SIZE 8 * 1024 * 1024
 
