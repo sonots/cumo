@@ -172,8 +172,8 @@ $extconf_h = nil # nvcc does not support #include RUBY_EXTCONF_H
 
 create_depend
 
-HEADER_DIRS = (ENV['CPATH'] || '').split(':')
-LIB_DIRS = (ENV['LIBRARY_PATH'] || '').split(':')
+HEADER_DIRS = (ENV['CPATH'] || '').split(File::PATH_SEPARATOR)
+LIB_DIRS = (ENV['LIBRARY_PATH'] || '').split(File::PATH_SEPARATOR)
 dir_config('cumo', HEADER_DIRS, LIB_DIRS)
 
 have_library('cuda')
