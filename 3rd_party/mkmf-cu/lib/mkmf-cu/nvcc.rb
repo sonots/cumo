@@ -41,14 +41,14 @@ module MakeMakefileCuda
       opt.on('-g') {|v| opt_h["-g"] << "" }
       opt.on('-G', "--device-debug") {|v| opt_h["-G"] << "" }
 
-      opt.on('-I path') {|v| opt_h["-I"] << v }
+      opt.on('-I path') {|v| opt_h["-I"] << quote(v) }
       opt.on('-D flag') {|v| opt_h["-D"] << v }
       opt.on('-W flag') {|v| opt_h["-W"] << v }
-      opt.on('-o output') {|v| opt_h["-o"] << v }
-      opt.on('-c file') {|v| opt_h["-c"] << v }
+      opt.on('-o output') {|v| opt_h["-o"] << quote(v) }
+      opt.on('-c file') {|v| opt_h["-c"] << quote(v) }
       opt.on('-f flag') {|v| opt_h["-f"] << v }
-      opt.on('-l file') {|v| opt_h["-l"] << v }
-      opt.on('-L path') {|v| opt_h["-L"] << v }
+      opt.on('-l file') {|v| opt_h["-l"] << quote(v) }
+      opt.on('-L path') {|v| opt_h["-L"] << quote(v) }
       opt.on('-x pat', "--x pat") {|v| opt_h["-x"] << v }
       opt.on('-O num'){|v| opt_h["-O"] << v if /[0-9]/ =~ v }
       opt.on('--mkmf-cu-ext ext'){|v| opt_h["--mkmf-cu-ext"] << v}
@@ -152,6 +152,10 @@ module MakeMakefileCuda
       s << linker_option(opt_h)
       s << compiler_bin(opt_h)
       return s
+    end
+
+    def quote(str)
+      "\"#{str}\""
     end
   end
 end
