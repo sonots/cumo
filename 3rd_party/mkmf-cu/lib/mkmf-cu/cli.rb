@@ -38,10 +38,29 @@ module MakeMakefileCuda
       elsif ENV['DEBUG']
         cmd << " -arch=sm_35"
       else
-        cmd << " --generate-code=arch=compute_50,code=sm_50"
-        cmd << " --generate-code=arch=compute_60,code=sm_60"
-        cmd << " --generate-code=arch=compute_70,code=sm_70"
-        cmd << " --generate-code=arch=compute_70,code=compute_70"
+        # Ref. https://en.wikipedia.org/wiki/CUDA
+        if cuda_version >= Gem::Version.new("13.0")
+          # CUDA 13.0
+          capability = [75, 87, 89, 90, 121]
+        elsif cuda_version >= Gem::Version.new("12.9")
+          # CUDA 12.9
+          capability = [50, 60, 70, 75, 87, 89, 90, 121]
+        elsif cuda_version >= Gem::Version.new("12.8")
+          # CUDA 12.8
+          capability = [50, 60, 70, 75, 87, 89, 90, 120]
+        elsif cuda_version >= Gem::Version.new("12.0")
+          # CUDA 12.0 – 12.6
+          capability = [50, 60, 70, 75, 87, 89, 90]
+        elsif cuda_version >= Gem::Version.new("11.8")
+          # CUDA 11.8
+          capability = [35, 50, 60, 70, 75, 87, 89, 90]
+        else
+          # CUDA 11.0
+          capability = [35, 50, 60, 70, 75, 80]
+        end
+        capability.each do |arch|
+          cmd << " --generate-code=arch=compute_#{arch},code=sm_#{arch}"
+        end
       end
       cmd
     end
@@ -86,6 +105,15 @@ module MakeMakefileCuda
     def colorize(code, str)
       raise "#{color_code} is not supported" unless COLOR_CODES[code]
       "\e[#{COLOR_CODES[code]}m#{str}\e[0m"
+    end
+
+    def cuda_version
+      @cuda_version ||= begin
+        output = `nvcc --version`
+        if output =~ /Cuda compilation tools, release ([^,]*),/
+          Gem::Version.new($1)
+        end
+      end
     end
   end
 end
