@@ -2,11 +2,6 @@ require 'rbconfig.rb'
 require "erb"
 require_relative '../../3rd_party/mkmf-cu/lib/mkmf-cu'
 
-if RUBY_VERSION < "2.0.0"
-  puts "Cumo::NArray requires Ruby version 2.0 or later."
-  exit(1)
-end
-
 def have_numo_narray!
   version_path = File.join(__dir__, "..", "..", "numo-narray-version")
   version = File.read(version_path).strip
