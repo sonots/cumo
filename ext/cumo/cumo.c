@@ -114,6 +114,10 @@ Init_cumo()
     const char* env;
     VALUE mCumo;
 
+#ifdef HAVE_RB_EXT_RACTOR_SAFE
+    rb_ext_ractor_safe(true);
+#endif
+
     mCumo = rb_define_module("Cumo");
 
     rb_define_const(mCumo, "VERSION", rb_str_new2(CUMO_VERSION));

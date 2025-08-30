@@ -85,7 +85,7 @@ static const rb_data_type_t <%=type_name%>_data_type = {
     {0, <%=type_name%>_free, <%=type_name%>_memsize,},
     &cumo_na_data_type,
     &<%=type_name%>_info,
-    0, // flags
+    RUBY_TYPED_FROZEN_SHAREABLE, // flags
 };
 
 <% end %>

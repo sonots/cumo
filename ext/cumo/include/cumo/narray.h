@@ -489,6 +489,12 @@ typedef unsigned int CUMO_BIT_DIGIT;
 #include "cumo/ndloop.h"
 #include "cumo/intern.h"
 
+// for Ractor support code
+#ifndef HAVE_RB_EXT_RACTOR_SAFE
+#   undef RUBY_TYPED_FROZEN_SHAREABLE
+#   define RUBY_TYPED_FROZEN_SHAREABLE 0
+#endif
+
 #if defined(__cplusplus)
 #if 0
 { /* satisfy cc-mode */
