@@ -18,6 +18,7 @@ ext/cumo/narray/types/*.cu
 ext/cumo/include/cumo/extconf.h
 ext/cumo/Makefile
 ext/cumo/depend
+lib/include/cumo/extconf.h
 TAGS
 t.rb
 .ruby-version

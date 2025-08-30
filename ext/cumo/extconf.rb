@@ -1,9 +1,14 @@
 require 'rbconfig.rb'
+require 'fileutils'
 require "erb"
 require_relative '../../3rd_party/mkmf-cu/lib/mkmf-cu'
 
+def d(file)
+  File.join(__dir__, file)
+end
+
 def have_numo_narray!
-  version_path = File.join(__dir__, "..", "..", "numo-narray-version")
+  version_path = d("../../numo-narray-version")
   version = File.read(version_path).strip
   gem_spec = Gem::Specification.find_by_name("numo-narray", version)
 
@@ -26,9 +31,8 @@ end
 
 def create_depend
   message "creating depend\n"
-  depend_path = File.join(__dir__, "depend")
-  File.open(depend_path, "w") do |depend|
-    depend_erb_path = File.join(__dir__, "depend.erb")
+  File.open(d("depend"), "w") do |depend|
+    depend_erb_path = d("depend.erb")
     File.open(depend_erb_path, "r") do |depend_erb|
       erb = ERB.new(depend_erb.read)
       erb.filename = depend_erb_path
@@ -37,7 +41,7 @@ def create_depend
   end
 end
 
-rm_f 'include/cumo/extconf.h'
+rm_f d('include/cumo/extconf.h')
 
 MakeMakefileCuda.install!(cxx: true)
 
@@ -47,7 +51,7 @@ end
 $CXXFLAGS << " -std=c++14"
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
 #$CFLAGS=" $(cflags) -O3"
-$INCFLAGS = "-Iinclude -Inarray -Icuda #{$INCFLAGS}"
+$INCFLAGS = "-I$(srcdir)/include -I$(srcdir)/narray -I$(srcdir)/cuda #{$INCFLAGS}"
 
 $INSTALLFILES = Dir.glob(%w[include/cumo/*.h include/cumo/types/*.h include/cumo/cuda/*.h]).map{|x| [x,'$(archdir)'] }
 $INSTALLFILES << ['include/cumo/extconf.h','$(archdir)']
@@ -162,8 +166,12 @@ have_func("RTYPEDDATA_GET_DATA")
 have_var("rb_cComplex")
 have_func("rb_thread_call_without_gvl")
 
-create_header('include/cumo/extconf.h')
+create_header d('include/cumo/extconf.h')
 $extconf_h = nil # nvcc does not support #include RUBY_EXTCONF_H
+
+# Create *.o directories
+FileUtils.mkdir_p('narray')
+FileUtils.mkdir_p('cuda')
 
 create_depend
 

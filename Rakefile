@@ -7,16 +7,11 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
-task :compile do
-  sh 'cd ext/cumo && ruby extconf.rb && make && make build-ctest'
-end
+require "rake/extensiontask"
+Rake::ExtensionTask.new("cumo")
 
 task :ctest do
-  sh 'cd ext/cumo && ruby extconf.rb && make run-ctest'
-end
-
-task :clean do
-  sh 'cd ext/cumo && make clean'
+  sh 'cd ext/cumo && ruby extconf.rb && make && make build-ctest && make run-ctest'
 end
 
 task :docs do
