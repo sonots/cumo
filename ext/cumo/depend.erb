@@ -11,17 +11,17 @@ tags : TAGS
 TAGS : $(TAGSRC)
 	etags $(TAGSRC)
 
-C_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.c").join(" ")%>
-CU_TMPL = <%=Dir.glob("narray/gen/tmpl*/*.cu").join(" ")%>
+C_TMPL = <%=Dir.glob("#{__dir__}/narray/gen/tmpl*/*.c").join(" ")%>
+CU_TMPL = <%=Dir.glob("#{__dir__}/narray/gen/tmpl*/*.cu").join(" ")%>
 
-C_COGEN = narray/gen/cogen.rb
-CU_COGEN = narray/gen/cogen_kernel.rb
-C_DEPENDS = $(C_TMPL) narray/gen/*.rb
-CU_DEPENDS = $(CU_TMPL) narray/gen/*.rb
+C_COGEN = <%= __dir__ %>/narray/gen/cogen.rb
+CU_COGEN = <%= __dir__ %>/narray/gen/cogen_kernel.rb
+C_DEPENDS = $(C_TMPL) <%= __dir__ %>/narray/gen/*.rb
+CU_DEPENDS = $(CU_TMPL) <%= __dir__ %>/narray/gen/*.rb
 
 <%
 list_type_c = []
-list_type_rb = Dir.glob("narray/gen/def/*.rb")
+list_type_rb = Dir.glob("#{__dir__}/narray/gen/def/*.rb")
 list_type_rb.each do |type_rb|
   type_name = File.basename(type_rb, ".rb")
   next if ENV['DTYPE'] and !type_name.downcase.include?(ENV['DTYPE'].downcase)
@@ -34,7 +34,7 @@ list_type_rb.each do |type_rb|
 
 <%
 list_type_cu = []
-list_type_rb = Dir.glob("narray/gen/def/*.rb")
+list_type_rb = Dir.glob("#{__dir__}/narray/gen/def/*.rb")
 list_type_rb.each do |type_rb|
   type_name = File.basename(type_rb, ".rb")
   next if ENV['DTYPE'] and !type_name.downcase.include?(ENV['DTYPE'].downcase)
@@ -47,12 +47,12 @@ list_type_rb.each do |type_rb|
 
 src : <%= list_type_cu.join(" ") %> <%= list_type_c.join(" ") %>
 
-build-ctest : cuda/memory_pool_impl_test.exe
+build-ctest : <%= __dir__ %>/cuda/memory_pool_impl_test.exe
 
-run-ctest : cuda/memory_pool_impl_test.exe
+run-ctest : <%= __dir__ %>/cuda/memory_pool_impl_test.exe
 	./$<
 
-cuda/memory_pool_impl_test.exe: cuda/memory_pool_impl_test.cpp cuda/memory_pool_impl.cpp cuda/memory_pool_impl.hpp
-	nvcc -std=c++14 <%= ENV['DEBUG'] ? '-g -O0 --compiler-options -Wall' : '' %> -L. -L$(libdir) -I. $(INCFLAGS) -o $@ $< cuda/memory_pool_impl.cpp
+<%= __dir__ %>/cuda/memory_pool_impl_test.exe: <%= __dir__ %>/cuda/memory_pool_impl_test.cpp <%= __dir__ %>/cuda/memory_pool_impl.cpp <%= __dir__ %>/cuda/memory_pool_impl.hpp
+	nvcc -std=c++14 <%= ENV['DEBUG'] ? '-g -O0 --compiler-options -Wall' : '' %> -L. -L$(libdir) -I. $(INCFLAGS) -o $@ $< <%= __dir__ %>/cuda/memory_pool_impl.cpp
 
-CLEANOBJS = *.o */*.o */*/*.o *.bak narray/types/*.c narray/types/*_kernel.cu *.exe */*.exe
+CLEANOBJS = <%= __dir__ %>/*.o <%= __dir__ %>/*/*.o <%= __dir__ %>/*/*/*.o <%= __dir__ %>/*.bak <%= __dir__ %>/narray/types/*.c <%= __dir__ %>/narray/types/*_kernel.cu <%= __dir__ %>/*.exe <%= __dir__ %>/*/*.exe
