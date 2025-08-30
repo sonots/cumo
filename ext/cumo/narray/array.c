@@ -626,7 +626,7 @@ cumo_na_ary_composition_for_struct(VALUE nstruct, VALUE ary)
 
 
 void
-Init_cumo_na_array()
+Init_cumo_na_array(void)
 {
     rb_define_singleton_method(cNArray, "array_shape", cumo_na_s_array_shape, 1);
     rb_define_singleton_method(cNArray, "array_type", cumo_na_s_array_type, 1);
