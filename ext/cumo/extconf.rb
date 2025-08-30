@@ -112,11 +112,6 @@ cuda/cudnn
 cuda/cudnn_impl
 )
 
-if RUBY_VERSION[0..3] == "2.1."
-  puts "add kwargs"
-  srcs << "kwargs"
-end
-
 $objs = srcs.map {|src| "#{src}.o" }
 
 dir_config("narray")
