@@ -674,4 +674,9 @@ class NArrayTest < Test::Unit::TestCase
       assert { at == [[0,2,3],[4,4,6]] }
     end
   end
+
+  test "Cumo::DFloat.cast(Cumo::RObject[1, nil, 3])" do
+    assert_equal(Cumo::DFloat[1, Float::NAN, 3].format_to_a,
+                 Cumo::DFloat.cast(Cumo::RObject[1, nil, 3]).format_to_a)
+  end
 end
