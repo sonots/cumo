@@ -95,6 +95,7 @@ static VALUE
     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(sizet_w_shape[0], ngy->shape[1]);
     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(sizet_w_shape[1], nx->shape[1]);
 
+#if !defined(NDEBUG)
     {
         // shape check of gy
         size_t *y_shape = ngy->shape;
@@ -105,6 +106,7 @@ static VALUE
                     x_shape[i + 2], sizet_w_shape[i + 2], int_stride[i], int_pad[i]));
         }
     }
+#endif
 
     x_cont = cumo_na_as_contiguous_array(x);
     gy_cont = cumo_na_as_contiguous_array(gy);
