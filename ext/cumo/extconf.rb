@@ -189,5 +189,8 @@ have_library('stdc++')
 
 create_makefile('cumo')
 
-require 'extconf_compile_commands_json'
-ExtconfCompileCommandsJson.generate!
+begin
+  require 'extconf_compile_commands_json'
+  ExtconfCompileCommandsJson.generate!
+rescue LoadError
+end

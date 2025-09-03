@@ -28,5 +28,4 @@ Gem::Specification.new do |spec|
   spec.extensions    = ["ext/cumo/extconf.rb"]
 
   spec.add_runtime_dependency "numo-narray", numo_narray_version
-  spec.add_runtime_dependency "extconf_compile_commands_json"
 end
