@@ -18,6 +18,8 @@ ext/cumo/narray/types/*.cu
 ext/cumo/include/cumo/extconf.h
 ext/cumo/Makefile
 ext/cumo/depend
+ext/cumo/compile_commands.json
+ext/cumo/.cache/clangd
 lib/include/cumo/extconf.h
 TAGS
 t.rb
