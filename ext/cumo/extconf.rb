@@ -21,7 +21,7 @@ def have_numo_narray!
   end
 
   if RUBY_PLATFORM =~ /cygwin|mingw/
-    $LDFLAGS += " -L#{gem_spec.gem_dir}/ext/numo"
+    $LDFLAGS += " -L#{gem_spec.gem_dir}/ext/numo/narray"
     unless have_library("narray","nary_new")
       puts "libnarray.a not found"
       exit(1)
