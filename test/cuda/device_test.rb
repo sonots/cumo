@@ -22,7 +22,7 @@ module Cumo::CUDA
     def test_synchronize
       assert_nothing_raised { Device.new.synchronize }
     end
-    
+
     def test_compute_capability
       assert { Device.new.compute_capability.size == 2 }
     end

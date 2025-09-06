@@ -383,14 +383,6 @@ Layout/SpaceInsideRangeLiteral:
   Exclude:
     - 'lib/cumo/narray/extra.rb'
 
-# Offense count: 2
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: AllowInHeredoc.
-Layout/TrailingWhitespace:
-  Exclude:
-    - '3rd_party/mkmf-cu/lib/mkmf-cu/nvcc.rb'
-    - 'test/cuda/device_test.rb'
-
 # Offense count: 14
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: AllowedMethods, AllowedPatterns.

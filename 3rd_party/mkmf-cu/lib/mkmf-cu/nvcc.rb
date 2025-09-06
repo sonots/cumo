@@ -72,7 +72,7 @@ module MakeMakefileCuda
       }
     end
 
-    def parse_ill_short_with_arg(argv, opt_h)  
+    def parse_ill_short_with_arg(argv, opt_h)
       [/\A(\-stdlib)=(.*)/, /\A(\-std)=(.*)/, /\A(\-Wl),(.*)/].each { |reg|
         argv.each { |e|
           if reg =~ e
