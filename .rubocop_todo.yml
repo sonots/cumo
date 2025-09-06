@@ -99,12 +99,6 @@ Layout/EmptyLineAfterGuardClause:
 
 # Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
-Layout/EmptyLineAfterMagicComment:
-  Exclude:
-    - 'cumo.gemspec'
-
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
 Layout/EmptyLineAfterMultilineCondition:
   Exclude:
     - 'lib/cumo/narray/extra.rb'
