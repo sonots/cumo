@@ -48,7 +48,6 @@ class BitTest < Test::Unit::TestCase
 
     test "#{dtype},[[0,1,1,0],[1,0,0,1]]#{ref}" do
       src = [[0,1,1,0],[1,0,0,1]]
-      n = src.size
       a = init.call(dtype, src)
 
       assert { a[5] == 0 }
@@ -75,7 +74,6 @@ class BitTest < Test::Unit::TestCase
 
     test "#{dtype},[[0,1,1,0],[1,0,0,1]]#{ref},aset[]=" do
       src = [[0,1,1,0],[1,0,0,1]]
-      n = src.size
 
       a = init.call(dtype, src)
       a[5] = 1
