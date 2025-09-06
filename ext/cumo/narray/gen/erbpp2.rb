@@ -40,7 +40,7 @@ class ErbPP
 
   def description
     if s = @opts[:description] || @opts[:desc]
-      s.gsub(/\@\{/,"[").gsub(/\@\}/,"]")
+      s.gsub(/\@\{/, "[").gsub(/\@\}/, "]")
     end
   end
 
@@ -67,7 +67,7 @@ class ErbPP
     dirs = [dirs] if !dirs.kind_of?(Array)
     dirs.each do |x|
       Dir.glob(x).each do |dir|
-        path = File.join(dir,file)
+        path = File.join(dir, file)
         if File.exist?(path)
           if get(:line_number)
             erb = ERBLN.new(File.read(path), path, trim_mode)
@@ -102,7 +102,7 @@ class ErbPP
   end
 
   def write(output)
-    File.open(output,"wt") do |f|
+    File.open(output, "wt") do |f|
       f.print(result)
     end
   end
@@ -155,13 +155,13 @@ module DeclMethod
     DefMethod.new(self, erb_path||m, name:m, **opts, &block)
   end
   def undef_method(m)
-    UndefMethod.new(self,name:m)
+    UndefMethod.new(self, name:m)
   end
   def def_singleton_method(m, erb_path=nil, **opts, &block)
     DefMethod.new(self, erb_path||m, name:m, singleton:true, **opts, &block)
   end
   def undef_singleton_method(m)
-    UndefSingletonMethod.new(self,name:m)
+    UndefSingletonMethod.new(self, name:m)
   end
   def def_module_function(m, erb_path=nil, **opts, &block)
     DefModuleFunction.new(self, erb_path||m, name:m, **opts, &block)
@@ -183,9 +183,9 @@ class DefModule < ErbPP
   def cumo_id_list
     @cumo_id_list ||= []
   end
-  def def_id(name,var=nil)
-    var = name.gsub(/\?/,"_p").gsub(/\!/,"_bang") if var.nil?
-    cumo_id_list << [name,var]
+  def def_id(name, var=nil)
+    var = name.gsub(/\?/, "_p").gsub(/\!/, "_bang") if var.nil?
+    cumo_id_list << [name, var]
   end
   def init_def
     load_erb(init_erb).result(binding)
@@ -237,7 +237,7 @@ class DefMethod < ErbPP
   end
 
   def c_name
-    @opts[:name].gsub(/\?/,"_p").gsub(/\!/,"_bang").gsub(/=/,"_set")
+    @opts[:name].gsub(/\?/, "_p").gsub(/\!/, "_bang").gsub(/=/, "_set")
   end
 
   def op_map
@@ -345,7 +345,7 @@ end
 
 class DefInclueModule < ErbPP
   def initialize(parent=nil, incl_class, incl_module, **opts, &block)
-    super(parent,incl_class:incl_class,incl_module:incl_module,**opts,&block)
+    super(parent, incl_class:incl_class, incl_module:incl_module, **opts, &block)
   end
   def init_def
     "rb_include_module(#{get(:incl_class)}, #{get(:incl_module)});"

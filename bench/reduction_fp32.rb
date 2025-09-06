@@ -7,7 +7,7 @@ num_iteration = 100
 Cumo::CUDA::Runtime.cudaDeviceSynchronize
 
 Benchmark.bm 30 do |r|
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.sum" do
     num_iteration.times do
       x.sum
@@ -15,7 +15,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.sum(axis: 0)" do
     num_iteration.times do
       x.sum(axis: 0)
@@ -23,7 +23,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.sum(axis: 1)" do
     num_iteration.times do
       x.sum(axis: 1)
@@ -31,7 +31,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.sum(keepdims: true)" do
     num_iteration.times do
       x.sum(keepdims: true)
@@ -39,7 +39,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.sum(axis: 0, keepdims: true)" do
     num_iteration.times do
       x.sum(axis: 0, keepdims: true)
@@ -47,7 +47,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.sum(axis: 1, keepdims: true)" do
     num_iteration.times do
       x.sum(axis: 1, keepdims: true)
@@ -55,7 +55,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.max" do
     num_iteration.times do
       x.max
@@ -63,7 +63,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.max(axis: 0)" do
     num_iteration.times do
       x.max(axis: 0)
@@ -71,7 +71,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.max(axis: 1)" do
     num_iteration.times do
       x.max(axis: 1)
@@ -79,7 +79,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.max(keepdims: true)" do
     num_iteration.times do
       x.max(keepdims: true)
@@ -87,7 +87,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.max(axis: 0, keepdims: true)" do
     num_iteration.times do
       x.max(axis: 0, keepdims: true)
@@ -95,7 +95,7 @@ Benchmark.bm 30 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([500,500])
+  x = Cumo::SFloat.ones([500, 500])
   r.report "x.max(axis: 1, keepdims: true)" do
     num_iteration.times do
       x.max(axis: 1, keepdims: true)

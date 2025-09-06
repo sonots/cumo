@@ -44,7 +44,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv(w, b, stride=int, pad=int) #{dtype}" do
         y = @x.conv(@w, b: @b, stride: 2, pad: 2)
         assert { y.shape == [@batch_size, @out_channels, 7, 5] }
-        assert y.to_a.flatten.all? {|e| [20,2,8].include?(e.to_i) }
+        assert y.to_a.flatten.all? {|e| [20, 2, 8].include?(e.to_i) }
         assert { @b.shape == @b_shape }
       end
 
@@ -131,7 +131,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv_transpose(w, b, stride=array, pad=array) #{dtype}" do
         y = @x.conv_transpose(@w, b: @b, stride: [3, 2], pad: [2, 0])
         assert { y.shape == [@batch_size, @out_channels, 10, 7] }
-        assert y.to_a.flatten.all? {|e| [8,5,2].include?(e.to_i) }
+        assert y.to_a.flatten.all? {|e| [8, 5, 2].include?(e.to_i) }
         assert { @b.shape == @b_shape }
       end
     end
@@ -154,7 +154,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv_transpose(w) #{dtype}" do
         y = @x.conv_transpose(@w)
         assert { y.shape == [@batch_size, @out_channels, 5, 5, 2] }
-        assert y.to_a.flatten.all? {|e| [3,6,9,12,18].include?(e.to_i) }
+        assert y.to_a.flatten.all? {|e| [3, 6, 9, 12, 18].include?(e.to_i) }
         assert { @b.shape == @b_shape }
       end
 
@@ -169,7 +169,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv_transpose(w, b, stride, pad) #{dtype}" do
         y = @x.conv_transpose(@w, b: @b, stride: [3, 2, 1], pad: [2, 1, 0])
         assert { y.shape == [@batch_size, @out_channels, 7, 5, 2] }
-        assert y.to_a.flatten.all? {|e| [2,5,8].include?(e.to_i) }
+        assert y.to_a.flatten.all? {|e| [2, 5, 8].include?(e.to_i) }
         assert { @b.shape == @b_shape }
       end
     end
@@ -313,8 +313,8 @@ class CUDNNTest < Test::Unit::TestCase
         @reduced_shape = [1, @x_shape[1], 1, 1]
         @gamma = dtype.ones(@reduced_shape) * 2
         @beta = dtype.ones(@reduced_shape)
-        @x.batch_norm(@gamma, @beta, axis: [0,2,3])
-        gx, ggamma, gbeta = @x.batch_norm_backward(@gamma, @gy, axis: [0,2,3])
+        @x.batch_norm(@gamma, @beta, axis: [0, 2, 3])
+        gx, ggamma, gbeta = @x.batch_norm_backward(@gamma, @gy, axis: [0, 2, 3])
         assert { gx.shape== @x_shape }
         assert { ggamma.shape== @reduced_shape }
         assert { gbeta.shape== @reduced_shape }

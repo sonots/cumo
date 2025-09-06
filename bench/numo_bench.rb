@@ -7,7 +7,7 @@ NUM = (ARGV.first || 100).to_i
 
 # warm up
 a = Numo::Float32.new(10).seq(1)
-b = Numo::Float32.new(10).seq(10,10)
+b = Numo::Float32.new(10).seq(10, 10)
 c = a + b
 
 def elementwise(num = nil)
@@ -15,31 +15,31 @@ def elementwise(num = nil)
   puts "elementwise(#{num})"
   Benchmark.bm do |r|
     a = Numo::Float32.new(10000).seq(1)
-    b = Numo::Float32.new(10000).seq(10,10)
+    b = Numo::Float32.new(10000).seq(10, 10)
     r.report('10**4') do
       NUM.times { (a + b) }
     end
 
     a = Numo::Float32.new(100000).seq(1)
-    b = Numo::Float32.new(100000).seq(10,10)
+    b = Numo::Float32.new(100000).seq(10, 10)
     r.report('10**5') do
       NUM.times { (a + b) }
     end
 
     a = Numo::Float32.new(1000000).seq(1)
-    b = Numo::Float32.new(1000000).seq(10,10)
+    b = Numo::Float32.new(1000000).seq(10, 10)
     r.report('10**6') do
       NUM.times { (a + b) }
     end
 
     a = Numo::Float32.new(10000000).seq(1)
-    b = Numo::Float32.new(10000000).seq(10,10)
+    b = Numo::Float32.new(10000000).seq(10, 10)
     r.report('10**7') do
       NUM.times { (a + b) }
     end
 
     a = Numo::Float32.new(100000000).seq(1)
-    b = Numo::Float32.new(100000000).seq(10,10)
+    b = Numo::Float32.new(100000000).seq(10, 10)
     r.report('10**8') do
       NUM.times { (a + b) }
     end
@@ -81,32 +81,32 @@ def dot(num = nil)
   num ||= 1
   puts "dot(#{num})"
   Benchmark.bm do |r|
-    a = Numo::Float32.new(100,100).seq(1)
-    b = Numo::Float32.new(100,100).seq(10,10)
+    a = Numo::Float32.new(100, 100).seq(1)
+    b = Numo::Float32.new(100, 100).seq(10, 10)
     r.report('10**4') do
       num.times { a.dot(b) }
     end
 
-    a = Numo::Float32.new(100,1000).seq(1)
-    b = Numo::Float32.new(1000,100).seq(10,10)
+    a = Numo::Float32.new(100, 1000).seq(1)
+    b = Numo::Float32.new(1000, 100).seq(10, 10)
     r.report('10**5') do
       num.times { a.dot(b) }
     end
 
-    a = Numo::Float32.new(100,10000).seq(1)
-    b = Numo::Float32.new(10000,100).seq(10,10)
+    a = Numo::Float32.new(100, 10000).seq(1)
+    b = Numo::Float32.new(10000, 100).seq(10, 10)
     r.report('10**6') do
       num.times { a.dot(b) }
     end
 
-    a = Numo::Float32.new(100,100000).seq(1)
-    b = Numo::Float32.new(100000,100).seq(10,10)
+    a = Numo::Float32.new(100, 100000).seq(1)
+    b = Numo::Float32.new(100000, 100).seq(10, 10)
     r.report('10**7') do
       num.times { a.dot(b) }
     end
 
-    a = Numo::Float32.new(100,1000000).seq(1)
-    b = Numo::Float32.new(1000000,100).seq(10,10)
+    a = Numo::Float32.new(100, 1000000).seq(1)
+    b = Numo::Float32.new(1000000, 100).seq(10, 10)
     r.report('10**8') do
       num.times { a.dot(b) }
     end

@@ -32,7 +32,7 @@ module NArrayMethod
     def_method(meth, "set2", **h)
   end
 
-  def cond_binary(meth,op=nil)
+  def cond_binary(meth, op=nil)
     op = meth unless op
     def_method(meth, "cond_binary", op:op)
   end
@@ -149,7 +149,7 @@ module NArrayType
     a.concat(args)
   end
 
-  def upcast(c=nil,t=nil)
+  def upcast(c=nil, t=nil)
     @opts[:upcast] ||= []
     if c
       if t
@@ -163,7 +163,7 @@ module NArrayType
     end
   end
 
-  def upcast_rb(c,t=nil)
+  def upcast_rb(c, t=nil)
     @opts[:upcast] ||= []
     if t
       t = "cumo_c#{t}"
@@ -231,7 +231,7 @@ class Store < DefMethod
     "#{klass}==#{type_var}"
   end
 
-  def extract_data(ptr,pos,x)
+  def extract_data(ptr, pos, x)
     case type_name
     when "Bit"
       "{BIT_DIGIT b; CUMO_LOAD_BIT(#{ptr},#{pos},b); x = m_from_sint(b);}"

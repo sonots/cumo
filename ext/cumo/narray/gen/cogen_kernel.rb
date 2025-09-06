@@ -29,11 +29,11 @@ if ARGV.size != 1
 end
 
 type_file, = ARGV
-type_name = File.basename(type_file,".rb")
+type_name = File.basename(type_file, ".rb")
 
 erb_dir = ["tmpl"]
 erb_dir.unshift("tmpl_bit") if (type_name == "bit")
-erb_dir.map!{|d| File.join(thisdir,d)}
+erb_dir.map!{|d| File.join(thisdir, d)}
 
 code = DefLib.new do
   set line_number: $line_number
@@ -51,12 +51,12 @@ code = DefLib.new do
     extend NArrayMethod
     extend NArrayType
     eval File.read(type_file), binding, type_file
-    eval File.read(File.join(thisdir,"spec.rb")), binding, "spec.rb"
+    eval File.read(File.join(thisdir, "spec.rb")), binding, "spec.rb"
   end
 end.result
 
 if $output
-  open($output,"w").write(code)
+  open($output, "w").write(code)
 else
   $stdout.write(code)
 end

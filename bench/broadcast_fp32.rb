@@ -6,8 +6,8 @@ require 'cumo/narray'
 num_iteration = 1000
 
 Benchmark.bm 20 do |r|
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x.inplace + y" do
     num_iteration.times do
       x.inplace + y
@@ -15,8 +15,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x + y" do
     num_iteration.times do
       (x + y).free
@@ -24,8 +24,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x.inplace + 1.0" do
     num_iteration.times do
       x.inplace + 1.0
@@ -33,8 +33,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  z = Cumo::SFloat.ones([1000,1])
+  x = Cumo::SFloat.ones([1000, 784])
+  z = Cumo::SFloat.ones([1000, 1])
   r.report "x.inplace + z" do
     num_iteration.times do
       x.inplace + z
@@ -42,8 +42,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x.inplace - y" do
     num_iteration.times do
       x.inplace - y
@@ -51,8 +51,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x.inplace - 1.0" do
     num_iteration.times do
       x.inplace - 1.0
@@ -60,8 +60,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  z = Cumo::SFloat.ones([1000,1])
+  x = Cumo::SFloat.ones([1000, 784])
+  z = Cumo::SFloat.ones([1000, 1])
   r.report "x.inplace - z" do
     num_iteration.times do
       x.inplace - z
@@ -69,8 +69,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x.inplace * y" do
     num_iteration.times do
       x.inplace * y
@@ -78,8 +78,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x.inplace * 1.0" do
     num_iteration.times do
       x.inplace * 1.0
@@ -87,8 +87,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  z = Cumo::SFloat.ones([1000,1])
+  x = Cumo::SFloat.ones([1000, 784])
+  z = Cumo::SFloat.ones([1000, 1])
   r.report "x.inplace * z" do
     num_iteration.times do
       x.inplace * z
@@ -96,8 +96,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x.inplace / y" do
     num_iteration.times do
       x.inplace / y
@@ -105,8 +105,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  y = Cumo::SFloat.ones([1000,784])
+  x = Cumo::SFloat.ones([1000, 784])
+  y = Cumo::SFloat.ones([1000, 784])
   r.report "x.inplace / 1.0" do
     num_iteration.times do
       x.inplace / 1.0
@@ -114,8 +114,8 @@ Benchmark.bm 20 do |r|
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
   end
 
-  x = Cumo::SFloat.ones([1000,784])
-  z = Cumo::SFloat.ones([1000,1])
+  x = Cumo::SFloat.ones([1000, 784])
+  z = Cumo::SFloat.ones([1000, 1])
   r.report "x.inplace / z" do
     num_iteration.times do
       x.inplace / z

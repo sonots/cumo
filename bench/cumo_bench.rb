@@ -7,7 +7,7 @@ NUM = (ARGV.first || 100).to_i
 
 # warm up
 a = Cumo::Float32.new(10).seq(1)
-b = Cumo::Float32.new(10).seq(10,10)
+b = Cumo::Float32.new(10).seq(10, 10)
 c = a + b
 c.free
 
@@ -16,7 +16,7 @@ def elementwise(num = nil)
   puts "elementwise(#{num})"
   Benchmark.bm do |r|
     a = Cumo::Float32.new(10000).seq(1)
-    b = Cumo::Float32.new(10000).seq(10,10)
+    b = Cumo::Float32.new(10000).seq(10, 10)
     (a + b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**4') do
@@ -27,7 +27,7 @@ def elementwise(num = nil)
     end
 
     a = Cumo::Float32.new(100000).seq(1)
-    b = Cumo::Float32.new(100000).seq(10,10)
+    b = Cumo::Float32.new(100000).seq(10, 10)
     (a + b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**5') do
@@ -38,7 +38,7 @@ def elementwise(num = nil)
     end
 
     a = Cumo::Float32.new(1000000).seq(1)
-    b = Cumo::Float32.new(1000000).seq(10,10)
+    b = Cumo::Float32.new(1000000).seq(10, 10)
     (a + b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**6') do
@@ -49,7 +49,7 @@ def elementwise(num = nil)
     end
 
     a = Cumo::Float32.new(10000000).seq(1)
-    b = Cumo::Float32.new(10000000).seq(10,10)
+    b = Cumo::Float32.new(10000000).seq(10, 10)
     (a + b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**7') do
@@ -60,7 +60,7 @@ def elementwise(num = nil)
     end
 
     a = Cumo::Float32.new(100000000).seq(1)
-    b = Cumo::Float32.new(100000000).seq(10,10)
+    b = Cumo::Float32.new(100000000).seq(10, 10)
     (a + b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**8') do
@@ -132,8 +132,8 @@ def dot(num = nil)
   num ||= 1
   puts "dot(#{num})"
   Benchmark.bm do |r|
-    a = Cumo::Float32.new(100,100).seq(1)
-    b = Cumo::Float32.new(100,100).seq(10,10)
+    a = Cumo::Float32.new(100, 100).seq(1)
+    b = Cumo::Float32.new(100, 100).seq(10, 10)
     a.dot(b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**4') do
@@ -143,8 +143,8 @@ def dot(num = nil)
       end
     end
 
-    a = Cumo::Float32.new(100,1000).seq(1)
-    b = Cumo::Float32.new(1000,100).seq(10,10)
+    a = Cumo::Float32.new(100, 1000).seq(1)
+    b = Cumo::Float32.new(1000, 100).seq(10, 10)
     a.dot(b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**5') do
@@ -154,8 +154,8 @@ def dot(num = nil)
       end
     end
 
-    a = Cumo::Float32.new(100,10000).seq(1)
-    b = Cumo::Float32.new(10000,100).seq(10,10)
+    a = Cumo::Float32.new(100, 10000).seq(1)
+    b = Cumo::Float32.new(10000, 100).seq(10, 10)
     a.dot(b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**6') do
@@ -165,8 +165,8 @@ def dot(num = nil)
       end
     end
 
-    a = Cumo::Float32.new(100,100000).seq(1)
-    b = Cumo::Float32.new(100000,100).seq(10,10)
+    a = Cumo::Float32.new(100, 100000).seq(1)
+    b = Cumo::Float32.new(100000, 100).seq(10, 10)
     a.dot(b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**7') do
@@ -176,8 +176,8 @@ def dot(num = nil)
       end
     end
 
-    a = Cumo::Float32.new(100,1000000).seq(1)
-    b = Cumo::Float32.new(1000000,100).seq(10,10)
+    a = Cumo::Float32.new(100, 1000000).seq(1)
+    b = Cumo::Float32.new(1000000, 100).seq(10, 10)
     a.dot(b).free # warm up
     Cumo::CUDA::Runtime.cudaDeviceSynchronize
     r.report('10**8') do

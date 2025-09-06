@@ -16,8 +16,8 @@ if is_float
   def_id "copysign"
 end
 if is_int
-  def_id "<<","left_shift"
-  def_id ">>","right_shift"
+  def_id "<<", "left_shift"
+  def_id ">>", "right_shift"
 end
 if is_comparable && !is_object
   def_id "gt"
@@ -44,13 +44,13 @@ if is_object
   def_id "nan?"
   def_id "infinite?"
   def_id "finite?"
-  def_id "==","eq"
-  def_id "!=","ne"
-  def_id ">" ,"gt"
-  def_id ">=","ge"
-  def_id "<" ,"lt"
-  def_id "<=","le"
-  def_id "<=>","ufo"
+  def_id "==", "eq"
+  def_id "!=", "ne"
+  def_id ">" , "gt"
+  def_id ">=", "ge"
+  def_id "<" , "lt"
+  def_id "<=", "le"
+  def_id "<=>", "ufo"
 end
 if (is_float || is_complex) && !is_object
   def_id "gemm"
@@ -121,18 +121,18 @@ def_method "store" do
   store_numeric
   store_from "Bit"
   if is_complex
-    store_from "DComplex","cumo_dcomplex","m_from_dcomplex"
-    store_from "SComplex","cumo_scomplex","m_from_scomplex"
+    store_from "DComplex", "cumo_dcomplex", "m_from_dcomplex"
+    store_from "SComplex", "cumo_scomplex", "m_from_scomplex"
   end
-  store_from "DFloat","double",   "m_from_real"
-  store_from "SFloat","float",    "m_from_real"
+  store_from "DFloat", "double",   "m_from_real"
+  store_from "SFloat", "float",    "m_from_real"
   store_from "Int64", "int64_t",  "m_from_int64"
   store_from "Int32", "int32_t",  "m_from_int32"
   store_from "Int16", "int16_t",  "m_from_sint"
   store_from "Int8",  "int8_t",   "m_from_sint"
-  store_from "UInt64","u_int64_t","m_from_uint64"
-  store_from "UInt32","u_int32_t","m_from_uint32"
-  store_from "UInt16","u_int16_t","m_from_sint"
+  store_from "UInt64", "u_int64_t", "m_from_uint64"
+  store_from "UInt32", "u_int32_t", "m_from_uint32"
+  store_from "UInt16", "u_int16_t", "m_from_sint"
   store_from "UInt8", "u_int8_t", "m_from_sint"
   store_from "RObject", "VALUE",  "m_num_to_data"
   store_array
@@ -170,15 +170,15 @@ if is_bit
   binary "xor", "^"
   binary "eq"
   bit_count "count_true"
-  def_alias "count_1","count_true"
-  def_alias "count","count_true"
+  def_alias "count_1", "count_true"
+  def_alias "count", "count_true"
   bit_count "count_false"
-  def_alias "count_0","count_false"
+  def_alias "count_0", "count_false"
   bit_count_cpu "count_true_cpu"
-  def_alias "count_1_cpu","count_true_cpu"
-  def_alias "count_cpu","count_true_cpu"
+  def_alias "count_1_cpu", "count_true_cpu"
+  def_alias "count_cpu", "count_true_cpu"
   bit_count_cpu "count_false_cpu"
-  def_alias "count_0_cpu","count_false_cpu"
+  def_alias "count_0_cpu", "count_false_cpu"
   bit_reduce "all?", 1
   bit_reduce "any?", 0
   def_method "none?", "none_p"
@@ -218,17 +218,17 @@ if is_complex
   unary2 "real", "rtype", "cRT"
   unary2 "imag", "rtype", "cRT"
   unary2 "arg",  "rtype", "cRT"
-  def_alias "angle","arg"
+  def_alias "angle", "arg"
   set2 "set_imag", "rtype", "cRT"
   set2 "set_real", "rtype", "cRT"
-  def_alias "imag=","set_imag"
-  def_alias "real=","set_real"
+  def_alias "imag=", "set_imag"
+  def_alias "real=", "set_real"
 else
   def_alias "conj", "view"
   def_alias "im", "view"
 end
 
-def_alias "conjugate","conj"
+def_alias "conjugate", "conj"
 
 # base_cond
 
@@ -281,9 +281,9 @@ if is_comparable
   cond_binary "lt"
   cond_binary "le"
   def_alias ">", "gt"
-  def_alias ">=","ge"
+  def_alias ">=", "ge"
   def_alias "<", "lt"
-  def_alias "<=","le"
+  def_alias "<=", "le"
   def_method "clip"
 end
 
@@ -299,32 +299,32 @@ end
 
 if is_int
   if is_unsigned
-    accum "sum","u_int64_t","cumo_cUInt64"
-    accum "prod","u_int64_t","cumo_cUInt64"
+    accum "sum", "u_int64_t", "cumo_cUInt64"
+    accum "prod", "u_int64_t", "cumo_cUInt64"
   else
-    accum "sum","int64_t","cumo_cInt64"
-    accum "prod","int64_t","cumo_cInt64"
+    accum "sum", "int64_t", "cumo_cInt64"
+    accum "prod", "int64_t", "cumo_cInt64"
   end
 else
-  accum "sum","dtype","cT"
-  accum "prod","dtype","cT"
+  accum "sum", "dtype", "cT"
+  accum "prod", "dtype", "cT"
 end
 
 if is_double_precision
-  accum "kahan_sum","dtype","cT"
+  accum "kahan_sum", "dtype", "cT"
 end
 
 if is_float
-  accum "mean","dtype","cT"
-  accum "stddev","rtype","cRT"
-  accum "var","rtype","cRT"
-  accum "rms","rtype","cRT"
+  accum "mean", "dtype", "cT"
+  accum "stddev", "rtype", "cRT"
+  accum "var", "rtype", "cRT"
+  accum "rms", "rtype", "cRT"
 end
 
 if is_comparable
-  accum "min","dtype","cT"
-  accum "max","dtype","cT"
-  accum "ptp","dtype","cT"
+  accum "min", "dtype", "cT"
+  accum "max", "dtype", "cT"
+  accum "ptp", "dtype", "cT"
   accum_index "max_index"
   accum_index "min_index"
   def_method "minmax"
@@ -336,8 +336,8 @@ if is_int && !is_object
   def_method "bincount"
 end
 
-cum "cumsum","add"
-cum "cumprod","mul"
+cum "cumsum", "add"
+cum "cumprod", "mul"
 
 # dot
 accum_binary "mulsum"
@@ -380,17 +380,17 @@ def_method "poly"
 
 if is_comparable && !is_object
   if is_float
-    qsort type_name,"dtype","*(dtype*)","_prnan"
-    qsort type_name,"dtype","*(dtype*)","_ignan"
+    qsort type_name, "dtype", "*(dtype*)", "_prnan"
+    qsort type_name, "dtype", "*(dtype*)", "_ignan"
   else
-    qsort type_name,"dtype","*(dtype*)"
+    qsort type_name, "dtype", "*(dtype*)"
   end
   def_method "sort"
   if is_float
-    qsort type_name+"_index","dtype*","**(dtype**)","_prnan"
-    qsort type_name+"_index","dtype*","**(dtype**)","_ignan"
+    qsort type_name+"_index", "dtype*", "**(dtype**)", "_prnan"
+    qsort type_name+"_index", "dtype*", "**(dtype**)", "_ignan"
   else
-    qsort type_name+"_index","dtype*","**(dtype**)"
+    qsort type_name+"_index", "dtype*", "**(dtype**)"
   end
   def_method "sort_index"
   def_method "median"
@@ -436,14 +436,14 @@ def_module do
   math "atanh"
   math "sinc"
   if !is_c
-    math "atan2",2
-    math "hypot",2
+    math "atan2", 2
+    math "hypot", 2
     math "erf"
     math "erfc"
     math "log1p"
     math "expm1"
-    math "ldexp",2
-    math "frexp",1,"frexp"
+    math "ldexp", 2
+    math "frexp", 1, "frexp"
   end
 end
 end

@@ -329,26 +329,6 @@ Layout/SpaceAfterColon:
     - 'ext/cumo/narray/gen/spec.rb'
     - 'lib/cumo/narray/extra.rb'
 
-# Offense count: 1385
-# This cop supports safe autocorrection (--autocorrect).
-Layout/SpaceAfterComma:
-  Exclude:
-    - 'bench/broadcast_fp32.rb'
-    - 'bench/cumo_bench.rb'
-    - 'bench/numo_bench.rb'
-    - 'bench/reduction_fp32.rb'
-    - 'ext/cumo/extconf.rb'
-    - 'ext/cumo/narray/gen/cogen.rb'
-    - 'ext/cumo/narray/gen/cogen_kernel.rb'
-    - 'ext/cumo/narray/gen/erbln.rb'
-    - 'ext/cumo/narray/gen/erbpp2.rb'
-    - 'ext/cumo/narray/gen/narray_def.rb'
-    - 'ext/cumo/narray/gen/spec.rb'
-    - 'lib/cumo/narray/extra.rb'
-    - 'test/bit_test.rb'
-    - 'test/cudnn_test.rb'
-    - 'test/narray_test.rb'
-
 # Offense count: 49
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyle.

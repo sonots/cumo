@@ -24,7 +24,7 @@ def have_numo_narray!
 
   if RUBY_PLATFORM =~ /cygwin|mingw/
     $LDFLAGS += " -L#{gem_spec.gem_dir}/ext/numo/narray"
-    unless have_library("narray","nary_new")
+    unless have_library("narray", "nary_new")
       puts "libnarray.a not found"
       exit(1)
     end
@@ -55,8 +55,8 @@ $CXXFLAGS << " -std=c++14"
 #$CFLAGS=" $(cflags) -O3"
 $INCFLAGS = "-I$(srcdir)/include -I$(srcdir)/narray -I$(srcdir)/cuda #{$INCFLAGS}"
 
-$INSTALLFILES = Dir.glob(%w[include/cumo/*.h include/cumo/types/*.h include/cumo/cuda/*.h]).map{|x| [x,'$(archdir)'] }
-$INSTALLFILES << ['include/cumo/extconf.h','$(archdir)']
+$INSTALLFILES = Dir.glob(%w[include/cumo/*.h include/cumo/types/*.h include/cumo/cuda/*.h]).map{|x| [x, '$(archdir)'] }
+$INSTALLFILES << ['include/cumo/extconf.h', '$(archdir)']
 if /cygwin|mingw/ =~ RUBY_PLATFORM
   $INSTALLFILES << ['libcumo.a', '$(archdir)']
 end
@@ -143,14 +143,14 @@ end
 
 have_type("bool", stdbool)
 unless have_type("u_int8_t", stdint)
-  have_type("uint8_t",stdint)
+  have_type("uint8_t", stdint)
 end
 unless have_type("u_int16_t", stdint)
-  have_type("uint16_t",stdint)
+  have_type("uint16_t", stdint)
 end
 have_type("int32_t", stdint)
 unless have_type("u_int32_t", stdint)
-  have_type("uint32_t",stdint)
+  have_type("uint32_t", stdint)
 end
 have_type("int64_t", stdint)
 unless have_type("u_int64_t", stdint)

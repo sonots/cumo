@@ -54,7 +54,7 @@ class ErbPP
       end
       concat(@buf)
 
-      b = @buf.gsub(/".*?(?<!\\)"/,'""')
+      b = @buf.gsub(/".*?(?<!\\)"/, '""')
       /^.*(\/\*)(.*?)$/ =~ b
       x = $2
       /^.*(\*\/)(.*?)$/ =~ b
@@ -88,7 +88,7 @@ class ErbPP
     end
 
     def d(s)
-      p [s, [x,y], r]
+      p [s, [x, y], r]
       r
     end
 
