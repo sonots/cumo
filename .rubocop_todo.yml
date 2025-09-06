@@ -745,12 +745,6 @@ Style/EmptyMethod:
   Exclude:
     - 'ext/cumo/narray/gen/erbpp2.rb'
 
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-Style/Encoding:
-  Exclude:
-    - 'cumo.gemspec'
-
 # Offense count: 8
 # This cop supports safe autocorrection (--autocorrect).
 Style/EvalWithLocation:
