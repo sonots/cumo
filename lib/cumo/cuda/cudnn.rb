@@ -1,5 +1,3 @@
-require 'cumo'
-
 module Cumo
   [SFloat, DFloat].each do |klass|
     klass.class_eval do

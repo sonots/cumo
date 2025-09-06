@@ -1,5 +1,3 @@
-require_relative '../cuda'
-
 module Cumo::CUDA
   # CUDA kernel module.
   class Module
@@ -37,4 +35,3 @@ module Cumo::CUDA
     end
   end
 end
-

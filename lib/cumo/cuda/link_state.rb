@@ -1,5 +1,3 @@
-require_relative '../cuda'
-
 module Cumo::CUDA
   # CUDA link state.
   class LinkState

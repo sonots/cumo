@@ -1,4 +1,3 @@
-require_relative '../cuda'
 require_relative 'compile_error'
 
 module Cumo::CUDA
