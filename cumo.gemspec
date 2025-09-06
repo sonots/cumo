@@ -27,5 +27,5 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
   spec.extensions    = ["ext/cumo/extconf.rb"]
 
-  spec.add_runtime_dependency "numo-narray", numo_narray_version
+  spec.add_dependency "numo-narray", numo_narray_version
 end
