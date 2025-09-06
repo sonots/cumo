@@ -1,0 +1,15 @@
+inherit_from: .rubocop_todo.yml
+
+AllCops:
+  DefaultFormatter: fuubar
+  EnabledByDefault: true
+  TargetRubyVersion: 3.0
+
+Layout/LineLength:
+  Enabled: false
+
+Metrics:
+  Enabled: false
+
+Style/Copyright:
+  Enabled: false
