@@ -111,11 +111,11 @@ class ErbPP
   end
 
   def find_tmpl(name)
-    @parent.children.find{|x| x.name == name }
+    @parent.children.find {|x| x.name == name }
   end
 
   def find(name)
-    children.find{|x| x.name == name }
+    children.find {|x| x.name == name }
   end
 end
 
@@ -128,13 +128,13 @@ class DefLib < ErbPP
   end
   def cumo_id_assign
     ids = []
-    @children.each{|c| a=c.get(:cumo_id_list); ids.concat(a) if a}
-    ids.sort.uniq.map{|x| "cumo_id_#{x[1]} = rb_intern(\"#{x[0]}\");"}
+    @children.each {|c| a=c.get(:cumo_id_list); ids.concat(a) if a}
+    ids.sort.uniq.map {|x| "cumo_id_#{x[1]} = rb_intern(\"#{x[0]}\");"}
   end
   def cumo_id_decl
     ids = []
-    @children.each{|c| a=c.get(:cumo_id_list); ids.concat(a) if a}
-    ids.sort.uniq.map{|x| "static ID cumo_id_#{x[1]};\n"}
+    @children.each {|c| a=c.get(:cumo_id_list); ids.concat(a) if a}
+    ids.sort.uniq.map {|x| "static ID cumo_id_#{x[1]};\n"}
   end
   def def_class(**opts, &block)
     DefClass.new(self, **opts, &block)
@@ -194,7 +194,7 @@ class DefModule < ErbPP
     @opts[:init_erb] || "init_module"
   end
   def method_code
-    @children.map{|c| c.result}.join("\n")
+    @children.map {|c| c.result}.join("\n")
   end
   def _mod_var
     @opts[:module_var]
@@ -337,7 +337,7 @@ class DefStruct < ErbPP
     "static VALUE #{class_var};"
   end
   def init_def
-    items = members.map{|s| "\"#{s}\""}.join(",")
+    items = members.map {|s| "\"#{s}\""}.join(",")
     "/*#{description}*/
     #{class_var} = rb_struct_define(\"#{class_name}\",#{items},NULL);"
   end

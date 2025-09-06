@@ -31,7 +31,7 @@ module MakeMakefileCuda
 
     def build_optparser
       opt = OptionParser.new
-      opt_h = Hash.new{|h, k| h[k] = [] }
+      opt_h = Hash.new {|h, k| h[k] = [] }
 
       opt.on("--arch arg") {|v| opt_h["-arch"] << v }
       opt.on("--std arg") {|v| opt_h["-std"] << v }
@@ -52,20 +52,20 @@ module MakeMakefileCuda
       opt.on('-l file') {|v| opt_h["-l"] << quote(v) }
       opt.on('-L path') {|v| opt_h["-L"] << quote(v) }
       opt.on('-x pat', "--x pat") {|v| opt_h["-x"] << v }
-      opt.on('-O num'){|v| opt_h["-O"] << v if /[0-9]/ =~ v }
-      opt.on('--mkmf-cu-ext ext'){|v| opt_h["--mkmf-cu-ext"] << v}
+      opt.on('-O num') {|v| opt_h["-O"] << v if /[0-9]/ =~ v }
+      opt.on('--mkmf-cu-ext ext') {|v| opt_h["--mkmf-cu-ext"] << v}
 
       return [opt, opt_h]
     end
 
     def parse_ill_short(argv, opt_h)
-      ["-shared", "-rdynamic", "-dynamic", "-bundle",  "-pipe", "-pg", "-ggdb3"].each{|opt|
+      ["-shared", "-rdynamic", "-dynamic", "-bundle",  "-pipe", "-pg", "-ggdb3"].each {|opt|
         if ind = argv.find_index(opt)
           opt_h[opt] << ""
           argv.delete_at(ind)
         end
       }
-      ["-arch", "-std", "-stdlib"].each{|opt|
+      ["-arch", "-std", "-stdlib"].each {|opt|
         if ind = argv.find_index(opt)
           argv[ind] = "-" + opt
         end
@@ -73,8 +73,8 @@ module MakeMakefileCuda
     end
 
     def parse_ill_short_with_arg(argv, opt_h)  
-      [/\A(\-stdlib)=(.*)/, /\A(\-std)=(.*)/, /\A(\-Wl),(.*)/].each{|reg|
-        argv.each{|e|
+      [/\A(\-stdlib)=(.*)/, /\A(\-std)=(.*)/, /\A(\-Wl),(.*)/].each {|reg|
+        argv.each {|e|
           if reg =~ e
             e[0..-1] = "-" + $1 + '=' + $2
           end
@@ -84,13 +84,13 @@ module MakeMakefileCuda
 
     def compiler_option(opt_h)
       ret = ""
-      ["-f", "-W", "-pipe"].each{|op|
-        opt_h[op].each{|e|
+      ["-f", "-W", "-pipe"].each {|op|
+        opt_h[op].each {|e|
           ret << " --compiler-options " + "#{op}#{e}"
         }
       }
-      ["-stdlib", "-std"].each{|op|
-        opt_h[op].each{|e|
+      ["-stdlib", "-std"].each {|op|
+        opt_h[op].each {|e|
           ret << " --compiler-options " + "#{op}=#{e}"
         }
       }
@@ -99,12 +99,12 @@ module MakeMakefileCuda
 
     def linker_option(opt_h)
       ret = " -shared "
-      ["-dynamic", "-bundle"].each{|op|
-        opt_h[op].each{|e|
+      ["-dynamic", "-bundle"].each {|op|
+        opt_h[op].each {|e|
           ret << " --linker-options " + op
         }
       }
-      opt_h["-Wl"].each{|e|
+      opt_h["-Wl"].each {|e|
         ret << " --linker-options " + e
       }
       return ret
@@ -121,8 +121,8 @@ module MakeMakefileCuda
     def generate_compiling_command_line(opt_h)
       s = ""
       # options nvcc can uderstatnd
-      ["-std", "-pg", "-g", "-G", "-x", "-I", "-D", "-o", "-c", "-O"].each{|op|
-        opt_h[op].each{|e|
+      ["-std", "-pg", "-g", "-G", "-x", "-I", "-D", "-o", "-c", "-O"].each {|op|
+        opt_h[op].each {|e|
           case op
           when "-o", "-c", "-x", "-std"
             s << " #{op} #{e}"
@@ -139,8 +139,8 @@ module MakeMakefileCuda
 
     def generate_linking_command_line(argv, opt_h)
       s = ""
-      ["-L", "-l", "-o", "-c", "-O"].each{|op|
-        opt_h[op].each{|e|
+      ["-L", "-l", "-o", "-c", "-O"].each {|op|
+        opt_h[op].each {|e|
           case op
           when "-o", "-c"
             s << " #{op} #{e}"

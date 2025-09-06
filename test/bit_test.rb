@@ -10,9 +10,9 @@ class BitTest < Test::Unit::TestCase
   end
 
   procs = [
-    [proc{|tp, a| tp[*a] }, ""],
-    [proc{|tp, a| tp[*a][true] }, "[true]"],
-    [proc{|tp, a| tp[*a][0..-1] }, "[0..-1]"]
+    [proc {|tp, a| tp[*a] }, ""],
+    [proc {|tp, a| tp[*a][true] }, "[true]"],
+    [proc {|tp, a| tp[*a][0..-1] }, "[0..-1]"]
   ]
   procs.each do |init, ref|
 
@@ -43,8 +43,8 @@ class BitTest < Test::Unit::TestCase
   end
 
   procs = [
-    [proc{|tp, a| tp[*a] }, ""],
-    [proc{|tp, a| tp[*a][true, 0..-1] }, "[true,true]"],
+    [proc {|tp, a| tp[*a] }, ""],
+    [proc {|tp, a| tp[*a][true, 0..-1] }, "[true,true]"],
   ]
   procs.each do |init, ref|
 

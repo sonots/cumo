@@ -8,7 +8,7 @@ module MakeMakefileCuda
     attr_reader :argv
 
     def initialize(argv)
-      @argv = argv.map{|e| e.dup }
+      @argv = argv.map {|e| e.dup }
     end
 
     def run

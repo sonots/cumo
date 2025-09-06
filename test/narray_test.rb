@@ -23,8 +23,8 @@ class NArrayTest < Test::Unit::TestCase
   ]
 
   if ENV['DTYPE']
-    types.select!{|type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
-    float_types.select!{|type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
+    types.select! {|type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
+    float_types.select! {|type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
   end
 
   def setup
@@ -43,9 +43,9 @@ class NArrayTest < Test::Unit::TestCase
     end
 
     procs = [
-      [proc{|tp, a| tp[*a] }, ""],
-      [proc{|tp, a| tp[*a][true] }, "[true]"],
-      [proc{|tp, a| tp[*a][0..-1] }, "[0..-1]"]
+      [proc {|tp, a| tp[*a] }, ""],
+      [proc {|tp, a| tp[*a][true] }, "[true]"],
+      [proc {|tp, a| tp[*a][0..-1] }, "[0..-1]"]
     ]
     procs.each do |init, ref|
 
@@ -209,9 +209,9 @@ class NArrayTest < Test::Unit::TestCase
     #end
 
     procs2 = [
-      [proc{|tp, src| tp[*src] }, ""],
-      [proc{|tp, src| tp[*src][true, true] }, "[true,true]"],
-      [proc{|tp, src| tp[*src][0..-1, 0..-1] }, "[0..-1,0..-1]"]
+      [proc {|tp, src| tp[*src] }, ""],
+      [proc {|tp, src| tp[*src][true, true] }, "[true,true]"],
+      [proc {|tp, src| tp[*src][0..-1, 0..-1] }, "[0..-1,0..-1]"]
     ]
 
     procs2.each do |init, ref|

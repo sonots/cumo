@@ -9,7 +9,7 @@ class CUDNNTest < Test::Unit::TestCase
   ]
 
   if ENV['DTYPE']
-    float_types.select!{|type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
+    float_types.select! {|type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
   end
 
   float_types.each do |dtype|
