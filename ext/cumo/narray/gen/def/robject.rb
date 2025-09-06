@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 set name:                "robject"
 set type_name:           "robject"
 set full_class_name:     "Cumo::RObject"

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 set name:                "bit"
 set type_name:           "bit"
 set full_class_name:     "Cumo::Bit"

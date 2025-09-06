@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 set name:                "scomplex"
 set type_name:           "scomplex"
 set full_class_name:     "Cumo::SComplex"

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Cumo
   [SFloat, DFloat].each do |klass|
     klass.class_eval do

@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby
+# frozen_string_literal: true
 
 thisdir = File.dirname(__FILE__)
 libpath = File.absolute_path(File.dirname(__FILE__))+"/../../../../lib"

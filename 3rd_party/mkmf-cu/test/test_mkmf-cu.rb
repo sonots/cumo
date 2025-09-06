@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "test/unit"
 require "mkmf-cu/opt"
 require "mkmf-cu"

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 set name:                "int16"
 set type_name:           "int16"
 set full_class_name:     "Cumo::Int16"

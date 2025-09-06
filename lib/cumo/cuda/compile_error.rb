@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Cumo::CUDA
   class CompileError < StandardError
     def initialize(msg, source, name, options)

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 def_id "cast"
 def_id "eq"
 def_id "ne"

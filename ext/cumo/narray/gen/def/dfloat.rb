@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 set name:                "dfloat"
 set type_name:           "dfloat"
 set full_class_name:     "Cumo::DFloat"

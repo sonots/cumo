@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'erbpp2'
 
 module NArrayMethod

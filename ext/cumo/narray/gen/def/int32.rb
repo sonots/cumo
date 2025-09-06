@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 set name:                "int32"
 set type_name:           "int32"
 set full_class_name:     "Cumo::Int32"

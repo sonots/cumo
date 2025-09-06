@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Cumo::CUDA
   class Device
     attr_reader :id

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'cumo'
 
 # Provide compatibility layers with numo/linalg
