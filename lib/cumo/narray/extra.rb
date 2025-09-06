@@ -886,7 +886,7 @@ module Cumo
         if !arg.kind_of?(Integer) || arg<1
           raise ArgumentError, "argument should be positive integer"
         end
-        idx = c.shape[axis].times.map {|i| [i]*arg}.flatten
+        idx = c.shape[axis].times.map { |i| [i]*arg }.flatten
       else
         arg = arg.to_a
         if arg.size != c.shape[axis]
@@ -897,7 +897,7 @@ module Cumo
             raise ArgumentError, "argument should be non-negative integer"
           end
         end
-        idx = arg.each_with_index.map {|a, i| [i]*a}.flatten
+        idx = arg.each_with_index.map { |a, i| [i]*a }.flatten
       end
       ref = [true] * c.ndim
       ref[axis] = idx
@@ -1213,7 +1213,7 @@ module Cumo
       shpb = b.shape
       adim = [:new]*(2*[ndb-nda, 0].max) + [true, :new]*nda
       bdim = [:new]*(2*[nda-ndb, 0].max) + [:new, true]*ndb
-      shpr = (-[nda, ndb].max..-1).map {|i| (shpa[i]||1) * (shpb[i]||1)}
+      shpr = (-[nda, ndb].max..-1).map { |i| (shpa[i]||1) * (shpb[i]||1) }
       (self[*adim] * b[*bdim]).reshape(*shpr)
     end
 

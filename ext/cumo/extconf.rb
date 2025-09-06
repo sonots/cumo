@@ -55,7 +55,7 @@ $CXXFLAGS << " -std=c++14"
 #$CFLAGS=" $(cflags) -O3"
 $INCFLAGS = "-I$(srcdir)/include -I$(srcdir)/narray -I$(srcdir)/cuda #{$INCFLAGS}"
 
-$INSTALLFILES = Dir.glob(%w[include/cumo/*.h include/cumo/types/*.h include/cumo/cuda/*.h]).map {|x| [x, '$(archdir)'] }
+$INSTALLFILES = Dir.glob(%w[include/cumo/*.h include/cumo/types/*.h include/cumo/cuda/*.h]).map { |x| [x, '$(archdir)'] }
 $INSTALLFILES << ['include/cumo/extconf.h', '$(archdir)']
 if /cygwin|mingw/ =~ RUBY_PLATFORM
   $INSTALLFILES << ['libcumo.a', '$(archdir)']
@@ -114,7 +114,7 @@ cuda/cudnn
 cuda/cudnn_impl
 )
 
-$objs = srcs.map {|src| "#{src}.o" }
+$objs = srcs.map { |src| "#{src}.o" }
 
 dir_config("narray")
 

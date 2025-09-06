@@ -9,7 +9,7 @@ class NArrayRactorTest < CumoTestBase
     def test_non_frozen(data)
       dtype = data.fetch(:dtype)
       ary = random_array(dtype)
-      r = Ractor.new(ary) {|x| x }
+      r = Ractor.new(ary) { |x| x }
       ary2 = r.take
       assert_equal(ary, ary2)
       assert_not_same(ary, ary2)

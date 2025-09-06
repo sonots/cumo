@@ -9,7 +9,7 @@ class CUDNNTest < Test::Unit::TestCase
   ]
 
   if ENV['DTYPE']
-    float_types.select! {|type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
+    float_types.select! { |type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
   end
 
   float_types.each do |dtype|
@@ -31,27 +31,27 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv(w) #{dtype}" do
         y = @x.conv(@w)
         assert { y.shape == [@batch_size, @out_channels, 9, 5] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 18 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 18 }
       end
 
       test "x.conv(w, b) #{dtype}" do
         y = @x.conv(@w, b: @b)
         assert { y.shape == [@batch_size, @out_channels, 9, 5] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 20 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 20 }
         assert { @b.shape == @b_shape }
       end
 
       test "x.conv(w, b, stride=int, pad=int) #{dtype}" do
         y = @x.conv(@w, b: @b, stride: 2, pad: 2)
         assert { y.shape == [@batch_size, @out_channels, 7, 5] }
-        assert y.to_a.flatten.all? {|e| [20, 2, 8].include?(e.to_i) }
+        assert y.to_a.flatten.all? { |e| [20, 2, 8].include?(e.to_i) }
         assert { @b.shape == @b_shape }
       end
 
       test "x.conv(w, b, stride=array, pad=array) #{dtype}" do
         y = @x.conv(@w, b: @b, stride: [3, 2], pad: [2, 0])
         assert { y.shape == [@batch_size, @out_channels, 5, 3] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 20 || e.to_i == 2 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 20 || e.to_i == 2 }
         assert { @b.shape == @b_shape }
       end
     end
@@ -74,21 +74,21 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv(w) #{dtype}" do
         y = @x.conv(@w)
         assert { y.shape == [@batch_size, @out_channels, 3, 1, 2] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 18 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 18 }
         assert { @b.shape == @b_shape }
       end
 
       test "x.conv(w, b) #{dtype}" do
         y = @x.conv(@w, b: @b)
         assert { y.shape == [@batch_size, @out_channels, 3, 1, 2] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 20 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 20 }
         assert { @b.shape == @b_shape }
       end
 
       test "x.conv(w, b, stride, pad) #{dtype}" do
         y = @x.conv(@w, b: @b, stride: [3, 2, 1], pad: [2, 1, 0])
         assert { y.shape == [@batch_size, @out_channels, 3, 2, 2] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 14 || e.to_i == 2 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 14 || e.to_i == 2 }
         assert { @b.shape == @b_shape }
       end
     end
@@ -124,14 +124,14 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv_transpose(w, b, stride=int, pad=int) #{dtype}" do
         y = @x.conv_transpose(@w, b: @b, stride: 2, pad: 2)
         assert { y.shape == [@batch_size, @out_channels, 6, 3] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 8 || e.to_i == 5 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 8 || e.to_i == 5 }
         assert { @b.shape == @b_shape }
       end
 
       test "x.conv_transpose(w, b, stride=array, pad=array) #{dtype}" do
         y = @x.conv_transpose(@w, b: @b, stride: [3, 2], pad: [2, 0])
         assert { y.shape == [@batch_size, @out_channels, 10, 7] }
-        assert y.to_a.flatten.all? {|e| [8, 5, 2].include?(e.to_i) }
+        assert y.to_a.flatten.all? { |e| [8, 5, 2].include?(e.to_i) }
         assert { @b.shape == @b_shape }
       end
     end
@@ -154,7 +154,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv_transpose(w) #{dtype}" do
         y = @x.conv_transpose(@w)
         assert { y.shape == [@batch_size, @out_channels, 5, 5, 2] }
-        assert y.to_a.flatten.all? {|e| [3, 6, 9, 12, 18].include?(e.to_i) }
+        assert y.to_a.flatten.all? { |e| [3, 6, 9, 12, 18].include?(e.to_i) }
         assert { @b.shape == @b_shape }
       end
 
@@ -169,7 +169,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.conv_transpose(w, b, stride, pad) #{dtype}" do
         y = @x.conv_transpose(@w, b: @b, stride: [3, 2, 1], pad: [2, 1, 0])
         assert { y.shape == [@batch_size, @out_channels, 7, 5, 2] }
-        assert y.to_a.flatten.all? {|e| [2, 5, 8].include?(e.to_i) }
+        assert y.to_a.flatten.all? { |e| [2, 5, 8].include?(e.to_i) }
         assert { @b.shape == @b_shape }
       end
     end
@@ -380,7 +380,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.max_pool(ksize) #{dtype}" do
         y = @x.max_pool(@ksize)
         assert { y.shape == [@batch_size, @in_channels, 1, 1] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 3 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 3 }
       end
 
       test "x.max_pool(ksize, stride:, pad:) #{dtype}" do
@@ -388,7 +388,7 @@ class CUDNNTest < Test::Unit::TestCase
         pad = [1] * @in_dims.size
         y = @x.max_pool(@ksize, stride: stride, pad: pad)
         assert { y.shape == [@batch_size, @in_channels, 3, 2] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 3 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 3 }
       end
     end
 
@@ -405,7 +405,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.avg_pool(ksize) #{dtype}" do
         y = @x.avg_pool(@ksize)
         assert { y.shape == [@batch_size, @in_channels, 1, 1] }
-        assert y.to_a.flatten.all? {|e| e.to_i == 3 }
+        assert y.to_a.flatten.all? { |e| e.to_i == 3 }
       end
 
       test "x.avg_pool(ksize, stride:, pad:) #{dtype}" do

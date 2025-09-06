@@ -10,9 +10,9 @@ class BitTest < Test::Unit::TestCase
   end
 
   procs = [
-    [proc {|tp, a| tp[*a] }, ""],
-    [proc {|tp, a| tp[*a][true] }, "[true]"],
-    [proc {|tp, a| tp[*a][0..-1] }, "[0..-1]"]
+    [proc { |tp, a| tp[*a] }, ""],
+    [proc { |tp, a| tp[*a][true] }, "[true]"],
+    [proc { |tp, a| tp[*a][0..-1] }, "[0..-1]"]
   ]
   procs.each do |init, ref|
 
@@ -26,9 +26,9 @@ class BitTest < Test::Unit::TestCase
       assert { (a & 1) == src }
       assert { (a | 0) == src }
       assert { (a | 1) == [1] * n }
-      assert { (a ^ 0) == src.map {|x| x ^ 0 } }
-      assert { (a ^ 1) == src.map {|x| x ^ 1 } }
-      assert { ~a == src.map {|x| 1 - x } }
+      assert { (a ^ 0) == src.map { |x| x ^ 0 } }
+      assert { (a ^ 1) == src.map { |x| x ^ 1 } }
+      assert { ~a == src.map { |x| 1 - x } }
 
       assert { a.count_true == 4 }
       assert { a.count_false == 4 }
@@ -43,8 +43,8 @@ class BitTest < Test::Unit::TestCase
   end
 
   procs = [
-    [proc {|tp, a| tp[*a] }, ""],
-    [proc {|tp, a| tp[*a][true, 0..-1] }, "[true,true]"],
+    [proc { |tp, a| tp[*a] }, ""],
+    [proc { |tp, a| tp[*a][true, 0..-1] }, "[true,true]"],
   ]
   procs.each do |init, ref|
 
@@ -91,7 +91,7 @@ class BitTest < Test::Unit::TestCase
 
       a = init.call(dtype, src)
       a[1, 1] = 1
-      assert { a[1, 1] == 1}
+      assert { a[1, 1] == 1 }
 
       a = init.call(dtype, src)
       a[1, 2] = 1

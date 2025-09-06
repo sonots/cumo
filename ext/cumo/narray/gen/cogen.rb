@@ -33,7 +33,7 @@ type_name = File.basename(type_file, ".rb")
 
 erb_dir = ["tmpl"]
 erb_dir.unshift("tmpl_bit") if (type_name == "bit")
-erb_dir.map! {|d| File.join(thisdir, d)}
+erb_dir.map! { |d| File.join(thisdir, d) }
 
 code = DefLib.new do
   set line_number: $line_number
