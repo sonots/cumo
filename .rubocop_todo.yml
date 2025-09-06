@@ -69,13 +69,6 @@ Layout/AccessModifierIndentation:
   Exclude:
     - 'lib/cumo/narray/extra.rb'
 
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: IndentationWidth.
-Layout/AssignmentIndentation:
-  Exclude:
-    - '3rd_party/mkmf-cu/mkmf-cu.gemspec'
-
 # Offense count: 6
 # This cop supports safe autocorrection (--autocorrect).
 Layout/BlockEndNewline:
