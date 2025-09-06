@@ -127,24 +127,24 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.reverse == [11, 7, 5, 3, 2, 1] }
         assert { a.sum == 29 }
         if float_types.include?(dtype)
-          assert { a.mean == 29.0/6 }
+          assert { a.mean == 29.0 / 6 }
           assert { a.var == 13.766666666666666 }
           assert { a.stddev == 3.7103458958251676 }
           assert { a.rms == 5.901977069875258 }
         end
-        assert { a.dup.fill(12) == [12]*6 }
+        assert { a.dup.fill(12) == [12] * 6 }
         assert { (a + 1) == [2, 3, 4, 6, 8, 12] }
         assert { (a - 1) == [0, 1, 2, 4, 6, 10] }
         assert { (a * 3) == [3, 6, 9, 15, 21, 33] }
         assert { (a / 0.5) == [2, 4, 6, 10, 14, 22] }
         assert { (-a) == [-1, -2, -3, -5, -7, -11] }
-        assert { (a ** 2) == [1, 4, 9, 25, 49, 121] }
+        assert { (a**2) == [1, 4, 9, 25, 49, 121] }
         assert { a.swap_byte.swap_byte == [1, 2, 3, 5, 7, 11] }
         if dtype == Cumo::DComplex || dtype == Cumo::SComplex
           assert { a.real == src }
-          assert { a.imag == [0]*6 }
+          assert { a.imag == [0] * 6 }
           assert { a.conj == src }
-          assert { a.angle == [0]*6 }
+          assert { a.angle == [0] * 6 }
         else
           assert { a.min == 1 }
           assert { a.max == 11 }
@@ -279,15 +279,15 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.prod(0) == [5, 14, 33] }
         assert { a.prod(1) == [6, 385] }
         if float_types.include?(dtype)
-          assert { a.mean == 29.0/6 }
+          assert { a.mean == 29.0 / 6 }
           assert { a.mean(0) == [3, 4.5, 7] }
-          assert { a.mean(1) == [2, 23.0/3] }
+          assert { a.mean(1) == [2, 23.0 / 3] }
         end
         if dtype == Cumo::DComplex || dtype == Cumo::SComplex
           assert { a.real == src }
-          assert { a.imag == [[0]*3]*2 }
+          assert { a.imag == [[0] * 3] * 2 }
           assert { a.conj == src }
-          assert { a.angle == [[0]*3]*2 }
+          assert { a.angle == [[0] * 3] * 2 }
         else
           assert { a.min == 1 }
           assert { a.max == 11 }
@@ -304,7 +304,7 @@ class NArrayTest < Test::Unit::TestCase
           assert { a.sort == src }
           assert { a.sort_index == [[0, 1, 2], [3, 4, 5]] }
         end
-        assert { a.dup.fill(12) == [[12]*3]*2 }
+        assert { a.dup.fill(12) == [[12] * 3] * 2 }
         assert { (a + 1) == [[2, 3, 4], [6, 8, 12]] }
         assert { (a + [1, 2, 3]) == [[2, 4, 6], [6, 9, 14]] }
         assert { (a - 1) == [[0, 1, 2], [4, 6, 10]] }
@@ -313,7 +313,7 @@ class NArrayTest < Test::Unit::TestCase
         assert { (a * [1, 2, 3]) == [[1, 4, 9], [5, 14, 33]] }
         assert { (a / 0.5) == [[2, 4, 6], [10, 14, 22]] }
         assert { (-a) == [[-1, -2, -3], [-5, -7, -11]] }
-        assert { (a ** 2) == [[1, 4, 9], [25, 49, 121]] }
+        assert { (a**2) == [[1, 4, 9], [25, 49, 121]] }
         assert { (dtype[[1, 0], [0, 1]].dot dtype[[4, 1], [2, 2]]) == [[4, 1], [2, 2]] }
         assert { a.swap_byte.swap_byte == src }
       end
@@ -326,7 +326,7 @@ class NArrayTest < Test::Unit::TestCase
         assert { a[5] == 13 }
 
         a = init.call(dtype, src)
-        a[-1]= 13
+        a[-1] = 13
         assert { a[-1] == 13 }
 
         a = init.call(dtype, src)
@@ -436,7 +436,7 @@ class NArrayTest < Test::Unit::TestCase
       assert { a.transpose(2, 1, 0) == [[[1, 5], [3, 7]], [[2, 6], [4, 8]]] }
       assert { a.transpose(0, 2, 1) == [[[1, 3], [2, 4]], [[5, 7], [6, 8]]] }
 
-      assert { a.reverse           == [[[8, 7], [6, 5]], [[4, 3], [2, 1]]] }
+      assert { a.reverse == [[[8, 7], [6, 5]], [[4, 3], [2, 1]]] }
       assert { a.reverse(0, 1, 2)    == [[[8, 7], [6, 5]], [[4, 3], [2, 1]]] }
       assert { a.reverse(-3, -2, -1) == [[[8, 7], [6, 5]], [[4, 3], [2, 1]]] }
       assert { a.reverse(0..2)     == [[[8, 7], [6, 5]], [[4, 3], [2, 1]]] }
@@ -445,16 +445,16 @@ class NArrayTest < Test::Unit::TestCase
       assert { a.reverse(0)        == [[[5, 6], [7, 8]], [[1, 2], [3, 4]]] }
       assert { a.reverse(1)        == [[[3, 4], [1, 2]], [[7, 8], [5, 6]]] }
       assert { a.reverse(2)        == [[[2, 1], [4, 3]], [[6, 5], [8, 7]]] }
-      assert { a.reverse(0, 1)      == [[[7, 8], [5, 6]], [[3, 4], [1, 2]]] }
+      assert { a.reverse(0, 1) == [[[7, 8], [5, 6]], [[3, 4], [1, 2]]] }
       assert { a.reverse(0..1)     == [[[7, 8], [5, 6]], [[3, 4], [1, 2]]] }
       assert { a.reverse(0...2)    == [[[7, 8], [5, 6]], [[3, 4], [1, 2]]] }
-      assert { a.reverse(0, 2)      == [[[6, 5], [8, 7]], [[2, 1], [4, 3]]] }
+      assert { a.reverse(0, 2) == [[[6, 5], [8, 7]], [[2, 1], [4, 3]]] }
       assert { a.reverse((0..2) % 2) == [[[6, 5], [8, 7]], [[2, 1], [4, 3]]] }
       assert { a.reverse((0..2).step(2)) == [[[6, 5], [8, 7]], [[2, 1], [4, 3]]] }
 
       enum = arr.flatten.to_enum
       a.each do |e|
-        assert { e  == enum.next }
+        assert { e == enum.next }
       end
       a.each_with_index do |e, *i|
         assert { e == a[*i] }
@@ -465,15 +465,15 @@ class NArrayTest < Test::Unit::TestCase
       test "vector.mulsum(vector)" do
         a = dtype[1..3]
         b = dtype[2..4]
-        assert { a.mulsum(b) == (1*2 + 2*3 + 3*4) }
+        assert { a.mulsum(b) == (1 * 2 + 2 * 3 + 3 * 4) }
       end
 
       if [Cumo::DComplex, Cumo::SComplex, Cumo::DFloat, Cumo::SFloat].include?(dtype)
         test "vector.mulsum(vector, nan: true)" do
           a = dtype[1..3]
-          a[0] = 0.0/0/0
+          a[0] = 0.0 / 0 / 0
           b = dtype[2..4]
-          assert { a.mulsum(b, nan: true) == (0 + 2*3 + 3*4) }
+          assert { a.mulsum(b, nan: true) == (0 + 2 * 3 + 3 * 4) }
         end
       end
     end
@@ -492,7 +492,7 @@ class NArrayTest < Test::Unit::TestCase
       test "vector.dot(vector)" do
         a = dtype[1..3]
         b = dtype[2..4]
-        assert { a.dot(b) == (1*2 + 2*3 + 3*4) }
+        assert { a.dot(b) == (1 * 2 + 2 * 3 + 3 * 4) }
       end
       test "matrix.dot(vector)" do
         a = dtype[1..6].reshape(3, 2)
@@ -529,8 +529,8 @@ class NArrayTest < Test::Unit::TestCase
         assert { b.dot(a) == [[8, 9, 10], [32, 37, 42], [56, 65, 74]] }
       end
       test "matrix.dot(matrix) >= 3 dimensions" do
-        a = dtype[1..6*2].reshape(2, 3, 2)
-        b = dtype[1..6*2].reshape(2, 2, 3)
+        a = dtype[1..6 * 2].reshape(2, 3, 2)
+        b = dtype[1..6 * 2].reshape(2, 2, 3)
         assert { a.dot(b) ==
                  [[[9, 12, 15],
                    [19, 26, 33],
@@ -545,8 +545,8 @@ class NArrayTest < Test::Unit::TestCase
                    [301, 334]]] }
       end
       test "matrix.dot(matrix) >= 4 dimensions" do
-        a = dtype[1..6*2].reshape(1, 2, 3, 2)
-        b = dtype[1..6*2].reshape(1, 2, 2, 3)
+        a = dtype[1..6 * 2].reshape(1, 2, 3, 2)
+        b = dtype[1..6 * 2].reshape(1, 2, 2, 3)
         assert { a.dot(b) ==
                  [[[[9, 12, 15],
                     [19, 26, 33],
@@ -561,8 +561,8 @@ class NArrayTest < Test::Unit::TestCase
                     [301, 334]]]] }
       end
       test "matrix.dot(matrix.transpose) >= 3 dimensions" do
-        a = dtype[1..6*2].reshape(2, 3, 2)
-        b = dtype[1..6*2].reshape(3, 2, 2).transpose
+        a = dtype[1..6 * 2].reshape(2, 3, 2)
+        b = dtype[1..6 * 2].reshape(3, 2, 2).transpose
         assert { a.dot(b) ==
                  [[[7, 19, 31],
                    [15, 43, 71],

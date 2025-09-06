@@ -25,7 +25,7 @@ class TestMkmfCuOpt < Test::Unit::TestCase
   end
 
   def test_compiler_option
-    @opt_h.merge!({"-shared"=>[""], "-pipe"=>[""]})
+    @opt_h.merge!({"-shared" => [""], "-pipe" => [""]})
     assert_equal(" --compiler-options -pipe", compiler_option(@opt_h))
   end
 
@@ -39,7 +39,7 @@ class TestMkmfCuOpt < Test::Unit::TestCase
   end
 
   def test_linker_option
-    @opt_h.merge!({"-Wl"=>["-a", "-b"]})
+    @opt_h.merge!({"-Wl" => ["-a", "-b"]})
     assert_equal(" --linker-options -a --linker-options -b",
                  linker_option(@opt_h))
   end
@@ -52,7 +52,7 @@ class TestMkmfCuOpt < Test::Unit::TestCase
   end
 
   def test_compiler_bin
-    h = Hash.new { |h, k| h[k] = [] }.merge({"-shared"=>[""], "-pipe"=>[""], "--mkmf-cu-ext"=>["c"]})
+    h = Hash.new { |h, k| h[k] = [] }.merge({"-shared" => [""], "-pipe" => [""], "--mkmf-cu-ext" => ["c"]})
     assert_equal(" --compiler-bindir " + RbConfig::CONFIG["CC"],
                  compiler_bin(h))
   end

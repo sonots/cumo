@@ -13,7 +13,7 @@ class ErbPP
       @str = ""
       @countln = 1
       @current = 1
-      super("\n"+report_line)
+      super("\n" + report_line)
     end
 
     def report_line

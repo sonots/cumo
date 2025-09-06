@@ -128,12 +128,12 @@ class DefLib < ErbPP
   end
   def cumo_id_assign
     ids = []
-    @children.each { |c| a=c.get(:cumo_id_list); ids.concat(a) if a }
+    @children.each { |c| a = c.get(:cumo_id_list); ids.concat(a) if a }
     ids.sort.uniq.map { |x| "cumo_id_#{x[1]} = rb_intern(\"#{x[0]}\");" }
   end
   def cumo_id_decl
     ids = []
-    @children.each { |c| a=c.get(:cumo_id_list); ids.concat(a) if a }
+    @children.each { |c| a = c.get(:cumo_id_list); ids.concat(a) if a }
     ids.sort.uniq.map { |x| "static ID cumo_id_#{x[1]};\n" }
   end
   def def_class(**opts, &block)
@@ -146,25 +146,25 @@ end
 
 module DeclMethod
   def def_alloc_func(m, erb_path=nil, **opts, &block)
-    DefAllocFunc.new(self, erb_path||m, name:m, singleton:true, **opts, &block)
+    DefAllocFunc.new(self, erb_path || m, name:m, singleton:true, **opts, &block)
   end
   def undef_alloc_func
     UndefAllocFunc.new(self)
   end
   def def_method(m, erb_path=nil, **opts, &block)
-    DefMethod.new(self, erb_path||m, name:m, **opts, &block)
+    DefMethod.new(self, erb_path || m, name:m, **opts, &block)
   end
   def undef_method(m)
     UndefMethod.new(self, name:m)
   end
   def def_singleton_method(m, erb_path=nil, **opts, &block)
-    DefMethod.new(self, erb_path||m, name:m, singleton:true, **opts, &block)
+    DefMethod.new(self, erb_path || m, name:m, singleton:true, **opts, &block)
   end
   def undef_singleton_method(m)
     UndefSingletonMethod.new(self, name:m)
   end
   def def_module_function(m, erb_path=nil, **opts, &block)
-    DefModuleFunction.new(self, erb_path||m, name:m, **opts, &block)
+    DefModuleFunction.new(self, erb_path || m, name:m, **opts, &block)
   end
   def def_alias(from, to)
     DefAlias.new(self, from:from, to:to)
@@ -216,7 +216,7 @@ class DefClass < DefModule
     @opts[:super_class] || "rb_cObject"
   end
   def free_func
-    @opts[:free_func] || "gsl_"+get(:name)+"_free"
+    @opts[:free_func] || "gsl_" + get(:name) + "_free"
   end
 end
 
@@ -320,7 +320,7 @@ end
 
 class DefError < ErbPP
   def initialize(parent, name, sup_var, **opts, &block)
-    super(parent, error_name:name, error_var:"e"+name, super_var:sup_var,
+    super(parent, error_name:name, error_var:"e" + name, super_var:sup_var,
           **opts, &block)
   end
   def result

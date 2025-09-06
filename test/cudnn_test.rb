@@ -304,9 +304,9 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.batch_norm_backward(gamma, gy) #{dtype}" do
         @x.batch_norm(@gamma, @beta)
         gx, ggamma, gbeta = @x.batch_norm_backward(@gamma, @gy)
-        assert { gx.shape== @x_shape }
-        assert { ggamma.shape== @reduced_shape }
-        assert { gbeta.shape== @reduced_shape }
+        assert { gx.shape == @x_shape }
+        assert { ggamma.shape == @reduced_shape }
+        assert { gbeta.shape == @reduced_shape }
       end
 
       test "x.batch_norm_backward(gamma, gy, axis: [0,2,3]) #{dtype}" do
@@ -315,9 +315,9 @@ class CUDNNTest < Test::Unit::TestCase
         @beta = dtype.ones(@reduced_shape)
         @x.batch_norm(@gamma, @beta, axis: [0, 2, 3])
         gx, ggamma, gbeta = @x.batch_norm_backward(@gamma, @gy, axis: [0, 2, 3])
-        assert { gx.shape== @x_shape }
-        assert { ggamma.shape== @reduced_shape }
-        assert { gbeta.shape== @reduced_shape }
+        assert { gx.shape == @x_shape }
+        assert { ggamma.shape == @reduced_shape }
+        assert { gbeta.shape == @reduced_shape }
       end
 
       test "x.batch_norm_backward(gamma, gy, mean:, inv_std:) #{dtype}" do
@@ -325,9 +325,9 @@ class CUDNNTest < Test::Unit::TestCase
         inv_std = dtype.new(*@reduced_shape)
         @x.batch_norm(@gamma, @beta, mean: mean, inv_std: inv_std)
         gx, ggamma, gbeta = @x.batch_norm_backward(@gamma, @gy, mean: mean, inv_std: inv_std)
-        assert { gx.shape== @x_shape }
-        assert { ggamma.shape== @reduced_shape }
-        assert { gbeta.shape== @reduced_shape }
+        assert { gx.shape == @x_shape }
+        assert { ggamma.shape == @reduced_shape }
+        assert { gbeta.shape == @reduced_shape }
       end
     end
 

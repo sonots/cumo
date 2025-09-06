@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 thisdir = File.dirname(__FILE__)
-libpath = File.absolute_path(File.dirname(__FILE__))+"/../../../../lib"
+libpath = File.absolute_path(File.dirname(__FILE__)) + "/../../../../lib"
 $LOAD_PATH.unshift libpath
 
 require_relative "narray_def"
@@ -41,9 +41,9 @@ code = DefLib.new do
   set erb_suffix: ".c"
   set ns_var: "mCumo"
 
-  set file_name: $output||""
+  set file_name: $output || ""
   set type_name: type_name
-  set lib_name: "cumo_"+type_name
+  set lib_name: "cumo_" + type_name
 
   def_class do
     extend NArrayMethod

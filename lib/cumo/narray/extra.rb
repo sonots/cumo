@@ -25,12 +25,12 @@ module Cumo
 
     # Convert angles from radians to degrees.
     def rad2deg
-      self * (180/Math::PI)
+      self * (180 / Math::PI)
     end
 
     # Convert angles from degrees to radians.
     def deg2rad
-      self * (Math::PI/180)
+      self * (Math::PI / 180)
     end
 
     # Flip each row in the left/right direction.
@@ -80,7 +80,7 @@ module Cumo
     end
 
     def to_i
-      if size==1
+      if size == 1
         self.extract_cpu.to_i
       else
         # convert to Int?
@@ -89,7 +89,7 @@ module Cumo
     end
 
     def to_f
-      if size==1
+      if size == 1
         self.extract_cpu.to_f
       else
         # convert to DFloat?
@@ -98,7 +98,7 @@ module Cumo
     end
 
     def to_c
-      if size==1
+      if size == 1
         Complex(self.extract_cpu)
       else
         # convert to DComplex?
@@ -153,7 +153,7 @@ module Cumo
         end
         a << b if !b.empty?
       end
-      if a.size==1
+      if a.size == 1
         self.cast(a[0])
       else
         self.cast(a)
@@ -200,7 +200,7 @@ module Cumo
         axis = check_axis(axis)
         niter = shape[axis]
       end
-      idx = [true]*ndim
+      idx = [true] * ndim
       niter.times do |i|
         idx[axis] = i
         yield(self[*idx])
@@ -235,7 +235,7 @@ module Cumo
         end
         return concatenate(other, axis:axis)
       else
-        a = self.class.zeros(size+other.size)
+        a = self.class.zeros(size + other.size)
         a[0...size] = self[true]
         a[size..-1] = other[true]
         return a
@@ -266,7 +266,7 @@ module Cumo
       if axis
         bit = Bit.ones(shape[axis])
         bit[indice] = 0
-        idx = [true]*ndim
+        idx = [true] * ndim
         idx[axis] = bit.where
         return self[*idx].copy
       else
@@ -351,10 +351,10 @@ module Cumo
       if axis
         values = self.class.asarray(values)
         nd = values.ndim
-        midx = [:new]*(ndim-nd) + [true]*nd
+        midx = [:new] * (ndim - nd) + [true] * nd
         case indice
         when Numeric
-          midx[-nd-1] = true
+          midx[-nd - 1] = true
           midx[axis] = :new
         end
         values = values[*midx]
@@ -364,27 +364,27 @@ module Cumo
       idx = Int64.asarray(indice)
       nidx = idx.size
       if nidx == 1
-        nidx = values.shape[axis||0]
+        nidx = values.shape[axis || 0]
         idx = idx + Int64.new(nidx).seq
       else
         sidx = idx.sort_index
         idx[sidx] += Int64.new(nidx).seq
       end
       if axis
-        bit = Bit.ones(shape[axis]+nidx)
+        bit = Bit.ones(shape[axis] + nidx)
         bit[idx] = 0
         new_shape = shape
         new_shape[axis] += nidx
         a = self.class.zeros(new_shape)
-        mdidx = [true]*ndim
+        mdidx = [true] * ndim
         mdidx[axis] = bit.where
         a[*mdidx] = self
         mdidx[axis] = idx
         a[*mdidx] = values
       else
-        bit = Bit.ones(size+nidx)
+        bit = Bit.ones(size + nidx)
         bit[idx] = 0
-        a = self.class.zeros(size+nidx)
+        a = self.class.zeros(size + nidx)
         a[bit.where] = self.flatten
         a[idx] = values
       end
@@ -414,7 +414,7 @@ module Cumo
     #   #  [3, 4, 6]]
 
     def concatenate(arrays, axis:0)
-      klass = (self==NArray) ? NArray.array_type(arrays) : self
+      klass = (self == NArray) ? NArray.array_type(arrays) : self
       nd = 0
       arrays = arrays.map do |a|
         case a
@@ -443,7 +443,7 @@ module Cumo
       arrays.each do |a|
         a_shape = a.shape
         if nd != a_shape.size
-          a_shape = [1]*(nd-a_shape.size) + a_shape
+          a_shape = [1] * (nd - a_shape.size) + a_shape
         end
         sum_size += a_shape.delete_at(axis)
         if new_shape
@@ -460,7 +460,7 @@ module Cumo
       refs = [true] * nd
       arrays.each do |a|
         fst = lst
-        lst = fst + (a.shape[axis-nd]||1)
+        lst = fst + (a.shape[axis - nd] || 1)
         refs[axis] = fst...lst
         result[*refs] = a
       end
@@ -511,7 +511,7 @@ module Cumo
     #   #  [3, 4]]
 
     def hstack(arrays)
-      klass = (self==NArray) ? NArray.array_type(arrays) : self
+      klass = (self == NArray) ? NArray.array_type(arrays) : self
       nd = 0
       arys = arrays.map do |a|
         a = klass.cast(a)
@@ -632,7 +632,7 @@ module Cumo
           raise ShapeError, "dimension mismatch"
         end
         a_shape = a.shape
-        sum_size += a_shape.delete_at(axis-ndim) || 1
+        sum_size += a_shape.delete_at(axis - ndim) || 1
         if self_shape != a_shape
           raise ShapeError, "shape mismatch"
         end
@@ -646,7 +646,7 @@ module Cumo
       result[*refs] = self
       arrays.each do |a|
         fst = lst
-        lst = fst + (a.shape[axis-ndim] || 1)
+        lst = fst + (a.shape[axis - ndim] || 1)
         refs[axis] = fst...lst
         result[*refs] = a
       end
@@ -687,7 +687,7 @@ module Cumo
       case indices_or_sections
       when Integer
         div_axis, mod_axis = size_axis.divmod(indices_or_sections)
-        refs = [true]*ndim
+        refs = [true] * ndim
         beg_idx = 0
         mod_axis.times.map do |i|
           end_idx = beg_idx + div_axis + 1
@@ -695,7 +695,7 @@ module Cumo
           beg_idx = end_idx
           self[*refs]
         end +
-        (indices_or_sections-mod_axis).times.map do |i|
+        (indices_or_sections - mod_axis).times.map do |i|
           end_idx = beg_idx + div_axis
           refs[axis] = beg_idx ... end_idx
           beg_idx = end_idx
@@ -704,7 +704,7 @@ module Cumo
       when NArray
         split(indices_or_sections.to_a, axis:axis)
       when Array
-        refs = [true]*ndim
+        refs = [true] * ndim
         fst = 0
         (indices_or_sections + [size_axis]).map do |lst|
           lst = size_axis if lst > size_axis
@@ -811,7 +811,7 @@ module Cumo
 
     def tile(*arg)
       arg.each do |i|
-        if !i.kind_of?(Integer) || i<1
+        if !i.kind_of?(Integer) || i < 1
           raise ArgumentError, "argument should be positive integer"
         end
       end
@@ -821,14 +821,14 @@ module Cumo
       new_shp = []
       src_shp = []
       res_shp = []
-      (nd-ns).times do
+      (nd - ns).times do
         new_shp << 1
         new_shp << (n = shp.shift)
         src_shp << :new
         src_shp << true
         res_shp << n
       end
-      (ns-nd).times do
+      (ns - nd).times do
         new_shp << (m = arg.shift)
         new_shp << 1
         src_shp << :new
@@ -840,7 +840,7 @@ module Cumo
         new_shp << (n = shp.shift)
         src_shp << :new
         src_shp << true
-        res_shp << n*m
+        res_shp << n * m
       end
       self.class.new(*new_shp).store(self[*src_shp]).reshape(*res_shp)
     end
@@ -883,21 +883,21 @@ module Cumo
       end
       case arg
       when Integer
-        if !arg.kind_of?(Integer) || arg<1
+        if !arg.kind_of?(Integer) || arg < 1
           raise ArgumentError, "argument should be positive integer"
         end
-        idx = c.shape[axis].times.map { |i| [i]*arg }.flatten
+        idx = c.shape[axis].times.map { |i| [i] * arg }.flatten
       else
         arg = arg.to_a
         if arg.size != c.shape[axis]
           raise ArgumentError, "repeat size shoud be equal to size along axis"
         end
         arg.each do |i|
-          if !i.kind_of?(Integer) || i<0
+          if !i.kind_of?(Integer) || i < 0
             raise ArgumentError, "argument should be non-negative integer"
           end
         end
-        idx = arg.each_with_index.map { |a, i| [i]*a }.flatten
+        idx = arg.each_with_index.map { |a, i| [i] * a }.flatten
       end
       ref = [true] * c.ndim
       ref[axis] = idx
@@ -940,19 +940,19 @@ module Cumo
       # calculate polynomial coefficient
       c = self.class[-1, 1]
       2.upto(n) do |i|
-        x = self.class.zeros(i+1)
+        x = self.class.zeros(i + 1)
         x[0..-2] = c
-        y = self.class.zeros(i+1)
+        y = self.class.zeros(i + 1)
         y[1..-1] = c
         c = y - x
       end
-      s = [true]*ndim
+      s = [true] * ndim
       s[axis] = n..-1
       result = self[*s].dup
       sum = result.inplace
-      (n-1).downto(0) do |i|
-        s = [true]*ndim
-        s[axis] = i..-n-1+i
+      (n - 1).downto(0) do |i|
+        s = [true] * ndim
+        s[axis] = i..-n - 1 + i
         sum + self[*s] * c[i] # inplace addition
       end
       return result
@@ -973,8 +973,8 @@ module Cumo
       end
       if contiguous?
         *shp, m, n = shape
-        idx = tril_indices(k-1)
-        reshape!(*shp, m*n)
+        idx = tril_indices(k - 1)
+        reshape!(*shp, m * n)
         self[false, idx] = 0
         reshape!(*shp, m, n)
       else
@@ -995,7 +995,7 @@ module Cumo
     def self.triu_indices(m, n, k=0)
       x = Cumo::Int64.new(m, 1).seq + k
       y = Cumo::Int64.new(1, n).seq
-      (x<=y).where
+      (x <= y).where
     end
 
     # Lower triangular matrix.
@@ -1011,9 +1011,9 @@ module Cumo
         raise NArray::ShapeError, "must be >= 2-dimensional array"
       end
       if contiguous?
-        idx = triu_indices(k+1)
+        idx = triu_indices(k + 1)
         *shp, m, n = shape
-        reshape!(*shp, m*n)
+        reshape!(*shp, m * n)
         self[false, idx] = 0
         reshape!(*shp, m, n)
       else
@@ -1034,7 +1034,7 @@ module Cumo
     def self.tril_indices(m, n, k=0)
       x = Cumo::Int64.new(m, 1).seq + k
       y = Cumo::Int64.new(1, n).seq
-      (x>=y).where
+      (x >= y).where
     end
 
     # Return the k-th diagonal indices.
@@ -1169,17 +1169,17 @@ module Cumo
     def outer(b, axis:nil)
       b = NArray.cast(b)
       if axis.nil?
-        self[false, :new] * ((b.ndim==0) ? b : b[false, :new, true])
+        self[false, :new] * ((b.ndim == 0) ? b : b[false, :new, true])
       else
         md, nd = [ndim, b.ndim].minmax
         axis = check_axis(axis) - nd
         if axis < -md
           raise ArgumentError, "axis=#{axis} is out of range"
         end
-        adim = [true]*ndim
-        adim[axis+ndim+1, 0] = :new
-        bdim = [true]*b.ndim
-        bdim[axis+b.ndim, 0] = :new
+        adim = [true] * ndim
+        adim[axis + ndim + 1, 0] = :new
+        bdim = [true] * b.ndim
+        bdim[axis + b.ndim, 0] = :new
         self[*adim] * b[*bdim]
       end
     end
@@ -1211,9 +1211,9 @@ module Cumo
       ndb = b.ndim
       shpa = shape
       shpb = b.shape
-      adim = [:new]*(2*[ndb-nda, 0].max) + [true, :new]*nda
-      bdim = [:new]*(2*[nda-ndb, 0].max) + [:new, true]*ndb
-      shpr = (-[nda, ndb].max..-1).map { |i| (shpa[i]||1) * (shpb[i]||1) }
+      adim = [:new] * (2 * [ndb - nda, 0].max) + [true, :new] * nda
+      bdim = [:new] * (2 * [nda - ndb, 0].max) + [:new, true] * ndb
+      shpr = (-[nda, ndb].max..-1).map { |i| (shpa[i] || 1) * (shpb[i] || 1) }
       (self[*adim] * b[*bdim]).reshape(*shpr)
     end
 
@@ -1232,7 +1232,7 @@ module Cumo
       end
       if aweights
         a = aweights
-        w = w ? w*a : a
+        w = w ? w * a : a
       end
       if w
         w_sum = w.sum(axis:-1, keepdims:true)
@@ -1241,7 +1241,7 @@ module Cumo
         elsif aweights.nil?
           fact = w_sum - ddof
         else
-          wa_sum = (w*a).sum(axis:-1, keepdims:true)
+          wa_sum = (w * a).sum(axis:-1, keepdims:true)
           fact = w_sum - ddof * wa_sum / w_sum
         end
         if (fact <= 0).any?
@@ -1251,8 +1251,8 @@ module Cumo
         fact = m.shape[-1] - ddof
       end
       if w
-        m -= (m*w).sum(axis:-1, keepdims:true) / w_sum
-        mw = m*w
+        m -= (m * w).sum(axis:-1, keepdims:true) / w_sum
+        mw = m * w
       else
         m -= m.mean(axis:-1, keepdims:true)
         mw = m
@@ -1265,7 +1265,7 @@ module Cumo
 
     # @!visibility private
     def check_axis(axis)
-      unless Integer===axis
+      unless Integer === axis
         raise ArgumentError, "axis=#{axis} must be Integer"
       end
       a = axis

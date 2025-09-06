@@ -387,10 +387,10 @@ if is_comparable && !is_object
   end
   def_method "sort"
   if is_float
-    qsort type_name+"_index", "dtype*", "**(dtype**)", "_prnan"
-    qsort type_name+"_index", "dtype*", "**(dtype**)", "_ignan"
+    qsort type_name + "_index", "dtype*", "**(dtype**)", "_prnan"
+    qsort type_name + "_index", "dtype*", "**(dtype**)", "_ignan"
   else
-    qsort type_name+"_index", "dtype*", "**(dtype**)"
+    qsort type_name + "_index", "dtype*", "**(dtype**)"
   end
   def_method "sort_index"
   def_method "median"
@@ -410,7 +410,7 @@ def_module do
   set ns_var: "cT"
   set class_name: cn
   set name: "#{nm}_math"
-  set full_module_name: fn+"::NMath"
+  set full_module_name: fn + "::NMath"
   set module_name: "Math"
   set module_var: "mTM"
 

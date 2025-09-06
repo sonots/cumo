@@ -107,11 +107,11 @@ module NArrayType
   alias tp type_name
 
   def type_var
-    @opts[:type_var] ||= "cumo_c"+class_name
+    @opts[:type_var] ||= "cumo_c" + class_name
   end
 
   def math_var
-    @opts[:math_var] ||= "cumo_m"+class_name+"Math"
+    @opts[:math_var] ||= "cumo_m" + class_name + "Math"
   end
 
   def real_class_name(arg=nil)
@@ -131,7 +131,7 @@ module NArrayType
   end
 
   def real_type_var
-    @opts[:real_type_var] ||= "cumo_c"+real_class_name
+    @opts[:real_type_var] ||= "cumo_c" + real_class_name
   end
 
   def real_type_name
@@ -170,7 +170,7 @@ module NArrayType
     else
       t = "cT"
     end
-    if c=="Integer"
+    if c == "Integer"
       @opts[:upcast] << "#ifdef RUBY_INTEGER_UNIFICATION"
       @opts[:upcast] << "rb_hash_aset(hCast, rb_cInteger, #{t});"
       @opts[:upcast] << "#else"
@@ -188,10 +188,10 @@ end
 module StoreFrom
 
   def store_from(cname, dtype=nil, macro=nil)
-    tmpl = (cname=="Bit") ? "store_bit" : "store_from"
+    tmpl = (cname == "Bit") ? "store_bit" : "store_from"
     h = { name:cname.downcase,
           type_name:cname,
-          type_var:"cumo_c"+cname,
+          type_var:"cumo_c" + cname,
           dtype:dtype,
           macro:macro }
     Store.new(self, tmpl, **h)

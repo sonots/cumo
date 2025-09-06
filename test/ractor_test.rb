@@ -25,7 +25,7 @@ class NArrayRactorTest < CumoTestBase
       ary2, res = r.take
       assert_equal((dtype != Cumo::RObject),
                    ary1.equal?(ary2))
-      assert_equal(ary1*10, res)
+      assert_equal(ary1 * 10, res)
     end
 
     def test_parallel(data)
