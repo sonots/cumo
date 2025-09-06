@@ -39,7 +39,7 @@ class NArrayTest < Test::Unit::TestCase
     test "#{dtype},free" do
       a = dtype[1, 2, 3, 5, 7, 11]
       assert { a.free }
-      assert { !a.free }  # return false if already freed
+      assert { !a.free } # return false if already freed
     end
 
     procs = [
@@ -671,7 +671,7 @@ class NArrayTest < Test::Unit::TestCase
       assert { diag == [0, 4] }
 
       assert { a.at([0, 1], [0, 1]).dup == [1, 5] }
-      at   = a.dup
+      at = a.dup
       at.at([0, 1], [0, 1]).inplace - 1
       assert { at == [[0, 2, 3], [4, 4, 6]] }
     end

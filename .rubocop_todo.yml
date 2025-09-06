@@ -170,16 +170,6 @@ Layout/EmptyLinesAroundModuleBody:
   Exclude:
     - 'ext/cumo/narray/gen/narray_def.rb'
 
-# Offense count: 6
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: AllowForAlignment, AllowBeforeTrailingComments, ForceEqualSignAlignment.
-Layout/ExtraSpacing:
-  Exclude:
-    - '3rd_party/mkmf-cu/lib/mkmf-cu/nvcc.rb'
-    - 'cumo.gemspec'
-    - 'ext/cumo/narray/gen/def/bit.rb'
-    - 'test/narray_test.rb'
-
 # Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyle, IndentationWidth.
