@@ -14,7 +14,7 @@ module Cumo::CUDA
       headers = []
       include_names = []
       assert_nothing_raised do
-        prog = NVRTC.nvrtcCreateProgram(src, name, headers, include_names)
+        NVRTC.nvrtcCreateProgram(src, name, headers, include_names)
       end
     end
 

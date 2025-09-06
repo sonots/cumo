@@ -17,7 +17,7 @@ module Cumo::CUDA
       begin
         NVRTC.nvrtcCompileProgram(@ptr, options)
         return NVRTC.nvrtcGetPTX(@ptr)
-      rescue NVRTCError => e
+      rescue NVRTCError
         log = NVRTC.nvrtcGetProgramLog(@ptr)
         raise CompileError.new(log, @src, @name, options)
       end

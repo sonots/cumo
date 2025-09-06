@@ -23,7 +23,7 @@ module Cumo::CUDA
     end
 
     def complete
-      cubin = Driver.cuLinkComplete(@ptr)
+      Driver.cuLinkComplete(@ptr)
     end
   end
 end
