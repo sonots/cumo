@@ -1388,7 +1388,7 @@ static VALUE cumo_na_inplace( VALUE self );
 /*
   Load marshal data.
   @overload marshal_load(data)
-  @params [Array] Array containing marshal data.
+  @param [Array] Array containing marshal data.
   @return [nil]
  */
 static VALUE
