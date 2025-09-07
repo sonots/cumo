@@ -890,6 +890,39 @@ cumo_na_check_contiguous(VALUE self)
 }
 
 VALUE
+cumo_na_check_fortran_contiguous(VALUE self)
+{
+    int i;
+    ssize_t st0;
+    cumo_narray_t *na;
+
+    switch(CUMO_RNARRAY_TYPE(self)) {
+    case CUMO_NARRAY_DATA_T:
+    case CUMO_NARRAY_FILEMAP_T:
+        return Qfalse;
+    case CUMO_NARRAY_VIEW_T:
+        CumoGetNArray(self,na);
+
+        // not contiguous if it has index
+        for (i=0; i < CUMO_NA_NDIM(na); i++) {
+            if (CUMO_NA_IS_INDEX_AT(na,i))
+                return Qfalse;
+        }
+
+        // check f-contiguous
+        st0 = cumo_na_element_stride(self); // elmsz
+        for (i=0; i < CUMO_NA_NDIM(na); i++) {
+            if (CUMO_NA_SHAPE(na)[i] == 1)
+                continue;
+            if (CUMO_NA_STRIDE_AT(na, i) != st0)
+                return Qfalse;
+            st0 *= CUMO_NA_SHAPE(na)[i];
+        }
+    }
+    return Qtrue;
+}
+
+VALUE
 cumo_na_as_contiguous_array(VALUE a)
 {
     return cumo_na_check_contiguous(a) == Qtrue ? a : rb_funcall(a, rb_intern("dup"), 0);
@@ -1929,6 +1962,7 @@ Init_cumo_narray()
     rb_define_method(cNArray, "debug_info", cumo_na_debug_info, 0);
 
     rb_define_method(cNArray, "contiguous?", cumo_na_check_contiguous, 0);
+    rb_define_method(cNArray, "fortran_contiguous?", cumo_na_check_fortran_contiguous, 0);
 
     rb_define_method(cNArray, "view", cumo_na_make_view, 0);
     rb_define_method(cNArray, "expand_dims", cumo_na_expand_dims, 1);
