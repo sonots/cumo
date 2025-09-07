@@ -83,7 +83,7 @@ module MakeMakefileCuda
     end
 
     def compiler_option(opt_h)
-      ret = ""
+      ret = +""
       ["-f", "-W", "-pipe"].each { |op|
         opt_h[op].each { |e|
           ret << " --compiler-options " + "#{op}#{e}"
@@ -98,7 +98,7 @@ module MakeMakefileCuda
     end
 
     def linker_option(opt_h)
-      ret = " -shared "
+      ret = +" -shared "
       ["-dynamic", "-bundle"].each { |op|
         opt_h[op].each { |e|
           ret << " --linker-options " + op
@@ -119,7 +119,7 @@ module MakeMakefileCuda
     end
 
     def generate_compiling_command_line(opt_h)
-      s = ""
+      s = +""
       # options nvcc can uderstatnd
       ["-std", "-pg", "-g", "-G", "-x", "-I", "-D", "-o", "-c", "-O"].each { |op|
         opt_h[op].each { |e|
@@ -138,7 +138,7 @@ module MakeMakefileCuda
     end
 
     def generate_linking_command_line(argv, opt_h)
-      s = ""
+      s = +""
       ["-L", "-l", "-o", "-c", "-O"].each { |op|
         opt_h[op].each { |e|
           case op

@@ -9,8 +9,8 @@ class ErbPP
     def initialize(filename)
       @filename = filename
       @lnchar = "\n"
-      @buf = ""
-      @str = ""
+      @buf = +""
+      @str = +""
       @countln = 1
       @current = 1
       super("\n" + report_line)
@@ -83,8 +83,8 @@ class ErbPP
 
       @countln = @current + @buf.count(@lnchar)
       @current = n
-      @buf = ""
-      @str = ""
+      @buf = +""
+      @str = +""
     end
 
     def d(s)
