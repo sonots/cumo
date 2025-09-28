@@ -989,16 +989,18 @@ check_index_count(int argc, int cumo_na_ndim, int count_new, int count_rest)
 
     switch(count_rest) {
     case 0:
-        if (count_new == 0 && argc == 1) return 1;
+        if (argc == 1 && count_new == 0) return 1;
         if (argc == result_nd) return result_nd;
         rb_raise(rb_eIndexError,"# of index(=%i) should be "
-                 "equal to ndim(=%i)",argc,cumo_na_ndim);
+                 "equal to ndim(=%i) or 1", argc,cumo_na_ndim);
         break;
     case 1:
         if (argc-1 <= result_nd) return result_nd;
         rb_raise(rb_eIndexError,"# of index(=%i) > ndim(=%i) with :rest",
                  argc,cumo_na_ndim);
         break;
+    default:
+        rb_raise(rb_eIndexError,"multiple rest-dimension is not allowd");
     }
     return -1;
 }
@@ -1009,7 +1011,6 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
     int i, j;
     int count_new=0;
     int count_rest=0;
-    int count_else=0;
     ssize_t x, s, m, pos, *idx;
     cumo_narray_t *na;
     cumo_narray_view_t *nv;
@@ -1018,8 +1019,7 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
 
     CumoGetNArray(self,na);
     if (na->size == 0) {
-        rb_raise(rb_eRuntimeError, "cannot get index of empty array");
-        return -1;
+        rb_raise(cumo_na_eShapeError, "cannot get element of empty array");
     }
     idx = ALLOCA_N(ssize_t, argc);
     for (i=j=0; i<argc; i++) {
@@ -1042,16 +1042,10 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
                 argv[i] = cumo_sym_new;
                 count_new++;
             }
-            // not break
-        default:
-            count_else++;
         }
     }
 
-    if (count_rest > 1) {
-        rb_raise(rb_eIndexError,"multiple rest-dimension is not allowd");
-    }
-    if (count_else != 0) {
+    if (j != argc) {
         return check_index_count(argc, na->ndim, count_new, count_rest);
     }
 
@@ -1072,8 +1066,9 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
                 }
             }
             *pos_idx = pos;
+            return 0;
         }
-        else if (argc==1 && j==1) {
+        if (j == 1) {
             x = cumo_na_range_check(idx[0], na->size, 0);
             for (i=na->ndim-1; i>=0; i--) {
                 s = na->shape[i];
@@ -1089,19 +1084,19 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
                 }
             }
             *pos_idx = pos;
-        } else {
-            return check_index_count(argc, na->ndim, count_new, count_rest);
+            return 0;
         }
         break;
     default:
         if (!stride) {
             stride = cumo_na_element_stride(self);
         }
-        if (argc==1 && j==1) {
+        if (j == 1) {
             x = cumo_na_range_check(idx[0], na->size, 0);
             *pos_idx = stride * x;
+            return 0;
         }
-        else if (j == na->ndim) {
+        if (j == na->ndim) {
             pos = 0;
             for (i=j-1; i>=0; i--) {
                 x = cumo_na_range_check(idx[i], na->shape[i], i);
@@ -1109,11 +1104,12 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
                 stride *= na->shape[i];
             }
             *pos_idx = pos;
-        } else {
-            return check_index_count(argc, na->ndim, count_new, count_rest);
+            return 0;
         }
     }
-    return 0;
+    rb_raise(rb_eIndexError,"# of index(=%i) should be "
+             "equal to ndim(=%i) or 1", argc,na->ndim);
+    return -1;
 }
 
 
