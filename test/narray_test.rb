@@ -36,6 +36,37 @@ class NArrayTest < Test::Unit::TestCase
       assert { dtype < Cumo::NArray }
     end
 
+    test "#{dtype}[]" do
+      a = dtype[]
+
+      assert_raise(Cumo::NArray::ShapeError) { a[true] }
+      assert_raise(Cumo::NArray::ShapeError) { a[1..-1] }
+
+      assert { a.size == 0 }
+      assert { a.ndim == 1 }
+      assert { a.shape == [0] }
+      assert { !a.inplace? }
+      assert { a.row_major? }
+      assert { !a.column_major? }
+      assert { a.host_order? }
+      assert { !a.byte_swapped? }
+      assert { a == [] }
+      assert { a.to_a == [] }
+      assert { a.to_a.is_a?(Array) }
+      assert { a.dup == a }
+      assert { a.clone == a }
+      assert { a.dup.object_id != a.object_id }
+      assert { a.clone.object_id != a.object_id }
+    end
+
+    types.each do |other_dtype|
+      next if dtype == other_dtype
+
+      test "#{dtype}[] == #{other_dtype}[]" do
+        assert { dtype[] == other_dtype[] }
+      end
+    end
+
     test "#{dtype},free" do
       a = dtype[1, 2, 3, 5, 7, 11]
       assert { a.free }

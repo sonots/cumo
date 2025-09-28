@@ -1866,6 +1866,9 @@ cumo_na_equal(VALUE self, volatile VALUE other)
             return Qfalse;
         }
     }
+    if (na1->size == 0) {
+      return Qtrue;
+    }
     vbool = rb_funcall(self, cumo_id_eq, 1, other);
     return (rb_funcall(vbool, cumo_id_count_false_cpu, 0)==INT2FIX(0)) ? Qtrue : Qfalse;
 }
