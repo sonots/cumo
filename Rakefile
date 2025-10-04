@@ -31,7 +31,7 @@ task :gdb do
   sh "gdb -x run.gdb --args ruby -I. ./test.rb"
 end
 
-task :default => [:clobber, :compile, :test]
+task :default => [:compile, :test]
 
 desc 'Open an irb session preloaded with the gem library'
 task :console do
