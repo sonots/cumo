@@ -200,7 +200,7 @@ ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/nvcc"
 Set `MAKEFLAGS` to specify `make` command options. You can build in parallel as:
 
 ```
-bundle exec env MAKEFLAG=-j8 rake compile
+bundle exec env MAKEFLAGS=-j8 rake compile
 ```
 
 ### Specify nvcc --generate-code options
