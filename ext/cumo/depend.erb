@@ -1,3 +1,5 @@
+MAKEFLAGS = <%= ENV.fetch('MAKEFLAGS', "-j#{Etc.nprocessors}") %>
+
 TAGSRC = \
  ../../ruby/include/ruby/*.h \
  ../../ruby/*.c \

@@ -3,6 +3,7 @@
 require 'rbconfig.rb'
 require 'fileutils'
 require "erb"
+require 'etc'
 require_relative '../../3rd_party/mkmf-cu/lib/mkmf-cu'
 
 def d(file)
