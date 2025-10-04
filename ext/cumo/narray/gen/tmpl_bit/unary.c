@@ -24,8 +24,7 @@ static void
             CUMO_STORE_BIT_STEP(a3, p3, s3, idx3, y);
         }
     } else {
-        o1 =  p1 % CUMO_NB;
-        o1 -= p3;
+        o1 =  p1-p3;
         l1 =  CUMO_NB+o1;
         r1 =  CUMO_NB-o1;
         if (p3>0 || n<CUMO_NB) {
@@ -48,17 +47,32 @@ static void
             }
         } else {
             for (; n>=CUMO_NB; n-=CUMO_NB) {
-                x = *a1>>o1;
-                if (o1<0)  x |= *(a1-1)>>l1;
-                if (o1>0)  x |= *(a1+1)<<r1;
+                if (o1==0) {
+                    x = *a1;
+                } else if (o1>0) {
+                    x = *a1>>o1  | *(a1+1)<<r1;
+                } else {
+                    x = *a1<<-o1 | *(a1-1)>>l1;
+                }
                 a1++;
                 y = m_<%=name%>(x);
                 *(a3++) = y;
             }
         }
         if (n>0) {
-            x = *a1>>o1;
-            if (o1<0)  x |= *(a1-1)>>l1;
+            if (o1==0) {
+                x = *a1;
+            } else if (o1>0) {
+                x = *a1>>o1;
+                if ((int)n>r1) {
+                    x |= *(a1+1)<<r1;
+                }
+            } else {
+                x = *(a1-1)>>l1;
+                if ((int)n>-o1) {
+                    x |= *a1<<-o1;
+                }
+            }
             y = m_<%=name%>(x);
             *a3 = (y & CUMO_SLB(n)) | (*a3 & CUMO_BALL<<n);
         }
