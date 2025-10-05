@@ -112,9 +112,8 @@
         size_t dig = (pos) / CUMO_NB;                \
         int    bit = (pos) % CUMO_NB;                \
         ((CUMO_BIT_DIGIT*)(adr))[dig] =              \
-            (((CUMO_BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
+            (((CUMO_BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | (((val)&1u)<<(bit)); \
     }
-// val -> val&1 ??
 
 #define CUMO_STORE_BIT_STEP( adr, pos, step, idx, val )\
     {                                           \
@@ -129,9 +128,8 @@
             pos += step;                        \
         }                                       \
         ((CUMO_BIT_DIGIT*)(adr))[dig] =              \
-            (((CUMO_BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | ((val)<<(bit)); \
+            (((CUMO_BIT_DIGIT*)(adr))[dig] & ~(1u<<(bit))) | (((val)&1u)<<(bit)); \
     }
-// val -> val&1 ??
 
 static inline int
 cumo_is_aligned(const void *ptr, const size_t alignment)
