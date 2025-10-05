@@ -53,10 +53,15 @@ static VALUE
         return <%=c_func(-1)%>_cpu(argc, argv, self);
     } else {
         VALUE v, reduce;
+        cumo_narray_t *na;
         cumo_ndfunc_arg_in_t ain[3] = {{cT,0},{cumo_sym_reduce,0},{cumo_sym_init,0}};
         cumo_ndfunc_arg_out_t aout[1] = {{cumo_cUInt64,0}};
         cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP_NIP, 3, 1, ain, aout };
 
+        CumoGetNArray(self,na);
+        if (CUMO_NA_SIZE(na)==0) {
+            return INT2FIX(0);
+        }
         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
         v = cumo_na_ndloop(&ndf, 3, self, reduce, INT2FIX(0));
         return v;
