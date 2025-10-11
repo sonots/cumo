@@ -824,7 +824,7 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
 
     cumo_na_alloc_shape((cumo_narray_t*)na2, ndim_new);
 
-    na2->stridx = ALLOC_N(cumo_stridx_t,ndim_new);
+    na2->stridx = ZALLOC_N(cumo_stridx_t,ndim_new);
 
     elmsz = cumo_na_element_stride(self);
 
