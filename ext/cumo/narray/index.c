@@ -611,10 +611,10 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
         if (q[i].idx != NULL) {
             if (i==ndim-1) {
                 cumo_na_index_aref_nadata_index_stride_kernel_launch(index, stride1, size);
+                q[i].idx = NULL;
             } else {
                 cumo_na_index_at_nadata_index_stride_add_kernel_launch(index, q[i].idx, stride1, size);
             }
-            q[i].idx = NULL;
         } else {
             beg  = q[i].beg;
             step = q[i].step;
@@ -673,10 +673,10 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             size_t *index1 = CUMO_SDX_GET_INDEX(sdx1);
             if (i==ndim-1) {
                 cumo_na_index_aref_naview_index_index_kernel_launch(index, index1, size);
+                q[i].idx = NULL;
             } else {
                 cumo_na_index_at_naview_index_index_index_add_kernel_launch(index, index1, q[i].idx, size);
             }
-            q[i].idx = NULL;
         }
         else if (q[i].idx == NULL && CUMO_SDX_IS_INDEX(sdx1)) {
             // step <- index
@@ -702,17 +702,18 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
                 na2->offset -= last * stride1;
                 if (i==ndim-1) {
                     cumo_na_index_aref_naview_index_stride_last_kernel_launch(index, stride1, last, size);
+                    q[i].idx = NULL;
                 } else {
                     cumo_na_index_at_naview_index_stride_last_add_kernel_launch(index, stride1, last, size);
                 }
             } else {
                 if (i==ndim-1) {
                     cumo_na_index_aref_nadata_index_stride_kernel_launch(index, stride1, size);
+                    q[i].idx = NULL;
                 } else {
                     cumo_na_index_at_nadata_index_stride_add_kernel_launch(index, q[i].idx, stride1, size);
                 }
             }
-            q[i].idx = NULL;
         }
         else if (q[i].idx == NULL && CUMO_SDX_IS_STRIDE(sdx1)) {
             // step <- step
