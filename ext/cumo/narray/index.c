@@ -577,7 +577,7 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
                      cumo_na_index_arg_t *q, ssize_t elmsz, int ndim, int keep_dim)
 {
     int i;
-    ssize_t size = q[ndim-1].n;
+    size_t size = q[ndim-1].n;
     ssize_t stride1;
     ssize_t *strides_na1;
     size_t  *index;
@@ -644,7 +644,7 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
 {
     int i;
     size_t  *index;
-    ssize_t size = q[ndim-1].n;
+    size_t size = q[ndim-1].n;
     int use_cumo_cuda_runtime_malloc = 0;
 
     if (q[ndim-1].idx != NULL) {
