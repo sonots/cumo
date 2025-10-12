@@ -78,6 +78,10 @@ static void
 #define cIndex cumo_cInt32
 #endif
 
+static void shape_error(void) {
+    rb_raise(cumo_na_eShapeError,"mask and masked arrays must have the same shape");
+}
+
 /*
   Return subarray of argument masked with self bit array.
   @overload <%=op_map%>(array)
@@ -87,16 +91,32 @@ static void
 static VALUE
 <%=c_func(1)%>(VALUE mask, VALUE val)
 {
-    volatile VALUE idx_1, view;
+    int i;
+    VALUE idx_1, view;
     cumo_narray_data_t *nidx;
-    cumo_narray_view_t *nv;
-    cumo_narray_t      *na;
-    cumo_narray_view_t *na1;
+    cumo_narray_view_t *nv, *nv_val;
+    cumo_narray_t      *na, *na_mask;
     cumo_stridx_t stridx0;
     size_t n_1;
     where_opt_t g;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{Qnil,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0};
+
+    // cast val to NArray
+    if (!rb_obj_is_kind_of(val, cumo_cNArray)) {
+        val = rb_funcall(cumo_cNArray, cumo_id_cast, 1, val);
+    }
+    // shapes of mask and val must be same
+    CumoGetNArray(val, na);
+    CumoGetNArray(mask, na_mask);
+    if (na_mask->ndim != na->ndim) {
+        shape_error();
+    }
+    for (i=0; i<na->ndim; i++) {
+        if (na_mask->shape[i] != na->shape[i]) {
+            shape_error();
+        }
+    }
 
     // TODO(sonots): bit_count_true synchronizes with CPU. Avoid.
     n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, mask));
@@ -114,19 +134,19 @@ static VALUE
     CumoGetNArrayData(idx_1,nidx);
     CUMO_SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
     nidx->ptr = NULL;
+    RB_GC_GUARD(idx_1);
 
     nv->stridx = ALLOC_N(cumo_stridx_t,1);
     nv->stridx[0] = stridx0;
     nv->offset = 0;
 
-    CumoGetNArray(val, na);
     switch(CUMO_NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
         nv->data = val;
         break;
     case CUMO_NARRAY_VIEW_T:
-        CumoGetNArrayView(val, na1);
-        nv->data = na1->data;
+        CumoGetNArrayView(val, nv_val);
+        nv->data = nv_val->data;
         break;
     default:
         rb_raise(rb_eRuntimeError,"invalid CUMO_NA_TYPE: %d",CUMO_NA_TYPE(na));
