@@ -402,6 +402,10 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
 {
     size_t *shape;
     cumo_narray_t *na;
+    cumo_narray_view_t *na2;
+    ssize_t stride;
+    cumo_stridx_t *stridx;
+    int i;
 
     if (cumo_na_check_contiguous(self)==Qfalse) {
         rb_raise(rb_eStandardError, "cannot change shape of non-contiguous NArray");
@@ -410,6 +414,23 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
     cumo_na_check_reshape(argc, argv, self, shape);
 
     CumoGetNArray(self, na);
+    if (na->type == CUMO_NARRAY_VIEW_T) {
+        CumoGetNArrayView(self, na2);
+        if (na->ndim < argc) {
+            stridx = ALLOC_N(cumo_stridx_t,argc);
+        } else {
+            stridx = na2->stridx;
+        }
+        stride = CUMO_SDX_GET_STRIDE(na2->stridx[na->ndim-1]);
+        for (i=argc; i--;) {
+            CUMO_SDX_SET_STRIDE(stridx[i],stride);
+            stride *= shape[i];
+        }
+        if (stridx != na2->stridx) {
+            xfree(na2->stridx);
+            na2->stridx = stridx;
+        }
+    }
     cumo_na_setup_shape(na, argc, shape);
     return self;
 }
