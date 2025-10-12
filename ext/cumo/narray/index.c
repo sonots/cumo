@@ -183,7 +183,6 @@ static void
 cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
     int n;
-    VALUE excl_end;
     ssize_t beg, end, beg_orig, end_orig;
     const char *dot = "..", *edot = "...";
 
@@ -197,9 +196,14 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
         beg += size;
     }
     if (T_NIL == TYPE(x.end)) { // endless range
-        end = size -1;
+        end = size - 1;
         if (RTEST(x.exclude_end)) {
             dot = edot;
+        }
+        if (beg < 0 || beg >= size) {
+            rb_raise(rb_eRangeError,
+                     "%"SZF"d%s is out of range for size=%"SZF"d",
+                     beg_orig, dot, size);
         }
     } else {
         end = end_orig = NUM2SSIZET(x.end);
@@ -210,19 +214,15 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
             end--;
             dot = edot;
         }
-    }
-    if (beg < 0 || beg >= size || end < 0 || end >= size) {
-        if (T_NIL == TYPE(x.end)) { // endless range
-            rb_raise(rb_eRangeError,
-                     "%"SZF"d%s is out of range for size=%"SZF"d",
-                     beg_orig, dot, size);
-        } else {
+        if (beg < 0 || beg >= size || end < 0 || end >= size) {
             rb_raise(rb_eRangeError,
                      "%"SZF"d%s%"SZF"d is out of range for size=%"SZF"d",
                      beg_orig, dot, end_orig, size);
         }
     }
 #else
+    VALUE excl_end;
+
     beg = beg_orig = NUM2SSIZET(rb_funcall(range,cumo_id_beg,0));
     if (beg < 0) {
         beg += size;
