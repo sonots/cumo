@@ -106,7 +106,7 @@ module Cumo::CUDA
       tf.write(cubin_hash)
       tf.write(cubin)
       temp_path = tf.path
-      File.rename(temp_path, path)
+      FileUtils.mv(temp_path, path)
     end
 
     def load_cache(path)
