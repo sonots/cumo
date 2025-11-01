@@ -4,7 +4,6 @@ lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 cumo_version = File.read(File.join(__dir__, "ext/cumo/include/cumo.h")).match(/CUMO_VERSION "([^"]+)"/)[1]
-numo_narray_version = File.read(File.join(__dir__, "numo-narray-version")).strip
 
 Gem::Specification.new do |spec|
   spec.name          = "cumo"
@@ -27,6 +26,4 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
   spec.extensions    = ["ext/cumo/extconf.rb"]
-
-  spec.add_dependency "numo-narray", numo_narray_version
 end

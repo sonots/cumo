@@ -10,28 +10,6 @@ def d(file)
   File.join(__dir__, file)
 end
 
-def have_numo_narray!
-  version_path = d("../../numo-narray-version")
-  version = File.read(version_path).strip
-  gem_spec = Gem::Specification.find_by_name("numo-narray", version)
-
-  $INCFLAGS += " -I#{gem_spec.gem_dir}/ext/numo/narray"
-  if !have_header("numo/narray.h")
-    puts "
-    Header numo/narray.h was not found. Give pathname as follows:
-    % ruby extconf.rb --with-narray-include=narray_h_dir"
-    exit(1)
-  end
-
-  if RUBY_PLATFORM =~ /cygwin|mingw/
-    $LDFLAGS += " -L#{gem_spec.gem_dir}/ext/numo/narray"
-    unless have_library("narray", "nary_new")
-      puts "libnarray.a not found"
-      exit(1)
-    end
-  end
-end
-
 def create_depend
   message "creating depend\n"
   File.open(d("depend"), "w") do |depend|
@@ -118,8 +96,6 @@ cuda/cudnn_impl
 $objs = srcs.map { |src| "#{src}.o" }
 
 dir_config("narray")
-
-have_numo_narray!
 
 if have_header("dlfcn.h")
   exit(1) unless have_library("dl")
