@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 3.0.0"
 
   spec.files = `git ls-files -z`.split("\x0").reject do |f|
-    f.match(%r{^(test|spec|features)/})
+    f.match(%r{^(test|spec|features|docker)/})
   end
   spec.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   spec.bindir        = "exe"
