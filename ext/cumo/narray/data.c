@@ -510,7 +510,6 @@ cumo_na_flatten_dim(VALUE self, int sd)
     case CUMO_NARRAY_FILEMAP_T:
         stride = cumo_na_element_stride(self);
         for (i=sd+1; i--; ) {
-            //printf("data: i=%d shpae[i]=%ld stride=%ld\n",i,shape[i],stride);
             CUMO_SDX_SET_STRIDE(na2->stridx[i],stride);
             stride *= shape[i];
         }
@@ -533,12 +532,10 @@ cumo_na_flatten_dim(VALUE self, int sd)
                 CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
                 na2->stridx[i] = na1->stridx[i];
-                //printf("view: i=%d stridx=%d\n",i,CUMO_SDX_GET_STRIDE(sdx));
             }
         }
         // flat dimenion == last dimension
         if (RTEST(cumo_na_check_ladder(self,sd))) {
-        //if (0) {
             na2->stridx[sd] = na1->stridx[nd-1];
         } else {
             // set index
