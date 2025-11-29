@@ -74,11 +74,12 @@ static void
 
   @example
     Cumo::DFloat.new(5).logseq(4,-1,2)
-    => Cumo::DFloat#shape=[5]
-      [16, 8, 4, 2, 1]
+    # => Cumo::DFloat#shape=[5]
+    #   [16, 8, 4, 2, 1]
+
     Cumo::DComplex.new(5).logseq(0,1i*Math::PI/3,Math::E)
-    => Cumo::DComplex#shape=[5]
-      [1+7.26156e-310i, 0.5+0.866025i, -0.5+0.866025i, -1+1.22465e-16i, ...]
+    # => Cumo::DComplex#shape=[5]
+    #   [1+7.26156e-310i, 0.5+0.866025i, -0.5+0.866025i, -1+1.22465e-16i, ...]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *args, VALUE self)

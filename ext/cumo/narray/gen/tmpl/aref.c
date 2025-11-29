@@ -21,35 +21,35 @@ static VALUE
 
   @example
       a = Cumo::DFloat.new(4,5).seq
-      => Cumo::DFloat#shape=[4,5]
-      [[0, 1, 2, 3, 4],
-       [5, 6, 7, 8, 9],
-       [10, 11, 12, 13, 14],
-       [15, 16, 17, 18, 19]]
+      # => Cumo::DFloat#shape=[4,5]
+      # [[0, 1, 2, 3, 4],
+      #  [5, 6, 7, 8, 9],
+      #  [10, 11, 12, 13, 14],
+      #  [15, 16, 17, 18, 19]]
 
       a[7]
-      => Cumo::DFloat#shape=[]
-      6.0
+      # => Cumo::DFloat#shape=[]
+      # 6.0
 
       a[1,1]
-      => Cumo::DFloat#shape=[]
-      6.0
+      # => Cumo::DFloat#shape=[]
+      # 6.0
 
       a[1..3,1]
-      => Cumo::DFloat#shape=[3]
-      [6, 11, 16]
+      # => Cumo::DFloat#shape=[3]
+      # [6, 11, 16]
 
       a[1,[1,3,4]]
-      => Cumo::DFloat#shape=[3]
-      [6, 8, 9]
+      # => Cumo::DFloat#shape=[3]
+      # [6, 8, 9]
 
       a[true,2].fill(99)
       a
-      => Cumo::DFloat#shape=[4,5]
-      [[0, 1, 99, 3, 4],
-       [5, 6, 99, 8, 9],
-       [10, 11, 99, 13, 14],
-       [15, 16, 99, 18, 19]]
+      # => Cumo::DFloat#shape=[4,5]
+      # [[0, 1, 99, 3, 4],
+      #  [5, 6, 99, 8, 9],
+      #  [10, 11, 99, 13, 14],
+      #  [15, 16, 99, 18, 19]]
  */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

@@ -52,7 +52,7 @@ static void
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
-  @param [Numeric,Array,Range] axis  Affected dimensions.
+  @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
   @return [Integer,Cumo::Int] returns result index of <%=name%>.
   @example
       Cumo::NArray[3,4,1,2].sort_index => Cumo::Int32[2,3,0,1]

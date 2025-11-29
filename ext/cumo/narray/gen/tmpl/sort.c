@@ -22,7 +22,7 @@ static void
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
-  @param [Numeric,Array,Range] axis  Affected dimensions.
+  @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
   @return [Cumo::<%=class_name%>] returns result of <%=name%>.
   @example
       Cumo::DFloat[3,4,1,2].sort => Cumo::DFloat[1,2,3,4]
