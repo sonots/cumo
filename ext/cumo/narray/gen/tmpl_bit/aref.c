@@ -2,42 +2,36 @@ static VALUE
 <%=c_func(-1)%>_cpu(int argc, VALUE *argv, VALUE self);
 
 /*
-  Array element referenece or slice view.
+  Array indexing.
   @overload [](dim0,...,dimL)
-  @param [Numeric,Range,etc] dim0,...,dimL  Multi-dimensional Index.
-  @return [Numeric,NArray::<%=class_name%>] Element object or NArray view.
+  @param [Numeric,Range,Array,Cumo::Bit,Cumo::Int32,Cumo::Int64] dim0,...,dimL  Multi-dimensional Index.
+  @return [Cumo::Bit,Numeric] Element value or NArray view.
 
-  --- Returns the element at +dim0+, +dim1+, ... are Numeric indices
-  for each dimension, or returns a NArray View as a sliced subarray if
-  +dim0+, +dim1+, ... includes other than Numeric index, e.g., Range
-  or Array or true.
+  --- Returns an element at `dim0`, `dim1`, ... are Numeric indices for each dimension, or returns a NArray View as a sliced array if `dim0`, `dim1`, ... includes other than Numeric index, e.g., Range or Array or true.
+
+  @see #[]=
 
   @example
-      a = Cumo::DFloat.new(4,5).seq
-      => Cumo::DFloat#shape=[4,5]
-      [[0, 1, 2, 3, 4],
-       [5, 6, 7, 8, 9],
-       [10, 11, 12, 13, 14],
-       [15, 16, 17, 18, 19]]
+      a = Cumo::Int32.new(3,4).seq
+      # => Cumo::Int32#shape=[3,4]
+      # [[0, 1, 2, 3],
+      #  [4, 5, 6, 7],
+      #  [8, 9, 10, 11]]
 
-      a[1,1]
-      => 6.0
+      b = (a%2).eq(0)
+      # => Cumo::Bit#shape=[3,4]
+      # [[1, 0, 1, 0],
+      #  [1, 0, 1, 0],
+      #  [1, 0, 1, 0]]
 
-      a[1..3,1]
-      => Cumo::DFloat#shape=[3]
-      [6, 11, 16]
+      b[true,(0..-1)%2]
+      # => Cumo::Bit(view)#shape=[3,2]
+      # [[1, 1],
+      #  [1, 1],
+      #  [1, 1]]
 
-      a[1,[1,3,4]]
-      => Cumo::DFloat#shape=[3]
-      [6, 8, 9]
-
-      a[true,2].fill(99)
-      a
-      => Cumo::DFloat#shape=[4,5]
-      [[0, 1, 99, 3, 4],
-       [5, 6, 99, 8, 9],
-       [10, 11, 99, 13, 14],
-       [15, 16, 99, 18, 19]]
+      b[1,1]
+      # => 0
  */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
