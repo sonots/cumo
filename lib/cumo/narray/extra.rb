@@ -47,23 +47,23 @@ module Cumo
 
     # Rotate in the plane specified by axes.
     # @example
-    #   p a = Cumo::Int32.new(2,2).seq
-    #   # Cumo::Int32#shape=[2,2]
+    #   a = Cumo::Int32.new(2,2).seq
+    #   # => Cumo::Int32#shape=[2,2]
     #   # [[0, 1],
     #   #  [2, 3]]
     #
-    #   p a.rot90
-    #   # Cumo::Int32(view)#shape=[2,2]
+    #   a.rot90
+    #   # => Cumo::Int32(view)#shape=[2,2]
     #   # [[1, 3],
     #   #  [0, 2]]
     #
-    #   p a.rot90(2)
-    #   # Cumo::Int32(view)#shape=[2,2]
+    #   a.rot90(2)
+    #   # => Cumo::Int32(view)#shape=[2,2]
     #   # [[3, 2],
     #   #  [1, 0]]
     #
-    #   p a.rot90(3)
-    #   # Cumo::Int32(view)#shape=[2,2]
+    #   a.rot90(3)
+    #   # => Cumo::Int32(view)#shape=[2,2]
     #   # [[2, 0],
     #   #  [3, 1]]
     def rot90(k=1, axes=[0, 1])
@@ -129,10 +129,10 @@ module Cumo
     #    4 9 7
     #    2 -1 6
     #   ]
-    #   => Cumo::DFloat#shape=[3,3]
-    #   [[2, -3, 5],
-    #    [4, 9, 7],
-    #    [2, -1, 6]]
+    #   # => Cumo::DFloat#shape=[3,3]
+    #   # [[2, -3, 5],
+    #   #  [4, 9, 7],
+    #   #  [2, -1, 6]]
 
     def self.parse(str, split1d:/\s+/, split2d:/;?$|;/,
                    split3d:/\s*\n(\s*\n)+/m)
@@ -162,7 +162,7 @@ module Cumo
 
 
     # Iterate over an axis
-    # @ example
+    # @example
     #   > a = Cumo::DFloat.new(2,2,2).seq
     #   > p a
     #   Cumo::DFloat#shape=[2,2,2]
@@ -212,19 +212,19 @@ module Cumo
     # Append values to the end of an narray.
     # @example
     #   a = Cumo::DFloat[1, 2, 3]
-    #   p a.append([[4, 5, 6], [7, 8, 9]])
-    #   # Cumo::DFloat#shape=[9]
+    #   a.append([[4, 5, 6], [7, 8, 9]])
+    #   # => Cumo::DFloat#shape=[9]
     #   # [1, 2, 3, 4, 5, 6, 7, 8, 9]
     #
     #   a = Cumo::DFloat[[1, 2, 3]]
-    #   p a.append([[4, 5, 6], [7, 8, 9]],axis:0)
-    #   # Cumo::DFloat#shape=[3,3]
+    #   a.append([[4, 5, 6], [7, 8, 9]],axis:0)
+    #   # => Cumo::DFloat#shape=[3,3]
     #   # [[1, 2, 3],
     #   #  [4, 5, 6],
     #   #  [7, 8, 9]]
     #
     #   a = Cumo::DFloat[[1, 2, 3], [4, 5, 6]]
-    #   p a.append([7, 8, 9], axis:0)
+    #   a.append([7, 8, 9], axis:0)
     #   # in `append': dimension mismatch (Cumo::NArray::DimensionError)
 
     def append(other, axis:nil)
@@ -247,19 +247,19 @@ module Cumo
 
     # @example
     #   a = Cumo::DFloat[[1,2,3,4], [5,6,7,8], [9,10,11,12]]
-    #   p a.delete(1,0)
-    #   # Cumo::DFloat(view)#shape=[2,4]
+    #   a.delete(1,0)
+    #   # => Cumo::DFloat(view)#shape=[2,4]
     #   # [[1, 2, 3, 4],
     #   #  [9, 10, 11, 12]]
     #
-    #   p a.delete((0..-1).step(2),1)
-    #   # Cumo::DFloat(view)#shape=[3,2]
+    #   a.delete((0..-1).step(2),1)
+    #   # => Cumo::DFloat(view)#shape=[3,2]
     #   # [[2, 4],
     #   #  [6, 8],
     #   #  [10, 12]]
     #
-    #   p a.delete([1,3,5])
-    #   # Cumo::DFloat(view)#shape=[9]
+    #   a.delete([1,3,5])
+    #   # => Cumo::DFloat(view)#shape=[9]
     #   # [1, 3, 5, 7, 8, 9, 10, 11, 12]
 
     def delete(indice, axis=nil)
@@ -278,72 +278,72 @@ module Cumo
 
     # Insert values along the axis before the indices.
     # @example
-    #   p a = Cumo::DFloat[[1, 2], [3, 4]]
+    #   a = Cumo::DFloat[[1, 2], [3, 4]]
     #   a = Cumo::Int32[[1, 1], [2, 2], [3, 3]]
     #
-    #   p a.insert(1,5)
-    #   # Cumo::Int32#shape=[7]
+    #   a.insert(1,5)
+    #   # => Cumo::Int32#shape=[7]
     #   # [1, 5, 1, 2, 2, 3, 3]
     #
-    #   p a.insert(1, 5, axis:1)
-    #   # Cumo::Int32#shape=[3,3]
+    #   a.insert(1, 5, axis:1)
+    #   # => Cumo::Int32#shape=[3,3]
     #   # [[1, 5, 1],
     #   #  [2, 5, 2],
     #   #  [3, 5, 3]]
     #
-    #   p a.insert([1], [[11],[12],[13]], axis:1)
-    #   # Cumo::Int32#shape=[3,3]
+    #   a.insert([1], [[11],[12],[13]], axis:1)
+    #   # => Cumo::Int32#shape=[3,3]
     #   # [[1, 11, 1],
     #   #  [2, 12, 2],
     #   #  [3, 13, 3]]
     #
-    #   p a.insert(1, [11, 12, 13], axis:1)
-    #   # Cumo::Int32#shape=[3,3]
+    #   a.insert(1, [11, 12, 13], axis:1)
+    #   # => Cumo::Int32#shape=[3,3]
     #   # [[1, 11, 1],
     #   #  [2, 12, 2],
     #   #  [3, 13, 3]]
     #
-    #   p a.insert([1], [11, 12, 13], axis:1)
-    #   # Cumo::Int32#shape=[3,5]
+    #   a.insert([1], [11, 12, 13], axis:1)
+    #   # => Cumo::Int32#shape=[3,5]
     #   # [[1, 11, 12, 13, 1],
     #   #  [2, 11, 12, 13, 2],
     #   #  [3, 11, 12, 13, 3]]
     #
-    #   p b = a.flatten
-    #   # Cumo::Int32(view)#shape=[6]
+    #   b = a.flatten
+    #   # => Cumo::Int32(view)#shape=[6]
     #   # [1, 1, 2, 2, 3, 3]
     #
-    #   p b.insert(2,[15,16])
-    #   # Cumo::Int32#shape=[8]
+    #   b.insert(2,[15,16])
+    #   # => Cumo::Int32#shape=[8]
     #   # [1, 1, 15, 16, 2, 2, 3, 3]
     #
-    #   p b.insert([2,2],[15,16])
-    #   # Cumo::Int32#shape=[8]
+    #   b.insert([2,2],[15,16])
+    #   # => Cumo::Int32#shape=[8]
     #   # [1, 1, 15, 16, 2, 2, 3, 3]
     #
-    #   p b.insert([2,1],[15,16])
-    #   # Cumo::Int32#shape=[8]
+    #   b.insert([2,1],[15,16])
+    #   # => Cumo::Int32#shape=[8]
     #   # [1, 16, 1, 15, 2, 2, 3, 3]
     #
-    #   p b.insert([2,0,1],[15,16,17])
-    #   # Cumo::Int32#shape=[9]
+    #   b.insert([2,0,1],[15,16,17])
+    #   # => Cumo::Int32#shape=[9]
     #   # [16, 1, 17, 1, 15, 2, 2, 3, 3]
     #
-    #   p b.insert(2..3, [15, 16])
-    #   # Cumo::Int32#shape=[8]
+    #   b.insert(2..3, [15, 16])
+    #   # => Cumo::Int32#shape=[8]
     #   # [1, 1, 15, 2, 16, 2, 3, 3]
     #
-    #   p b.insert(2, [7.13, 0.5])
-    #   # Cumo::Int32#shape=[8]
+    #   b.insert(2, [7.13, 0.5])
+    #   # => Cumo::Int32#shape=[8]
     #   # [1, 1, 7, 0, 2, 2, 3, 3]
     #
-    #   p x = Cumo::DFloat.new(2,4).seq
-    #   # Cumo::DFloat#shape=[2,4]
+    #   x = Cumo::DFloat.new(2,4).seq
+    #   # => Cumo::DFloat#shape=[2,4]
     #   # [[0, 1, 2, 3],
     #   #  [4, 5, 6, 7]]
     #
-    #   p x.insert([1,3],999,axis:1)
-    #   # Cumo::DFloat#shape=[2,6]
+    #   x.insert([1,3],999,axis:1)
+    #   # => Cumo::DFloat#shape=[2,6]
     #   # [[0, 999, 1, 2, 999, 3],
     #   #  [4, 999, 5, 6, 999, 7]]
 
@@ -393,23 +393,23 @@ module Cumo
 
     class << self
     # @example
-    #   p a = Cumo::DFloat[[1, 2], [3, 4]]
-    #   # Cumo::DFloat#shape=[2,2]
+    #   a = Cumo::DFloat[[1, 2], [3, 4]]
+    #   # => Cumo::DFloat#shape=[2,2]
     #   # [[1, 2],
     #   #  [3, 4]]
     #
-    #   p b = Cumo::DFloat[[5, 6]]
-    #   # Cumo::DFloat#shape=[1,2]
+    #   b = Cumo::DFloat[[5, 6]]
+    #   # => Cumo::DFloat#shape=[1,2]
     #   # [[5, 6]]
     #
-    #   p Cumo::NArray.concatenate([a,b],axis:0)
-    #   # Cumo::DFloat#shape=[3,2]
+    #   Cumo::NArray.concatenate([a,b],axis:0)
+    #   # => Cumo::DFloat#shape=[3,2]
     #   # [[1, 2],
     #   #  [3, 4],
     #   #  [5, 6]]
     #
-    #   p Cumo::NArray.concatenate([a,b.transpose], axis:1)
-    #   # Cumo::DFloat#shape=[2,3]
+    #   Cumo::NArray.concatenate([a,b.transpose], axis:1)
+    #   # => Cumo::DFloat#shape=[2,3]
     #   # [[1, 2, 5],
     #   #  [3, 4, 6]]
 
@@ -471,15 +471,15 @@ module Cumo
     # @example
     #   a = Cumo::Int32[1,2,3]
     #   b = Cumo::Int32[2,3,4]
-    #   p Cumo::NArray.vstack([a,b])
-    #   # Cumo::Int32#shape=[2,3]
+    #   Cumo::NArray.vstack([a,b])
+    #   # => Cumo::Int32#shape=[2,3]
     #   # [[1, 2, 3],
     #   #  [2, 3, 4]]
     #
     #   a = Cumo::Int32[[1],[2],[3]]
     #   b = Cumo::Int32[[2],[3],[4]]
-    #   p Cumo::NArray.vstack([a,b])
-    #   # Cumo::Int32#shape=[6,1]
+    #   Cumo::NArray.vstack([a,b])
+    #   # => Cumo::Int32#shape=[6,1]
     #   # [[1],
     #   #  [2],
     #   #  [3],
@@ -498,14 +498,14 @@ module Cumo
     # @example
     #   a = Cumo::Int32[1,2,3]
     #   b = Cumo::Int32[2,3,4]
-    #   p Cumo::NArray.hstack([a,b])
-    #   # Cumo::Int32#shape=[6]
+    #   Cumo::NArray.hstack([a,b])
+    #   # => Cumo::Int32#shape=[6]
     #   # [1, 2, 3, 2, 3, 4]
     #
     #   a = Cumo::Int32[[1],[2],[3]]
     #   b = Cumo::Int32[[2],[3],[4]]
-    #   p Cumo::NArray.hstack([a,b])
-    #   # Cumo::Int32#shape=[3,2]
+    #   Cumo::NArray.hstack([a,b])
+    #   # => Cumo::Int32#shape=[3,2]
     #   # [[1, 2],
     #   #  [2, 3],
     #   #  [3, 4]]
@@ -526,16 +526,16 @@ module Cumo
     # @example
     #   a = Cumo::Int32[1,2,3]
     #   b = Cumo::Int32[2,3,4]
-    #   p Cumo::NArray.dstack([a,b])
-    #   # Cumo::Int32#shape=[1,3,2]
+    #   Cumo::NArray.dstack([a,b])
+    #   # => Cumo::Int32#shape=[1,3,2]
     #   # [[[1, 2],
     #   #   [2, 3],
     #   #   [3, 4]]]
     #
     #   a = Cumo::Int32[[1],[2],[3]]
     #   b = Cumo::Int32[[2],[3],[4]]
-    #   p Cumo::NArray.dstack([a,b])
-    #   # Cumo::Int32#shape=[3,1,2]
+    #   Cumo::NArray.dstack([a,b])
+    #   # => Cumo::Int32#shape=[3,1,2]
     #   # [[[1, 2]],
     #   #  [[2, 3]],
     #   #  [[3, 4]]]
@@ -551,8 +551,8 @@ module Cumo
     # @example
     #   x = Cumo::Int32[1,2,3]
     #   y = Cumo::Int32[2,3,4]
-    #   p Cumo::NArray.column_stack([x,y])
-    #   # Cumo::Int32#shape=[3,2]
+    #   Cumo::NArray.column_stack([x,y])
+    #   # => Cumo::Int32#shape=[3,2]
     #   # [[1, 2],
     #   #  [2, 3],
     #   #  [3, 4]]
@@ -592,23 +592,23 @@ module Cumo
     end # class << self
 
     # @example
-    #   p a = Cumo::DFloat[[1, 2], [3, 4]]
-    #   # Cumo::DFloat#shape=[2,2]
+    #   a = Cumo::DFloat[[1, 2], [3, 4]]
+    #   # => Cumo::DFloat#shape=[2,2]
     #   # [[1, 2],
     #   #  [3, 4]]
     #
-    #   p b = Cumo::DFloat[[5, 6]]
-    #   # Cumo::DFloat#shape=[1,2]
+    #   b = Cumo::DFloat[[5, 6]]
+    #   # => Cumo::DFloat#shape=[1,2]
     #   # [[5, 6]]
     #
-    #   p a.concatenate(b,axis:0)
-    #   # Cumo::DFloat#shape=[3,2]
+    #   a.concatenate(b,axis:0)
+    #   # => Cumo::DFloat#shape=[3,2]
     #   # [[1, 2],
     #   #  [3, 4],
     #   #  [5, 6]]
     #
-    #   p a.concatenate(b.transpose, axis:1)
-    #   # Cumo::DFloat#shape=[2,3]
+    #   a.concatenate(b.transpose, axis:1)
+    #   # => Cumo::DFloat#shape=[2,3]
     #   # [[1, 2, 5],
     #   #  [3, 4, 6]]
 
@@ -654,24 +654,24 @@ module Cumo
     end
 
     # @example
-    #   p x = Cumo::DFloat.new(9).seq
-    #   # Cumo::DFloat#shape=[9]
+    #   x = Cumo::DFloat.new(9).seq
+    #   # => Cumo::DFloat#shape=[9]
     #   # [0, 1, 2, 3, 4, 5, 6, 7, 8]
     #
-    #   pp x.split(3)
-    #   # [Cumo::DFloat(view)#shape=[3]
+    #   x.split(3)
+    #   # => [Cumo::DFloat(view)#shape=[3]
     #   # [0, 1, 2],
     #   #  Cumo::DFloat(view)#shape=[3]
     #   # [3, 4, 5],
     #   #  Cumo::DFloat(view)#shape=[3]
     #   # [6, 7, 8]]
     #
-    #   p x = Cumo::DFloat.new(8).seq
-    #   # Cumo::DFloat#shape=[8]
+    #   x = Cumo::DFloat.new(8).seq
+    #   # => Cumo::DFloat#shape=[8]
     #   # [0, 1, 2, 3, 4, 5, 6, 7]
     #
-    #   pp x.split([3, 5, 6, 10])
-    #   # [Cumo::DFloat(view)#shape=[3]
+    #   x.split([3, 5, 6, 10])
+    #   # => [Cumo::DFloat(view)#shape=[3]
     #   # [0, 1, 2],
     #   #  Cumo::DFloat(view)#shape=[2]
     #   # [3, 4],
@@ -718,15 +718,15 @@ module Cumo
     end
 
     # @example
-    #   p x = Cumo::DFloat.new(4,4).seq
-    #   # Cumo::DFloat#shape=[4,4]
+    #   x = Cumo::DFloat.new(4,4).seq
+    #   # => Cumo::DFloat#shape=[4,4]
     #   # [[0, 1, 2, 3],
     #   #  [4, 5, 6, 7],
     #   #  [8, 9, 10, 11],
     #   #  [12, 13, 14, 15]]
     #
-    #   pp x.hsplit(2)
-    #   # [Cumo::DFloat(view)#shape=[4,2]
+    #   x.hsplit(2)
+    #   # => [Cumo::DFloat(view)#shape=[4,2]
     #   # [[0, 1],
     #   #  [4, 5],
     #   #  [8, 9],
@@ -737,8 +737,8 @@ module Cumo
     #   #  [10, 11],
     #   #  [14, 15]]]
     #
-    #   pp x.hsplit([3, 6])
-    #   # [Cumo::DFloat(view)#shape=[4,3]
+    #   x.hsplit([3, 6])
+    #   # => [Cumo::DFloat(view)#shape=[4,3]
     #   # [[0, 1, 2],
     #   #  [4, 5, 6],
     #   #  [8, 9, 10],
@@ -763,47 +763,47 @@ module Cumo
     end
 
     # @example
-    #   p a = Cumo::NArray[0,1,2]
-    #   # Cumo::Int32#shape=[3]
+    #   a = Cumo::NArray[0,1,2]
+    #   # => Cumo::Int32#shape=[3]
     #   # [0, 1, 2]
     #
-    #   p a.tile(2)
-    #   # Cumo::Int32#shape=[6]
+    #   a.tile(2)
+    #   # => Cumo::Int32#shape=[6]
     #   # [0, 1, 2, 0, 1, 2]
     #
-    #   p a.tile(2,2)
-    #   # Cumo::Int32#shape=[2,6]
+    #   a.tile(2,2)
+    #   # => Cumo::Int32#shape=[2,6]
     #   # [[0, 1, 2, 0, 1, 2],
     #   #  [0, 1, 2, 0, 1, 2]]
     #
-    #   p a.tile(2,1,2)
-    #   # Cumo::Int32#shape=[2,1,6]
+    #   a.tile(2,1,2)
+    #   # => Cumo::Int32#shape=[2,1,6]
     #   # [[[0, 1, 2, 0, 1, 2]],
     #   #  [[0, 1, 2, 0, 1, 2]]]
     #
-    #   p b = Cumo::NArray[[1, 2], [3, 4]]
-    #   # Cumo::Int32#shape=[2,2]
+    #   b = Cumo::NArray[[1, 2], [3, 4]]
+    #   # => Cumo::Int32#shape=[2,2]
     #   # [[1, 2],
     #   #  [3, 4]]
     #
-    #   p b.tile(2)
-    #   # Cumo::Int32#shape=[2,4]
+    #   b.tile(2)
+    #   # => Cumo::Int32#shape=[2,4]
     #   # [[1, 2, 1, 2],
     #   #  [3, 4, 3, 4]]
     #
-    #   p b.tile(2,1)
-    #   # Cumo::Int32#shape=[4,2]
+    #   b.tile(2,1)
+    #   # => Cumo::Int32#shape=[4,2]
     #   # [[1, 2],
     #   #  [3, 4],
     #   #  [1, 2],
     #   #  [3, 4]]
     #
-    #   p c = Cumo::NArray[1,2,3,4]
-    #   # Cumo::Int32#shape=[4]
+    #   c = Cumo::NArray[1,2,3,4]
+    #   # => Cumo::Int32#shape=[4]
     #   # [1, 2, 3, 4]
     #
-    #   p c.tile(4,1)
-    #   # Cumo::Int32#shape=[4,4]
+    #   c.tile(4,1)
+    #   # => Cumo::Int32#shape=[4,4]
     #   # [[1, 2, 3, 4],
     #   #  [1, 2, 3, 4],
     #   #  [1, 2, 3, 4],
@@ -846,26 +846,26 @@ module Cumo
     end
 
     # @example
-    #   p Cumo::NArray[3].repeat(4)
-    #   # Cumo::Int32#shape=[4]
+    #   Cumo::NArray[3].repeat(4)
+    #   # => Cumo::Int32#shape=[4]
     #   # [3, 3, 3, 3]
     #
-    #   p x = Cumo::NArray[[1,2],[3,4]]
-    #   # Cumo::Int32#shape=[2,2]
+    #   x = Cumo::NArray[[1,2],[3,4]]
+    #   # => Cumo::Int32#shape=[2,2]
     #   # [[1, 2],
     #   #  [3, 4]]
     #
-    #   p x.repeat(2)
-    #   # Cumo::Int32#shape=[8]
+    #   x.repeat(2)
+    #   # => Cumo::Int32#shape=[8]
     #   # [1, 1, 2, 2, 3, 3, 4, 4]
     #
-    #   p x.repeat(3,axis:1)
-    #   # Cumo::Int32#shape=[2,6]
+    #   x.repeat(3,axis:1)
+    #   # => Cumo::Int32#shape=[2,6]
     #   # [[1, 1, 1, 2, 2, 2],
     #   #  [3, 3, 3, 4, 4, 4]]
     #
-    #   p x.repeat([1,2],axis:0)
-    #   # Cumo::Int32#shape=[3,2]
+    #   x.repeat([1,2],axis:0)
+    #   # => Cumo::Int32#shape=[3,2]
     #   # [[1, 2],
     #   #  [3, 4],
     #   #  [3, 4]]
@@ -906,30 +906,30 @@ module Cumo
 
     # Calculate the n-th discrete difference along given axis.
     # @example
-    #   p x = Cumo::DFloat[1, 2, 4, 7, 0]
-    #   # Cumo::DFloat#shape=[5]
+    #   x = Cumo::DFloat[1, 2, 4, 7, 0]
+    #   # => Cumo::DFloat#shape=[5]
     #   # [1, 2, 4, 7, 0]
     #
-    #   p x.diff
-    #   # Cumo::DFloat#shape=[4]
+    #   x.diff
+    #   # => Cumo::DFloat#shape=[4]
     #   # [1, 2, 3, -7]
     #
-    #   p x.diff(2)
-    #   # Cumo::DFloat#shape=[3]
+    #   x.diff(2)
+    #   # => Cumo::DFloat#shape=[3]
     #   # [1, 1, -10]
     #
-    #   p x = Cumo::DFloat[[1, 3, 6, 10], [0, 5, 6, 8]]
-    #   # Cumo::DFloat#shape=[2,4]
+    #   x = Cumo::DFloat[[1, 3, 6, 10], [0, 5, 6, 8]]
+    #   # => Cumo::DFloat#shape=[2,4]
     #   # [[1, 3, 6, 10],
     #   #  [0, 5, 6, 8]]
     #
-    #   p x.diff
-    #   # Cumo::DFloat#shape=[2,3]
+    #   x.diff
+    #   # => Cumo::DFloat#shape=[2,3]
     #   # [[2, 3, 4],
     #   #  [5, 1, 2]]
     #
-    #   p x.diff(axis:0)
-    #   # Cumo::DFloat#shape=[1,4]
+    #   x.diff(axis:0)
+    #   # => Cumo::DFloat#shape=[1,4]
     #   # [[-1, 2, 0, -2]]
 
     def diff(n=1, axis:-1)
@@ -1153,18 +1153,20 @@ module Cumo
     # @return [Cumo::NArray]  return outer product
     # @example
     #   a = Cumo::DFloat.ones(5)
-    #   => Cumo::DFloat#shape=[5]
-    #   [1, 1, 1, 1, 1]
+    #   # => Cumo::DFloat#shape=[5]
+    #   # [1, 1, 1, 1, 1]
+    #
     #   b = Cumo::DFloat.linspace(-2,2,5)
-    #   => Cumo::DFloat#shape=[5]
-    #   [-2, -1, 0, 1, 2]
+    #   # => Cumo::DFloat#shape=[5]
+    #   # [-2, -1, 0, 1, 2]
+    #
     #   a.outer(b)
-    #   => Cumo::DFloat#shape=[5,5]
-    #   [[-2, -1, 0, 1, 2],
-    #    [-2, -1, 0, 1, 2],
-    #    [-2, -1, 0, 1, 2],
-    #    [-2, -1, 0, 1, 2],
-    #    [-2, -1, 0, 1, 2]]
+    #   # => Cumo::DFloat#shape=[5,5]
+    #   # [[-2, -1, 0, 1, 2],
+    #   #  [-2, -1, 0, 1, 2],
+    #   #  [-2, -1, 0, 1, 2],
+    #   #  [-2, -1, 0, 1, 2],
+    #   #  [-2, -1, 0, 1, 2]]
 
     def outer(b, axis:nil)
       b = NArray.cast(b)
@@ -1193,17 +1195,19 @@ module Cumo
     # @return [Cumo::NArray]  return Kronecker product
     # @example
     #   Cumo::DFloat[1,10,100].kron([5,6,7])
-    #   => Cumo::DFloat#shape=[9]
-    #   [5, 6, 7, 50, 60, 70, 500, 600, 700]
+    #   # => Cumo::DFloat#shape=[9]
+    #   # [5, 6, 7, 50, 60, 70, 500, 600, 700]
+    #
     #   Cumo::DFloat[5,6,7].kron([1,10,100])
-    #   => Cumo::DFloat#shape=[9]
-    #   [5, 50, 500, 6, 60, 600, 7, 70, 700]
+    #   # => Cumo::DFloat#shape=[9]
+    #   # [5, 50, 500, 6, 60, 600, 7, 70, 700]
+    #
     #   Cumo::DFloat.eye(2).kron(Cumo::DFloat.ones(2,2))
-    #   => Cumo::DFloat#shape=[4,4]
-    #   [[1, 1, 0, 0],
-    #    [1, 1, 0, 0],
-    #    [0, 0, 1, 1],
-    #    [0, 0, 1, 1]]
+    #   # => Cumo::DFloat#shape=[4,4]
+    #   # [[1, 1, 0, 0],
+    #   #  [1, 1, 0, 0],
+    #   #  [0, 0, 1, 1],
+    #   #  [0, 0, 1, 1]]
 
     def kron(b)
       b = NArray.cast(b)
