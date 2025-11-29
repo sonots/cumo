@@ -324,19 +324,19 @@ cumo_na_setup(VALUE self, int ndim, size_t *shape)
 
   @example
     i = Cumo::Int64.new([2,4,3])
-    #=> Cumo::Int64#shape=[2,4,3](empty)
+    # => Cumo::Int64#shape=[2,4,3](empty)
 
     f = Cumo::DFloat.new(3,4)
-    #=> Cumo::DFloat#shape=[3,4](empty)
+    # => Cumo::DFloat#shape=[3,4](empty)
 
     f.fill(2)
-    #=> Cumo::DFloat#shape=[3,4]
+    # => Cumo::DFloat#shape=[3,4]
     # [[2, 2, 2, 2],
     #  [2, 2, 2, 2],
     #  [2, 2, 2, 2]]
 
     x = Cumo::NArray.new(5)
-    #=> in `new': allocator undefined for Cumo::NArray (TypeError)
+    # => in `new': allocator undefined for Cumo::NArray (TypeError)
     #   	from t.rb:9:in `<main>'
 
 */
@@ -420,10 +420,10 @@ cumo_na_initialize_copy(VALUE self, VALUE orig)
  *  but for typed NArray subclasses, e.g., DFloat, Int64.
  *  @example
  *    a = Cumo::DFloat.zeros(3,5)
- *    => Cumo::DFloat#shape=[3,5]
- *    [[0, 0, 0, 0, 0],
- *     [0, 0, 0, 0, 0],
- *     [0, 0, 0, 0, 0]]
+ *    # => Cumo::DFloat#shape=[3,5]
+ *    # [[0, 0, 0, 0, 0],
+ *    #  [0, 0, 0, 0, 0],
+ *    #  [0, 0, 0, 0, 0]]
  */
 static VALUE
 cumo_na_s_zeros(int argc, VALUE *argv, VALUE klass)
@@ -471,8 +471,8 @@ cumo_na_s_ones(int argc, VALUE *argv, VALUE klass)
 
   @example
     a = Cumo::DFloat.linspace(-5,5,7)
-    => Cumo::DFloat#shape=[7]
-    [-5, -3.33333, -1.66667, 0, 1.66667, 3.33333, 5]
+    # => Cumo::DFloat#shape=[7]
+    # [-5, -3.33333, -1.66667, 0, 1.66667, 3.33333, 5]
  */
 static VALUE
 cumo_na_s_linspace(int argc, VALUE *argv, VALUE klass)
@@ -510,11 +510,12 @@ cumo_na_s_linspace(int argc, VALUE *argv, VALUE klass)
 
   @example
     Cumo::DFloat.logspace(4,0,5,2)
-    => Cumo::DFloat#shape=[5]
-       [16, 8, 4, 2, 1]
+    # => Cumo::DFloat#shape=[5]
+    #    [16, 8, 4, 2, 1]
+
     Cumo::DComplex.logspace(0,1i*Math::PI,5,Math::E)
-    => Cumo::DComplex#shape=[5]
-       [1+4.44659e-323i, 0.707107+0.707107i, 6.12323e-17+1i, -0.707107+0.707107i, ...]
+    # => Cumo::DComplex#shape=[5]
+    #    [1+4.44659e-323i, 0.707107+0.707107i, 6.12323e-17+1i, -0.707107+0.707107i, ...]
  */
 static VALUE
 cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
@@ -548,10 +549,10 @@ cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
   @return [Cumo::NArray]  created NArray.
   @example
     a = Cumo::DFloat.eye(3)
-    => Cumo::DFloat#shape=[3,3]
-    [[1, 0, 0],
-     [0, 1, 0],
-     [0, 0, 1]]
+    # => Cumo::DFloat#shape=[3,3]
+    # [[1, 0, 0],
+    #  [0, 1, 0],
+    #  [0, 0, 1]]
 */
 static VALUE
 cumo_na_s_eye(int argc, VALUE *argv, VALUE klass)

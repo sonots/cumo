@@ -55,7 +55,7 @@ static void
   @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
   @return [Integer,Cumo::Int] returns result index of <%=name%>.
   @example
-      Cumo::NArray[3,4,1,2].sort_index => Cumo::Int32[2,3,0,1]
+      Cumo::NArray[3,4,1,2].sort_index # => Cumo::Int32[2,3,0,1]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

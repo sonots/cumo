@@ -116,22 +116,22 @@ static VALUE
     otherwise returns UInt32 or UInt64 depending on the size along last axis.
   @example
     Cumo::Int32[0..4].bincount
-    => Cumo::UInt32#shape=[5]
-       [1, 1, 1, 1, 1]
+    # => Cumo::UInt32#shape=[5]
+    #    [1, 1, 1, 1, 1]
 
     Cumo::Int32[0, 1, 1, 3, 2, 1, 7].bincount
-    => Cumo::UInt32#shape=[8]
-       [1, 3, 1, 1, 0, 0, 0, 1]
+    # => Cumo::UInt32#shape=[8]
+    #    [1, 3, 1, 1, 0, 0, 0, 1]
 
     x = Cumo::Int32[0, 1, 1, 3, 2, 1, 7, 23]
     x.bincount.size == x.max+1
-    => true
+    # => true
 
     w = Cumo::DFloat[0.3, 0.5, 0.2, 0.7, 1.0, -0.6]
     x = Cumo::Int32[0, 1, 1, 2, 2, 2]
     x.bincount(w)
-    => Cumo::DFloat#shape=[3]
-       [0.3, 0.7, 1.1]
+    # => Cumo::DFloat#shape=[3]
+    #    [0.3, 0.7, 1.1]
 
 */
 static VALUE

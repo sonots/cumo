@@ -195,21 +195,21 @@ check_axis(int axis, int ndim)
   @example
     x = Cumo::Int32[[1,2,3]]
 
-    p x.swapaxes(0,1)
-    # Cumo::Int32(view)#shape=[3,1]
+    x.swapaxes(0,1)
+    # => Cumo::Int32(view)#shape=[3,1]
     # [[1],
     #  [2],
     #  [3]]
 
-    p x = Cumo::Int32[[[0,1],[2,3]],[[4,5],[6,7]]]
-    # Cumo::Int32#shape=[2,2,2]
+    x = Cumo::Int32[[[0,1],[2,3]],[[4,5],[6,7]]]
+    # => Cumo::Int32#shape=[2,2,2]
     # [[[0, 1],
     #   [2, 3]],
     #  [[4, 5],
     #   [6, 7]]]
 
-    p x.swapaxes(0,2)
-    # Cumo::Int32(view)#shape=[2,2,2]
+    x.swapaxes(0,2)
+    # => Cumo::Int32(view)#shape=[2,2,2]
     # [[[0, 4],
     #   [2, 6]],
     #  [[1, 5],
@@ -604,28 +604,30 @@ void cumo_na_diagonal_stride_index_kernel_launch(size_t *idx, ssize_t s0, size_t
   @return [Cumo::NArray]  diagonal view of NArray.
   @example
     a = Cumo::DFloat.new(4,5).seq
-    => Cumo::DFloat#shape=[4,5]
-    [[0, 1, 2, 3, 4],
-     [5, 6, 7, 8, 9],
-     [10, 11, 12, 13, 14],
-     [15, 16, 17, 18, 19]]
+    # => Cumo::DFloat#shape=[4,5]
+    # [[0, 1, 2, 3, 4],
+    #  [5, 6, 7, 8, 9],
+    #  [10, 11, 12, 13, 14],
+    #  [15, 16, 17, 18, 19]]
     b = a.diagonal(1)
-    => Cumo::DFloat(view)#shape=[4]
-    [1, 7, 13, 19]
+    # => Cumo::DFloat(view)#shape=[4]
+    # [1, 7, 13, 19]
+
     b.store(0)
     a
-    => Cumo::DFloat#shape=[4,5]
-    [[0, 0, 2, 3, 4],
-     [5, 6, 0, 8, 9],
-     [10, 11, 12, 0, 14],
-     [15, 16, 17, 18, 0]]
+    # => Cumo::DFloat#shape=[4,5]
+    # [[0, 0, 2, 3, 4],
+    #  [5, 6, 0, 8, 9],
+    #  [10, 11, 12, 0, 14],
+    #  [15, 16, 17, 18, 0]]
+
     b.store([1,2,3,4])
     a
-    => Cumo::DFloat#shape=[4,5]
-    [[0, 1, 2, 3, 4],
-     [5, 6, 2, 8, 9],
-     [10, 11, 12, 3, 14],
-     [15, 16, 17, 18, 4]]
+    # => Cumo::DFloat#shape=[4,5]
+    # [[0, 1, 2, 3, 4],
+    #  [5, 6, 2, 8, 9],
+    #  [10, 11, 12, 3, 14],
+    #  [15, 16, 17, 18, 4]]
  */
 static VALUE
 cumo_na_diagonal(int argc, VALUE *argv, VALUE self)

@@ -466,11 +466,13 @@ cumo_na_s_array_shape(VALUE mod, VALUE ary)
   @return [Cumo::NArray]
   @example
     Cumo::NArray.new_like([[1,2,3],[4,5,6]])
-    => Cumo::Int32#shape=[2,3](empty)
+    # => Cumo::Int32#shape=[2,3](empty)
+
     Cumo::DFloat.new_like([[1,2],[3,4]])
-    => Cumo::DFloat#shape=[2,2](empty)
+    # => Cumo::DFloat#shape=[2,2](empty)
+
     Cumo::NArray.new_like([1,2i,3])
-    => Cumo::DComplex#shape=[3](empty)
+    # => Cumo::DComplex#shape=[3](empty)
 */
 VALUE
 cumo_na_s_new_like(VALUE type, VALUE obj)
