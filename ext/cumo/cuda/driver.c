@@ -33,7 +33,11 @@ rb_cuCtxCreate(VALUE self, VALUE flags, VALUE dev)
     CUcontext _pctx;
     CUresult status;
 
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000
+    status = cuCtxCreate(&_pctx, NULL, _flags, _dev);
+#else
     status = cuCtxCreate(&_pctx, _flags, _dev);
+#endif
 
     check_status(status);
     return SIZET2NUM((size_t)_pctx);
@@ -418,5 +422,9 @@ Init_cumo_cuda_driver()
 
     cuInit(0);
     cuDeviceGet(&cuDevice, 0);
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000
+    cuCtxCreate(&context, NULL, 0, cuDevice);
+#else
     cuCtxCreate(&context, 0, cuDevice);
+#endif
 }
