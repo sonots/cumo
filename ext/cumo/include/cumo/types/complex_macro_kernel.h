@@ -157,18 +157,27 @@ __host__ __device__ static inline dtype f_seq(dtype x, dtype y, double c)
 /* --------- thrust ----------------- */
 #include "cumo/cuda/cumo_thrust_complex.hpp"
 
-struct cumo_thrust_plus : public thrust::binary_function<dtype, dtype, dtype>
+struct cumo_thrust_plus
 {
+    using first_argument_type  = dtype;
+    using second_argument_type = dtype;
+    using result_type          = dtype;
     __host__ __device__ dtype operator()(dtype x, dtype y) { return m_add(x,y); }
 };
 
-struct cumo_thrust_multiplies : public thrust::binary_function<dtype, dtype, dtype>
+struct cumo_thrust_multiplies
 {
+    using first_argument_type  = dtype;
+    using second_argument_type = dtype;
+    using result_type          = dtype;
     __host__ __device__ dtype operator()(dtype x, dtype y) { return m_mul(x,y); }
 };
 
-struct cumo_thrust_multiplies_mulsum_nan : public thrust::binary_function<dtype, dtype, dtype>
+struct cumo_thrust_multiplies_mulsum_nan
 {
+    using first_argument_type  = dtype;
+    using second_argument_type = dtype;
+    using result_type          = dtype;
     __host__ __device__ dtype operator()(dtype x, dtype y) {
         if (not_nan(x) && not_nan(y)) {
             return m_mul(x, y);
@@ -178,8 +187,10 @@ struct cumo_thrust_multiplies_mulsum_nan : public thrust::binary_function<dtype,
     }
 };
 
-struct cumo_thrust_square : public thrust::unary_function<dtype, dtype>
+struct cumo_thrust_square
 {
+    using argument_type = dtype;
+    using result_type   = dtype;
     __host__ __device__ rtype operator()(const dtype& x) const { return c_abs_square(x); }
 };
 

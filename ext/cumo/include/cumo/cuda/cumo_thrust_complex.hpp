@@ -49,10 +49,10 @@ struct cumo_thrust_complex_variance_unary_op
 // all values that have been agregated so far
 template <typename T, typename R>
 struct cumo_thrust_complex_variance_binary_op
-    : public thrust::binary_function<const cumo_thrust_complex_variance_data<T,R>&,
-                                     const cumo_thrust_complex_variance_data<T,R>&,
-                                           cumo_thrust_complex_variance_data<T,R> >
 {
+    using first_argument_type  = const cumo_thrust_complex_variance_data<T,R>&;
+    using second_argument_type = const cumo_thrust_complex_variance_data<T,R>&;
+    using result_type          = cumo_thrust_complex_variance_data<T,R>;
     __host__ __device__
     cumo_thrust_complex_variance_data<T,R> operator()(const cumo_thrust_complex_variance_data<T,R>& x, const cumo_thrust_complex_variance_data<T,R>& y) const
     {

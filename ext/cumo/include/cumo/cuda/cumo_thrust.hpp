@@ -28,8 +28,10 @@ class cumo_thrust_strided_range
 
     typedef typename thrust::iterator_difference<Iterator>::type difference_type;
 
-    struct stride_functor : public thrust::unary_function<difference_type,difference_type>
+    struct stride_functor
     {
+        using argument_type = difference_type;
+        using result_type   = difference_type;
         difference_type stride;
 
         stride_functor(difference_type stride)
@@ -86,8 +88,10 @@ struct cumo_thrust_minmax_pair
 // returns a cumo_thrust_minmax_pair whose minimum and maximum values
 // are initialized to x.
 template <typename T>
-struct cumo_thrust_minmax_unary_op : public thrust::unary_function< T, cumo_thrust_minmax_pair<T> >
+struct cumo_thrust_minmax_unary_op
 {
+    using argument_type = T;
+    using result_type   = cumo_thrust_minmax_pair<T>;
     __host__ __device__ cumo_thrust_minmax_pair<T> operator()(const T& x) const
     {
         cumo_thrust_minmax_pair<T> result;
@@ -102,8 +106,11 @@ struct cumo_thrust_minmax_unary_op : public thrust::unary_function< T, cumo_thru
 // maximum values are the min() and max() respectively of
 // the minimums and maximums of the input pairs
 template <typename T>
-struct cumo_thrust_minmax_binary_op : public thrust::binary_function< cumo_thrust_minmax_pair<T>, cumo_thrust_minmax_pair<T>, cumo_thrust_minmax_pair<T> >
+struct cumo_thrust_minmax_binary_op
 {
+    using first_argument_type  = cumo_thrust_minmax_pair<T>;
+    using second_argument_type = cumo_thrust_minmax_pair<T>;
+    using result_type          = cumo_thrust_minmax_pair<T>;
     __host__ __device__ cumo_thrust_minmax_pair<T> operator()(const cumo_thrust_minmax_pair<T>& x, const cumo_thrust_minmax_pair<T>& y) const
     {
         cumo_thrust_minmax_pair<T> result;
@@ -157,10 +164,10 @@ struct cumo_thrust_variance_unary_op
 // all values that have been agregated so far
 template <typename T>
 struct cumo_thrust_variance_binary_op
-    : public thrust::binary_function<const cumo_thrust_variance_data<T>&,
-                                     const cumo_thrust_variance_data<T>&,
-                                           cumo_thrust_variance_data<T> >
 {
+    using first_argument_type  = const cumo_thrust_variance_data<T>&;
+    using second_argument_type = const cumo_thrust_variance_data<T>&;
+    using result_type          = cumo_thrust_variance_data<T>;
     __host__ __device__
     cumo_thrust_variance_data<T> operator()(const cumo_thrust_variance_data<T>& x, const cumo_thrust_variance_data <T>& y) const
     {
