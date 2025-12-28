@@ -26,7 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth 1 https://github.com/rbenv/ruby-build.git && \
-    cd ruby-build/bin && ./ruby-build ${RUBY_VERSION} /usr
+    cd ruby-build/bin && ./ruby-build ${RUBY_VERSION} /usr && \
+    git config --global --add safe.directory /workspace
 
 WORKDIR /workspace
 
