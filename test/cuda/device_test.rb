@@ -24,7 +24,8 @@ module Cumo::CUDA
     end
 
     def test_compute_capability
-      assert { Device.new.compute_capability.size == 2 }
+      capability = `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`.strip
+      assert { Device.new.compute_capability == capability.delete('.') }
     end
   end
 end
