@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "mkmf"
 require "open3"
 require_relative "nvcc"
 
@@ -60,6 +61,12 @@ module MakeMakefileCuda
           # CUDA 11.0
           capability = [35, 50, 60, 70, 75, 80]
         end
+
+        if find_executable('nvidia-smi')
+          arch_version = `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`.strip
+          capability << Integer(Float(arch_version) * 10, 10) unless arch_version.empty?
+        end
+
         capability.each do |arch|
           cmd << " --generate-code=arch=compute_#{arch},code=sm_#{arch}"
         end
