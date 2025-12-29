@@ -64,7 +64,7 @@ module MakeMakefileCuda
 
         if find_executable('nvidia-smi')
           arch_version = `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`.strip
-          capability << Integer(Float(arch_version) * 10, 10) unless arch_version.empty?
+          capability << (arch_version.to_f * 10).to_i unless arch_version.empty?
         end
 
         capability.each do |arch|
