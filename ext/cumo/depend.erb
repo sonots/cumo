@@ -55,6 +55,6 @@ run-ctest : <%= __dir__ %>/cuda/memory_pool_impl_test.exe
 	./$<
 
 <%= __dir__ %>/cuda/memory_pool_impl_test.exe: <%= __dir__ %>/cuda/memory_pool_impl_test.cpp <%= __dir__ %>/cuda/memory_pool_impl.cpp <%= __dir__ %>/cuda/memory_pool_impl.hpp
-	nvcc -std=c++14 <%= ENV['DEBUG'] ? '-g -O0 --compiler-options -Wall' : '' %> -L. -L$(libdir) -I. $(INCFLAGS) -o $@ $< <%= __dir__ %>/cuda/memory_pool_impl.cpp
+	nvcc -std=c++17 <%= ENV['DEBUG'] ? '-g -O0 --compiler-options -Wall' : '' %> -L. -L$(libdir) -I. $(INCFLAGS) -o $@ $< <%= __dir__ %>/cuda/memory_pool_impl.cpp
 
 CLEANOBJS = <%= __dir__ %>/*.o <%= __dir__ %>/*/*.o <%= __dir__ %>/*/*/*.o <%= __dir__ %>/*.bak <%= __dir__ %>/narray/types/*.c <%= __dir__ %>/narray/types/*_kernel.cu <%= __dir__ %>/*.exe <%= __dir__ %>/*/*.exe

@@ -6,7 +6,7 @@
     * Technically, it is not possible to use CRuby API such as `VALUE` in .cu files.
         * CRuby API is not callable from CUDA kernel because they do not have `__device__` modifier.
         * nvcc does not support `#include RUBY_EXTCONF_H`, so can not include `ruby.h`.
-    * (RULE) It is allowed to use C++14 codes in .cu files.
+    * (RULE) It is allowed to use C++17 codes in .cu files.
 * Rest of `*.{h,c}` files are for host (CPU).
     * Call C wrapper functions defined in .cu files.
     * It can use CRuby API.
