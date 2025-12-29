@@ -799,7 +799,7 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
     int keep_dim = data->keep_dim;
     int at_mode = data->at_mode;
 
-    int ndim_new;
+    size_t ndim_new;
     VALUE view;
     cumo_narray_view_t *na2;
     ssize_t elmsz;
