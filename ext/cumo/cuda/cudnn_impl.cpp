@@ -533,7 +533,7 @@ cumo_cuda_cudnn_CreateBNTensorDescriptor(
 {
     cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
     status = cudnnCreateTensorDescriptor(desc);
-    if (status = CUDNN_STATUS_SUCCESS) return status;
+    if (status == CUDNN_STATUS_SUCCESS) return status;
 
     status = cudnnDeriveBNTensorDescriptor(*desc, x_desc, mode);
     return status;
