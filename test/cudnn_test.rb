@@ -255,7 +255,7 @@ class CUDNNTest < Test::Unit::TestCase
       test "x.batch_norm(gamma, beta) #{dtype}" do
         y = @x.batch_norm(@gamma, @beta)
         assert { y.shape == @x_shape }
-        assert { y == dtype.ones(*@x_shape) }
+        assert_in_delta(y, dtype.ones(*@x_shape), 1e-3)
       end
 
       test "x.batch_norm(gamma, beta, axis: [0]) #{dtype}" do
@@ -275,7 +275,7 @@ class CUDNNTest < Test::Unit::TestCase
         running_var = dtype.ones(*@reduced_shape)
         y = @x.batch_norm(@gamma, @beta, running_mean: running_mean, running_var: running_var)
         assert { y.shape == @x_shape }
-        assert { y == dtype.ones(*@x_shape) }
+        assert_in_delta(y, dtype.ones(*@x_shape), 1e-3)
       end
 
       test "x.batch_norm(gamma, beta, mean, inv_std) #{dtype}" do

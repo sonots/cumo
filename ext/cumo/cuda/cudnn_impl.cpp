@@ -74,6 +74,25 @@ cumo_cuda_cudnn_CreateTensorDescriptor(
         status = cudnnSetTensor4dDescriptor(
                 *desc, CUDNN_TENSOR_NCHW, cudnn_dtype, shape[0], shape[1], shape[2], shape[3]);
     }
+    else if (ndim < 4) {
+        // cuDNN 9 fix: Force 4D (N, C, H, W)
+        int pad_shape[4] = {1, 1, 1, 1};
+
+        if (ndim == 1) {
+            // 1D: arrays are treated as "Channel" (1, C, 1, 1)
+            pad_shape[1] = (int)(shape[0]);
+        } else {
+            // 2D: [N, C] -> [N, C, 1, 1]
+            // 3D: [N, C, H] -> [N, C, H, 1]
+            for (int idim = 0; idim < ndim; ++idim) {
+                pad_shape[idim] = (int)(shape[idim]);
+            }
+        }
+
+        status = cudnnSetTensor4dDescriptor(
+                *desc, CUDNN_TENSOR_NCHW, cudnn_dtype,
+                pad_shape[0], pad_shape[1], pad_shape[2], pad_shape[3]);
+    }
     else {
         int int_shape[CUMO_NA_MAX_DIMENSION];
         for (int idim = 0; idim < ndim; ++idim) {
@@ -514,8 +533,11 @@ cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
 // TODO(sonots): Support other than 4, 5 dimensional arrays by reshaping into 4-dimensional arrays as Chainer does.
 cudnnBatchNormMode_t
 cumo_cuda_cudnn_GetBatchNormMode(size_t ndim, int* axis) {
-    if (ndim == 1 && axis[0] == 0) {  // (1, channels, (depth, )height, width)
-        return CUDNN_BATCHNORM_PER_ACTIVATION;
+    if (ndim == 1) {
+        return CUDNN_BATCHNORM_SPATIAL;
+    }
+    if (ndim == 2) {
+        return CUDNN_BATCHNORM_SPATIAL;
     }
     if ((ndim == 3 && axis[0] == 0 && axis[1] == 2 && axis[2] == 3) ||
         (ndim == 4 && axis[0] == 0 && axis[1] == 2 && axis[2] == 3 && axis[3] == 4)) {  // (1, channels, (1, )1, 1)

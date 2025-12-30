@@ -157,8 +157,11 @@ static VALUE
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
 
+    status = cudnnCreateTensorDescriptor(&bn_desc);
+    if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
+
     mode = cumo_cuda_cudnn_GetBatchNormMode(axis_ndim, int_axis);
-    status = cumo_cuda_cudnn_CreateBNTensorDescriptor(&bn_desc, x_desc, mode);
+    status = cudnnDeriveBNTensorDescriptor(bn_desc, x_desc, mode);
     if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
     // TODO: bn_desc may return another type, and may need to cast gamma, beta, mean, var
 
