@@ -1,3 +1,19 @@
+# 0.5.1 (2025/12/30)
+
+Enhancements:
+
+* Add CUDA 13 support (#153)
+* Add cuDNN 9 support
+
+Fixes:
+
+* Backport: fix example code
+* Backport: fix example code
+* Backport: fix doc
+* Backport: fix documents
+* Backport: fix document of logseq
+* Backport: trim comment out
+
 # 0.5.0 (2025/11/01)
 
 Fixes:
