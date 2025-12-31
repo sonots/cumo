@@ -79,10 +79,10 @@ void cumo_<%=type_name%>_mean_kernel_launch(uint64_t n, char *p1, ssize_t s1, ch
 {
     ssize_t s1_idx = s1 / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
-    if (s1_idx == 1) {
-        cumo_<%=type_name%>_mean_kernel<<<1,1>>>(data_begin, data_end, (dtype*)p2, n);
+    if (s1_idx == 1 || n == 1) {
+        cumo_<%=type_name%>_mean_kernel<<<1,1>>>(data_begin, data_begin + n, (dtype*)p2, n);
     } else {
+        thrust::device_ptr<dtype> data_end = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
         cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_mean_kernel<<<1,1>>>(range.begin(), range.end(), (dtype*)p2, n);
     }

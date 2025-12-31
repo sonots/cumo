@@ -746,6 +746,9 @@ class NArrayTest < Test::Unit::TestCase
   test "one element array" do
     assert { Cumo::SFloat[1].mean == 1.0 }
     assert { Cumo::DFloat[1].mean == 1.0 }
+    assert { Cumo::SComplex[1].mean == 1.0 }
+    assert { Cumo::DComplex[1].mean == 1.0 }
+
     assert { Cumo::SFloat[1].var.to_f.nan? }
     assert { Cumo::DFloat[1].var.to_f.nan? }
     assert { Cumo::SFloat[1].stddev.to_f.nan? }
