@@ -10,7 +10,7 @@ class NArrayRactorTest < CumoTestBase
       dtype = data.fetch(:dtype)
       ary = random_array(dtype)
       r = Ractor.new(ary) { |x| x }
-      ary2 = r.take
+      ary2 = r.respond_to?(:take) ? r.take : r.value
       assert_equal(ary, ary2)
       assert_not_same(ary, ary2)
     end
@@ -22,7 +22,7 @@ class NArrayRactorTest < CumoTestBase
       r = Ractor.new(ary1) do |ary2|
         [ary2, ary2 * 10]
       end
-      ary2, res = r.take
+      ary2, res = r.respond_to?(:take) ? r.take : r.value
       assert_equal((dtype != Cumo::RObject),
                    ary1.equal?(ary2))
       assert_equal(ary1 * 10, res)
@@ -37,7 +37,9 @@ class NArrayRactorTest < CumoTestBase
       r2 = Ractor.new(ary1) do |ary4|
         ary4 * 10
       end
-      assert_equal(r1.take, r2.take)
+      result1 = r1.respond_to?(:take) ? r1.take : r1.value
+      result2 = r2.respond_to?(:take) ? r2.take : r2.value
+      assert_equal(result1, result2)
     end
 
     def random_array(dtype, n=1000)
