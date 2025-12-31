@@ -105,10 +105,10 @@ void cumo_<%=type_name%>_stddev_kernel_launch(uint64_t n, char *p1, ssize_t s1, 
 {
     ssize_t s1_idx = s1 / sizeof(dtype);
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
-    thrust::device_ptr<dtype> data_end   = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
-    if (s1_idx == 1) {
-        cumo_<%=type_name%>_stddev_kernel<<<1,1>>>(data_begin, data_end, (rtype*)p2);
+    if (s1_idx == 1 || n == 1) {
+        cumo_<%=type_name%>_stddev_kernel<<<1,1>>>(data_begin, data_begin + n, (rtype*)p2);
     } else {
+        thrust::device_ptr<dtype> data_end = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
         cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_stddev_kernel<<<1,1>>>(range.begin(), range.end(), (rtype*)p2);
     }
