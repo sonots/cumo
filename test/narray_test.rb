@@ -751,6 +751,9 @@ class NArrayTest < Test::Unit::TestCase
 
     assert { Cumo::SFloat[1].var.to_f.nan? }
     assert { Cumo::DFloat[1].var.to_f.nan? }
+    assert { Cumo::SComplex[1].var.to_f.nan? }
+    assert { Cumo::DComplex[1].var.to_f.nan? }
+
     assert { Cumo::SFloat[1].stddev.to_f.nan? }
     assert { Cumo::DFloat[1].stddev.to_f.nan? }
     assert { Cumo::SFloat[1].rms == 1.0 }
