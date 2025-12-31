@@ -26,7 +26,7 @@ class cumo_thrust_strided_range
 {
     public:
 
-    typedef typename thrust::iterator_difference<Iterator>::type difference_type;
+    typedef typename thrust::iterator_traits<Iterator>::difference_type difference_type;
 
     struct stride_functor
     {
