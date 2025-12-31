@@ -742,4 +742,9 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(Cumo::DFloat[1, Float::NAN, 3].format_to_a,
                  Cumo::DFloat.cast(Cumo::RObject[1, nil, 3]).format_to_a)
   end
+
+  test "one element array" do
+    assert { Cumo::SFloat[1].mean == 1.0 }
+    assert { Cumo::DFloat[1].mean == 1.0 }
+  end
 end
