@@ -743,7 +743,7 @@ class NArrayTest < Test::Unit::TestCase
                  Cumo::DFloat.cast(Cumo::RObject[1, nil, 3]).format_to_a)
   end
 
-  test "one element array" do
+  test "single element array" do
     assert { Cumo::SFloat[1].mean == 1.0 }
     assert { Cumo::DFloat[1].mean == 1.0 }
     assert { Cumo::SComplex[1].mean == 1.0 }
@@ -761,5 +761,7 @@ class NArrayTest < Test::Unit::TestCase
 
     assert { Cumo::SFloat[1].rms == 1.0 }
     assert { Cumo::DFloat[1].rms == 1.0 }
+    assert { Cumo::SComplex[1].rms == 1.0 }
+    assert { Cumo::DComplex[1].rms == 1.0 }
   end
 end
