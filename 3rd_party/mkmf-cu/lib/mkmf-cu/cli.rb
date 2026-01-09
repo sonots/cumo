@@ -41,6 +41,7 @@ module MakeMakefileCuda
       elsif ENV['DEBUG']
         cmd << " -arch=sm_35"
       else
+        capability = nil
         if find_executable('nvidia-smi')
           arch_version = `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`.strip
           capability = [(arch_version.to_f * 10).to_i] unless arch_version.empty?
@@ -49,22 +50,22 @@ module MakeMakefileCuda
           # Ref. https://en.wikipedia.org/wiki/CUDA
           if cuda_version >= Gem::Version.new("13.0")
             # CUDA 13.0
-            capability = [75, 87, 89, 90, 121]
+            capability = [75, 80, 86, 87, 89, 90, 100, 103, 110, 120, 121]
           elsif cuda_version >= Gem::Version.new("12.9")
             # CUDA 12.9
-            capability = [50, 60, 70, 75, 87, 89, 90, 121]
+            capability = [50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90, 100, 103, 110, 120, 121]
           elsif cuda_version >= Gem::Version.new("12.8")
             # CUDA 12.8
-            capability = [50, 60, 70, 75, 87, 89, 90, 120]
+            capability = [50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90, 100, 103, 110, 120]
           elsif cuda_version >= Gem::Version.new("12.0")
             # CUDA 12.0 – 12.6
-            capability = [50, 60, 70, 75, 87, 89, 90]
+            capability = [50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90]
           elsif cuda_version >= Gem::Version.new("11.8")
             # CUDA 11.8
-            capability = [35, 50, 60, 70, 75, 87, 89, 90]
+            capability = [35, 50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90]
           else
             # CUDA 11.0
-            capability = [35, 50, 60, 70, 75, 80]
+            capability = [35, 50, 60, 61, 62, 70, 72, 75, 80]
           end
         end
 
