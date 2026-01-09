@@ -38,8 +38,6 @@ module MakeMakefileCuda
       cmd = "nvcc #{s}"
       if ENV['CUMO_NVCC_GENERATE_CODE']
         cmd << " --generate-code=#{ENV['CUMO_NVCC_GENERATE_CODE']}"
-      elsif ENV['DEBUG']
-        cmd << " -arch=sm_35"
       else
         capability = nil
         if find_executable('nvidia-smi')
