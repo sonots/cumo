@@ -22,6 +22,7 @@ static VALUE
             ptr = cumo_cuda_runtime_malloc(sizeof(dtype) * na->size);
             <% end %>
             CUMO_NA_DATA_PTR(na) = ptr;
+            CUMO_NA_DATA_OWNED(na) = TRUE;
         }
         break;
     case CUMO_NARRAY_VIEW_T:
