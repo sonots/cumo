@@ -1,3 +1,15 @@
+# 0.5.2 (2025/01/25)
+
+Fixes:
+
+* Backport: Add support for copy on write with store_binary and frozen string
+* Remove unnecessary debug code
+* Fix capability list
+* Build only with supported capabilities to reduce compilation time
+* Fix SEGV when calling {mean, var, stddev, rms} on a single-element array (#154)
+* Suppress warning message for deprecated declarations
+* Fix variable typo in complex log2 and log10 functions (#152)
+
 # 0.5.1 (2025/12/30)
 
 Enhancements:
