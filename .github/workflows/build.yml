@@ -1,0 +1,86 @@
+name: Build Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cuda_version: "11.8.0"
+            cudnn_suffix: "cudnn8"
+            ubuntu_version: "ubuntu22.04"
+
+          - cuda_version: "12.6.3"
+            cudnn_suffix: "cudnn"
+            ubuntu_version: "ubuntu22.04"
+
+          - cuda_version: "12.8.0"
+            cudnn_suffix: "cudnn"
+            ubuntu_version: "ubuntu22.04"
+
+          - cuda_version: "12.9.1"
+            cudnn_suffix: "cudnn"
+            ubuntu_version: "ubuntu22.04"
+
+          - cuda_version: "13.2.1"
+            cudnn_suffix: "cudnn"
+            ubuntu_version: "ubuntu24.04"
+
+    container:
+      image: nvidia/cuda:${{ matrix.cuda_version }}-${{ matrix.cudnn_suffix }}-devel-${{ matrix.ubuntu_version }}
+    name: build (CUDA ${{ matrix.cuda_version }} / CUDNN ${{ matrix.cudnn_suffix }} / Ubuntu ${{ matrix.ubuntu_version }})
+
+    steps:
+      - name: Install system dependencies & Ruby
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -yq \
+            git \
+            build-essential \
+            ruby-full \
+            ruby-dev \
+            ccache
+          gem install bundler
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Fix Git directory ownership
+        run: git config --global --add safe.directory '*'
+
+      - name: Cache ccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ matrix.cuda_version }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ matrix.cuda_version }}-
+
+      - name: Install Ruby dependencies
+        run: bundle install
+
+      - name: Compile Cumo (Build check)
+        run: |
+          export CUDA_PATH=/usr/local/cuda
+          export CPATH=/usr/local/cuda/include:${CPATH}
+          export LIBRARY_PATH=/usr/local/cuda/lib64:${LIBRARY_PATH}
+
+          mkdir -p /opt/ccache-bin
+          ln -s /usr/bin/ccache /opt/ccache-bin/gcc
+          ln -s /usr/bin/ccache /opt/ccache-bin/g++
+          ln -s /usr/bin/ccache /opt/ccache-bin/nvcc
+          export PATH=/opt/ccache-bin:$PATH
+
+          export CCACHE_DIR=~/.cache/ccache
+          export CCACHE_MAXSIZE=1G
+          ccache -z
+
+          bundle exec rake compile
+
+          ccache -s
