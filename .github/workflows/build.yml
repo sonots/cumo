@@ -25,6 +25,7 @@ jobs:
             ubuntu_version: "ubuntu24.04"
 
           # Disable CUDA 12.9.x it causes build error in CUDA macros
+          # Ref. https://github.com/NVIDIA/cccl/issues/4967
           # - cuda_version: "12.9.1"
           #   cudnn_suffix: "cudnn"
           #   ubuntu_version: "ubuntu24.04"
