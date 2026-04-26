@@ -1,4 +1,10 @@
-# 0.5.2 (2025/01/25)
+# 0.5.3 (2026/04/26)
+
+Fixes:
+
+* Fix unsupported gpu architecture errors in CUDA 12.8 and 12.9 (#156)
+
+# 0.5.2 (2026/01/25)
 
 Fixes:
 
