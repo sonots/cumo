@@ -51,10 +51,10 @@ module MakeMakefileCuda
             capability = [75, 80, 86, 87, 89, 90, 100, 103, 110, 120, 121]
           elsif cuda_version >= Gem::Version.new("12.9")
             # CUDA 12.9
-            capability = [50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90, 100, 103, 110, 120, 121]
+            capability = [50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90, 100, 103, 120, 121]
           elsif cuda_version >= Gem::Version.new("12.8")
             # CUDA 12.8
-            capability = [50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90, 100, 103, 110, 120]
+            capability = [50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90, 100, 120]
           elsif cuda_version >= Gem::Version.new("12.0")
             # CUDA 12.0 – 12.6
             capability = [50, 60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90]

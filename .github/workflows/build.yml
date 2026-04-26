@@ -18,15 +18,16 @@ jobs:
 
           - cuda_version: "12.6.3"
             cudnn_suffix: "cudnn"
-            ubuntu_version: "ubuntu22.04"
+            ubuntu_version: "ubuntu24.04"
 
-          - cuda_version: "12.8.0"
+          - cuda_version: "12.8.1"
             cudnn_suffix: "cudnn"
-            ubuntu_version: "ubuntu22.04"
+            ubuntu_version: "ubuntu24.04"
 
-          - cuda_version: "12.9.1"
-            cudnn_suffix: "cudnn"
-            ubuntu_version: "ubuntu22.04"
+          # Disable CUDA 12.9.x it causes build error in CUDA macros
+          # - cuda_version: "12.9.1"
+          #   cudnn_suffix: "cudnn"
+          #   ubuntu_version: "ubuntu24.04"
 
           - cuda_version: "13.2.1"
             cudnn_suffix: "cudnn"
@@ -79,6 +80,7 @@ jobs:
 
           export CCACHE_DIR=~/.cache/ccache
           export CCACHE_MAXSIZE=1G
+          export CCACHE_CPP2=1
           ccache -z
 
           bundle exec rake compile
