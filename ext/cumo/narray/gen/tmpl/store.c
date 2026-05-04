@@ -30,6 +30,14 @@ static VALUE
         }
     }
 
+    if (rb_respond_to(obj,cumo_id_to_a)) {
+        obj = rb_funcall(obj,cumo_id_to_a,0);
+        if (TYPE(obj)!=T_ARRAY) {
+            rb_raise(rb_eTypeError, "`to_a' did not return Array");
+        }
+        <%=store_array.c_func%>(self,obj);
+        return self;
+    }
     <% if is_object %>
     robject_store_numeric(self,obj);
     <% else %>
