@@ -26,15 +26,11 @@ static ID cumo_id_abs;
 static ID cumo_id_cast;
 static ID cumo_id_le;
 static ID cumo_id_Complex;
-
+static VALUE cumo_int32_max = Qnil;
 
 static VALUE
  cumo_na_object_type(int type, VALUE v)
 {
-    static VALUE int32_max = Qnil;
-    if (NIL_P(int32_max))
-        int32_max = ULONG2NUM(2147483647);
-
     switch(TYPE(v)) {
 
     case T_TRUE:
@@ -643,4 +639,7 @@ Init_cumo_na_array(void)
     cumo_id_abs     = rb_intern("abs");
     cumo_id_le      = rb_intern("<=");
     cumo_id_Complex = rb_intern("Complex");
+
+    rb_global_variable(&cumo_int32_max);
+    cumo_int32_max = ULONG2NUM(2147483647);
 }
