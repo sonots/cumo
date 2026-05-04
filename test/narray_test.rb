@@ -808,6 +808,11 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "cast any object that responds to to_a" do
+    object = Struct.new(:to_a).new([1, 2, 3])
+    assert { Cumo::NArray.cast(object) == [1, 2, 3] }
+  end
+
   test "Cumo::DFloat.cast(Cumo::RObject[1, nil, 3])" do
     assert_equal(Cumo::DFloat[1, Float::NAN, 3].format_to_a,
                  Cumo::DFloat.cast(Cumo::RObject[1, nil, 3]).format_to_a)
