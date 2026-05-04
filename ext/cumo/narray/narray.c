@@ -1346,8 +1346,8 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
             break;
         case T_ARRAY:
             nd = RARRAY_LEN(vshape);
-            if (nd == 0 || nd > CUMO_NA_MAX_DIMENSION) {
-                rb_raise(cumo_na_eDimensionError,"too long or empty shape (%d)", nd);
+            if (nd > CUMO_NA_MAX_DIMENSION) {
+              rb_raise(cumo_na_eDimensionError,"shape exceeds max dimension");
             }
             shape = ALLOCA_N(size_t,nd);
             len = 1;
