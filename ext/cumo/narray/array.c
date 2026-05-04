@@ -25,6 +25,9 @@ static ID cumo_id_step;
 static ID cumo_id_abs;
 static ID cumo_id_cast;
 static ID cumo_id_le;
+#if SIZEOF_LONG != 8
+static ID cumo_id_ge;
+#endif
 static ID cumo_id_Complex;
 static VALUE cumo_int32_max = Qnil;
 static VALUE cumo_int32_min = Qnil;
@@ -639,6 +642,9 @@ Init_cumo_na_array(void)
     cumo_id_cast    = rb_intern("cast");
     cumo_id_abs     = rb_intern("abs");
     cumo_id_le      = rb_intern("<=");
+#if SIZEOF_LONG != 8
+    cumo_id_ge      = rb_intern(">=");
+#endif
     cumo_id_Complex = rb_intern("Complex");
 
     rb_global_variable(&cumo_int32_max);
