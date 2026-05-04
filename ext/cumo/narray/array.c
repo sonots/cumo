@@ -25,7 +25,7 @@ static ID cumo_id_step;
 static ID cumo_id_abs;
 static ID cumo_id_cast;
 static ID cumo_id_le;
-#if SIZEOF_LONG != 8
+#if SIZEOF_LONG <= 4
 static ID cumo_id_ge;
 #endif
 static ID cumo_id_Complex;
@@ -43,7 +43,7 @@ static VALUE
             return CUMO_NA_BIT;
         return type;
 
-#if SIZEOF_LONG == 4
+#if SIZEOF_LONG <= 4
     case T_FIXNUM:
         if (type<CUMO_NA_INT32)
             return CUMO_NA_INT32;
@@ -59,13 +59,12 @@ static VALUE
             }
         }
         return type;
-
-#elif SIZEOF_LONG == 8
+#else
     case T_FIXNUM:
         if (type<CUMO_NA_INT64) {
             long x = NUM2LONG(v);
             if (x<0) x=-x;
-            if (x<=2147483647 && x>=-2147483648) {
+            if (x<=2147483647L && x>=-2147483648L) {
                 if (type<CUMO_NA_INT32)
                     return CUMO_NA_INT32;
             } else {
@@ -76,19 +75,6 @@ static VALUE
     case T_BIGNUM:
         if (type<CUMO_NA_INT64)
             return CUMO_NA_INT64;
-        return type;
-#else
-    case T_FIXNUM:
-    case T_BIGNUM:
-        if (type<CUMO_NA_INT64) {
-            if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max)) &&
-                RTEST(rb_funcall(v,cumo_id_ge,1,int32_min))) {
-                if (type<CUMO_NA_INT32)
-                    return CUMO_NA_INT32;
-            } else {
-                return CUMO_NA_INT64;
-            }
-        }
         return type;
 #endif
 
@@ -642,7 +628,7 @@ Init_cumo_na_array(void)
     cumo_id_cast    = rb_intern("cast");
     cumo_id_abs     = rb_intern("abs");
     cumo_id_le      = rb_intern("<=");
-#if SIZEOF_LONG != 8
+#if SIZEOF_LONG <= 4
     cumo_id_ge      = rb_intern(">=");
 #endif
     cumo_id_Complex = rb_intern("Complex");
