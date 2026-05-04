@@ -27,6 +27,7 @@ static ID cumo_id_cast;
 static ID cumo_id_le;
 static ID cumo_id_Complex;
 static VALUE cumo_int32_max = Qnil;
+static VALUE cumo_int32_min = Qnil;
 
 static VALUE
  cumo_na_object_type(int type, VALUE v)
@@ -46,8 +47,8 @@ static VALUE
         return type;
     case T_BIGNUM:
         if (type<CUMO_NA_INT64) {
-            v = rb_funcall(v,cumo_id_abs,0);
-            if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max))) {
+            if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max)) &&
+                RTEST(rb_funcall(v,cumo_id_ge,1,int32_min))) {
                 if (type<CUMO_NA_INT32)
                     return CUMO_NA_INT32;
             } else {
@@ -61,7 +62,7 @@ static VALUE
         if (type<CUMO_NA_INT64) {
             long x = NUM2LONG(v);
             if (x<0) x=-x;
-            if (x<=2147483647) {
+            if (x<=2147483647 && x>=-2147483648) {
                 if (type<CUMO_NA_INT32)
                     return CUMO_NA_INT32;
             } else {
@@ -77,8 +78,8 @@ static VALUE
     case T_FIXNUM:
     case T_BIGNUM:
         if (type<CUMO_NA_INT64) {
-            v = rb_funcall(v,cumo_id_abs,0);
-            if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max))) {
+            if (RTEST(rb_funcall(v,cumo_id_le,1,int32_max)) &&
+                RTEST(rb_funcall(v,cumo_id_ge,1,int32_min))) {
                 if (type<CUMO_NA_INT32)
                     return CUMO_NA_INT32;
             } else {
@@ -641,5 +642,7 @@ Init_cumo_na_array(void)
     cumo_id_Complex = rb_intern("Complex");
 
     rb_global_variable(&cumo_int32_max);
-    cumo_int32_max = ULONG2NUM(2147483647);
+    cumo_int32_max = INT2NUM(2147483647);
+    rb_global_variable(&cumo_int32_min);
+    cumo_int32_min = INT2NUM(-2147483648);
 }
