@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "English"
 require "mkmf"
 require "open3"
 require_relative "nvcc"
@@ -28,8 +29,10 @@ module MakeMakefileCuda
     # private
 
     def run_command!(*args)
-      puts colorize(:green, args.join(' '))
-      exit system(*args)
+      command = args.join(' ')
+      puts colorize(:green, command)
+      system(command)
+      exit($CHILD_STATUS.exitstatus)
     end
 
     # TODO(sonots): Make it possible to configure "nvcc" and additional arguments
