@@ -25,6 +25,12 @@ static void
             CUMO_STORE_BIT_STEP(a3, p3, s3, idx3, x);
         }
     } else {
+        a1 += p1/CUMO_NB;
+        p1 %= CUMO_NB;
+        a2 += p2/CUMO_NB;
+        p2 %= CUMO_NB;
+        a3 += p3/CUMO_NB;
+        p3 %= CUMO_NB;
         o1 =  p1-p3;
         o2 =  p2-p3;
         l1 =  CUMO_NB+o1;
