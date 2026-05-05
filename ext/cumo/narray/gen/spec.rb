@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 def_id "cast"
-def_id "eq"
-def_id "ne"
 def_id "pow"
 def_id "mulsum"
 def_id "to_a"
@@ -52,6 +50,9 @@ if is_object
   def_id "<" , "lt"
   def_id "<=", "le"
   def_id "<=>", "ufo"
+else
+  def_id "eq"
+  def_id "ne"
 end
 if (is_float || is_complex) && !is_object
   def_id "gemm"
