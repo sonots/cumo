@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 def_id "cast"
-def_id "pow"
 def_id "mulsum"
 def_id "to_a"
 if is_complex
@@ -205,7 +204,12 @@ if !is_complex
   binary2 "divmod"
 end
 
-pow
+
+if !is_bit
+  pow
+  def_id "**","pow"
+  def_alias "pow","**"
+end
 
 unary "minus", "-@"
 unary "reciprocal"
