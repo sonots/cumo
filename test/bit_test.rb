@@ -139,6 +139,37 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
+  procs = [
+    [proc{|tp,a| tp[*a] },""],
+  ]
+  procs.each do |init, ref|
+
+    test "#{dtype},[]#{ref}" do
+      src = []
+      n = src.size
+      a = init.call(dtype, src)
+
+      assert { a == src }
+      assert { (a & 0) == [0] * n }
+      assert { (a & 1) == src }
+      assert { (a | 0) == src }
+      assert { (a | 1) == [1] * n }
+      assert { (a ^ 0) == src.map {|x| x ^ 0 } }
+      assert { (a ^ 1) == src.map {|x| x ^ 1 } }
+      assert { ~a == src.map {|x| 1 - x } }
+
+      assert { a.count_true == 0 }
+      assert { a.count_false == 0 }
+      assert { a.where == [] }
+      assert { a.where2 == [[], []] }
+      assert { a.mask(Cumo::DFloat[]) == [] }
+      assert { !a.all? }
+      assert { !a.any? }
+      assert { a.none? }
+    end
+
+  end
+
   test "store to view" do
     n = 14
     x = Cumo::Bit.zeros(n + 2, n + 2, 3)
