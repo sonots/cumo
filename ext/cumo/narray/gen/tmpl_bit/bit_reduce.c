@@ -118,7 +118,7 @@ static VALUE
 
     CumoGetNArray(self,na);
     if (CUMO_NA_SIZE(na)==0) {
-        return INT2FIX(0);
+        return Qfalse;
     }
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     v = cumo_na_ndloop(&ndf, 3, self, reduce, INT2FIX(<%=init_bit%>));
