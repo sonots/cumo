@@ -1,3 +1,34 @@
+# 0.5.4 (2026/05/30)
+
+Fixes:
+
+* Backport: Fix to use rb_funcallv_kw in Ruby 2.7 and later
+* Backport: define id_pow as "**" for all types except Bit
+* Backport: define id_minus as "-@" for RObject
+* Backport: duplicated id_eq and id_ne for RObject
+* Backport: follow the change of INIT_PTR_BIT_IDX
+* Backport: add test for empty bit array
+* Backport: fix NArray::Bit#count_true/false: empty array should return zero
+* Fix backport error
+* Backport: minor fixes
+* Backport: fix RObject#sum,prod
+* Backport: NArray#from_binary: allow zero dimension
+* Backport: Added test cases
+* Backport: fix NArray#store: drop automatic 'to_a' conversion
+* Backport: Numo::NArray.cast tries to convert to Array when it has to_a method
+* Backport: use rb_respond_to()
+* Backport: improve discrimination between int32/64
+* Backport: missing declaration of id_ge
+* Backport: support casting any object that responds to 'to_a'
+* Backport: fix the range of int32 as -2**31 .. 2**31-1
+* Backport: if int32_max is Bignum, it should be protected from GC
+* fix: handle compiler flags included in RbConfig::CONFIG properly (#157)
+* Backport: Added more percentile tests
+* Backport: Use File.write in cogen to ensure file is closed
+* Backport: Added percentile method
+* Backport: Use INT2FIX to define m_data_to_num for 8 or 16-bit Int.
+* Backport: raise error if compiler does not support  8 or 4-byte integer
+
 # 0.5.3 (2026/04/26)
 
 Fixes:
