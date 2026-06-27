@@ -51,7 +51,7 @@ jobs:
           gem install bundler
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Fix Git directory ownership
         run: git config --global --add safe.directory '*'
