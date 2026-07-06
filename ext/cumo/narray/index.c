@@ -63,6 +63,7 @@ static ID cumo_id_dup;
 static ID cumo_id_bracket;
 static ID cumo_id_shift_left;
 static ID cumo_id_mask;
+static ID cumo_id_where;
 
 
 static void
@@ -158,6 +159,13 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     CumoGetNArray(a,na);
     if (CUMO_NA_NDIM(na) != 1) {
         rb_raise(rb_eIndexError, "should be 1-d NArray");
+    }
+    if (rb_obj_class(a) == cumo_cBit) {
+        if (CUMO_NA_SIZE(na) != (size_t)size) {
+            rb_raise(rb_eIndexError, "Bit-NArray size mismatch");
+        }
+        a = rb_funcall(a, cumo_id_where, 0);
+        CumoGetNArray(a,na);
     }
     n = CUMO_NA_SIZE(na);
     idx = cumo_na_new(cIndex,1,&n);
@@ -1138,4 +1146,5 @@ Init_cumo_na_index()
     cumo_id_bracket     = rb_intern("[]");
     cumo_id_shift_left  = rb_intern("<<");
     cumo_id_mask        = rb_intern("mask");
+    cumo_id_where       = rb_intern("where");
 }
