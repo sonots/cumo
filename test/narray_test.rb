@@ -843,4 +843,15 @@ class NArrayTest < Test::Unit::TestCase
     assert { Cumo::SComplex[1].rms == 1.0 }
     assert { Cumo::DComplex[1].rms == 1.0 }
   end
+
+  test "concatenate with empty arrays" do
+    a = Cumo::DFloat[1, 2, 3]
+    empty = Cumo::DFloat[]
+    assert { Cumo::NArray.concatenate([empty, a]) == [1, 2, 3] }
+    assert { Cumo::NArray.concatenate([a, empty]) == [1, 2, 3] }
+    assert { Cumo::NArray.concatenate([empty, empty]) == [] }
+    assert { a.concatenate(empty) == [1, 2, 3] }
+    assert { empty.concatenate(a) == [1, 2, 3] }
+    assert { empty.concatenate(empty) == [] }
+  end
 end

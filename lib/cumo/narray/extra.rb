@@ -473,8 +473,10 @@ module Cumo
       arrays.each do |a|
         fst = lst
         lst = fst + (a.shape[axis - nd] || 1)
-        refs[axis] = fst...lst
-        result[*refs] = a
+        if lst > fst
+          refs[axis] = fst...lst
+          result[*refs] = a
+        end
       end
       result
     end
@@ -654,13 +656,17 @@ module Cumo
       result = self.class.zeros(*self_shape)
       lst = shape[axis]
       refs = [true] * ndim
-      refs[axis] = 0...lst
-      result[*refs] = self
+      if lst > 0
+        refs[axis] = 0...lst
+        result[*refs] = self
+      end
       arrays.each do |a|
         fst = lst
         lst = fst + (a.shape[axis - ndim] || 1)
-        refs[axis] = fst...lst
-        result[*refs] = a
+        if lst > fst
+          refs[axis] = fst...lst
+          result[*refs] = a
+        end
       end
       result
     end
