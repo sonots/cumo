@@ -1,3 +1,11 @@
+# 0.5.5 (2026/07/11)
+
+Fixes:
+
+* Backport: rename method: min_arg, max_arg => argmin, argmax
+* Backport: fix NArray#concatenate: avoid exception when concatenating empty arrays
+* Backport: fix boolean indexing in each axis
+
 # 0.5.4 (2026/05/30)
 
 Fixes:
