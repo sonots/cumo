@@ -333,6 +333,8 @@ if is_comparable
   accum "ptp", "dtype", "cT"
   accum_index "max_index"
   accum_index "min_index"
+  accum_arg   "argmax"
+  accum_arg   "argmin"
   def_method "minmax"
   def_module_function "maximum", "ewcomp", n_arg:2
   def_module_function "minimum", "ewcomp", n_arg:2

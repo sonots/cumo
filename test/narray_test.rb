@@ -344,6 +344,12 @@ class NArrayTest < Test::Unit::TestCase
           assert { a.min_index(axis: 0) == [0, 1, 2] }
           assert { a.max_index(axis: 1) == [2, 5] }
           assert { a.max_index(axis: 0) == [3, 4, 5] }
+          assert { a.argmin == 0 }
+          assert { a.argmax == 5 }
+          assert { a.argmin(axis: 1) == [0, 0] }
+          assert { a.argmin(axis: 0) == [0, 0, 0] }
+          assert { a.argmax(axis: 1) == [2, 2] }
+          assert { a.argmax(axis: 0) == [1, 1, 1] }
           assert { (a >= 3) == [[0, 0, 1], [1, 1, 1]] }
           assert { (a >  3) == [[0, 0, 0], [1, 1, 1]] }
           assert { (a <= 3) == [[1, 1, 1], [0, 0, 0]] }
@@ -720,6 +726,8 @@ class NArrayTest < Test::Unit::TestCase
                    [4, 1, 6]]]
         assert { a.max_index(2) == [[1, 5, 8], [9, 12, 17]] }
         assert { a.max(2) == [[8, 6, 5], [7, 9, 6]] }
+        assert { a.argmax(2) == [[1, 2, 2], [0, 0, 2]] }
+        assert { a.argmin(2) == [[2, 0, 0], [2, 2, 1]] }
 
         unless [Cumo::UInt64, Cumo::UInt32, Cumo::UInt16, Cumo::UInt8].include?(dtype)
           a = dtype[[[-6, -8, -5],
@@ -853,5 +861,30 @@ class NArrayTest < Test::Unit::TestCase
     assert { a.concatenate(empty) == [1, 2, 3] }
     assert { empty.concatenate(a) == [1, 2, 3] }
     assert { empty.concatenate(empty) == [] }
+  end
+
+  test "argmax/argmin" do
+    [Cumo::DFloat, Cumo::Int32, Cumo::UInt8].each do |dtype|
+      a = dtype[3, 4, 1, 2]
+      assert { a.argmax == 1 }
+      assert { a.argmin == 2 }
+
+      b = dtype[[3, 4, 1], [2, 0, 5]]
+      assert { b.argmax == 5 }
+      assert { b.argmin == 4 }
+      assert { b.argmax(axis: 1) == [1, 2] }
+      assert { b.argmax(axis: 0) == [0, 0, 1] }
+      assert { b.argmin(axis: 1) == [2, 1] }
+      assert { b.argmin(axis: 0) == [1, 1, 0] }
+      assert { b.at(b.argmax(axis: 0), 0..-1) == [3, 4, 5] }
+      assert { b.at(b.argmin(axis: 0), 0..-1) == [2, 0, 1] }
+    end
+
+    # NaN-aware (nan:true returns the NaN position; nan:false ignores NaN)
+    c = Cumo::DFloat[3.0, Float::NAN, 1.0, 5.0]
+    assert { c.argmax == 3 }
+    assert { c.argmax(nan: true) == 1 }
+    assert { c.argmin == 2 }
+    assert { c.argmin(nan: true) == 1 }
   end
 end
