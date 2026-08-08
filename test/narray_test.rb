@@ -887,4 +887,20 @@ class NArrayTest < Test::Unit::TestCase
     assert { c.argmin == 2 }
     assert { c.argmin(nan: true) == 1 }
   end
+
+  test "divmod returns quotient and remainder" do
+    [Cumo::Int32, Cumo::Int64, Cumo::RObject].each do |dtype|
+      a = dtype[17, 20, 23]
+      b = dtype[5, 6, 7]
+      q, r = a.divmod(b)
+      assert { q == [3, 3, 3] }
+      assert { r == [2, 2, 2] }
+    end
+
+    # floored division semantics with negatives (Cumo::RObject was returning
+    # the quotient as the remainder before the fix)
+    q, r = Cumo::RObject[-7, 7, 17].divmod(Cumo::RObject[3, 3, 5])
+    assert { q == [-3, 2, 3] }
+    assert { r == [2, 1, 2] }
+  end
 end
