@@ -972,4 +972,20 @@ class NArrayTest < Test::Unit::TestCase
     # nil from the block still becomes NaN
     assert { Cumo::DFloat[1, 2].map { nil }.to_a.all? { |x| x.nan? } }
   end
+
+  test "Cumo::RObject#rand stays within range" do
+    # m_rand multiplied by the raw VALUE instead of NUM2DBL(max),
+    # so the generated values fell outside the requested interval.
+    Cumo::NArray.srand(0)
+    a = Cumo::RObject.new(1000).rand.to_a
+    assert { a.min >= 0 && a.max < 1 }
+
+    Cumo::NArray.srand(0)
+    b = Cumo::RObject.new(1000).rand(10).to_a
+    assert { b.min >= 0 && b.max < 10 }
+
+    Cumo::NArray.srand(0)
+    c = Cumo::RObject.new(1000).rand(-2, 3).to_a
+    assert { c.min >= -2 && c.max < 3 }
+  end
 end
