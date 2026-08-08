@@ -903,4 +903,16 @@ class NArrayTest < Test::Unit::TestCase
     assert { q == [-3, 2, 3] }
     assert { r == [2, 1, 2] }
   end
+
+  test "indexing a 0-dimensional array" do
+    # Indexing a 0-d (scalar) array reaches na_get_strides_nadata with ndim == 0.
+    # Before the fix this wrote strides[-1] out of bounds; the result must stay correct.
+    [Cumo::DFloat, Cumo::Int32].each do |dtype|
+      a = dtype.cast(3)
+      assert { a.ndim == 0 }
+      assert { a[nil] == [3] }
+      assert { a[nil].shape == [1] }
+      assert { a[true] == [3] }
+    end
+  end
 end
