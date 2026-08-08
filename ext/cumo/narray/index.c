@@ -501,17 +501,25 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
     ssize_t total=1;
 
     for (i=j=0; i<ndim; i++) {
-        cumo_stridx_t sdx1 = na1->stridx[q[i].orig_dim];
+        int orig_dim = q[i].orig_dim;
+        cumo_stridx_t sdx1;
         ssize_t size;
 
-        // numeric index -- trim dimension
-        if (!keep_dim && q[i].n==1 && q[i].step==0) {
-            if (CUMO_SDX_IS_INDEX(sdx1)) {
-                na2->offset += CUMO_SDX_GET_INDEX(sdx1)[q[i].beg];
-            } else {
-                na2->offset += CUMO_SDX_GET_STRIDE(sdx1)*q[i].beg;
+        sdx1.stride = 0;
+        sdx1.index = NULL;
+
+        if (orig_dim < na1->base.ndim) {
+            sdx1 = na1->stridx[orig_dim];
+
+            // numeric index -- trim dimension
+            if (!keep_dim && q[i].n==1 && q[i].step==0) {
+                if (CUMO_SDX_IS_INDEX(sdx1)) {
+                    na2->offset += CUMO_SDX_GET_INDEX(sdx1)[q[i].beg];
+                } else {
+                    na2->offset += CUMO_SDX_GET_STRIDE(sdx1)*q[i].beg;
+                }
+                continue;
             }
-            continue;
         }
 
         na2->base.shape[j] = size = q[i].n;
@@ -521,7 +529,7 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             na2->base.reduce = rb_funcall(m,'|',1,na2->base.reduce);
         }
 
-        if (q[i].orig_dim >= na1->base.ndim) {
+        if (orig_dim >= na1->base.ndim) {
             // new dimension
             CUMO_SDX_SET_STRIDE(na2->stridx[j], elmsz);
         }

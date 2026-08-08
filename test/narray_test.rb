@@ -915,4 +915,27 @@ class NArrayTest < Test::Unit::TestCase
       assert { a[true] == [3] }
     end
   end
+
+  test "adding a new axis to a narray-view" do
+    # cumo_na_index_aref_naview read na1->stridx[q[i].orig_dim] before checking
+    # orig_dim against na1->base.ndim. A trailing :new keeps orig_dim == ndim,
+    # so the read went one element past the end of the view's stridx array.
+    a = Cumo::DFloat.new(4).seq
+    v = a[1..2]
+    assert { v.shape == [2] }
+
+    assert { v[true, :new].shape == [2, 1] }
+    assert { v[true, :new] == [[1], [2]] }
+    assert { v[:new, true].shape == [1, 2] }
+    assert { v[:new, true] == [[1, 2]] }
+
+    b = Cumo::DFloat.new(3, 4).seq
+    u = b[true, 1..2]
+    assert { u.shape == [3, 2] }
+
+    assert { u[true, true, :new].shape == [3, 2, 1] }
+    assert { u[true, true, :new] == [[[1], [2]], [[5], [6]], [[9], [10]]] }
+    assert { u[true, :new, true].shape == [3, 1, 2] }
+    assert { u[true, :new, true] == [[[1, 2]], [[5, 6]], [[9, 10]]] }
+  end
 end
