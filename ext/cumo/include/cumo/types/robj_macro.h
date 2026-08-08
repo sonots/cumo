@@ -19,7 +19,7 @@
 #define m_mod(x,y)     rb_funcall(x,'%',1,y)
 #define m_divmod(x,y,a,b)                               \
     {x = rb_funcall(x,cumo_id_divmod,1,y);                   \
-     a = RARRAY_PTR(x)[0]; b = RARRAY_PTR(x)[0];}
+     a = RARRAY_PTR(x)[0]; b = RARRAY_PTR(x)[1];}
 #define m_pow(x,y)     rb_funcall(x,cumo_id_pow,1,y)
 #define m_pow_int(x,y) rb_funcall(x,cumo_id_pow,1,y)
 
