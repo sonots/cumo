@@ -12,7 +12,7 @@ extern double pow(double, double);
 #define m_zero 0.0
 #define m_one  1.0
 
-#define m_num_to_data(x) (NIL_P(x) ? nan("") : NUM2DBL(x))
+#define m_num_to_data(x) cumo_na_ruby_num_to_flt(x)
 #define m_data_to_num(x) rb_float_new(x)
 
 #define m_from_double(x) (x)
@@ -116,6 +116,11 @@ extern double pow(double, double);
 #define m_erfc(x)    erfc(x)
 #define m_ldexp(x,y) ldexp(x,y)
 #define m_frexp(x,exp) frexp(x,exp)
+
+static inline dtype cumo_na_ruby_num_to_flt(VALUE x)
+{
+    return NIL_P(x) ? nan("") : NUM2DBL(x);
+}
 
 static inline dtype pow_int(dtype x, int p)
 {

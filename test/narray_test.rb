@@ -957,4 +957,19 @@ class NArrayTest < Test::Unit::TestCase
       assert_raise(IndexError) { x.at(:new, [0], [0]) }
     end
   end
+
+  test "map yields once per element" do
+    # m_num_to_data used to evaluate its argument twice, so m_map's
+    # rb_yield() ran twice for every element.
+    [Cumo::DFloat, Cumo::SFloat].each do |dtype|
+      a = dtype[1, 2, 3]
+      count = 0
+      result = a.map { |x| count += 1; x * 2 }
+      assert { count == 3 }
+      assert { result == [2, 4, 6] }
+    end
+
+    # nil from the block still becomes NaN
+    assert { Cumo::DFloat[1, 2].map { nil }.to_a.all? { |x| x.nan? } }
+  end
 end
