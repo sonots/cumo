@@ -910,8 +910,20 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
     CumoGetNArray(self,na1);
 
     args = rb_ary_new4(argc,argv);
-    if (at_mode && na1->ndim == 0) {
-        rb_raise(cumo_na_eDimensionError,"argument length does not match dimension size");
+    if (at_mode) {
+        int i;
+        if (na1->ndim == 0) {
+            rb_raise(cumo_na_eDimensionError,"argument length does not match dimension size");
+        }
+        // at() takes one index per existing dimension and returns a 1-d view, so
+        // :new has no meaning here. It also leaves q[i].orig_dim == na1->ndim,
+        // which would read one element past the end of stridx/strides in
+        // cumo_na_index_at_naview()/cumo_na_index_at_nadata().
+        for (i=0; i<argc; i++) {
+            if (argv[i] == cumo_sym_new || argv[i] == cumo_sym_minus) {
+                rb_raise(rb_eIndexError,":new is not allowed for at()");
+            }
+        }
     }
 
     if (argc == 1 && result_nd == 1) {

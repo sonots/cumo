@@ -938,4 +938,23 @@ class NArrayTest < Test::Unit::TestCase
     assert { u[true, :new, true].shape == [3, 1, 2] }
     assert { u[true, :new, true] == [[[1, 2]], [[5, 6]], [[9, 10]]] }
   end
+
+  test "at() rejects :new" do
+    # :new leaves q[i].orig_dim == ndim, which made cumo_na_index_at_naview read
+    # one element past the end of the view's stridx array. That union member was
+    # then used as a device index pointer, so a[..].at([0],[0],:new) died with
+    # "an illegal memory access was encountered". at() must reject :new instead.
+    a = Cumo::DFloat.new(3, 3).seq
+    v = a[true, 0..1]
+
+    # sanity: at() itself still works on both data and view arrays
+    assert { a.at([0, 1], [0, 1]) == [0, 4] }
+    assert { v.at([0, 1], [0, 1]) == [0, 4] }
+
+    [a, v].each do |x|
+      assert_raise(IndexError) { x.at([0], [0], :new) }
+      assert_raise(IndexError) { x.at([0], :new, [0]) }
+      assert_raise(IndexError) { x.at(:new, [0], [0]) }
+    end
+  end
 end
