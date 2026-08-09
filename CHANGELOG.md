@@ -1,3 +1,30 @@
+# 0.5.6 (2026/08/09)
+
+Fixes:
+
+* Fix out-of-tree build failing to create the narray/types object directory
+* Fix segfaults from unchecked String arguments in Driver (#179)
+* Fix out-of-bounds read of include_names in nvrtcCreateProgram (#178)
+* Fix store into a strided view reading a released staging buffer (#177)
+* Fix pinned host memory leak when indexing by an array (#176)
+* Fix segfault in Module#get_global_var reading device memory as a host pointer (#174)
+* Fix freeing pooled memory with cudaFree after disabling the pool (#173)
+* Fix run-ctest failing to start the test binary (#172)
+* Fix process abort when freeing device memory fails (#171)
+* Fix memory pool handing out a tiny chunk for a huge allocation (#170)
+* Fix out-of-bounds read of a shorter sub-narray in store (#169)
+* Fix out-of-bounds device write in store when a sub-narray is too long (#168)
+* Backport: fix na_flatten_dim for multi-dimensional empty arrays (#167)
+* Backport: make qsort loop condition explicit to prevent incorrect optimization (#166)
+* Backport: free previously allocated shape in cumo_na_alloc_shape (#165)
+* Backport: free shape on deallocation regardless of size (#164)
+* Backport: convert max to double in rand method of Cumo::RObject (#163)
+* Backport: use an inline function to prevent double use of macro argument (#162)
+* Fix out-of-bounds stridx access in at() when :new is given (#161)
+* Backport: prevent out-of-bounds access to stridx when orig_dim exceeds ndim (#160)
+* Backport: prevent negative array index in na_get_strides_nadata when ndim is zero (#159)
+* Backport: use correct array index for mod result in divmod macro for Cumo::RObject (#158)
+
 # 0.5.5 (2026/07/11)
 
 Fixes:
