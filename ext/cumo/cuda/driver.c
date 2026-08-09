@@ -102,15 +102,19 @@ rb_cuLinkAddData(VALUE self, VALUE state, VALUE type, VALUE data, VALUE name)
 {
     CUlinkState _state = (CUlinkState)NUM2SIZET(state);
     CUjitInputType _type = (CUjitInputType)NUM2INT(type);
-    void* _data = (void *)RSTRING_PTR(data);
+    // The image may be a cubin, so it is taken by length and allowed to hold
+    // NUL bytes; the name is a plain C string cuLinkAddData reports errors with.
+    void* _data = (void *)StringValuePtr(data);
     size_t _size = RSTRING_LEN(data);
-    const char* _name = RSTRING_PTR(data);
+    const char* _name = StringValueCStr(name);
     CUresult status;
 
     struct cuLinkAddDataParam param = {_state, _type, _data, _size, _name, 0, (CUjit_option*)0, (void**)0};
     status = (CUresult)rb_thread_call_without_gvl(cuLinkAddData_without_gvl_cb, &param, NULL, NULL);
     //status = cuLinkAddData(_state, _type, _data, _size, _name, 0, (CUjit_option*)0, (void**)0);
 
+    RB_GC_GUARD(data);
+    RB_GC_GUARD(name);
     check_status(status);
     return Qnil;
 }
@@ -139,13 +143,14 @@ rb_cuLinkAddFile(VALUE self, VALUE state, VALUE type, VALUE path)
 {
     CUlinkState _state = (CUlinkState)NUM2SIZET(state);
     CUjitInputType _type = (CUjitInputType)NUM2INT(type);
-    const char* _path = RSTRING_PTR(path);
+    const char* _path = StringValueCStr(path);
     CUresult status;
 
     struct cuLinkAddFileParam param = {_state, _type, _path, 0, (CUjit_option*)0, (void **)0};
     status = (CUresult)rb_thread_call_without_gvl(cuLinkAddFile_without_gvl_cb, &param, NULL, NULL);
     //status = cuLinkAddFile(_state, _type, _path, 0, (CUjit_option*)0, (void **)0);
 
+    RB_GC_GUARD(path);
     check_status(status);
     return Qnil;
 }
@@ -259,13 +264,14 @@ rb_cuModuleGetFunction(VALUE self, VALUE hmod, VALUE name)
 {
     CUfunction _hfunc;
     CUmodule _hmod = (CUmodule)NUM2SIZET(hmod);
-    const char* _name = RSTRING_PTR(name);
+    const char* _name = StringValueCStr(name);
     CUresult status;
 
     struct cuModuleGetFunctionParam param = {&_hfunc, _hmod, _name};
     status = (CUresult)rb_thread_call_without_gvl(cuModuleGetFunction_without_gvl_cb, &param, NULL, NULL);
     //status = cuModuleGetFunction(&_hfunc, _hmod, _name);
 
+    RB_GC_GUARD(name);
     check_status(status);
     return SIZET2NUM((size_t)_hfunc);
 }
@@ -292,7 +298,7 @@ rb_cuModuleGetGlobal(VALUE self, VALUE hmod, VALUE name)
     CUdeviceptr _dptr;
     size_t _bytes;
     CUmodule _hmod = (CUmodule)NUM2SIZET(hmod);
-    const char* _name = RSTRING_PTR(name);
+    const char* _name = StringValueCStr(name);
     CUresult status;
     VALUE ret;
 
@@ -300,6 +306,7 @@ rb_cuModuleGetGlobal(VALUE self, VALUE hmod, VALUE name)
     status = (CUresult)rb_thread_call_without_gvl(cuModuleGetGlobal_without_gvl_cb, &param, NULL, NULL);
     //status = cuModuleGetGlobal(&_dptr, &_bytes, _hmod, _name);
 
+    RB_GC_GUARD(name);
     check_status(status);
 
     // _dptr addresses device memory, which the host cannot read directly.
@@ -326,13 +333,14 @@ static VALUE
 rb_cuModuleLoad(VALUE self, VALUE fname)
 {
     CUmodule _module;
-    const char* _fname = RSTRING_PTR(fname);
+    const char* _fname = StringValueCStr(fname);
     CUresult status;
 
     struct cuModuleLoadParam param = {&_module, _fname};
     status = (CUresult)rb_thread_call_without_gvl(cuModuleLoad_without_gvl_cb, &param, NULL, NULL);
     //status = cuModuleLoad(&_module, _fname);
 
+    RB_GC_GUARD(fname);
     check_status(status);
     return SIZET2NUM((size_t)_module);
 }
@@ -355,13 +363,15 @@ static VALUE
 rb_cuModuleLoadData(VALUE self, VALUE image)
 {
     CUmodule _module;
-    const void* _image = (void*)RSTRING_PTR(image);
+    // A cubin is binary, so the image is not required to be NUL-free.
+    const void* _image = (void*)StringValuePtr(image);
     CUresult status;
 
     struct cuModuleLoadDataParam param = {&_module, _image};
     status = (CUresult)rb_thread_call_without_gvl(cuModuleLoadData_without_gvl_cb, &param, NULL, NULL);
     //status = cuModuleLoadData(&_module, _image);
 
+    RB_GC_GUARD(image);
     check_status(status);
     return SIZET2NUM((size_t)_module);
 }
