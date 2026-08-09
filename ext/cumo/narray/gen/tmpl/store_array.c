@@ -179,10 +179,15 @@ static void
     }
     //<% else %>
     {
-        if (idx1) {
-            <%="cumo_#{c_iter}_index_scalar_kernel_launch"%>(p1,idx1+i,z,n-i);
-        } else {
-            <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(p1+s1*i,s1,z,n-i);
+        // i may exceed n when the sub-narray is longer than the destination;
+        // n-i would then wrap around as size_t. numo's scalar loop is a no-op
+        // in that case, so skip the launch instead.
+        if (i < n) {
+            if (idx1) {
+                <%="cumo_#{c_iter}_index_scalar_kernel_launch"%>(p1,idx1+i,z,n-i);
+            } else {
+                <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(p1+s1*i,s1,z,n-i);
+            }
         }
     }
     //<% end %>

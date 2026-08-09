@@ -1065,4 +1065,21 @@ class NArrayTest < Test::Unit::TestCase
     assert { a.transpose.flatten.to_a == [0, 3, 1, 4, 2, 5] }
     assert { Cumo::DFloat.cast(5).flatten.shape == [] }
   end
+
+  test "store with a sub-narray longer than the destination" do
+    # The zero-fill passed n-i as an unsigned kernel length. When a nested
+    # NArray was longer than the destination, i exceeded n and n-i wrapped
+    # around, so the kernel wrote far out of bounds (CUDA error 700).
+    # Values below match Numo::NArray.
+    [Cumo::DFloat, Cumo::Int32].each do |dtype|
+      a = dtype.zeros(2, 3)
+      a.store([dtype.new(5).seq, dtype.new(5).seq])
+      assert { a.to_a == [[0, 1, 2], [0, 1, 2]] }
+    end
+
+    # an oversized nested plain Array truncates the same way
+    d = Cumo::DFloat.zeros(2, 3)
+    d.store([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
+    assert { d.to_a == [[1, 2, 3], [6, 7, 8]] }
+  end
 end
