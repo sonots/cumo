@@ -50,16 +50,22 @@ cumo_cuda_runtime_malloc(size_t size)
 void
 cumo_cuda_runtime_free(char *ptr)
 {
-    if (memory_pool_enabled) {
-        try {
-            // TODO(sonots): Get current CUDA stream and pass it
-            pool.Free(reinterpret_cast<intptr_t>(ptr));
-        } catch (const cumo::internal::CUDARuntimeError& e) {
-            cumo_cuda_runtime_check_status(e.status());
+    // Always offer the pointer to the pool first, whatever memory_pool_enabled
+    // says now: MemoryPool.enable/disable is public, so the state can differ
+    // from what it was at allocation time. Handing a pooled chunk to cudaFree
+    // releases memory the pool still hands out, and fails outright for a chunk
+    // which is not at the head of its buffer.
+    try {
+        // TODO(sonots): Get current CUDA stream and pass it
+        if (pool.Free(reinterpret_cast<intptr_t>(ptr))) {
+            return;
         }
-    } else {
-        cumo_cuda_runtime_check_status(cudaFree((void*)ptr));
+    } catch (const cumo::internal::CUDARuntimeError& e) {
+        cumo_cuda_runtime_check_status(e.status());
+        return;
     }
+    // No pool owns it, so it came straight from cudaMallocManaged.
+    cumo_cuda_runtime_check_status(cudaFree((void*)ptr));
 }
 
 /*
