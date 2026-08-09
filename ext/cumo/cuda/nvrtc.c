@@ -1,6 +1,7 @@
 #include <ruby.h>
 #include <ruby/thread.h>
 #include <assert.h>
+#include <limits.h>
 #include <nvrtc.h>
 #include "cumo/cuda/nvrtc.h"
 
@@ -30,6 +31,61 @@ rb_nvrtcVersion(VALUE self)
     major = INT2NUM(_major);
     minor = INT2NUM(_minor);
     return rb_ary_new3(2, major, minor);
+}
+
+// NVRTC counts its string vectors with an int, so reject anything longer
+// before the length is truncated into one.
+static int
+ary_len(VALUE ary, const char *name)
+{
+    long len;
+
+    Check_Type(ary, T_ARRAY);
+    len = RARRAY_LEN(ary);
+    if (len > INT_MAX) {
+        rb_raise(rb_eArgError, "%s is too long (%ld elements)", name, len);
+    }
+    return (int)len;
+}
+
+// Convert every element of ary to a String and stash the results in strings.
+//
+// Everything that can raise -- a non-String element, or a String holding an
+// embedded NUL -- happens here, before the caller allocates its vector, so a
+// bad argument cannot leak it. Holding the results in strings also keeps a
+// String that came out of to_str alive while the caller uses its char*.
+static void
+push_strings(VALUE strings, VALUE ary, int n)
+{
+    int i;
+
+    for (i = 0; i < n; i++) {
+        VALUE str = rb_str_to_str(RARRAY_AREF(ary, i));
+        StringValueCStr(str);
+        rb_ary_push(strings, str);
+    }
+}
+
+// Fill buf from strings[from, n]. Cannot raise: push_strings converted and
+// NUL-terminated every element already.
+static void
+fill_cstrs(const char **buf, VALUE strings, int from, int n)
+{
+    int i;
+
+    for (i = 0; i < n; i++) {
+        buf[i] = RSTRING_PTR(RARRAY_AREF(strings, (long)from + i));
+    }
+}
+
+static const char **
+alloc_cstrs(long n)
+{
+    const char **buf = (const char **)malloc((size_t)n * sizeof(char *));
+    if (buf == NULL) {
+        rb_raise(rb_eNoMemError, "failed to allocate %ld string pointers", n);
+    }
+    return buf;
 }
 
 struct nvrtcCreateProgramParam {
@@ -62,17 +118,30 @@ rb_nvrtcCreateProgram(
     nvrtcProgram _prog;
     const char* _src = StringValueCStr(src);
     const char* _name = StringValueCStr(name);
-    int _numHeaders = RARRAY_LEN(headers);
-    const char** _headers = (const char **)malloc(_numHeaders * sizeof(char *));
-    const char** _includeNames = (const char **)malloc(_numHeaders * sizeof(char *));
-    int i;
-    for (i = 0; i < _numHeaders; i++) {
-        VALUE header = RARRAY_PTR(headers)[i];
-        _headers[i] = StringValueCStr(header);
+    int _numHeaders = ary_len(headers, "headers");
+    const char** _headers = NULL;
+    const char** _includeNames = NULL;
+    VALUE strings;
+
+    // nvrtcCreateProgram reads numHeaders entries out of includeNames as well,
+    // so a shorter array would be read past its end.
+    if (ary_len(includeNames, "include_names") != _numHeaders) {
+        rb_raise(rb_eArgError,
+                 "headers and include_names must have the same length (%d vs %ld)",
+                 _numHeaders, RARRAY_LEN(includeNames));
     }
-    for (i = 0; i < _numHeaders; i++) {
-        VALUE include_name = RARRAY_PTR(includeNames)[i];
-        _includeNames[i] = StringValueCStr(include_name);
+
+    strings = rb_ary_new_capa((long)_numHeaders * 2);
+    push_strings(strings, headers, _numHeaders);
+    push_strings(strings, includeNames, _numHeaders);
+
+    if (_numHeaders > 0) {
+        // Both vectors come out of one allocation, so there is one pointer to
+        // free rather than two.
+        _headers = alloc_cstrs((long)_numHeaders * 2);
+        _includeNames = _headers + _numHeaders;
+        fill_cstrs(_headers, strings, 0, _numHeaders);
+        fill_cstrs(_includeNames, strings, _numHeaders, _numHeaders);
     }
 
     {
@@ -81,7 +150,7 @@ rb_nvrtcCreateProgram(
     }
 
     free(_headers);
-    free(_includeNames);
+    RB_GC_GUARD(strings);
     check_status(status);
     return SIZET2NUM((size_t)_prog);
 }
@@ -132,12 +201,16 @@ rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
 {
     nvrtcResult status;
     nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
-    int _numOptions = RARRAY_LEN(options);
-    const char** _options = (const char **)malloc(_numOptions * sizeof(char *));
-    int i;
-    for (i = 0; i < _numOptions; i++) {
-        VALUE option = RARRAY_PTR(options)[i];
-        _options[i] = StringValueCStr(option);
+    int _numOptions = ary_len(options, "options");
+    const char** _options = NULL;
+    VALUE strings;
+
+    strings = rb_ary_new_capa(_numOptions);
+    push_strings(strings, options, _numOptions);
+
+    if (_numOptions > 0) {
+        _options = alloc_cstrs(_numOptions);
+        fill_cstrs(_options, strings, 0, _numOptions);
     }
 
     {
@@ -146,6 +219,7 @@ rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
     }
 
     free(_options);
+    RB_GC_GUARD(strings);
     check_status(status);
     return Qnil;
 }
