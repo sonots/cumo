@@ -1,5 +1,7 @@
 #include "memory_pool_impl.hpp"
 
+#include <cstdio>
+
 #include <ruby.h>
 
 namespace cumo {
@@ -25,9 +27,15 @@ Memory::~Memory() {
         cudaError_t status = cudaFree(ptr_);
         // CUDA driver may shut down before freeing memory inside memory pool.
         // It is okay to simply ignore because CUDA driver automatically frees memory.
-        if (status != cudaErrorCudartUnloading) {
-            CheckStatus(status);
+        if (status == cudaSuccess || status == cudaErrorCudartUnloading) {
+            return;
         }
+        // A destructor is implicitly noexcept, so throwing here would call
+        // std::terminate and abort the process. Report the failure instead:
+        // cudaFree only fails once the context is already unusable, and the
+        // next runtime call reports the same status to the caller anyway.
+        std::fprintf(stderr, "cumo: failed to free %zu bytes of device memory: %s\n",
+                     size_, cudaGetErrorString(status));
     }
 }
 
