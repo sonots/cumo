@@ -145,6 +145,7 @@ $extconf_h = nil # nvcc does not support #include RUBY_EXTCONF_H
 
 # Create *.o directories
 FileUtils.mkdir_p('narray')
+FileUtils.mkdir_p('narray/types')
 FileUtils.mkdir_p('cuda')
 
 create_depend
