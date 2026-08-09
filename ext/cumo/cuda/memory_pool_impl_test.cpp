@@ -142,6 +142,7 @@ public:
         TearDown(); SetUp(); TestMallocWithHugeSize();
         TearDown(); SetUp(); TestFree();
         TearDown(); SetUp(); TestFreeDoubly();
+        TearDown(); SetUp(); TestFreeReportsOwnership();
         TearDown(); SetUp(); TestMallocSplit();
         TearDown(); SetUp(); TestFreeMerge();
         TearDown(); SetUp(); TestFreeDifferentSize();
@@ -355,6 +356,33 @@ public:
         intptr_t p1 = pool_->Malloc(kRoundSize * 4);
         pool_->Free(p1);
         // pool_->Free(p1); // will abort
+    }
+
+    // Free reports whether the pool owns the pointer, so that a caller which
+    // allocated outside the pool can fall back to cudaFree without releasing
+    // memory the pool still hands out.
+    void TestFreeReportsOwnership() {
+        intptr_t p = pool_->Malloc(kRoundSize * 4);
+        assert(pool_->Free(p));
+        assert(!pool_->Free(p));  // already returned to the free list
+
+        assert(!pool_->Free(0));
+        assert(!pool_->Free(p + 1));
+
+        // a buffer allocated outside the pool, as happens while the pool is
+        // disabled, stays the caller's to free
+        void* raw = nullptr;
+        CheckStatus(cudaMallocManaged(&raw, kRoundSize, cudaMemAttachGlobal));
+        assert(!pool_->Free(reinterpret_cast<intptr_t>(raw)));
+        CheckStatus(cudaFree(raw));
+
+        // a chunk which is not at the head of its buffer is owned just as much,
+        // and is exactly the one cudaFree cannot free
+        intptr_t head = pool_->Malloc(kRoundSize * 2);
+        intptr_t tail = pool_->Malloc(kRoundSize * 2);
+        assert(head != tail);
+        assert(pool_->Free(tail));
+        assert(pool_->Free(head));
     }
 
     void TestMallocSplit() {

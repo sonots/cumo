@@ -186,17 +186,24 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
     return chunk->ptr();
 }
 
-void SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
+bool SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
     std::shared_ptr<Chunk> chunk = nullptr;
 
     {
         std::lock_guard<std::recursive_mutex> lock{mutex_};
 
-        chunk = in_use_[ptr];
-        // assert(chunk != nullptr);
-        if (!chunk) return;
+        // find rather than operator[], which would insert an empty entry for
+        // every pointer this pool does not own.
+        auto it = in_use_.find(ptr);
+        if (it == in_use_.end()) {
+            return false;
+        }
+        chunk = it->second;
+        in_use_.erase(it);
+        if (!chunk) {
+            return false;
+        }
         chunk->set_in_use(false);
-        in_use_.erase(ptr);
     }
 
     if (chunk->next() != nullptr && !chunk->next()->in_use()) {
@@ -211,6 +218,7 @@ void SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
         }
     }
     AppendToFreeList(chunk->size(), chunk, stream_ptr);
+    return true;
 }
 
 void SingleDeviceMemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {

@@ -172,7 +172,9 @@ public:
 
     intptr_t Malloc(size_t size, cudaStream_t stream_ptr = 0);
 
-    void Free(intptr_t ptr, cudaStream_t stream_ptr = 0);
+    // Returns false if this pool did not allocate the pointer, in which case
+    // nothing was freed.
+    bool Free(intptr_t ptr, cudaStream_t stream_ptr = 0);
 
     // Free all **non-split** chunks in all arenas
     void FreeAllBlocks();
@@ -325,9 +327,30 @@ public:
     // Args:
     //     ptr (intptr_t): Pointer of the memory buffer
     //     stream_ptr (cudaStream_t): Return the memory to the arena of given stream
-    void Free(intptr_t ptr, cudaStream_t stream_ptr = 0) {
-        auto& mp = pools_[device_id()];
-        mp.Free(ptr, stream_ptr);
+    // Returns:
+    //     bool: false if no pool allocated the pointer, in which case nothing
+    //           was freed and the caller has to free it by its own means.
+    bool Free(intptr_t ptr, cudaStream_t stream_ptr = 0) {
+        if (pools_.empty()) {  // nothing has ever been allocated from a pool
+            return false;
+        }
+        int current_device_id = device_id();
+        auto it = pools_.find(current_device_id);
+        if (it != pools_.end() && it->second.Free(ptr, stream_ptr)) {
+            return true;
+        }
+        // The current device may have been switched since the allocation.
+        // cudaMallocManaged hands out addresses which are unique across the
+        // host and every device, so the pointer identifies its pool on its own.
+        for (auto& entry : pools_) {
+            if (entry.first == current_device_id) {
+                continue;
+            }
+            if (entry.second.Free(ptr, stream_ptr)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Free all **non-split** chunks in all arenas
