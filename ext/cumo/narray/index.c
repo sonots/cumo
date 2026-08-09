@@ -107,12 +107,6 @@ cumo_na_range_check(ssize_t pos, ssize_t size, int dim)
     return idx;
 }
 
-static void CUDART_CB
-cumo_na_parse_array_callback(cudaStream_t stream, cudaError_t status, void *data)
-{
-    cudaFreeHost(data);
-}
-
 // copy ruby array to idx
 static void
 cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
@@ -125,18 +119,21 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
     //for (k=0; k<n; k++) {
     //    q->idx[k] = na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
     //}
-    // make a contiguous pinned memory on host => copy to device => release pinned memory after copy finished on callback
+    // make a contiguous memory on host => copy to device => release it.
+    //
+    // The host buffer is pageable on purpose. cudaMemcpyAsync only returns once
+    // a pageable source has been copied into the driver's staging buffer, so the
+    // buffer can be released right away while the DMA to the device carries on.
+    // Pinned memory would have to outlive the copy, and there is no way to
+    // release it once the copy is done: a stream callback may not call the CUDA
+    // API, so cudaFreeHost() there fails with cudaErrorNotPermitted and leaks.
     q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-    cudaHostAlloc((void**)&idx, sizeof(size_t)*n, cudaHostAllocDefault);
+    idx = ALLOC_N(size_t, n);
     for (k=0; k<n; k++) {
         idx[k] = cumo_na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
     }
     status = cudaMemcpyAsync(q->idx,idx,sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
-    if (status == 0) {
-        cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,cumo_na_parse_array_callback,idx,0));
-    } else {
-        cudaFreeHost(idx);
-    }
+    xfree(idx);
     cumo_cuda_runtime_check_status(status);
 
     q->n    = n;

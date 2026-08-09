@@ -1099,4 +1099,29 @@ class NArrayTest < Test::Unit::TestCase
     # sanity: the full-length store is still correct
     assert { a.to_a == [[0, 1, 2], [0, 1, 2]] }
   end
+
+  test "indexing by an array does not leak host memory" do
+    # The index list was staged in pinned host memory released from a CUDA
+    # stream callback, but a callback may not call the CUDA API: cudaFreeHost
+    # returned cudaErrorNotPermitted and the buffer was never freed, leaking
+    # 8 bytes of page-locked memory per element on every indexing.
+    omit "needs /proc/self/status" unless File.readable?("/proc/self/status")
+    rss = -> { File.read("/proc/self/status")[/VmRSS:\s+(\d+)/, 1].to_i }
+
+    a = Cumo::DFloat.new(1000).seq
+    idx = (0...500).to_a
+    assert { a[idx].to_a == (0...500).map(&:to_f) }
+    GC.start
+
+    before_rss = rss.call
+    before_pool = Cumo::CUDA::MemoryPool.total_bytes
+    20_000.times { a[idx] }
+    GC.start
+    # Device memory the pool holds on to also counts towards RSS, and how much
+    # it keeps depends on what ran before, so discount it: the pinned host
+    # buffers were never in the pool.
+    grew = (rss.call - before_rss) - (Cumo::CUDA::MemoryPool.total_bytes - before_pool) / 1024
+    # the leak alone was 20_000 * 500 * 8 bytes = 78 MB
+    assert { grew < 40_000 }
+  end
 end
