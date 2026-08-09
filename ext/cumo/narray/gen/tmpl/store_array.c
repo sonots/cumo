@@ -7,7 +7,9 @@ void <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(char *p1, ssize_t s1, dty
 static void CUDART_CB
 <%=c_iter%>_callback(cudaStream_t stream, cudaError_t status, void *data)
 {
-    xfree(data);
+    // Runs on a CUDA driver thread which does not hold the GVL, so this must
+    // not touch the Ruby heap. The buffer comes from malloc, not ALLOC_N.
+    free(data);
 }
 //<% end %>
 
@@ -123,7 +125,16 @@ static void
         //
         // FYI: We may have to care of cuda stream callback serializes stream execution when we support stream.
         // https://devtalk.nvidia.com/default/topic/822942/why-does-cudastreamaddcallback-serialize-kernel-execution-and-break-concurrency-/
-        dtype* host_z = ALLOC_N(dtype, n);
+
+        // Deliberately not ALLOC_N: the callback below releases this buffer
+        // from a CUDA driver thread, which cannot touch the Ruby heap. Ask for
+        // one element when n is 0 so the pointer stays non-NULL, as ALLOC_N's
+        // would have been.
+        dtype* host_z = (dtype*)malloc(sizeof(dtype) * (n == 0 ? 1 : n));
+        if (host_z == NULL) {
+            rb_raise(rb_eNoMemError, "failed to allocate %"SZF"u bytes to stage the copy",
+                     sizeof(dtype) * n);
+        }
         for (i=i1=0; i1<n1 && i<n; i1++) {
             x = ptr[i1];
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
@@ -149,7 +160,7 @@ static void
             if (status == 0) {
                 cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,<%=c_iter%>_callback,host_z,0));
             } else {
-                xfree(host_z);
+                free(host_z);
             }
             cumo_cuda_runtime_check_status(status);
         } else {
@@ -163,7 +174,7 @@ static void
                 }
                 cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,<%=c_iter%>_callback,host_z,0));
             } else {
-                xfree(host_z);
+                free(host_z);
             }
             cumo_cuda_runtime_free((void*)device_z);
             cumo_cuda_runtime_check_status(status);
