@@ -1006,4 +1006,20 @@ class NArrayTest < Test::Unit::TestCase
       GC.start
     end
   end
+
+  test "repeated reshape! keeps contents" do
+    # na_alloc_shape did not free the previous shape before allocating a new
+    # one, leaking it on every reshape of an array that already had a shape.
+    a = Cumo::DFloat.new(2, 3, 4).seq
+    src = a.to_a.flatten
+
+    100.times do
+      a.reshape!(4, 3, 2)
+      a.reshape!(24)
+      a.reshape!(2, 3, 4)
+    end
+
+    assert { a.shape == [2, 3, 4] }
+    assert { a.to_a.flatten == src }
+  end
 end
