@@ -32,8 +32,16 @@ static void
 
     if (lp->args[1].ptr) {
         if (v1 == Qtrue) {
-            iter_<%=type_name%>_store_<%=type_name%>(lp);
+            // The loop counter is the destination length, but the sub-narray
+            // may be shorter. Copy only what the source actually holds, or the
+            // kernel would read past its end; the rest is zero-filled below.
             i = lp->args[1].shape[0];
+            if (i > n) {
+                i = n;
+            }
+            CUMO_NDL_CNT(lp) = i;
+            iter_<%=type_name%>_store_<%=type_name%>(lp);
+            CUMO_NDL_CNT(lp) = n;
             if (idx1) {
                 idx1 += i;
             } else {
