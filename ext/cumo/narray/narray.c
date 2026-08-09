@@ -258,6 +258,10 @@ cumo_na_alloc_shape(cumo_narray_t *na, int ndim)
 {
     na->ndim = ndim;
     na->size = 0;
+    if (na->shape != NULL && na->shape != &(na->size)) {
+        xfree(na->shape);
+        na->shape = NULL;
+    }
     switch(ndim) {
     case 0:
     case 1:
