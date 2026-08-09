@@ -592,6 +592,29 @@ public:
     }
 };
 
+// Resets the CUDA device, so it has to run after every other test.
+class TestMemoryDestructor {
+public:
+    void Run() {
+        TestFailingFreeDoesNotAbort();
+    }
+
+    // A destructor is implicitly noexcept, so a throwing CheckStatus here used
+    // to call std::terminate and abort the whole process.
+    void TestFailingFreeDoesNotAbort() {
+        auto mem = std::make_shared<Memory>(kRoundSize);
+        // Destroying the primary context invalidates the pointer, so the
+        // cudaFree in ~Memory fails with cudaErrorInvalidValue.
+        CheckStatus(cudaDeviceReset());
+
+        std::cerr << "(the cumo warning below is expected)" << std::endl;
+        mem.reset();
+        // Reaching this line is the assertion: the destructor reported the
+        // failure instead of terminating the process.
+        cudaGetLastError();  // clear the error left by the failed cudaFree
+    }
+};
+
 }  // namespace internal
 }  // namespace cumo
 
@@ -599,5 +622,6 @@ int main() {
     cumo::internal::TestChunk{}.Run();
     cumo::internal::TestSingleDeviceMemoryPool{}.Run();
     cumo::internal::TestMemoryPool{}.Run();
+    cumo::internal::TestMemoryDestructor{}.Run();
     return 0;
 }
