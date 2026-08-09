@@ -1022,4 +1022,31 @@ class NArrayTest < Test::Unit::TestCase
     assert { a.shape == [2, 3, 4] }
     assert { a.to_a.flatten == src }
   end
+
+  test "sort and sort_index over many values" do
+    # The partition loop used `for (;;)` with the pointer updates at the end
+    # of the body, which some compilers could optimize incorrectly.
+    rng = Random.new(42)
+
+    arr = Array.new(100) { rng.rand(-1.0...1.0) }
+    [Cumo::DFloat, Cumo::SFloat].each do |dtype|
+      a = dtype.cast(arr)
+      assert { a.sort.to_a == a.to_a.sort }
+      assert { a[a.sort_index].to_a == a.to_a.sort }
+    end
+
+    arr = Array.new(100) { rng.rand(-100...100) }
+    [Cumo::Int64, Cumo::Int32, Cumo::Int16, Cumo::Int8].each do |dtype|
+      a = dtype.cast(arr)
+      assert { a.sort.to_a == a.to_a.sort }
+      assert { a[a.sort_index].to_a == a.to_a.sort }
+    end
+
+    arr = Array.new(100) { rng.rand(0...100) }
+    [Cumo::UInt64, Cumo::UInt32, Cumo::UInt16, Cumo::UInt8].each do |dtype|
+      a = dtype.cast(arr)
+      assert { a.sort.to_a == a.to_a.sort }
+      assert { a[a.sort_index].to_a == a.to_a.sort }
+    end
+  end
 end
