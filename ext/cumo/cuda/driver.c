@@ -294,13 +294,18 @@ rb_cuModuleGetGlobal(VALUE self, VALUE hmod, VALUE name)
     CUmodule _hmod = (CUmodule)NUM2SIZET(hmod);
     const char* _name = RSTRING_PTR(name);
     CUresult status;
+    VALUE ret;
 
     struct cuModuleGetGlobalParam param = {&_dptr, &_bytes, _hmod, _name};
     status = (CUresult)rb_thread_call_without_gvl(cuModuleGetGlobal_without_gvl_cb, &param, NULL, NULL);
     //status = cuModuleGetGlobal(&_dptr, &_bytes, _hmod, _name);
 
     check_status(status);
-    return rb_str_new((char *)_dptr, _bytes);
+
+    // _dptr addresses device memory, which the host cannot read directly.
+    ret = rb_str_new(NULL, (long)_bytes);
+    check_status(cuMemcpyDtoH(RSTRING_PTR(ret), _dptr, _bytes));
+    return ret;
 }
 
 struct cuModuleLoadParam {
