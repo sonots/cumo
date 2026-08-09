@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -20,6 +21,10 @@ namespace internal {
 // cudaMalloc() is aligned to at least 512 bytes
 // cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
 constexpr int kRoundSize = 512; // bytes
+
+// The largest size which can be rounded up to a multiple of kRoundSize without
+// wrapping around in size_t. Larger requests can never be satisfied anyway.
+constexpr size_t kMaxAllocationSize = std::numeric_limits<size_t>::max() - (kRoundSize - 1);
 
 class CUDARuntimeError : public std::runtime_error {
 private:
@@ -143,7 +148,7 @@ public:
 
 using FreeList = std::vector<std::shared_ptr<Chunk>>;  // list of free chunk
 using Arena = std::vector<FreeList>;  // free_list w.r.t arena index
-using ArenaIndexMap = std::vector<int>;  // arena index <=> bin size index
+using ArenaIndexMap = std::vector<size_t>;  // arena index <=> bin size index
 
 // Memory pool implementation for single device.
 // - The allocator attempts to find the smallest cached block that will fit
@@ -188,17 +193,29 @@ public:
 // private:
 
     // Rounds up the memory size to fit memory alignment of cudaMalloc.
+    //
+    // `size` must not exceed kMaxAllocationSize. Otherwise the addition below
+    // wraps around in size_t, and the largest sizes would round down to 0.
     size_t GetRoundedSize(size_t size) {
+        assert(size <= kMaxAllocationSize);
         return ((size + kRoundSize - 1) / kRoundSize) * kRoundSize;
     }
 
     // Get bin index regarding the memory size
-    int GetBinIndex(size_t size) {
+    //
+    // The index is a size_t rather than an int because the bin index of a huge
+    // size does not fit in an int. A truncated (possibly negative) index makes
+    // the free list search below start at the wrong bin and hand out a chunk
+    // smaller than requested.
+    //
+    // `size` must be positive; a zero-sized allocation has no bin.
+    size_t GetBinIndex(size_t size) {
+        assert(size > 0);
         return (size - 1) / kRoundSize;
     }
 
-    int GetArenaIndex(size_t size, cudaStream_t stream_ptr = 0) {
-        int bin_index = GetBinIndex(size);
+    size_t GetArenaIndex(size_t size, cudaStream_t stream_ptr = 0) {
+        size_t bin_index = GetBinIndex(size);
         ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
         return std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
     }

@@ -41,5 +41,15 @@ module Cumo::CUDA
     def test_total_bytes
       assert_nothing_raised { MemoryPool.total_bytes }
     end
+
+    def test_malloc_with_size_whose_rounding_overflows
+      MemoryPool.enable
+      # 8 * (2**61 - 1) is SIZE_MAX - 7. Rounding it up to a multiple of the
+      # 512 byte alignment wrapped around to 0, so the pool handed out a chunk
+      # of another allocation instead of reporting the failure.
+      assert_raise(OutOfMemoryError) { Cumo::DFloat.new(2**61 - 1).allocate }
+      # the pool must be left usable
+      assert { Cumo::DFloat.new(1024).seq.sum == 1024 * 1023 / 2 }
+    end
   end
 end

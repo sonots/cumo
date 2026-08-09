@@ -63,14 +63,14 @@ void Merge(std::shared_ptr<Chunk>& self, std::shared_ptr<Chunk> remaining) {
 
 void SingleDeviceMemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
     assert(chunk != nullptr && !chunk->in_use());
-    int bin_index = GetBinIndex(size);
+    size_t bin_index = GetBinIndex(size);
 
     std::lock_guard<std::recursive_mutex> lock{mutex_};
 
     Arena& arena = GetArena(stream_ptr);
     ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
-    int arena_index = std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
-    int length = static_cast<int>(arena_index_map.size());
+    size_t arena_index = std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
+    size_t length = arena_index_map.size();
     if (arena_index >= length || arena_index_map.at(arena_index) != bin_index) {
         arena_index_map.insert(arena_index_map.begin() + arena_index, bin_index);
         arena.insert(arena.begin() + arena_index, FreeList{});
@@ -81,7 +81,7 @@ void SingleDeviceMemoryPool::AppendToFreeList(size_t size, std::shared_ptr<Chunk
 
 bool SingleDeviceMemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr) {
     assert(chunk != nullptr && !chunk->in_use());
-    int bin_index = GetBinIndex(size);
+    size_t bin_index = GetBinIndex(size);
 
     std::lock_guard<std::recursive_mutex> lock{mutex_};
 
@@ -90,20 +90,32 @@ bool SingleDeviceMemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chu
     if (arena_index_map.size() == 0) {
         return false;
     }
-    int arena_index = std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
-    if (static_cast<size_t>(arena_index) == arena_index_map.size()) {
+    size_t arena_index = std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
+    if (arena_index == arena_index_map.size()) {
         // Bin does not exist for the given chunk size.
         return false;
     }
     if (arena_index_map.at(arena_index) != bin_index) {
         return false;
     }
-    assert(arena.size() > static_cast<size_t>(arena_index));
+    assert(arena.size() > arena_index);
     FreeList& free_list = arena[arena_index];
     return EraseFromFreeList(free_list, chunk);
 }
 
 intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
+    if (size == 0) {
+        // A zero-sized chunk would share its address with the chunk it was
+        // split from, and aliased addresses break the `in_use_` bookkeeping.
+        // cudaMalloc returns a null pointer for a zero-sized request as well.
+        return 0;
+    }
+    if (size > kMaxAllocationSize) {
+        // Rounding up would wrap around in size_t and the pool would then hand
+        // out a chunk far smaller than requested. Such a request can never be
+        // satisfied, so report it as out of memory instead.
+        throw OutOfMemoryError(size, GetTotalBytes());
+    }
     size = GetRoundedSize(size);
     std::shared_ptr<Chunk> chunk = nullptr;
 
@@ -112,9 +124,9 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
 
         // find best-fit, or a smallest larger allocation
         Arena& arena = GetArena(stream_ptr);
-        int arena_index = GetArenaIndex(size);
-        int arena_length = static_cast<int>(arena.size());
-        for (int i = arena_index; i < arena_length; ++i) {
+        size_t arena_index = GetArenaIndex(size);
+        size_t arena_length = arena.size();
+        for (size_t i = arena_index; i < arena_length; ++i) {
             FreeList& free_list = arena[i];
             if (free_list.empty()) {
                 continue;

@@ -134,10 +134,12 @@ public:
     void Run() {
         TearDown(); SetUp(); TestGetRoundedSize();
         TearDown(); SetUp(); TestGetBinIndex();
+        TearDown(); SetUp(); TestGetArenaIndexWithHugeSize();
         TearDown(); SetUp(); TestAppendToFreeList();
         TearDown(); SetUp(); TestRemoveFromFreeList();
         TearDown(); SetUp(); TestMalloc();
         TearDown(); SetUp(); TestMallocWithZero();
+        TearDown(); SetUp(); TestMallocWithHugeSize();
         TearDown(); SetUp(); TestFree();
         TearDown(); SetUp(); TestFreeDoubly();
         TearDown(); SetUp(); TestMallocSplit();
@@ -156,12 +158,28 @@ public:
         assert(pool_->GetRoundedSize(kRoundSize - 1) == kRoundSize);
         assert(pool_->GetRoundedSize(kRoundSize) == kRoundSize);
         assert(pool_->GetRoundedSize(kRoundSize + 1) == kRoundSize * 2);
+        // the largest roundable size must not wrap around to 0
+        assert(pool_->GetRoundedSize(kMaxAllocationSize) == kMaxAllocationSize);
     }
 
     void TestGetBinIndex() {
         assert(pool_->GetBinIndex(kRoundSize - 1) == 0);
         assert(pool_->GetBinIndex(kRoundSize) == 0);
         assert(pool_->GetBinIndex(kRoundSize + 1) == 1);
+        // the bin index of a huge size does not fit in an int
+        assert(pool_->GetBinIndex(kMaxAllocationSize) == (kMaxAllocationSize - 1) / kRoundSize);
+    }
+
+    void TestGetArenaIndexWithHugeSize() {
+        auto mem = std::make_shared<Memory>(kRoundSize * 4);
+        auto chunk = std::make_shared<Chunk>(mem, 0, mem->size(), stream_ptr_);
+        pool_->AppendToFreeList(chunk->size(), chunk, stream_ptr_);
+
+        assert(pool_->GetArenaIndex(kRoundSize * 4, stream_ptr_) == 0);
+        // A bin index which does not fit in an int must not fold back to a
+        // smaller arena index, or the free list search would pick this chunk.
+        assert(pool_->GetArenaIndex(size_t(1) << 41, stream_ptr_) == 1);
+        assert(pool_->GetArenaIndex(kMaxAllocationSize, stream_ptr_) == 1);
     }
 
     void TestAppendToFreeList() {
@@ -292,7 +310,38 @@ public:
     }
 
     void TestMallocWithZero() {
-        pool_->Malloc(0); // actually, cuda returns 0
+        intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p1);
+
+        assert(pool_->Malloc(0) == 0); // actually, cuda returns 0
+        // A zero-sized request must not take a cached chunk, or two live
+        // allocations would share one address.
+        assert(pool_->GetUsedBytes() == 0);
+        assert(pool_->GetFreeBytes() == kRoundSize * 4);
+        assert(pool_->Malloc(kRoundSize * 4) == p1);
+    }
+
+    void TestMallocWithHugeSize() {
+        intptr_t p1 = pool_->Malloc(kRoundSize * 4);
+        pool_->Free(p1);
+
+        // Sizes which cannot be rounded up without wrapping around in size_t
+        // must be rejected instead of being rounded down to 0.
+        assert(RaisesOutOfMemory(kMaxAllocationSize + 1));
+        assert(RaisesOutOfMemory(std::numeric_limits<size_t>::max()));
+
+        assert(pool_->GetUsedBytes() == 0);
+        assert(pool_->GetFreeBytes() == kRoundSize * 4);
+        assert(pool_->Malloc(kRoundSize * 4) == p1);
+    }
+
+    bool RaisesOutOfMemory(size_t size) {
+        try {
+            pool_->Malloc(size);
+        } catch (const OutOfMemoryError&) {
+            return true;
+        }
+        return false;
     }
 
     void TestFree() {
