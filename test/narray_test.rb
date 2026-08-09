@@ -1049,4 +1049,20 @@ class NArrayTest < Test::Unit::TestCase
       assert { a[a.sort_index].to_a == a.to_a.sort }
     end
   end
+
+  test "flatten on empty arrays" do
+    # na_flatten_dim returned the array unchanged whenever size == 0, so a
+    # multi-dimensional empty array kept its dimensions instead of becoming 1-D.
+    [[0, 3], [2, 0], [0, 0], [0, 2, 3], [2, 0, 3]].each do |shape|
+      f = Cumo::DFloat.new(*shape).flatten
+      assert { f.ndim == 1 }
+      assert { f.shape == [0] }
+    end
+
+    # non-empty arrays and views keep working
+    a = Cumo::DFloat.new(2, 3).seq
+    assert { a.flatten.to_a == [0, 1, 2, 3, 4, 5] }
+    assert { a.transpose.flatten.to_a == [0, 3, 1, 4, 2, 5] }
+    assert { Cumo::DFloat.cast(5).flatten.shape == [] }
+  end
 end
