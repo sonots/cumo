@@ -988,4 +988,22 @@ class NArrayTest < Test::Unit::TestCase
     c = Cumo::RObject.new(1000).rand(-2, 3).to_a
     assert { c.min >= -2 && c.max < 3 }
   end
+
+  test "zero-sized multi-dimensional arrays" do
+    # The free functions used to skip releasing base.shape when size == 0,
+    # leaking the shape array allocated for ndim >= 2.
+    [Cumo::DFloat, Cumo::Int32, Cumo::Bit, Cumo::RObject].each do |dtype|
+      a = dtype.new(0, 3)
+      assert { a.size == 0 }
+      assert { a.ndim == 2 }
+      assert { a.shape == [0, 3] }
+      assert { a.to_a.flatten == [] }
+    end
+
+    # exercise the free path explicitly
+    assert_nothing_raised do
+      1000.times { Cumo::DFloat.new(0, 3) }
+      GC.start
+    end
+  end
 end
