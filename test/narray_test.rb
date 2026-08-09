@@ -1082,4 +1082,21 @@ class NArrayTest < Test::Unit::TestCase
     d.store([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
     assert { d.to_a == [[1, 2, 3], [6, 7, 8]] }
   end
+
+  test "store with a sub-narray shorter than the destination" do
+    # The inner copy used the destination length as its element count, so it
+    # read past the end of a shorter sub-narray. The stale values only became
+    # visible once the memory behind the source had been reused, which needed
+    # a previous full-length store plus a GC.
+    a = Cumo::DFloat.zeros(2, 3)
+    a.store([Cumo::DFloat.new(3).seq, Cumo::DFloat.new(3).seq])
+    GC.start
+
+    b = Cumo::DFloat.zeros(2, 3)
+    b.store([Cumo::DFloat.new(2).seq, Cumo::DFloat.new(2).seq])
+    assert { b.to_a == [[0, 1, 0], [0, 1, 0]] }
+
+    # sanity: the full-length store is still correct
+    assert { a.to_a == [[0, 1, 2], [0, 1, 2]] }
+  end
 end
