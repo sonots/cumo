@@ -161,10 +161,15 @@ static void
                 } else {
                     <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,s1,device_z,i);
                 }
-                cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,<%=c_iter%>_callback,host_z,0));
-            } else {
-                xfree(host_z);
+                // The kernel reads device_z, so wait for it before giving the
+                // buffer back. The memory pool hands a freed chunk straight out
+                // again, and a host write into that managed memory does not wait
+                // for the stream, so the kernel would read the new contents.
+                status = cudaStreamSynchronize(0);
             }
+            // Freeing here rather than from a stream callback: the copy is over
+            // by now, and a callback may not call the CUDA API anyway.
+            xfree(host_z);
             cumo_cuda_runtime_free((void*)device_z);
             cumo_cuda_runtime_check_status(status);
         }

@@ -1100,6 +1100,24 @@ class NArrayTest < Test::Unit::TestCase
     assert { a.to_a == [[0, 1, 2], [0, 1, 2]] }
   end
 
+  test "store into a strided view is not clobbered by a later allocation" do
+    # Storing a Ruby Array into a strided destination stages it in a device
+    # buffer and launches a kernel to scatter it. The buffer was released right
+    # after the launch, so the memory pool could hand it out again while the
+    # kernel was still reading it; from_binary then memcpy'd over it from the
+    # host, which does not wait for the stream.
+    n = 1_000_000
+    src = Array.new(n, 7.0)
+    poison = [-1.0].pack("d") * n
+
+    5.times do
+      a = Cumo::DFloat.zeros(n, 2)
+      a[true, 0] = src
+      Cumo::DFloat.from_binary(poison)
+      assert { a[true, 0].eq(7.0).count_true == n }
+    end
+  end
+
   test "indexing by an array does not leak host memory" do
     # The index list was staged in pinned host memory released from a CUDA
     # stream callback, but a callback may not call the CUDA API: cudaFreeHost
