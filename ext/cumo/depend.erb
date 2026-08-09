@@ -52,7 +52,7 @@ src : <%= list_type_cu.join(" ") %> <%= list_type_c.join(" ") %>
 build-ctest : <%= __dir__ %>/cuda/memory_pool_impl_test.exe
 
 run-ctest : <%= __dir__ %>/cuda/memory_pool_impl_test.exe
-	./$<
+	$<
 
 <%= __dir__ %>/cuda/memory_pool_impl_test.exe: <%= __dir__ %>/cuda/memory_pool_impl_test.cpp <%= __dir__ %>/cuda/memory_pool_impl.cpp <%= __dir__ %>/cuda/memory_pool_impl.hpp
 	nvcc -std=c++17 <%= ENV['DEBUG'] ? '-g -O0 --compiler-options -Wall' : '' %> -L. -L$(libdir) -I. $(INCFLAGS) -o $@ $< <%= __dir__ %>/cuda/memory_pool_impl.cpp
