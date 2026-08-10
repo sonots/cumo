@@ -1118,6 +1118,74 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # cumo_na_parse_narray_index() copied an NArray index straight to the device
+  # with no bounds check, so an out-of-range index read out of bounds and a
+  # negative one -- which is an ordinary way to index -- became a huge size_t
+  # and segfaulted. Every case below is written twice, once for [] and once for
+  # at(): they share cumo_na_parse_narray_index(), so one fix closes both, and
+  # without both a later at_mode branch could reopen one of them unnoticed.
+  #
+  # Passing here is not the same as being in bounds: the memory pool rounds
+  # allocations up, so a small out-of-range read used to land inside the same
+  # chunk and quietly return a value.
+  test "an out-of-range NArray index raises" do
+    a = Cumo::DFloat.new(4).seq
+    v = Cumo::DFloat.new(8).seq[0..3]
+
+    [a, v].each do |x|
+      [Cumo::Int32, Cumo::Int64].each do |itype|
+        assert_raise(IndexError) { x[itype[4]] }
+        assert_raise(IndexError) { x[itype[9999]] }
+        assert_raise(IndexError) { x[itype[0, 4]] }
+        assert_raise(IndexError) { x.at(itype[4]) }
+        assert_raise(IndexError) { x.at(itype[9999]) }
+      end
+      assert_raise(IndexError) { x[Cumo::Int64[1 << 40]] }
+      assert_raise(IndexError) { x.at(Cumo::Int64[1 << 40]) }
+    end
+  end
+
+  test "a negative NArray index counts from the end" do
+    a = Cumo::DFloat.new(4).seq
+    v = Cumo::DFloat.new(8).seq[0..3]
+
+    [a, v].each do |x|
+      assert { x[Cumo::Int32[-1]] == [3] }
+      assert { x[Cumo::Int32[-4]] == [0] }
+      assert { x[Cumo::Int32[-1, -2]] == [3, 2] }
+      assert { x.at(Cumo::Int32[-1]) == [3] }
+      # same index as a Ruby Array, which was always checked
+      assert { x[Cumo::Int32[-1]] == x[[-1]] }
+      assert { x.at(Cumo::Int32[-1]) == x.at([-1]) }
+      # one past the end going backwards
+      assert_raise(IndexError) { x[Cumo::Int32[-5]] }
+      assert_raise(IndexError) { x.at(Cumo::Int32[-5]) }
+    end
+  end
+
+  test "an NArray index is checked in every dimension" do
+    a = Cumo::DFloat.new(3, 4).seq
+
+    assert { a[Cumo::Int32[0, 2], Cumo::Int32[1, 3]] == [[1, 3], [9, 11]] }
+    assert { a[Cumo::Int32[-1], Cumo::Int32[-1]] == [[11]] }
+    assert_raise(IndexError) { a[Cumo::Int32[3], Cumo::Int32[0]] }
+    assert_raise(IndexError) { a[Cumo::Int32[0], Cumo::Int32[4]] }
+    assert_raise(IndexError) { a[Cumo::Int32[0], Cumo::Int32[-5]] }
+    assert { a.at(Cumo::Int32[0, 2], Cumo::Int32[1, 3]) == [1, 11] }
+    assert_raise(IndexError) { a.at(Cumo::Int32[0, 3], Cumo::Int32[0, 0]) }
+  end
+
+  test "indexing by a Bit array is unaffected by the range check" do
+    # A Bit index goes through where(), whose result is in range by
+    # construction, so the check must not reject it.
+    a = Cumo::DFloat.new(6).seq
+
+    assert { a[a > 2.0] == [3, 4, 5] }
+    assert { a[a.eq(0.0)] == [0] }
+    assert { a[a > 99.0].size == 0 }
+    assert { a[Cumo::Bit[1, 0, 1, 0, 1, 0]] == [0, 2, 4] }
+  end
+
   test "indexing by an array does not leak host memory" do
     # The index list was staged in pinned host memory released from a CUDA
     # stream callback, but a callback may not call the CUDA API: cudaFreeHost
