@@ -147,11 +147,11 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
 static void
 cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
-    VALUE idx;
+    VALUE idx, buf;
     cumo_narray_t *na;
     cumo_narray_data_t *nidx;
-    size_t n;
-    ssize_t *nidxp;
+    size_t k, n;
+    ssize_t *nidxp, *host_idx;
 
     CumoGetNArray(a,na);
     if (CUMO_NA_NDIM(na) != 1) {
@@ -170,12 +170,27 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
 
     CumoGetNArrayData(idx,nidx);
     nidxp   = (ssize_t*)nidx->ptr; // Cumo::NArray data resides on GPU
-    //q->idx  = ALLOC_N(size_t, n);
-    //for (k=0; k<n; k++) {
-    //    q->idx[k] = na_range_check(nidxp[k], size, orig_dim);
-    //}
+
+    // Check the indices on the host, as cumo_na_parse_array() does: a kernel
+    // could neither raise IndexError nor rewrite a negative index into the
+    // element it denotes. Copy them rather than read the managed memory in
+    // place -- "synchronize, then touch it from the host" is what breaks under
+    // Ractor (sonots/cumo#180), where only the GVL made it atomic. The buffer
+    // is a String so the raise below cannot leak it.
+    buf = rb_str_tmp_new((long)(sizeof(ssize_t)*n));
+    host_idx = (ssize_t*)RSTRING_PTR(buf);
+    cumo_cuda_runtime_check_status(
+        cudaMemcpy(host_idx,nidxp,sizeof(ssize_t)*n,cudaMemcpyDeviceToHost));
+    for (k=0; k<n; k++) {
+        // A checked index is non-negative, so it is already a valid size_t.
+        host_idx[k] = cumo_na_range_check(host_idx[k], size, orig_dim);
+    }
+
     q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-    cumo_cuda_runtime_check_status(cudaMemcpyAsync(q->idx,nidxp,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
+    cumo_cuda_runtime_check_status(
+        cudaMemcpyAsync(q->idx,host_idx,sizeof(size_t)*n,cudaMemcpyHostToDevice,0));
+    RB_GC_GUARD(buf);
+    RB_GC_GUARD(idx);
 
     q->n    = n;
     q->beg  = 0;
