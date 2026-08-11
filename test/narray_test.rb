@@ -842,6 +842,42 @@ class NArrayTest < Test::Unit::TestCase
     assert { Cumo::NArray.cast(object) == [1, 2, 3] }
   end
 
+  sub_test_case "reshape argument validation" do
+    test "a negative size raises" do
+      # A negative size used to be cast to size_t, so reshape(-2, -3) produced
+      # a shape of [2**64-2, 2**64-3] whose product wraps back to 6 and passes
+      # the "total size must be same" check.
+      assert_raise(ArgumentError) { Cumo::DFloat.new(6).seq.reshape(-2, -3) }
+      assert_raise(ArgumentError) { Cumo::DFloat.new(6).seq.reshape(2, -3) }
+      assert_raise(ArgumentError) { Cumo::DFloat.new(6).seq.reshape(-6) }
+      assert_raise(ArgumentError) { Cumo::DFloat.new(1).seq.reshape(-1, -1) }
+      assert_raise(ArgumentError) { Cumo::DFloat.new(6).seq.reshape!(-2, -3) }
+    end
+
+    test "a zero total with an unfixed dimension raises" do
+      # The unfixed dimension is solved by dividing by the total, so a zero
+      # total used to reach a division by zero and abort with SIGFPE.
+      assert_raise(ArgumentError) { Cumo::Int32[1, 2, 3].reshape(0, nil) }
+      assert_raise(ArgumentError) { Cumo::DFloat.new(6).seq.reshape(0, true) }
+    end
+
+    test "an overflowing total raises" do
+      # 2**30 * 2**30 * 16 is 2**64, which wraps to a total of zero.
+      assert_raise(ArgumentError) { Cumo::DFloat.new(6).seq.reshape(2**30, 2**30, 16, nil) }
+    end
+
+    test "a valid reshape is unaffected" do
+      a = Cumo::DFloat.new(6).seq
+      assert { a.reshape(2, 3).shape == [2, 3] }
+      assert { a.reshape(2, nil).shape == [2, 3] }
+      assert { a.reshape(nil, 3).shape == [2, 3] }
+      assert { a.reshape(6).to_a == [0, 1, 2, 3, 4, 5] }
+      assert_raise(ArgumentError) { a.reshape(4, nil) }
+      assert_raise(ArgumentError) { a.reshape(nil, nil) }
+      assert_raise(ArgumentError) { a.reshape(0, 6) }
+    end
+  end
+
   test "Cumo::DFloat.cast(Cumo::RObject[1, nil, 3])" do
     assert_equal(Cumo::DFloat[1, Float::NAN, 3].format_to_a,
                  Cumo::DFloat.cast(Cumo::RObject[1, nil, 3]).format_to_a)
