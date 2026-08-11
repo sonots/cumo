@@ -216,7 +216,12 @@ public:
         return (size - 1) / kRoundSize;
     }
 
-    size_t GetArenaIndex(size_t size, cudaStream_t stream_ptr = 0) {
+    // Returns where a chunk of `size` belongs in the arena of `stream_ptr`.
+    //
+    // The stream is not optional: an index taken from one stream's index map
+    // means nothing in another stream's arena, and defaulting it silently
+    // started the free list search at the wrong bin.
+    size_t GetArenaIndex(size_t size, cudaStream_t stream_ptr) {
         size_t bin_index = GetBinIndex(size);
         ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
         return std::lower_bound(arena_index_map.begin(), arena_index_map.end(), bin_index) - arena_index_map.begin();
@@ -267,14 +272,14 @@ public:
         return true;
     }
 
-    void AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
+    void AppendToFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr);
 
     // Removes the chunk from the free list.
     //
     // @return true if the chunk can successfully be removed from
     //         the free list. false` otherwise (e.g., the chunk could not
     //         be found in the free list as the chunk is allocated.)
-    bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr = 0);
+    bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr);
 
     void CompactIndex(cudaStream_t stream_ptr, bool free);
 };
