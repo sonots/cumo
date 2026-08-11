@@ -140,6 +140,7 @@ public:
         TearDown(); SetUp(); TestGetBinIndex();
         TearDown(); SetUp(); TestGetArenaIndexWithHugeSize();
         TearDown(); SetUp(); TestMallocOnAnotherStream();
+        TearDown(); SetUp(); TestFreeReturnsChunkToItsOwnStream();
         TearDown(); SetUp(); TestAppendToFreeList();
         TearDown(); SetUp(); TestRemoveFromFreeList();
         TearDown(); SetUp(); TestMalloc();
@@ -214,6 +215,25 @@ public:
         // buffer cannot back -- which used to underflow GetFreeBytes.
         assert(pool_->GetFreeBytes() == kRoundSize);
         assert(small->size() == kRoundSize);
+    }
+
+    // Free used to append the chunk to the arena of the stream it was passed,
+    // and cumo_cuda_runtime_free passes none, so anything allocated on another
+    // stream was returned to stream 0's arena -- where a later Malloc on
+    // stream 0 would reuse memory it never ordered against.
+    void TestFreeReturnsChunkToItsOwnStream() {
+        cudaStream_t other = reinterpret_cast<cudaStream_t>(1);
+
+        auto p = pool_->Malloc(kRoundSize, other);
+        pool_->Free(p);
+        assert(pool_->GetNumFreeBlocks() == 1);
+        assert(!pool_->HasArena(stream_ptr_));
+
+        // The owning stream gets its own chunk back rather than cudaMalloc'ing
+        // a second one, which is the same thing seen from the other side.
+        auto q = pool_->Malloc(kRoundSize, other);
+        assert(q == p);
+        assert(pool_->GetTotalBytes() == kRoundSize);
     }
 
     void TestAppendToFreeList() {
