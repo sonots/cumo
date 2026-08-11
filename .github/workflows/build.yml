@@ -85,5 +85,6 @@ jobs:
           ccache -z
 
           bundle exec rake compile
+          bundle exec rake build_ctest
 
           ccache -s
