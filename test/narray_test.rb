@@ -1239,6 +1239,46 @@ class NArrayTest < Test::Unit::TestCase
     assert { a[Cumo::Bit[1, 0, 1, 0, 1, 0]] == [0, 2, 4] }
   end
 
+  test "a non-Integer step raises" do
+    # cumo_na_parse_range() took the step through NUM2SSIZET(), which truncates
+    # a Float, and then divided by it: a step under 1 truncated to 0 and killed
+    # the process with SIGFPE, which Ruby cannot rescue, while a step above 1
+    # was silently truncated and walked with a step the caller never asked for.
+    a = Cumo::DFloat.new(10).seq
+
+    assert_raise(ArgumentError) { a[(0..9).step(0.5)] }
+    assert_raise(ArgumentError) { a[(0..9).step(1.5)] }
+    assert_raise(ArgumentError) { a[(0..9) % 0.5] }
+    assert_raise(ArgumentError) { a.at((0..9).step(0.5)) }
+
+    assert { a[(0..9).step(2)] == [0, 2, 4, 6, 8] }
+    assert { a[(0..9) % 3] == [0, 3, 6, 9] }
+    assert { a[9.step(0, -2)] == [9, 7, 5, 3, 1] }
+  end
+
+  test "a new axis on a data array does not read past the strides" do
+    # cumo_na_index_aref_nadata() indexes an ALLOCA_N buffer of exactly
+    # base.ndim entries with q[i].orig_dim, and a trailing :new leaves
+    # orig_dim == base.ndim (cumo_na_index_parse_args() advances j but not k
+    # for :new). The view path got this guard in #160; the data path, which is
+    # where a plain NArray is routed, did not. The read was 8 bytes past the
+    # end and nothing observable depended on it -- the value became the stride
+    # of a size-1 dimension whose only index is zero -- so the results below
+    # were already correct. They pin the behaviour the guard has to preserve.
+    a = Cumo::DFloat.new(4).seq
+    assert { a[true, :new].shape == [4, 1] }
+    assert { a[true, :new].to_a == [[0], [1], [2], [3]] }
+    assert { a[:new, true].shape == [1, 4] }
+    assert { a[:new, true].to_a == [[0, 1, 2, 3]] }
+
+    b = Cumo::DFloat.new(2, 3).seq
+    assert { b[true, true, :new].shape == [2, 3, 1] }
+    assert { b[true, true, :new].to_a == [[[0], [1], [2]], [[3], [4], [5]]] }
+
+    v = Cumo::DFloat.new(6).seq[0..3]
+    assert { v[true, :new].to_a == [[0], [1], [2], [3]] }
+  end
+
   test "indexing by an array does not leak host memory" do
     # The index list was staged in pinned host memory released from a CUDA
     # stream callback, but a callback may not call the CUDA API: cudaFreeHost

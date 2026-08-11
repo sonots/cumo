@@ -209,7 +209,13 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     rb_arithmetic_sequence_components_t x;
     rb_arithmetic_sequence_extract(range, &x);
+    if (!RB_INTEGER_TYPE_P(x.step)) {
+        rb_raise(rb_eArgError, "step must be an Integer");
+    }
     step = NUM2SSIZET(x.step);
+    if (step == 0) {
+        rb_raise(rb_eArgError, "step must not be zero");
+    }
 
     beg = beg_orig = NUM2SSIZET(x.begin);
     if (beg < 0) {
@@ -465,13 +471,18 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
     cumo_na_get_strides_nadata(na1, strides_na1, elmsz);
 
     for (i=j=0; i<ndim; i++) {
-        stride1 = strides_na1[q[i].orig_dim];
+        const int orig_dim = q[i].orig_dim;
+        stride1 = 0;
 
-        // numeric index -- trim dimension
-        if (!keep_dim && q[i].n==1 && q[i].step==0) {
-            beg  = q[i].beg;
-            na2->offset += stride1 * beg;
-            continue;
+        if (orig_dim < na1->base.ndim) {
+            stride1 = strides_na1[orig_dim];
+
+            // numeric index -- trim dimension
+            if (!keep_dim && q[i].n==1 && q[i].step==0) {
+                beg  = q[i].beg;
+                na2->offset += stride1 * beg;
+                continue;
+            }
         }
 
         na2->base.shape[j] = size = q[i].n;
@@ -481,8 +492,12 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
             na2->base.reduce = rb_funcall(m,'|',1,na2->base.reduce);
         }
 
+        if (orig_dim >= na1->base.ndim) {
+            // new dimension
+            CUMO_SDX_SET_STRIDE(na2->stridx[j], elmsz);
+        }
         // array index
-        if (q[i].idx != NULL) {
+        else if (q[i].idx != NULL) {
             index = q[i].idx;
             CUMO_SDX_SET_INDEX(na2->stridx[j],index);
             q[i].idx = NULL;
