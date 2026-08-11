@@ -193,7 +193,7 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
     return chunk->ptr();
 }
 
-bool SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
+bool SingleDeviceMemoryPool::Free(intptr_t ptr) {
     std::shared_ptr<Chunk> chunk = nullptr;
 
     // The whole body runs under the lock. Walking prev/next and merging is a
@@ -223,6 +223,14 @@ bool SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
         }
         chunk->set_in_use(false);
     }
+
+    // A chunk belongs to the arena of the stream it was allocated on. That is
+    // what makes reuse safe: the next allocation from that arena is queued on
+    // the same stream as the work that last used the chunk, so the two are
+    // ordered. Returning it to another stream's arena hands it to work with no
+    // such ordering. Malloc and Merge each state the invariant in an assert,
+    // but ruby.h defines NDEBUG, so neither ever runs.
+    const cudaStream_t stream_ptr = chunk->stream_ptr();
 
     if (chunk->next() != nullptr && !chunk->next()->in_use()) {
         if (RemoveFromFreeList(chunk->next()->size(), chunk->next(), stream_ptr)) {

@@ -56,7 +56,6 @@ cumo_cuda_runtime_free(char *ptr)
     // releases memory the pool still hands out, and fails outright for a chunk
     // which is not at the head of its buffer.
     try {
-        // TODO(sonots): Get current CUDA stream and pass it
         if (pool.Free(reinterpret_cast<intptr_t>(ptr))) {
             return;
         }
