@@ -1409,6 +1409,7 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
     cumo_narray_t *na;
 
     narg = rb_scan_args(argc,argv,"11",&vstr,&voffset);
+    Check_Type(vstr,T_STRING);
     str_len = RSTRING_LEN(vstr);
     if (narg==2) {
         offset = NUM2SIZET(voffset);
