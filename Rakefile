@@ -12,9 +12,18 @@ end
 require "rake/extensiontask"
 Rake::ExtensionTask.new("cumo")
 
-task :ctest do
-  sh 'cd ext/cumo && ruby extconf.rb && make && make build-ctest && make run-ctest'
+desc 'Build the C++ memory pool test harness without running it (running it needs a GPU)'
+task :build_ctest do
+  sh 'cd ext/cumo && ruby extconf.rb && make build-ctest'
 end
+
+task :ctest => :build_ctest do
+  sh 'cd ext/cumo && make run-ctest'
+end
+
+# Both need a GPU, so CI runs neither. Tie them together so the one place
+# they do run does not skip half of them.
+task :test => :ctest
 
 task :docs do
   dir = "ext/cumo"
