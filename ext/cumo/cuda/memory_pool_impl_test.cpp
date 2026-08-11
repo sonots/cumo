@@ -139,6 +139,7 @@ public:
         TearDown(); SetUp(); TestGetRoundedSize();
         TearDown(); SetUp(); TestGetBinIndex();
         TearDown(); SetUp(); TestGetArenaIndexWithHugeSize();
+        TearDown(); SetUp(); TestMallocOnAnotherStream();
         TearDown(); SetUp(); TestAppendToFreeList();
         TearDown(); SetUp(); TestRemoveFromFreeList();
         TearDown(); SetUp(); TestMalloc();
@@ -185,6 +186,34 @@ public:
         // smaller arena index, or the free list search would pick this chunk.
         assert(pool_->GetArenaIndex(size_t(1) << 41, stream_ptr_) == 1);
         assert(pool_->GetArenaIndex(kMaxAllocationSize, stream_ptr_) == 1);
+    }
+
+    // Malloc used to take the starting arena index from stream 0's index map
+    // and then index the requested stream's arena with it. The two index maps
+    // are unrelated, so the search could start below the requested size and
+    // hand out a chunk too small for it.
+    void TestMallocOnAnotherStream() {
+        cudaStream_t other = reinterpret_cast<cudaStream_t>(1);
+
+        auto small_mem = std::make_shared<Memory>(kRoundSize);
+        auto small = std::make_shared<Chunk>(small_mem, 0, small_mem->size(), other);
+        pool_->AppendToFreeList(small->size(), small, other);
+
+        auto big_mem = std::make_shared<Memory>(kRoundSize * 4);
+        auto big = std::make_shared<Chunk>(big_mem, 0, big_mem->size(), other);
+        pool_->AppendToFreeList(big->size(), big, other);
+
+        // stream 0 has no bins at all here, so its index is 0 for any size.
+        assert(pool_->GetArenaIndex(kRoundSize * 4, stream_ptr_) == 0);
+        assert(pool_->GetArenaIndex(kRoundSize * 4, other) == 1);
+
+        auto p = pool_->Malloc(kRoundSize * 4, other);
+        assert(p == big->ptr());
+        assert(pool_->GetUsedBytes() == kRoundSize * 4);
+        // The small chunk is untouched, and no chunk was split to a size its
+        // buffer cannot back -- which used to underflow GetFreeBytes.
+        assert(pool_->GetFreeBytes() == kRoundSize);
+        assert(small->size() == kRoundSize);
     }
 
     void TestAppendToFreeList() {

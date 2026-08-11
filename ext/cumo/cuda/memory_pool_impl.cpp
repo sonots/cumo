@@ -132,7 +132,7 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
 
         // find best-fit, or a smallest larger allocation
         Arena& arena = GetArena(stream_ptr);
-        size_t arena_index = GetArenaIndex(size);
+        size_t arena_index = GetArenaIndex(size, stream_ptr);
         size_t arena_length = arena.size();
         for (size_t i = arena_index; i < arena_length; ++i) {
             FreeList& free_list = arena[i];
