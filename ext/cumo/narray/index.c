@@ -209,7 +209,13 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     rb_arithmetic_sequence_components_t x;
     rb_arithmetic_sequence_extract(range, &x);
+    if (!RB_INTEGER_TYPE_P(x.step)) {
+        rb_raise(rb_eArgError, "step must be an Integer");
+    }
     step = NUM2SSIZET(x.step);
+    if (step == 0) {
+        rb_raise(rb_eArgError, "step must not be zero");
+    }
 
     beg = beg_orig = NUM2SSIZET(x.begin);
     if (beg < 0) {

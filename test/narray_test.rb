@@ -1239,6 +1239,23 @@ class NArrayTest < Test::Unit::TestCase
     assert { a[Cumo::Bit[1, 0, 1, 0, 1, 0]] == [0, 2, 4] }
   end
 
+  test "a non-Integer step raises" do
+    # cumo_na_parse_range() took the step through NUM2SSIZET(), which truncates
+    # a Float, and then divided by it: a step under 1 truncated to 0 and killed
+    # the process with SIGFPE, which Ruby cannot rescue, while a step above 1
+    # was silently truncated and walked with a step the caller never asked for.
+    a = Cumo::DFloat.new(10).seq
+
+    assert_raise(ArgumentError) { a[(0..9).step(0.5)] }
+    assert_raise(ArgumentError) { a[(0..9).step(1.5)] }
+    assert_raise(ArgumentError) { a[(0..9) % 0.5] }
+    assert_raise(ArgumentError) { a.at((0..9).step(0.5)) }
+
+    assert { a[(0..9).step(2)] == [0, 2, 4, 6, 8] }
+    assert { a[(0..9) % 3] == [0, 3, 6, 9] }
+    assert { a[9.step(0, -2)] == [9, 7, 5, 3, 1] }
+  end
+
   test "indexing by an array does not leak host memory" do
     # The index list was staged in pinned host memory released from a CUDA
     # stream callback, but a callback may not call the CUDA API: cudaFreeHost
