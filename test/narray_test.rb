@@ -817,6 +817,23 @@ class NArrayTest < Test::Unit::TestCase
         assert { restored_a != a }
         assert { data == original_data }
       end
+
+      test "string with offset" do
+        a = dtype.new(2)
+        a.rand(0, 10)
+        b = dtype.new(1)
+        b.store_binary(a.to_binary, dtype::ELEMENT_BYTE_SIZE)
+        assert { b == a[1..1] }
+      end
+
+      test "non-string argument" do
+        a = dtype.new(2)
+        # RSTRING_PTR() on a non-String reads whatever the object's layout
+        # happens to hold there, so these used to segfault or store garbage.
+        [nil, 123, 1.5, :sym, {}, [0x7fffffff, 0x1234].freeze, /abc/].each do |bad|
+          assert_raise(TypeError) { a.store_binary(bad) }
+        end
+      end
     end
   end
 
