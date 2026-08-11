@@ -361,7 +361,16 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
     for (i=0; i<argc; ++i) {
         switch(TYPE(argv[i])) {
         case T_FIXNUM:
-            total *= shape[i] = NUM2INT(argv[i]);
+            {
+                ssize_t x = NUM2SSIZET(argv[i]);
+                if (x < 0) {
+                    rb_raise(rb_eArgError, "size must be non-negative");
+                }
+                if (x != 0 && total > SIZE_MAX / (size_t)x) {
+                    rb_raise(rb_eArgError, "total size is too large");
+                }
+                total *= shape[i] = (size_t)x;
+            }
             break;
         case T_NIL:
         case T_TRUE:
@@ -376,6 +385,9 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
     }
 
     if (unfixed>=0) {
+        if (total == 0) {
+            rb_raise(rb_eArgError, "cannot determine unfixed dimension when total size is zero");
+        }
         if (CUMO_NA_SIZE(na) % total != 0) {
             rb_raise(rb_eArgError, "Total size size must be divisor");
         }
