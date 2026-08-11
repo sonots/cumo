@@ -143,15 +143,22 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
             // TODO(sonots): compact_index
             break;
         }
+
+        // Splitting rewrites the prev/next pointers of the neighbouring
+        // chunks, which other threads reach through the free lists, so it has
+        // to happen under the same lock as the search above.
+        if (chunk != nullptr) {
+            std::shared_ptr<Chunk> remaining = Split(chunk, size);
+            if (remaining != nullptr) {
+                AppendToFreeList(remaining->size(), remaining, stream_ptr);
+            }
+        }
     }
 
-    if (chunk != nullptr) {
-        std::shared_ptr<Chunk> remaining = Split(chunk, size);
-        if (remaining != nullptr) {
-            AppendToFreeList(remaining->size(), remaining, stream_ptr);
-        }
-    } else {
-        // cudaMalloc if a cache is not found
+    if (chunk == nullptr) {
+        // cudaMalloc if a cache is not found. This stays outside the lock: it
+        // is slow, and a chunk of a fresh allocation has no neighbours for
+        // another thread to reach it through.
         std::shared_ptr<Memory> mem = nullptr;
         try {
             mem = std::make_shared<Memory>(size);
@@ -189,9 +196,20 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
 bool SingleDeviceMemoryPool::Free(intptr_t ptr, cudaStream_t stream_ptr) {
     std::shared_ptr<Chunk> chunk = nullptr;
 
-    {
-        std::lock_guard<std::recursive_mutex> lock{mutex_};
+    // The whole body runs under the lock. Walking prev/next and merging is a
+    // read-modify-write of the chunk graph, which is shared: a neighbour can
+    // be split by a concurrent Malloc while this reads its prev/next.
+    //
+    // The lost merge is the part that shows: two threads freeing neighbouring
+    // chunks each look for the other in the free list before the other has
+    // appended itself, so both merges fail and the two chunks stay split for
+    // good. Fragmentation accumulates from there.
+    //
+    // mutex_ is recursive, so the RemoveFromFreeList/AppendToFreeList calls
+    // below can take it again.
+    std::lock_guard<std::recursive_mutex> lock{mutex_};
 
+    {
         // find rather than operator[], which would insert an empty entry for
         // every pointer this pool does not own.
         auto it = in_use_.find(ptr);

@@ -1,8 +1,12 @@
 #include "memory_pool_impl.hpp"
 
+#include <atomic>
 #include <cassert>
+#include <cstring>
 #include <memory>
 #include <iostream>
+#include <thread>
+#include <vector>
 
 // TODO(sonots): Use googletest?
 // TODO(sonots): Provide clean way to build this test outside extconf.rb
@@ -620,6 +624,95 @@ public:
     }
 };
 
+// The pool is reachable from several threads at once: cumo.c declares the
+// extension Ractor-safe, and a Ractor does not hold the GVL that serializes
+// ordinary Ruby threads.
+class TestConcurrency {
+private:
+    static const int kThreads = 8;
+    static const int kRounds = 400;
+    static const int kPerThread = 8;
+
+public:
+    void Run() {
+        TestConcurrentSplitAndMerge();
+        TestConcurrentPools();
+    }
+
+    // Chunks are only neighbours when they were Split from a common
+    // allocation, so prime the pool with one large free chunk: every Malloc
+    // below splits off it, and each thread then frees chunks sitting next to
+    // chunks other threads still hold. That is the state Free walks over.
+    void TestConcurrentSplitAndMerge() {
+        SingleDeviceMemoryPool pool;
+        const size_t total = size_t{kRoundSize} * kThreads * kPerThread * 2;
+        intptr_t big = pool.Malloc(total);
+        pool.Free(big);
+        assert(pool.GetNumFreeBlocks() == 1);
+
+        std::atomic<int> corrupted{0};
+        std::vector<std::thread> threads;
+        for (int t = 0; t < kThreads; ++t) {
+            threads.emplace_back([&pool, &corrupted, t] {
+                std::vector<intptr_t> ptrs(kPerThread);
+                for (int round = 0; round < kRounds; ++round) {
+                    for (int k = 0; k < kPerThread; ++k) {
+                        ptrs[k] = pool.Malloc(kRoundSize);
+                        // Stamp the chunk with a value no other thread uses.
+                        // Merging across a chunk which is still in use hands
+                        // the same bytes out twice, and the second holder's
+                        // stamp overwrites the first one's.
+                        std::memset(reinterpret_cast<void*>(ptrs[k]),
+                                    Stamp(t, k), kRoundSize);
+                    }
+                    for (int k = 0; k < kPerThread; ++k) {
+                        auto* p = reinterpret_cast<unsigned char*>(ptrs[k]);
+                        for (size_t i = 0; i < kRoundSize; ++i) {
+                            if (p[i] != Stamp(t, k)) {
+                                ++corrupted;
+                                break;
+                            }
+                        }
+                        pool.Free(ptrs[k]);
+                    }
+                }
+            });
+        }
+        for (auto& thread : threads) thread.join();
+
+        assert(corrupted == 0);
+        assert(pool.GetUsedBytes() == 0);
+        // Free merges a chunk with any free neighbour, so once every chunk is
+        // freed they all collapse back into the single block they came from.
+        // A lost merge leaves the pool fragmented forever.
+        assert(pool.GetNumFreeBlocks() == 1);
+        assert(pool.GetFreeBytes() == total);
+    }
+
+    // MemoryPool::pools_ is inserted into on first use of a device.
+    void TestConcurrentPools() {
+        MemoryPool pool;
+        std::vector<std::thread> threads;
+        for (int t = 0; t < kThreads; ++t) {
+            threads.emplace_back([&pool] {
+                for (int round = 0; round < kRounds; ++round) {
+                    intptr_t p = pool.Malloc(kRoundSize);
+                    assert(p != 0);
+                    pool.Free(p);
+                }
+            });
+        }
+        for (auto& thread : threads) thread.join();
+
+        assert(pool.GetUsedBytes() == 0);
+    }
+
+private:
+    static unsigned char Stamp(int t, int k) {
+        return static_cast<unsigned char>(t * kPerThread + k + 1);
+    }
+};
+
 // Resets the CUDA device, so it has to run after every other test.
 class TestMemoryDestructor {
 public:
@@ -650,6 +743,7 @@ int main() {
     cumo::internal::TestChunk{}.Run();
     cumo::internal::TestSingleDeviceMemoryPool{}.Run();
     cumo::internal::TestMemoryPool{}.Run();
+    cumo::internal::TestConcurrency{}.Run();
     cumo::internal::TestMemoryDestructor{}.Run();
     return 0;
 }

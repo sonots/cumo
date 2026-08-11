@@ -304,6 +304,20 @@ private:
     }
 
     std::unordered_map<int, SingleDeviceMemoryPool> pools_;
+    std::mutex pools_mutex_;
+
+    // Returns the pool of the current device, creating it on first use.
+    //
+    // The lock only has to cover the lookup: pools_ is never erased from
+    // before destruction, and unordered_map keeps references to its elements
+    // valid across a rehash, so the returned reference outlives the lock.
+    // Without it, the insert operator[] performs on first use could rehash the
+    // map underneath another thread walking it.
+    SingleDeviceMemoryPool& GetPool() {
+        int id = device_id();  // a CUDA call, so keep it out of the lock
+        std::lock_guard<std::mutex> lock{pools_mutex_};
+        return pools_[id];  // find or create
+    }
 
 public:
     MemoryPool() {}
@@ -318,8 +332,7 @@ public:
     // Returns:
     //     intptr_t: Pointer address to the allocated buffer.
     intptr_t Malloc(size_t size, cudaStream_t stream_ptr = 0) {
-        auto& mp = pools_[device_id()];
-        return mp.Malloc(size, stream_ptr);
+        return GetPool().Malloc(size, stream_ptr);
     }
 
     // Frees the memory, to the pool
@@ -331,22 +344,34 @@ public:
     //     bool: false if no pool allocated the pointer, in which case nothing
     //           was freed and the caller has to free it by its own means.
     bool Free(intptr_t ptr, cudaStream_t stream_ptr = 0) {
-        if (pools_.empty()) {  // nothing has ever been allocated from a pool
-            return false;
-        }
         int current_device_id = device_id();
-        auto it = pools_.find(current_device_id);
-        if (it != pools_.end() && it->second.Free(ptr, stream_ptr)) {
+
+        // Take the pointers out under the lock and release it before freeing:
+        // an element of pools_ stays put once inserted, so the pointers remain
+        // valid, and this keeps a Free of one device's pool from blocking a
+        // Malloc on another. `others` does not allocate in the usual
+        // single-device case, where it stays empty.
+        SingleDeviceMemoryPool* current = nullptr;
+        std::vector<SingleDeviceMemoryPool*> others;
+        {
+            std::lock_guard<std::mutex> lock{pools_mutex_};
+            for (auto& entry : pools_) {
+                if (entry.first == current_device_id) {
+                    current = &entry.second;
+                } else {
+                    others.emplace_back(&entry.second);
+                }
+            }
+        }
+
+        if (current != nullptr && current->Free(ptr, stream_ptr)) {
             return true;
         }
         // The current device may have been switched since the allocation.
         // cudaMallocManaged hands out addresses which are unique across the
         // host and every device, so the pointer identifies its pool on its own.
-        for (auto& entry : pools_) {
-            if (entry.first == current_device_id) {
-                continue;
-            }
-            if (entry.second.Free(ptr, stream_ptr)) {
+        for (SingleDeviceMemoryPool* mp : others) {
+            if (mp->Free(ptr, stream_ptr)) {
                 return true;
             }
         }
@@ -355,8 +380,7 @@ public:
 
     // Free all **non-split** chunks in all arenas
     void FreeAllBlocks() {
-        auto& mp = pools_[device_id()];
-        return mp.FreeAllBlocks();
+        return GetPool().FreeAllBlocks();
     }
 
     // Free all **non-split** chunks in specified arena
@@ -364,8 +388,7 @@ public:
     // Args:
     //     stream_ptr (cudaStream_t): Release free blocks in the arena of given stream
     void FreeAllBlocks(cudaStream_t stream_ptr) {
-        auto& mp = pools_[device_id()];
-        return mp.FreeAllBlocks(stream_ptr);
+        return GetPool().FreeAllBlocks(stream_ptr);
     }
 
     // Count the total number of free blocks.
@@ -373,8 +396,7 @@ public:
     // Returns:
     //     size_t: The total number of free blocks.
     size_t GetNumFreeBlocks() {
-        auto& mp = pools_[device_id()];
-        return mp.GetNumFreeBlocks();
+        return GetPool().GetNumFreeBlocks();
     }
 
     // Get the total number of bytes used.
@@ -382,8 +404,7 @@ public:
     // Returns:
     //     size_t: The total number of bytes used.
     size_t GetUsedBytes() {
-        auto& mp = pools_[device_id()];
-        return mp.GetUsedBytes();
+        return GetPool().GetUsedBytes();
     }
 
     // Get the total number of bytes acquired but not used in the pool.
@@ -391,8 +412,7 @@ public:
     // Returns:
     //     size_t: The total number of bytes acquired but not used in the pool.
     size_t GetFreeBytes() {
-        auto& mp = pools_[device_id()];
-        return mp.GetFreeBytes();
+        return GetPool().GetFreeBytes();
     }
 
     // Get the total number of bytes acquired in the pool.
@@ -400,8 +420,7 @@ public:
     // Returns:
     //     size_t: The total number of bytes acquired in the pool.
     size_t GetTotalBytes() {
-        auto& mp = pools_[device_id()];
-        return mp.GetTotalBytes();
+        return GetPool().GetTotalBytes();
     }
 };
 
