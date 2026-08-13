@@ -804,6 +804,17 @@ class NArrayTest < Test::Unit::TestCase
         assert { data == original_data }
       end
 
+      test "frozen string into an allocated array" do
+        shape = [2, 5]
+        a = dtype.new(*shape)
+        a.rand(0, 10)
+        data = a.to_binary.freeze
+        restored_a = dtype.new(*shape).seq
+        restored_a.store_binary(data)
+        assert { restored_a == a }
+        assert { !restored_a.free }
+      end
+
       test "not frozen string" do
         shape = [2, 5]
         a = dtype.new(*shape)
@@ -881,6 +892,18 @@ class NArrayTest < Test::Unit::TestCase
   test "Cumo::DFloat.cast(Cumo::RObject[1, nil, 3])" do
     assert_equal(Cumo::DFloat[1, Float::NAN, 3].format_to_a,
                  Cumo::DFloat.cast(Cumo::RObject[1, nil, 3]).format_to_a)
+  end
+
+  test "Cumo::RObject#free" do
+    a = Cumo::RObject.new(3)
+    a.seq
+    assert { a.free }
+    assert { !a.free }
+  end
+
+  test "GC does not raise with Cumo::RObject" do
+    5.times { Cumo::RObject.new(1000).seq.sum }
+    assert_nothing_raised { GC.start }
   end
 
   test "Cumo::RObject#format with a long element" do
