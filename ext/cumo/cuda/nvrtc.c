@@ -4,11 +4,14 @@
 #include <limits.h>
 #include <nvrtc.h>
 #include "cumo/cuda/nvrtc.h"
+#include "cumo/cuda/handle.h"
 
 VALUE cumo_cuda_eNVRTCError;
 VALUE cumo_cuda_mNVRTC;
 #define eNVRTCError cumo_cuda_eNVRTCError
 #define mNVRTC cumo_cuda_mNVRTC
+
+static cumo_cuda_handle_set_t programs;
 
 static void
 check_status(nvrtcResult status)
@@ -152,6 +155,7 @@ rb_nvrtcCreateProgram(
     free(_headers);
     RB_GC_GUARD(strings);
     check_status(status);
+    cumo_cuda_handle_set_add(&programs, (size_t)_prog);
     return SIZET2NUM((size_t)_prog);
 }
 
@@ -172,7 +176,7 @@ static VALUE
 rb_nvrtcDestroyProgram(VALUE self, VALUE prog)
 {
     nvrtcResult status;
-    nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
+    nvrtcProgram _prog = (nvrtcProgram)cumo_cuda_handle_take(&programs, prog, "nvrtcProgram");
 
     struct nvrtcDestroyProgramParam param = {&_prog};
     status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcDestroyProgram_without_gvl_cb, &param, NULL, NULL);
@@ -200,7 +204,7 @@ static VALUE
 rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
 {
     nvrtcResult status;
-    nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
+    nvrtcProgram _prog = (nvrtcProgram)cumo_cuda_handle_get(&programs, prog, "nvrtcProgram");
     int _numOptions = ary_len(options, "options");
     const char** _options = NULL;
     VALUE strings;
@@ -228,7 +232,7 @@ static VALUE
 rb_nvrtcGetPTX(VALUE self, VALUE prog)
 {
     nvrtcResult status;
-    nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
+    nvrtcProgram _prog = (nvrtcProgram)cumo_cuda_handle_get(&programs, prog, "nvrtcProgram");
     size_t _ptxSizeRet;
     char *_ptx;
     VALUE ptx;
@@ -248,7 +252,7 @@ static VALUE
 rb_nvrtcGetProgramLog(VALUE self, VALUE prog)
 {
     nvrtcResult status;
-    nvrtcProgram _prog = (nvrtcProgram)NUM2SIZET(prog);
+    nvrtcProgram _prog = (nvrtcProgram)cumo_cuda_handle_get(&programs, prog, "nvrtcProgram");
     size_t _logSizeRet;
     char *_log;
     VALUE log;
@@ -271,6 +275,8 @@ Init_cumo_cuda_nvrtc()
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     mNVRTC = rb_define_module_under(mCUDA, "NVRTC");
     eNVRTCError = rb_define_class_under(mCUDA, "NVRTCError", rb_eStandardError);
+
+    cumo_cuda_handle_set_init(&programs);
 
     rb_define_singleton_method(mNVRTC, "nvrtcVersion", rb_nvrtcVersion, 0);
     rb_define_singleton_method(mNVRTC, "nvrtcCreateProgram", rb_nvrtcCreateProgram, 4);

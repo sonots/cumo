@@ -68,6 +68,20 @@ module Cumo::CUDA
       end
     end
 
+    def test_unknown_program_is_rejected
+      assert_raise(ArgumentError) { NVRTC.nvrtcDestroyProgram(1) }
+      assert_raise(ArgumentError) { NVRTC.nvrtcCompileProgram(1, []) }
+      assert_raise(ArgumentError) { NVRTC.nvrtcGetPTX(1) }
+      assert_raise(ArgumentError) { NVRTC.nvrtcGetProgramLog(1) }
+    end
+
+    def test_destroyed_program_is_rejected
+      prog = test_nvrtcCreateProgram
+      NVRTC.nvrtcDestroyProgram(prog)
+      assert_raise(ArgumentError) { NVRTC.nvrtcDestroyProgram(prog) }
+      assert_raise(ArgumentError) { NVRTC.nvrtcGetPTX(prog) }
+    end
+
     def test_nvrtcCompileProgram
       prog = test_nvrtcCreateProgram
       options = []

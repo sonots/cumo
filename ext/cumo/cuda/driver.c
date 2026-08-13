@@ -3,11 +3,15 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include "cumo/cuda/driver.h"
+#include "cumo/cuda/handle.h"
 
 VALUE cumo_cuda_eDriverError;
 VALUE cumo_cuda_mDriver;
 #define eDriverError cumo_cuda_eDriverError
 #define mDriver cumo_cuda_mDriver
+
+static cumo_cuda_handle_set_t link_states;
+static cumo_cuda_handle_set_t modules;
 
 static void
 check_status(CUresult status)
@@ -100,13 +104,13 @@ cuLinkAddData_without_gvl_cb(void *param)
 static VALUE
 rb_cuLinkAddData(VALUE self, VALUE state, VALUE type, VALUE data, VALUE name)
 {
-    CUlinkState _state = (CUlinkState)NUM2SIZET(state);
     CUjitInputType _type = (CUjitInputType)NUM2INT(type);
     // The image may be a cubin, so it is taken by length and allowed to hold
     // NUL bytes; the name is a plain C string cuLinkAddData reports errors with.
     void* _data = (void *)StringValuePtr(data);
     size_t _size = RSTRING_LEN(data);
     const char* _name = StringValueCStr(name);
+    CUlinkState _state = (CUlinkState)cumo_cuda_handle_get(&link_states, state, "CUlinkState");
     CUresult status;
 
     struct cuLinkAddDataParam param = {_state, _type, _data, _size, _name, 0, (CUjit_option*)0, (void**)0};
@@ -141,9 +145,9 @@ cuLinkAddFile_without_gvl_cb(void *param)
 static VALUE
 rb_cuLinkAddFile(VALUE self, VALUE state, VALUE type, VALUE path)
 {
-    CUlinkState _state = (CUlinkState)NUM2SIZET(state);
     CUjitInputType _type = (CUjitInputType)NUM2INT(type);
     const char* _path = StringValueCStr(path);
+    CUlinkState _state = (CUlinkState)cumo_cuda_handle_get(&link_states, state, "CUlinkState");
     CUresult status;
 
     struct cuLinkAddFileParam param = {_state, _type, _path, 0, (CUjit_option*)0, (void **)0};
@@ -173,7 +177,7 @@ cuLinkComplete_without_gvl_cb(void *param)
 static VALUE
 rb_cuLinkComplete(VALUE self, VALUE state)
 {
-    CUlinkState _state = (CUlinkState)NUM2SIZET(state);
+    CUlinkState _state = (CUlinkState)cumo_cuda_handle_get(&link_states, state, "CUlinkState");
     void* _cubinOut;
     size_t _sizeOut;
     CUresult status;
@@ -214,6 +218,7 @@ rb_cuLinkCreate(VALUE self)
     //status = cuLinkCreate(0, (CUjit_option*)0, (void**)0, &state);
 
     check_status(status);
+    cumo_cuda_handle_set_add(&link_states, (size_t)state);
     return SIZET2NUM((size_t)state);
 }
 
@@ -233,7 +238,7 @@ cuLinkDestroy_without_gvl_cb(void *param)
 static VALUE
 rb_cuLinkDestroy(VALUE self, VALUE state)
 {
-    CUlinkState _state = (CUlinkState)NUM2SIZET(state);
+    CUlinkState _state = (CUlinkState)cumo_cuda_handle_take(&link_states, state, "CUlinkState");
     CUresult status;
 
     struct cuLinkDestroyParam param = {_state};
@@ -263,8 +268,8 @@ static VALUE
 rb_cuModuleGetFunction(VALUE self, VALUE hmod, VALUE name)
 {
     CUfunction _hfunc;
-    CUmodule _hmod = (CUmodule)NUM2SIZET(hmod);
     const char* _name = StringValueCStr(name);
+    CUmodule _hmod = (CUmodule)cumo_cuda_handle_get(&modules, hmod, "CUmodule");
     CUresult status;
 
     struct cuModuleGetFunctionParam param = {&_hfunc, _hmod, _name};
@@ -297,8 +302,8 @@ rb_cuModuleGetGlobal(VALUE self, VALUE hmod, VALUE name)
 {
     CUdeviceptr _dptr;
     size_t _bytes;
-    CUmodule _hmod = (CUmodule)NUM2SIZET(hmod);
     const char* _name = StringValueCStr(name);
+    CUmodule _hmod = (CUmodule)cumo_cuda_handle_get(&modules, hmod, "CUmodule");
     CUresult status;
     VALUE ret;
 
@@ -342,6 +347,7 @@ rb_cuModuleLoad(VALUE self, VALUE fname)
 
     RB_GC_GUARD(fname);
     check_status(status);
+    cumo_cuda_handle_set_add(&modules, (size_t)_module);
     return SIZET2NUM((size_t)_module);
 }
 
@@ -373,6 +379,7 @@ rb_cuModuleLoadData(VALUE self, VALUE image)
 
     RB_GC_GUARD(image);
     check_status(status);
+    cumo_cuda_handle_set_add(&modules, (size_t)_module);
     return SIZET2NUM((size_t)_module);
 }
 
@@ -392,7 +399,7 @@ cuModuleUnload_without_gvl_cb(void *param)
 static VALUE
 rb_cuModuleUnload(VALUE self, VALUE hmod)
 {
-    CUmodule _hmod = (CUmodule)NUM2SIZET(hmod);
+    CUmodule _hmod = (CUmodule)cumo_cuda_handle_take(&modules, hmod, "CUmodule");
     CUresult status;
 
     struct cuModuleUnloadParam param = {_hmod};
@@ -413,6 +420,9 @@ Init_cumo_cuda_driver()
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     mDriver = rb_define_module_under(mCUDA, "Driver");
     eDriverError = rb_define_class_under(mCUDA, "DriverError", rb_eStandardError);
+
+    cumo_cuda_handle_set_init(&link_states);
+    cumo_cuda_handle_set_init(&modules);
 
     rb_define_singleton_method(mDriver, "cuCtxGetCurrent", rb_cuCtxGetCurrent, 0);
     rb_define_singleton_method(mDriver, "cuLinkAddData",   rb_cuLinkAddData,   4);
