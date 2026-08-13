@@ -30,7 +30,11 @@ static void
 
     if (na->ptr != NULL) {
         if (na->owned) {
+  <% if is_object %>
+            xfree(na->ptr);
+  <% else %>
             cumo_cuda_runtime_free(na->ptr);
+  <% end %>
         }
         na->ptr = NULL;
     }

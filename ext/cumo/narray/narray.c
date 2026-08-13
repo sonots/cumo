@@ -580,6 +580,20 @@ cumo_na_s_eye(int argc, VALUE *argv, VALUE klass)
 #define READ 1
 #define WRITE 2
 
+// allocate() takes xmalloc for RObject and the CUDA allocator for every other
+// type, so the deallocator has to be picked the same way. cudaFree() on host
+// memory raises, and xfree() on device memory reads a malloc header that is not
+// there.
+static void
+cumo_na_free_owned_ptr(VALUE self, void *ptr)
+{
+    if (rb_obj_class(self) == cumo_cRObject) {
+        xfree(ptr);
+    } else {
+        cumo_cuda_runtime_free(ptr);
+    }
+}
+
 static void
 cumo_na_set_pointer(VALUE self, char *ptr, size_t byte_size)
 {
@@ -596,7 +610,7 @@ cumo_na_set_pointer(VALUE self, char *ptr, size_t byte_size)
     case CUMO_NARRAY_DATA_T:
         if (CUMO_NA_SIZE(na) > 0) {
             if (CUMO_NA_DATA_PTR(na) != NULL && CUMO_NA_DATA_OWNED(na)) {
-                xfree(CUMO_NA_DATA_PTR(na));
+                cumo_na_free_owned_ptr(self, CUMO_NA_DATA_PTR(na));
             }
             CUMO_NA_DATA_PTR(na) = ptr;
             CUMO_NA_DATA_OWNED(na) = FALSE;
@@ -612,7 +626,7 @@ cumo_na_set_pointer(VALUE self, char *ptr, size_t byte_size)
         case CUMO_NARRAY_DATA_T:
             if (CUMO_NA_SIZE(na) > 0) {
                 if (CUMO_NA_DATA_PTR(na) != NULL && CUMO_NA_DATA_OWNED(na)) {
-                    xfree(CUMO_NA_DATA_PTR(na));
+                    cumo_na_free_owned_ptr(obj, CUMO_NA_DATA_PTR(na));
                 }
                 CUMO_NA_DATA_PTR(na) = ptr;
                 CUMO_NA_DATA_OWNED(na) = FALSE;
@@ -1983,12 +1997,10 @@ cumo_na_free_data(VALUE self)
 
     if (na->type == CUMO_NARRAY_DATA_T) {
         void *ptr = CUMO_NA_DATA_PTR(na);
-        if (ptr != NULL) {
-            if (cumo_cuda_runtime_is_device_memory(ptr)) {
-                cumo_cuda_runtime_free(ptr);
-            } else {
-                xfree(ptr);
-            }
+        // Not owned means the data belongs to something else -- store_binary()
+        // points a frozen String's bytes at it -- so there is nothing to free.
+        if (ptr != NULL && CUMO_NA_DATA_OWNED(na)) {
+            cumo_na_free_owned_ptr(self, ptr);
             CUMO_NA_DATA_PTR(na) = NULL;
             return Qtrue;
         }
