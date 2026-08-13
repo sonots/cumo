@@ -930,6 +930,47 @@ class NArrayTest < Test::Unit::TestCase
     assert { empty.concatenate(empty) == [] }
   end
 
+  test "parse" do
+    assert { Cumo::DFloat.parse("2 -3 5\n4 9 7\n2 -1 6") == Cumo::DFloat[[2, -3, 5], [4, 9, 7], [2, -1, 6]] }
+    assert { Cumo::DFloat.parse("1 2; 3 4") == Cumo::DFloat[[1, 2], [3, 4]] }
+  end
+
+  test "parse rejects non-literal tokens" do
+    ['system("id")', '`id`', 'Kernel.exit', '$stdout', 'self', 'x', 'TRUE', 'True', '[1, 2]'].each do |src|
+      assert_raise(ArgumentError) { Cumo::DFloat.parse(src) }
+    end
+  end
+
+  test "parse rejects expressions" do
+    ['1+1', '2*3', '3/4', '3r', '1/3r'].each do |src|
+      assert_raise(ArgumentError) { Cumo::DFloat.parse(src) }
+    end
+  end
+
+  test "parse error names the token" do
+    error = assert_raise(ArgumentError) { Cumo::DFloat.parse('1 2 oops 4') }
+    assert { error.message.include?('oops') }
+  end
+
+  test "parse integer literals" do
+    assert { Cumo::Int64.parse('1 -3 +4 1_000') == Cumo::Int64[[1, -3, 4, 1000]] }
+    assert { Cumo::Int64.parse('0x1f -0x1f 0b101 0o17 017') == Cumo::Int64[[31, -31, 5, 15, 15]] }
+  end
+
+  test "parse float literals" do
+    assert { Cumo::DFloat.parse('1.5 -2.5 1e5 1.2e-3') == Cumo::DFloat[[1.5, -2.5, 100_000.0, 0.0012]] }
+  end
+
+  test "parse complex literals" do
+    expected = Cumo::DComplex[[Complex(0, 2), Complex(2, 3), Complex(0, -2), Complex(0, 1.5)]]
+    assert { Cumo::DComplex.parse('2i 2+3i -2i 1.5i') == expected }
+  end
+
+  test "parse boolean literals" do
+    assert { Cumo::NArray.parse('true false nil') == Cumo::Bit[[1, 0, 0]] }
+    assert { Cumo::NArray.parse("true false\nfalse true") == Cumo::Bit[[1, 0], [0, 1]] }
+  end
+
   test "argmax/argmin" do
     [Cumo::DFloat, Cumo::Int32, Cumo::UInt8].each do |dtype|
       a = dtype[3, 4, 1, 2]
