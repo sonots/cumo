@@ -51,6 +51,33 @@ module Cumo::CUDA
       end
     end
 
+    # Handles cross into Ruby as plain Integers, so a made-up one used to reach
+    # the driver as a pointer and segfault.
+    def test_unknown_handles_are_rejected
+      assert_raise(ArgumentError) { Driver.cuLinkDestroy(1) }
+      assert_raise(ArgumentError) { Driver.cuLinkComplete(1) }
+      assert_raise(ArgumentError) { Driver.cuLinkAddFile(1, Driver::CU_JIT_INPUT_PTX, "k.ptx") }
+      assert_raise(ArgumentError) { Driver.cuLinkAddData(1, Driver::CU_JIT_INPUT_PTX, "", "k.ptx") }
+      assert_raise(ArgumentError) { Driver.cuModuleUnload(1) }
+      assert_raise(ArgumentError) { Driver.cuModuleGetFunction(1, "f") }
+      assert_raise(ArgumentError) { Driver.cuModuleGetGlobal(1, "g") }
+    end
+
+    def test_link_state_is_not_destroyed_twice
+      state = Driver.cuLinkCreate
+      Driver.cuLinkDestroy(state)
+      assert_raise(ArgumentError) { Driver.cuLinkDestroy(state) }
+      assert_raise(ArgumentError) { Driver.cuLinkComplete(state) }
+    end
+
+    def test_module_is_not_unloaded_twice
+      ptx = Compiler.new.compile_using_nvrtc(SOURCE)
+      hmod = Driver.cuModuleLoadData(ptx)
+      Driver.cuModuleUnload(hmod)
+      assert_raise(ArgumentError) { Driver.cuModuleUnload(hmod) }
+      assert_raise(ArgumentError) { Driver.cuModuleGetGlobal(hmod, "cumo_test_global") }
+    end
+
     def test_link_state_arguments_are_type_checked
       NON_STRINGS.each do |bad|
         LinkState.new do |link|

@@ -12,7 +12,9 @@ module Cumo::CUDA
     end
 
     def destroy
-      NVRTC.nvrtcDestroyProgram(@ptr) if @ptr
+      return unless @ptr
+      NVRTC.nvrtcDestroyProgram(@ptr)
+      @ptr = nil
     end
 
     def compile(options: [])
