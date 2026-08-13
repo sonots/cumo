@@ -41,6 +41,7 @@ if is_object
   def_id "nan?"
   def_id "infinite?"
   def_id "finite?"
+  def_id "to_s"
   def_id "-@", "minus"
   def_id "==", "eq"
   def_id "!=", "ne"

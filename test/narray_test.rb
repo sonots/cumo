@@ -883,6 +883,20 @@ class NArrayTest < Test::Unit::TestCase
                  Cumo::DFloat.cast(Cumo::RObject[1, nil, 3]).format_to_a)
   end
 
+  test "Cumo::RObject#format with a long element" do
+    ['A' * 47, 'A' * 48, 'A' * 4096].each do |src|
+      a = Cumo::RObject[src]
+
+      formatted = a.format
+      assert_kind_of(Cumo::RObject, formatted)
+      assert_equal([src], formatted.to_a)
+
+      formatted = a.format_to_a
+      assert_kind_of(Array, formatted)
+      assert_equal([src], formatted)
+    end
+  end
+
   test "single element array" do
     assert { Cumo::SFloat[1].mean == 1.0 }
     assert { Cumo::DFloat[1].mean == 1.0 }
