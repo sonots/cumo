@@ -1,3 +1,28 @@
+# 0.5.7 (2026/08/13)
+
+Breaking changes:
+
+* `reshape` raises `ArgumentError` instead of `RangeError` for a dimension above `INT_MAX` (PR #183)
+* `parse` accepts only numeric literals and `true`/`false`/`nil`, so `parse("3/4")` raises `ArgumentError` instead of returning `[[0]]` (PR #190)
+
+Fixes:
+
+* Fix segfaults from CUDA handles the process did not create, and from destroying one twice (PR #192)
+* Fix process abort from freeing NArray data with the wrong allocator, including a raise out of GC for `Cumo::RObject` (PR #191)
+* Fix arbitrary code execution in `parse`, which ran `eval` on every token (PR #190)
+* Fix stack buffer overflow in `Cumo::RObject#format` with an element longer than 47 characters (PR #189)
+* Fix a freed chunk returning to the arena of the wrong stream (PR #187)
+* Fix `Malloc` searching the free list with the default stream's index (PR #186)
+* Fix data race on the memory pool chunk graph and on the per-device pool table (PR #185)
+* Fix a SIGFPE on fractional range steps and an out-of-bounds read on newaxis (PR #184)
+* Fix a SIGFPE and a silently corrupt shape from unchecked `reshape` arguments (PR #183)
+* Fix segfault when `store_binary` receives a non-String (PR #182)
+* Fix missing range check on NArray indices, which segfaulted on a negative one (PR #181)
+
+Changes:
+
+* Compile the memory pool test harness in CI, and run it from `rake test` (PR #188)
+
 # 0.5.6 (2026/08/09)
 
 Fixes:
