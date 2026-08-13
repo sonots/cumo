@@ -1,6 +1,13 @@
 static VALUE
 format_<%=type_name%>(VALUE fmt, dtype* x)
 {
+<% if is_object %>
+    if (NIL_P(fmt)) {
+        VALUE v = rb_funcall(*x, cumo_id_to_s, 0);
+        StringValue(v);
+        return rb_str_new(RSTRING_PTR(v), RSTRING_LEN(v));
+    }
+<% else %>
     // fix-me
     char s[48];
     int n;
@@ -9,6 +16,7 @@ format_<%=type_name%>(VALUE fmt, dtype* x)
         n = m_sprintf(s,*x);
         return rb_str_new(s,n);
     }
+<% end %>
     return rb_funcall(fmt, '%', 1, m_data_to_num(*x));
 }
 

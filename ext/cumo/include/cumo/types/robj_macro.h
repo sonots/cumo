@@ -60,13 +60,6 @@
 
 #define m_mulsum_init INT2FIX(0)
 
-#define m_sprintf(s,x) robj_sprintf(s,x)
-
-static inline int robj_sprintf(char *s, VALUE x) {
-    VALUE v = rb_funcall(x,rb_intern("to_s"),0);
-    return sprintf(s,"%s",StringValuePtr(v));
-}
-
 #define m_sqrt(x)                                          \
     rb_funcall(rb_const_get(rb_mKernel,rb_intern("Math")), \
                rb_intern("sqrt"),1,x);
