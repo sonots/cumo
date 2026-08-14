@@ -920,6 +920,34 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "Cumo::RObject with a scalar operand" do
+    a = Cumo::RObject.new(3)
+    a.store(1)
+    assert_equal([1, 1, 1], a.to_a)
+    assert_equal([1, 2, 3], (Cumo::RObject.new(3).seq + 1).to_a)
+  end
+
+  test "Cumo::RObject view" do
+    a = Cumo::RObject[0, 1, 2, 3, 4, 5]
+
+    assert_equal([0, 1, 2], a[0..2].copy.to_a)
+    assert_equal(3, a[0..2].sum)
+    assert_equal(6, a[[0, 2, 4]].sum)
+    assert_equal([0, 4, 8], (a[[0, 2, 4]] + a[[0, 2, 4]]).to_a)
+
+    a[[0, 2, 4]] = Cumo::RObject[10, 20, 30]
+    assert_equal([10, 1, 20, 3, 30, 5], a.to_a)
+  end
+
+  test "Cumo::RObject 2-d view" do
+    a = Cumo::RObject.new(3, 4).seq
+    b = a[true, [3, 1, 0, 2]]
+
+    assert_equal([[3, 1, 0, 2], [7, 5, 4, 6], [11, 9, 8, 10]], b.to_a)
+    assert_equal([[6, 2, 0, 4], [14, 10, 8, 12], [22, 18, 16, 20]], (b + b).to_a)
+    assert_equal([21, 15, 12, 18], b.sum(axis: 0).to_a)
+  end
+
   test "single element array" do
     assert { Cumo::SFloat[1].mean == 1.0 }
     assert { Cumo::DFloat[1].mean == 1.0 }

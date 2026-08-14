@@ -25,6 +25,7 @@ typedef struct CUMO_NA_BUFFER_COPY {
     size_t *n;
     char *src_ptr;
     char *buf_ptr;
+    bool buf_on_device;
     cumo_na_loop_iter_t *src_iter;
     cumo_na_loop_iter_t *buf_iter;
 } cumo_na_buffer_copy_t;
@@ -468,7 +469,7 @@ ndloop_release(VALUE vlp)
         //printf("lp->xargs[%d].bufcp=%lx\n",j,(size_t)(lp->xargs[j].bufcp));
         if (lp->xargs[j].bufcp) {
             xfree(lp->xargs[j].bufcp->buf_iter);
-            if (cumo_cuda_runtime_is_device_memory(lp->xargs[j].bufcp->buf_ptr)) {
+            if (lp->xargs[j].bufcp->buf_on_device) {
                 cumo_cuda_runtime_free(lp->xargs[j].bufcp->buf_ptr);
             }
             else {
@@ -1120,7 +1121,8 @@ cumo_ndfunc_set_bufcp(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
             LARG(lp,j).iter = buf_iter;
             //printf("in cumo_ndfunc_set_bufcp(1): lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
             LBUFCP(lp,j)->src_ptr = LARG(lp,j).ptr;
-            if (cumo_cuda_runtime_is_device_memory(LARG(lp,j).ptr)) {
+            LBUFCP(lp,j)->buf_on_device = cumo_cuda_runtime_is_device_memory(LARG(lp,j).ptr);
+            if (LBUFCP(lp,j)->buf_on_device) {
                 LARG(lp,j).ptr = LBUFCP(lp,j)->buf_ptr = cumo_cuda_runtime_malloc(sz);
             }
             else {
@@ -1196,17 +1198,45 @@ cumo_na_make_indexer_buffer_copy(cumo_na_buffer_copy_t* lp)
     return indexer;
 }
 
+// The index arrays live in device memory and are filled by kernels, so a host
+// loop must not read them until those kernels are done.
+static void
+ndloop_sync_src_index(cumo_na_buffer_copy_t *lp)
+{
+    int i;
+    for (i=0; i<lp->ndim; i++) {
+        if (LITER_SRC(lp,i).idx) {
+            CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("ndloop buffer copy", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            return;
+        }
+    }
+}
+
+// Same for the index arrays the user function itself walks, which it reads on
+// the host whenever the data it indexes is host memory.
+static void
+ndloop_sync_user_index(cumo_na_md_loop_t *lp)
+{
+    int i, j;
+    for (j=0; j<lp->narg; j++) {
+        if (LARG(lp,j).iter == NULL) continue;
+        for (i=0; i<LARG(lp,j).ndim; i++) {
+            if (LARG(lp,j).iter[i].idx == NULL) continue;
+            if (cumo_cuda_runtime_is_device_memory(LARG(lp,j).ptr)) break;
+            CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("ndloop", "any");
+            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            return;
+        }
+    }
+}
+
 void cumo_ndloop_copy_to_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_na_indexer_t* indexer, char *buf, size_t elmsz);
 
 // Make contiguous memory for ops not supporting index or stride (step) loop
 static void
 ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
 {
-    cumo_na_iarray_stridx_t a = cumo_na_make_iarray_buffer_copy(lp);
-    cumo_na_indexer_t indexer = cumo_na_make_indexer_buffer_copy(lp);
-    cumo_ndloop_copy_to_buffer_kernel_launch(&a, &indexer, lp->buf_ptr, lp->elmsz);
-
-#if 0
     size_t *c;
     char *src, *buf;
     int  i;
@@ -1215,19 +1245,24 @@ ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
     size_t buf_pos = 0;
     DBG(size_t j);
 
+    if (lp->buf_on_device) {
+        cumo_na_iarray_stridx_t a = cumo_na_make_iarray_buffer_copy(lp);
+        cumo_na_indexer_t indexer = cumo_na_make_indexer_buffer_copy(lp);
+        cumo_ndloop_copy_to_buffer_kernel_launch(&a, &indexer, lp->buf_ptr, lp->elmsz);
+        return;
+    }
+
+    // A host buffer is read by a host loop, which an async kernel is not
+    // ordered against, so copy it on the host as well.
+    ndloop_sync_src_index(lp);
+
     //printf("\nto_buf nd=%d elmsz=%ld\n",nd,elmsz);
     DBG(printf("<to buf> ["));
     // zero-dimension
     if (nd==0) {
         src = lp->src_ptr + LITER_SRC(lp,0).pos;
         buf = lp->buf_ptr;
-        if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
-            DBG(printf("DtoD] ["));
-            cumo_cuda_runtime_check_status(cudaMemcpyAsync(buf,src,elmsz,cudaMemcpyDeviceToDevice,0));
-        } else {
-            DBG(printf("HtoH] ["));
-            memcpy(buf,src,elmsz);
-        }
+        memcpy(buf,src,elmsz);
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(buf))[j]);});
         goto loop_end;
     }
@@ -1239,8 +1274,6 @@ ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
         // i-th dimension
         for (; i<nd; i++) {
             if (LITER_SRC(lp,i).idx) {
-                CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_to_buffer", "any");
-                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).idx[c[i]];
             } else {
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).step*c[i];
@@ -1248,13 +1281,7 @@ ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
         }
         src = lp->src_ptr + LITER_SRC(lp,nd).pos;
         buf = lp->buf_ptr + buf_pos;
-        if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
-            DBG(printf("DtoD] ["));
-            cumo_cuda_runtime_check_status(cudaMemcpyAsync(buf,src,elmsz,cudaMemcpyDeviceToDevice,0));
-        } else {
-            DBG(printf("HtoH] ["));
-            memcpy(buf,src,elmsz);
-        }
+        memcpy(buf,src,elmsz);
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(buf))[j]);});
         buf_pos += elmsz;
         // count up
@@ -1268,7 +1295,6 @@ ndloop_copy_to_buffer(cumo_na_buffer_copy_t *lp)
  loop_end:
     ;
     DBG(printf("]\n"));
-#endif
 }
 
 void cumo_ndloop_copy_from_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_na_indexer_t* indexer, char *buf, size_t elmsz);
@@ -1276,11 +1302,6 @@ void cumo_ndloop_copy_from_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo
 static void
 ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
 {
-    cumo_na_iarray_stridx_t a = cumo_na_make_iarray_buffer_copy(lp);
-    cumo_na_indexer_t indexer = cumo_na_make_indexer_buffer_copy(lp);
-    cumo_ndloop_copy_from_buffer_kernel_launch(&a, &indexer, lp->buf_ptr, lp->elmsz);
-
-#if 0
     size_t *c;
     char *src, *buf;
     int  i;
@@ -1289,19 +1310,22 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
     size_t buf_pos = 0;
     DBG(size_t j);
 
+    if (lp->buf_on_device) {
+        cumo_na_iarray_stridx_t a = cumo_na_make_iarray_buffer_copy(lp);
+        cumo_na_indexer_t indexer = cumo_na_make_indexer_buffer_copy(lp);
+        cumo_ndloop_copy_from_buffer_kernel_launch(&a, &indexer, lp->buf_ptr, lp->elmsz);
+        return;
+    }
+
+    ndloop_sync_src_index(lp);
+
     //printf("\nfrom_buf nd=%d elmsz=%ld\n",nd,elmsz);
     DBG(printf("<from buf> ["));
     // zero-dimension
     if (nd==0) {
         src = lp->src_ptr + LITER_SRC(lp,0).pos;
         buf = lp->buf_ptr;
-        if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
-            DBG(printf("DtoD] ["));
-            cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
-        } else {
-            DBG(printf("HtoH] ["));
-            memcpy(src,buf,elmsz);
-        }
+        memcpy(src,buf,elmsz);
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(src))[j]);});
         goto loop_end;
     }
@@ -1313,8 +1337,6 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
         // i-th dimension
         for (; i<nd; i++) {
             if (LITER_SRC(lp,i).idx) {
-                CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_copy_from_buffer", "any");
-                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).idx[c[i]];
             } else {
                 LITER_SRC(lp,i+1).pos = LITER_SRC(lp,i).pos + LITER_SRC(lp,i).step*c[i];
@@ -1322,13 +1344,7 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
         }
         src = lp->src_ptr + LITER_SRC(lp,nd).pos;
         buf = lp->buf_ptr + buf_pos;
-        if (cumo_cuda_runtime_is_device_memory(src) && cumo_cuda_runtime_is_device_memory(buf)) {
-            DBG(printf("DtoD] ["));
-            cumo_cuda_runtime_check_status(cudaMemcpyAsync(src,buf,elmsz,cudaMemcpyDeviceToDevice,0));
-        } else {
-            DBG(printf("HtoH] ["));
-            memcpy(src,buf,elmsz);
-        }
+        memcpy(src,buf,elmsz);
         DBG(for (j=0; j<elmsz/8; j++) {printf("%g,",((double*)(src))[j]);});
         buf_pos += elmsz;
         // count up
@@ -1344,7 +1360,6 @@ ndloop_copy_from_buffer(cumo_na_buffer_copy_t *lp)
     }
  loop_end:
     DBG(printf("]\n"));
-#endif
 }
 
 
@@ -1516,6 +1531,8 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     if (nd<0) {
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
     }
+
+    ndloop_sync_user_index(lp);
 
     if (nd==0 || CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP)) {
         for (j=0; j<lp->nin; j++) {
