@@ -45,7 +45,10 @@ cumo_cuda_runtime_is_device_memory(void* ptr)
     if (!ptr) { return false; }
     status = cudaPointerGetAttributes(&attrs, ptr);
     cudaGetLastError(); // reset last error to success
-    return (status != cudaErrorInvalidValue);
+    // Since CUDA 11 this succeeds for host memory as well and reports the kind
+    // in attrs.type, so the status alone no longer tells the two apart.
+    if (status != cudaSuccess) { return false; }
+    return (attrs.type != cudaMemoryTypeUnregistered);
 }
 
 #if defined(__cplusplus)
