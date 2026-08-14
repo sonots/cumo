@@ -30,14 +30,16 @@ cumo_cuda_cudnn_handle()
     if (handles == 0) {
         int i;
         int device_count = cumo_cuda_runtime_get_device_count();
-        handles = malloc(sizeof(cudnnHandle_t) * device_count);
+        handles = ALLOC_N(cudnnHandle_t, device_count);
         for (i = 0; i < device_count; ++i) {
             handles[i] = 0;
         }
     }
     device = cumo_cuda_runtime_get_device();
     if (handles[device] == 0) {
-        cudnnCreate(&handles[device]);
+        // A discarded status leaves the handle NULL, and cuDNN reports that as
+        // CUDNN_STATUS_NOT_INITIALIZED at the next call instead of the reason.
+        cumo_cuda_cudnn_check_status(cudnnCreate(&handles[device]));
     }
     return handles[device];
 }

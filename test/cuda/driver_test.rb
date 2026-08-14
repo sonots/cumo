@@ -78,6 +78,22 @@ module Cumo::CUDA
       assert_raise(ArgumentError) { Driver.cuModuleGetGlobal(hmod, "cumo_test_global") }
     end
 
+    # The context Init_cumo_cuda_driver creates is what lets this work: the
+    # runtime API only makes its primary context once an array operation
+    # happens. In-process the suite has always run one by now, so this needs a
+    # fresh interpreter to mean anything.
+    def test_driver_call_works_before_any_array_operation
+      lib = File.expand_path("../../../lib", __FILE__)
+      script = <<~RUBY
+        require "cumo"
+        state = Cumo::CUDA::Driver.cuLinkCreate
+        Cumo::CUDA::Driver.cuLinkDestroy(state)
+        print "ok"
+      RUBY
+      out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], err: %i[child out], &:read)
+      assert_equal("ok", out)
+    end
+
     def test_link_state_arguments_are_type_checked
       NON_STRINGS.each do |bad|
         LinkState.new do |link|
