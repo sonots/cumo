@@ -27,5 +27,6 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t*
         <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
         break;
     }
+    cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

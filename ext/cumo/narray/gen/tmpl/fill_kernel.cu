@@ -18,6 +18,7 @@ void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *ptr, size_t *idx, dtype val
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
     <%="cumo_#{c_iter}_index_kernel"%><<<grid_dim, block_dim>>>(ptr,idx,val,n);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype val, uint64_t n)
@@ -25,5 +26,6 @@ void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *ptr, ssize_t step, dtype v
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
     <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim>>>(ptr,step,val,n);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

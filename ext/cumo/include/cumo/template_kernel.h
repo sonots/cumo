@@ -69,9 +69,16 @@ cumo_get_grid_dim(size_t n)
 static inline size_t
 cumo_get_block_dim(size_t n)
 {
+    // A launch of zero threads is rejected as an invalid configuration, and an
+    // empty array reaches here with n == 0. Every kernel is bounded by n, so a
+    // single thread does no work.
     size_t block_dim = (n > CUMO_MAX_BLOCK_DIM) ? CUMO_MAX_BLOCK_DIM : n;
-    return block_dim;
+    return (block_dim == 0) ? 1 : block_dim;
 }
+
+// Raises the error a kernel launch reported, if any. Defined in cuda/runtime.c
+// because raising needs ruby.h, which the .cu translation units do not include.
+void cumo_cuda_runtime_check_kernel_launch(void);
 
 
 #endif /* ifndef CUMO_TEMPLATE_KERNEL_H */

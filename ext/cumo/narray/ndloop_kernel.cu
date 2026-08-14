@@ -64,6 +64,7 @@ void cumo_ndloop_copy_from_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo
             cumo_ndloop_copy_from_buffer_kernel_dim<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
             break;
     }
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 void cumo_ndloop_copy_to_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_na_indexer_t* indexer, char *buf, size_t elmsz)
@@ -87,6 +88,7 @@ void cumo_ndloop_copy_to_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_n
             cumo_ndloop_copy_to_buffer_kernel_dim<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
             break;
     }
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 #if defined(__cplusplus)

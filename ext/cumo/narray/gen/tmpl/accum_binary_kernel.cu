@@ -48,9 +48,11 @@ void <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel_launch"%>(char *p1, char *
         cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> r1(p1_begin, p1_end, s1_idx);
         cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> r2(p2_begin, p2_end, s2_idx);
         <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%><<<1,1>>>(r1.begin(), r1.end(), r2.begin(), (dtype*)p3);
+        cumo_cuda_runtime_check_kernel_launch();
     } else {
         // ref. https://github.com/thrust/thrust/blob/master/examples/cuda/async_reduce.cu
         <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%><<<1,1>>>(p1_begin, p1_end, p2_begin, (dtype*)p3);
+        cumo_cuda_runtime_check_kernel_launch();
     }
 }
 
@@ -59,6 +61,7 @@ void <%="cumo_#{type_name}_mulsum#{nan}_kernel_launch"%>(char *p1, char *p2, cha
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
     <%="cumo_#{type_name}_mulsum#{nan}_kernel"%><<<grid_dim, block_dim>>>(p1,p2,p3,s1,s2,s3,n);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 //<% end %>
 <% end %>

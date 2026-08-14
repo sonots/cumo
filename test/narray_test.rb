@@ -981,6 +981,24 @@ class NArrayTest < Test::Unit::TestCase
     assert { empty.concatenate(empty) == [] }
   end
 
+  test "empty array leaves no CUDA error behind" do
+    {
+      Cumo::DFloat => [1.0, 2.0, 3.0, 4.0],
+      Cumo::Int32 => [1, 2, 3, 4],
+      Cumo::SComplex => [Complex(1), Complex(2), Complex(3), Complex(4)],
+    }.each do |dtype, expected|
+      empty = dtype.new(0)
+      assert_equal([], empty.seq.to_a)
+      assert_equal([], (empty + 1).to_a)
+      assert_equal([], empty.copy.to_a)
+      assert_equal([], (empty * empty).to_a)
+      assert_equal([], dtype.new(4).seq[[]].to_a)
+
+      # an error left behind by the launches above surfaces on the next one
+      assert_equal(expected, (dtype.new(4).seq + 1).to_a)
+    end
+  end
+
   test "parse" do
     assert { Cumo::DFloat.parse("2 -3 5\n4 9 7\n2 -1 6") == Cumo::DFloat[[2, -3, 5], [4, 9, 7], [2, -1, 6]] }
     assert { Cumo::DFloat.parse("1 2; 3 4") == Cumo::DFloat[[1, 2], [3, 4]] }

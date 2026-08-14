@@ -59,10 +59,12 @@ void cumo_<%=type_name%>_mean_kernel_launch(uint64_t n, char *p1, ssize_t s1, ch
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
     if (s1_idx == 1 || n == 1) {
         cumo_<%=type_name%>_mean_kernel<<<1,1>>>(data_begin, data_begin + n, (<%=dtype%>*)p2, n);
+        cumo_cuda_runtime_check_kernel_launch();
     } else {
         thrust::device_ptr<dtype> data_end = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
         cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_mean_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2, n);
+        cumo_cuda_runtime_check_kernel_launch();
     }
 }
 
@@ -72,10 +74,12 @@ void cumo_<%=type_name%>_var_kernel_launch(uint64_t n, char *p1, ssize_t s1, cha
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
     if (s1_idx == 1 || n == 1) {
         cumo_<%=type_name%>_var_kernel<<<1,1>>>(data_begin, data_begin + n, (<%=dtype%>*)p2);
+        cumo_cuda_runtime_check_kernel_launch();
     } else {
         thrust::device_ptr<dtype> data_end = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
         cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_var_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
+        cumo_cuda_runtime_check_kernel_launch();
     }
 }
 
@@ -85,10 +89,12 @@ void cumo_<%=type_name%>_stddev_kernel_launch(uint64_t n, char *p1, ssize_t s1, 
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
     if (s1_idx == 1 || n == 1) {
         cumo_<%=type_name%>_stddev_kernel<<<1,1>>>(data_begin, data_begin + n, (<%=dtype%>*)p2);
+        cumo_cuda_runtime_check_kernel_launch();
     } else {
         thrust::device_ptr<dtype> data_end = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
         cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_stddev_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2);
+        cumo_cuda_runtime_check_kernel_launch();
     }
 }
 
@@ -98,9 +104,11 @@ void cumo_<%=type_name%>_rms_kernel_launch(uint64_t n, char *p1, ssize_t s1, cha
     thrust::device_ptr<dtype> data_begin = thrust::device_pointer_cast((dtype*)p1);
     if (s1_idx == 1 || n == 1) {
         cumo_<%=type_name%>_rms_kernel<<<1,1>>>(data_begin, data_begin + n, (<%=dtype%>*)p2, n);
+        cumo_cuda_runtime_check_kernel_launch();
     } else {
         thrust::device_ptr<dtype> data_end = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
         cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range(data_begin, data_end, s1_idx);
         cumo_<%=type_name%>_rms_kernel<<<1,1>>>(range.begin(), range.end(), (<%=dtype%>*)p2, n);
+        cumo_cuda_runtime_check_kernel_launch();
     }
 }
