@@ -6,5 +6,6 @@ __global__ void <%="cumo_#{c_func(:nodef)}_kernel"%>(dtype *ptr, dtype x)
 void <%="cumo_#{c_func(:nodef)}_kernel_launch"%>(dtype *ptr, dtype x)
 {
     <%="cumo_#{c_func(:nodef)}_kernel"%><<<1,1>>>(ptr,x);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

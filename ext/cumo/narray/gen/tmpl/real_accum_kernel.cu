@@ -72,4 +72,5 @@ void cumo_<%=type_name%>_max_kernel_launch(cumo_na_reduction_arg_t* arg)
 void cumo_<%=type_name%>_ptp_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_<%=type_name%>_ptp_kernel<<<1,1>>>(*arg);
+    cumo_cuda_runtime_check_kernel_launch();
 }

@@ -13,6 +13,7 @@ void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(char *p1, char *p2, cha
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
     <%="cumo_#{type_name}_#{name}#{nan}_kernel"%><<<grid_dim, block_dim>>>(p1,p2,p3,s1,s2,s3,n);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 <% end %>

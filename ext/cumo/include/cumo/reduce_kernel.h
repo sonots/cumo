@@ -169,6 +169,7 @@ void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
     int64_t shared_mem_size = sizeof(decltype(impl.Identity(0))) * block_size;
 
     cumo_detail::reduction_kernel<TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, out_block_size, reduce_block_size, impl);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 // Variant of cumo_reduce for arg-reductions (argmax/argmin), which returns
@@ -192,6 +193,7 @@ void cumo_reduce_arg(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
     int64_t shared_mem_size = sizeof(decltype(impl.Identity(0))) * block_size;
 
     cumo_detail::reduction_arg_kernel<TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, out_block_size, reduce_block_size, impl);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 #endif // CUMO_REDUCE_KERNEL_H

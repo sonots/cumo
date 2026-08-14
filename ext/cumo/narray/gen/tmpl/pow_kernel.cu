@@ -18,6 +18,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
     <%="cumo_#{c_iter}_kernel"%><<<grid_dim, block_dim>>>(p1,p2,p3,s1,s2,s3,n);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 void <%="cumo_#{c_iter}_int32_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
@@ -25,5 +26,6 @@ void <%="cumo_#{c_iter}_int32_kernel_launch"%>(char *p1, char *p2, char *p3, ssi
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
     <%="cumo_#{c_iter}_int32_kernel"%><<<grid_dim, block_dim>>>(p1,p2,p3,s1,s2,s3,n);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

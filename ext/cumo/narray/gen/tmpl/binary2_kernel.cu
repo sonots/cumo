@@ -11,5 +11,6 @@ void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ch
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
     <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim>>>(p1,p2,p3,p4,s1,s2,s3,s4,n);
+    cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

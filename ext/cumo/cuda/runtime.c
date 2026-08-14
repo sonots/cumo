@@ -10,6 +10,15 @@ VALUE cumo_cuda_mRuntime;
 
 #define check_status(status) (cumo_cuda_runtime_check_status((status)))
 
+// Called right after a <<<>>> launch. cudaGetLastError() reports errors the
+// launch itself was rejected for; a fault while the kernel runs is asynchronous
+// and still surfaces at a later call.
+void
+cumo_cuda_runtime_check_kernel_launch(void)
+{
+    check_status(cudaGetLastError());
+}
+
 ///////////////////////////////////////////
 // Version Management
 ///////////////////////////////////////////
