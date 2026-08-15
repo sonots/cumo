@@ -797,4 +797,38 @@ class NArrayAltCoverageTest < CumoTestBase
     assert_equal([3.5], a.view.reshape!(1).to_a)
     assert_equal([[3.5]], a.view.reshape!(1, 1).to_a)
   end
+
+  class BitSubclass < Cumo::Bit; end
+
+  def test_marshal_dump_of_a_robject_view_with_an_offset
+    a = Cumo::RObject.cast(%i[a b c d e f g h])
+
+    (0..5).each do |i|
+      v = a[i..(i + 2)]
+      assert_equal([1, [3], 0, v.to_a], v.marshal_dump)
+      assert_equal(v.to_a, Marshal.load(Marshal.dump(v)).to_a)
+    end
+  end
+
+  def test_to_binary_of_a_bit_view_with_an_offset
+    bits = Array.new(200) { |i| (i * 7 % 5).zero? ? 1 : 0 }
+    a = Cumo::Bit.cast(bits)
+
+    [0, 1, 3, 8, 11, 16, 63, 64, 65, 100].each do |i|
+      v = a[i..(i + 20)]
+      assert_equal(bits[i, 21], v.to_a)
+      assert_equal(v.to_a, Marshal.load(Marshal.dump(v)).to_a)
+      assert_equal(v.to_a.join, v.to_binary.unpack1("b*")[0, 21])
+    end
+  end
+
+  def test_to_binary_of_a_bit_subclass_view_with_an_offset
+    bits = Array.new(32) { |i| (i % 3).zero? ? 1 : 0 }
+    a = BitSubclass.new(32).store(Cumo::Bit.cast(bits))
+
+    assert_equal(bits, a.to_a)
+    assert_equal(bits.join, a.to_binary.unpack1("b*"))
+    assert_equal(bits[8, 8], a[8..15].to_a)
+    assert_raise(Cumo::NArray::CastError) { a[8..15].to_binary }
+  end
 end
