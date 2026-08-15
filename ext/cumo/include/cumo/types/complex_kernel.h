@@ -169,14 +169,14 @@ __host__ __device__ static inline dtype c_log(dtype x) {
 __host__ __device__ static inline dtype c_log2(dtype x) {
     dtype z;
     z = c_log(x);
-    z = c_mul_r(x,M_LOG2E);
+    z = c_mul_r(z,M_LOG2E);
     return z;
 }
 
 __host__ __device__ static inline dtype c_log10(dtype x) {
     dtype z;
     z = c_log(x);
-    z = c_mul_r(x,M_LOG10E);
+    z = c_mul_r(z,M_LOG10E);
     return z;
 }
 
