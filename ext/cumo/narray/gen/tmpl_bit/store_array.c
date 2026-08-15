@@ -3,7 +3,7 @@ static void
 {
     size_t i, n;
     size_t i1, n1;
-    VALUE  v1, *ptr;
+    VALUE  v1;
     CUMO_BIT_DIGIT *a1;
     size_t p1;
     size_t s1, *idx1;
@@ -35,12 +35,9 @@ static void
         goto loop_end;
     }
 
-    ptr = &v1;
-
     switch(TYPE(v1)) {
     case T_ARRAY:
         n1 = RARRAY_LEN(v1);
-        ptr = RARRAY_PTR(v1);
         break;
     case T_NIL:
         n1 = 0;
@@ -50,8 +47,8 @@ static void
     }
 
     if (idx1) {
-        for (i=i1=0; i1<n1 && i<n; i++,i1++) {
-            x = ptr[i1];
+        for (i=i1=0; i1<n1 && i<n; i1++) {
+            if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
             if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq)) {
 #else
@@ -64,15 +61,16 @@ static void
                     CUMO_STORE_BIT(a1, p1+*idx1, z); idx1++;
                 }
             }
-            if (TYPE(x) != T_ARRAY) {
+            else if (TYPE(x) != T_ARRAY) {
                 if (x == Qnil) x = INT2FIX(0);
                 z = m_num_to_data(x);
                 CUMO_STORE_BIT(a1, p1+*idx1, z); idx1++;
+                i++;
             }
         }
     } else {
-        for (i=i1=0; i1<n1 && i<n; i++,i1++) {
-            x = ptr[i1];
+        for (i=i1=0; i1<n1 && i<n; i1++) {
+            if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
             if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq)) {
 #else
@@ -85,9 +83,10 @@ static void
                     CUMO_STORE_BIT(a1, p1, z); p1+=s1;
                 }
             }
-            if (TYPE(x) != T_ARRAY) {
+            else if (TYPE(x) != T_ARRAY) {
                 z = m_num_to_data(x);
                 CUMO_STORE_BIT(a1, p1, z); p1+=s1;
+                i++;
             }
         }
     }

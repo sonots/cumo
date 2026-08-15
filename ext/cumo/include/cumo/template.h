@@ -143,4 +143,22 @@ cumo_is_aligned_step(const ssize_t step, const size_t alignment)
     return ((step) & ((alignment)-1)) == 0;
 }
 
+// The store_array loops run Ruby code for every element -- m_num_to_data calls
+// to_f / to_int, cumo_na_step_sequence calls to_int on a Range's endpoints --
+// and that can reallocate or shrink the array being read, so neither its buffer
+// nor its length survives one iteration.
+static inline bool
+cumo_na_store_rary_fetch(VALUE ary, size_t i, VALUE *x)
+{
+    if (!RB_TYPE_P(ary, T_ARRAY)) {
+        *x = ary;
+        return true;
+    }
+    if (i >= (size_t)RARRAY_LEN(ary)) {
+        return false;
+    }
+    *x = RARRAY_AREF(ary, (long)i);
+    return true;
+}
+
 #endif /* ifndef CUMO_TEMPLATE_H */

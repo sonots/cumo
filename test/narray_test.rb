@@ -1166,6 +1166,34 @@ class NArrayTest < Test::Unit::TestCase
     assert { c.min >= -2 && c.max < 3 }
   end
 
+  test "store fills every slot after a Range" do
+    assert_equal([9.0, 0.0, 1.0, 5.0], Cumo::DFloat.cast([9, 0...2, 5]).to_a)
+    assert_equal([0, 1, 2, 5], Cumo::Int64.cast([(0...3), 5]).to_a)
+    assert_equal([9, 0.0, 1.0, 5], Cumo::RObject.cast([9, 0...2, 5]).to_a)
+  end
+
+  test "store re-reads a source array the elements rewrite" do
+    grow = Class.new do
+      def initialize(a) = @a = a
+      # the append reallocates the element storage the loop was reading
+      def to_f
+        @a.concat(Array.new(4096, 7.7))
+        1.0
+      end
+      def to_int = 1
+    end
+
+    [Cumo::DFloat, Cumo::Int32, Cumo::RObject].each do |dtype|
+      src = Array.new(8) { |i| i + 100 }
+      src[0] = grow.new(src)
+      assert_nothing_raised { dtype.cast(src) }
+
+      src = Array.new(8) { |i| i + 100 }
+      src[0] = grow.new(src)
+      assert_nothing_raised { dtype.new(8).store(src) }
+    end
+  end
+
   test "zero-sized multi-dimensional arrays" do
     # The free functions used to skip releasing base.shape when size == 0,
     # leaking the shape array allocated for ndim >= 2.
