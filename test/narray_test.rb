@@ -1457,6 +1457,52 @@ class NArrayTest < Test::Unit::TestCase
     assert { v[true, :new].to_a == [[0], [1], [2], [3]] }
   end
 
+  sub_test_case "bincount" do
+    int_types = [
+      Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64,
+      Cumo::UInt8, Cumo::UInt16, Cumo::UInt32, Cumo::UInt64,
+    ]
+
+    test "counts every value" do
+      int_types.each do |dtype|
+        assert_equal([1, 3, 1, 1, 0, 0, 0, 1], dtype[0, 1, 1, 3, 2, 1, 7].bincount.to_a)
+      end
+    end
+
+    test "the result is as long as the largest value plus one" do
+      x = Cumo::Int32[0, 1, 1, 3, 2, 1, 7, 23]
+      assert_equal(x.max.to_a.first + 1, x.bincount.size)
+    end
+
+    test "minlength extends but does not truncate" do
+      assert_equal([1, 2, 0, 0, 0, 0], Cumo::Int32[0, 1, 1].bincount(minlength: 6).to_a)
+      assert_equal([1, 1, 0, 0, 0, 1], Cumo::Int32[0, 1, 5].bincount(minlength: 2).to_a)
+    end
+
+    test "weights" do
+      x = Cumo::Int32[0, 1, 1, 2, 2, 2]
+      w = Cumo::DFloat[0.3, 0.5, 0.2, 0.7, 1.0, -0.6]
+      [0.3, 0.7, 1.1].zip(x.bincount(w).to_a) { |want, got| assert_in_delta(want, got, 1e-12) }
+      assert_equal([1.0, 2.0, 3.0], x.bincount(Cumo::SFloat[1, 1, 1, 1, 1, 1]).to_a)
+      assert_raise(Cumo::NArray::ShapeError) { Cumo::Int32[0, 1].bincount(Cumo::DFloat[1, 2, 3]) }
+    end
+
+    test "a negative element raises" do
+      assert_raise(ArgumentError) { Cumo::Int32[0, -1, 2].bincount }
+    end
+
+    test "views and multi-dimensional input" do
+      assert_equal([1, 2, 0, 1], Cumo::Int32[0, 1, 1, 3, 9][0...4].bincount.to_a)
+      assert_equal([[1, 1, 0, 0], [0, 1, 0, 1]], Cumo::Int32[[0, 1], [1, 3]].bincount.to_a)
+    end
+
+    test "an array large enough that the filling kernel is still running" do
+      r = (Cumo::Int32.new(1 << 20).seq % 997).bincount
+      assert_equal(997, r.size)
+      assert_equal(1 << 20, r.to_a.sum)
+    end
+  end
+
   # These all run a host loop over managed memory, so they read whatever the
   # last kernel has written so far unless they synchronize first. The arrays
   # are large enough that the kernel filling them is still in flight.
