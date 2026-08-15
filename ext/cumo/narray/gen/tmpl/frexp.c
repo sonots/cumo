@@ -11,6 +11,7 @@ static void
     CUMO_INIT_PTR(lp, 1, p2, s2);
     CUMO_INIT_PTR(lp, 2, p3, s3);
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     for (; i--;) {
         CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
         x = m_<%=name%>(x,&y);

@@ -1457,6 +1457,59 @@ class NArrayTest < Test::Unit::TestCase
     assert { v[true, :new].to_a == [[0], [1], [2], [3]] }
   end
 
+  # These all run a host loop over managed memory, so they read whatever the
+  # last kernel has written so far unless they synchronize first. The arrays
+  # are large enough that the kernel filling them is still in flight.
+  sub_test_case "host loops synchronize before reading device memory" do
+    n = 1 << 20
+    last = n.to_f
+    total = n * (n + 1) / 2.0
+
+    test "minmax" do
+      assert_equal([1.0, last], Cumo::DFloat.new(n).seq(1).minmax.map { |x| x.to_a.first })
+      assert_equal([1, n], Cumo::Int32.new(n).seq(1).minmax.map { |x| x.to_a.first })
+      assert_equal([1, 3], Cumo::Int32[1, 2, 3].minmax.map { |x| x.to_a.first })
+    end
+
+    test "nan-aware reductions" do
+      a = Cumo::DFloat.new(n).seq(1)
+      assert_equal([total], a.sum(nan: true).to_a)
+      assert_equal([last], a.max(nan: true).to_a)
+      assert_equal([1.0], a.min(nan: true).to_a)
+      assert_equal([(1.0 + last) / 2], a.mean(nan: true).to_a)
+    end
+
+    test "kahan_sum" do
+      assert_equal([total], Cumo::DFloat.new(n).seq(1).kahan_sum.to_a)
+    end
+
+    test "median" do
+      assert_equal([(last + 1) / 2], Cumo::DFloat.new(n).seq(1).median.to_a)
+    end
+
+    test "modf" do
+      frac, int = (Cumo::DFloat.new(n).seq(1) / 4).modf
+      assert_equal([0.25, 0.5], frac.to_a.first(2))
+      assert_equal([0.0, 0.0], int.to_a.first(2))
+    end
+
+    test "frexp" do
+      frac, exp = Cumo::NMath.frexp(Cumo::DFloat.new(n).seq(1))
+      assert_equal([0.5, 0.5], frac.to_a.first(2))
+      assert_equal([1, 2], exp.to_a.first(2))
+    end
+
+    test "set_real and set_imag" do
+      a = Cumo::DComplex.new(n).seq(1)
+      a.imag = Cumo::DFloat.new(n).seq(100)
+      assert_equal([Complex(1, 100), Complex(2, 101)], a.to_a.first(2))
+
+      b = Cumo::DComplex.new(n).seq(1)
+      b.real = Cumo::DFloat.new(n).seq(100)
+      assert_equal([Complex(100, 0), Complex(101, 0)], b.to_a.first(2))
+    end
+  end
+
   test "a shape whose element count overflows raises" do
     assert_raise(RangeError) { Cumo::Int8.new((2**62) + 1, 4) }
     assert_raise(RangeError) { Cumo::Bit.new((2**62) + 1, 4) }

@@ -21,6 +21,7 @@ static void
         o_ptr = CUMO_NDL_PTR(lp,1);
 
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         idx = f_<%=name[3..5]%>_index<%=nan%>(n,d_ptr,d_step);
         *(idx_t*)o_ptr = (idx_t)idx;
     }
