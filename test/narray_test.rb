@@ -1496,6 +1496,43 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([[1, 1, 0, 0], [0, 1, 0, 1]], Cumo::Int32[[0, 1], [1, 3]].bincount.to_a)
     end
 
+    test "an item too large to size the output raises" do
+      assert_raise(RangeError) { Cumo::UInt64[(2**64) - 1].bincount }
+      assert_raise(RangeError) { Cumo::UInt64[(2**64) - 1, (2**62) + 1000].bincount(minlength: 8) }
+    end
+
+    test "the arguments are converted before the array is scanned" do
+      setter = Class.new do
+        def initialize(array, value)
+          @array = array
+          @value = value
+        end
+
+        def to_int
+          @array[0] = @value
+          3
+        end
+
+        def to_f
+          @array[0] = @value
+          1.0
+        end
+      end
+
+      a = Cumo::Int32[0, 1, 2]
+      r = a.bincount(minlength: setter.new(a, 100_000))
+      assert_equal(100_001, r.size)
+      assert_equal([1, 1, 1, 3], [r[100_000], r[1], r[2]].map { |x| x.to_a.first } << r.to_a.sum)
+
+      a = Cumo::Int32[0, 1, 2]
+      r = a.bincount([setter.new(a, 100_000), 2.0, 3.0])
+      assert_equal(100_001, r.size)
+      assert_equal([1.0, 2.0, 3.0], [r[100_000], r[1], r[2]].map { |x| x.to_a.first })
+
+      a = Cumo::Int32[0, 1, 2]
+      assert_raise(ArgumentError) { a.bincount(minlength: setter.new(a, -1)) }
+    end
+
     test "an array large enough that the filling kernel is still running" do
       r = (Cumo::Int32.new(1 << 20).seq % 997).bincount
       assert_equal(997, r.size)
