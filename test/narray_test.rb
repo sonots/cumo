@@ -1457,6 +1457,42 @@ class NArrayTest < Test::Unit::TestCase
     assert { v[true, :new].to_a == [[0], [1], [2], [3]] }
   end
 
+  sub_test_case "max_index/min_index with nan: true" do
+    nan = Float::NAN
+
+    test "one dimension" do
+      a = Cumo::DFloat[3, 4, nan, 2]
+      assert_equal([2], a.max_index(nan: true).to_a)
+      assert_equal([2], a.min_index(nan: true).to_a)
+
+      b = Cumo::DFloat[3, 4, 1, 2]
+      assert_equal([1], b.max_index(nan: true).to_a)
+      assert_equal([2], b.min_index(nan: true).to_a)
+    end
+
+    test "the index is into the whole array, not into the axis" do
+      b = Cumo::DFloat[[3, 4, 1], [nan, 2, 5]]
+      assert_equal([3], b.max_index(nan: true).to_a)
+      assert_equal([3], b.min_index(nan: true).to_a)
+      assert_equal([3, 1, 5], b.max_index(axis: 0, nan: true).to_a)
+      assert_equal([1, 3], b.max_index(axis: 1, nan: true).to_a)
+      assert_equal([3, 4, 2], b.min_index(axis: 0, nan: true).to_a)
+      assert_equal([2, 3], b.min_index(axis: 1, nan: true).to_a)
+    end
+
+    test "SFloat and a view" do
+      assert_equal([2], Cumo::SFloat[3, 4, nan, 2].max_index(nan: true).to_a)
+      assert_equal([2], Cumo::DFloat[3, 4, nan, 2, 9][0...4].max_index(nan: true).to_a)
+    end
+
+    test "the kernel path is unaffected" do
+      a = Cumo::DFloat[[3, 4, 1], [9, 2, 5]]
+      assert_equal([3], a.max_index.to_a)
+      assert_equal([1, 3], a.max_index(axis: 1).to_a)
+      assert_equal([2], a.min_index.to_a)
+    end
+  end
+
   sub_test_case "poly" do
     test "evaluates the polynomial" do
       x = Cumo::DFloat.new(4).seq(1)
