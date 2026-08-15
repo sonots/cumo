@@ -1,3 +1,14 @@
+// The items below index an output whose length an earlier scan of the same
+// array fixed. Ruby code can run in between, so the bound is rechecked.
+static inline void
+<%=c_func%>_check_item(size_t x, size_t n)
+{
+    if (x >= n) {
+        rb_raise(rb_eIndexError,
+                 "item %"SZF"u is out of range of the output(size:%"SZF"u)", x, n);
+    }
+}
+
 // ------- Integer count without weights -------
 <%
 [32,64].each do |bits|
@@ -27,11 +38,13 @@ static void
     if (idx1) {
         for (; i--;) {
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
+            <%=c_func%>_check_item(x, n);
             (*(<%=cnt_type%>*)(p2 + s2*x))++;
         }
     } else {
         for (; i--;) {
             CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+            <%=c_func%>_check_item(x, n);
             (*(<%=cnt_type%>*)(p2 + s2*x))++;
         }
     }
@@ -88,6 +101,7 @@ static void
     for (; i--;) {
         CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
         CUMO_GET_DATA_STRIDE(p2,s2,<%=cnt_type%>,w);
+        <%=c_func%>_check_item(x, n);
         (*(<%=cnt_type%>*)(p3 + s3*x)) += w;
     }
 }
@@ -161,22 +175,35 @@ static VALUE
     rb_scan_args(argc, argv, "01:", &weight, &kw);
     rb_get_kwargs(kw, table, 0, 1, opts);
 
+    // Both conversions run Ruby code that can write to self, so they go before
+    // the scan that sizes the output rather than after it.
+    minlength = 0;
+    if (opts[0] != Qundef) {
+        minlength = NUM2SIZET(opts[0]);
+    }
+    if (!NIL_P(weight) && rb_obj_class(weight) != cumo_cSFloat) {
+        weight = rb_funcall(cumo_cDFloat, rb_intern("cast"), 1, weight);
+    }
+
   <% if is_unsigned %>
     v = <%=c_func%>_extract(<%=type_name%>_max(0,0,self));
+    length = NUM2SIZET(v);
+    if (length == SIZE_MAX) {
+        rb_raise(rb_eRangeError,
+                 "maximum item %"SZF"u is too large to size the output", length);
+    }
+    length += 1;
   <% else %>
     v = <%=type_name%>_minmax(0,0,self);
     if (m_num_to_data(<%=c_func%>_extract(RARRAY_AREF(v,0))) < 0) {
         rb_raise(rb_eArgError,"array items must be non-negative");
     }
     v = <%=c_func%>_extract(RARRAY_AREF(v,1));
-  <% end %>
     length = NUM2SIZET(v) + 1;
+  <% end %>
 
-    if (opts[0] != Qundef) {
-        minlength = NUM2SIZET(opts[0]);
-        if (minlength > length) {
-            length = minlength;
-        }
+    if (minlength > length) {
+        length = minlength;
     }
 
     if (NIL_P(weight)) {
