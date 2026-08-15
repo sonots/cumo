@@ -141,7 +141,7 @@ static VALUE
         <% end %>
 
         if (cumo_na_has_idx_p(self)) {
-            VALUE copy = cumo_na_copy(self); // reduction does not support idx, make conttiguous
+            VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous
             ret = cumo_na_ndloop(&ndf, 2, copy, reduce);
         } else {
             ret = cumo_na_ndloop(&ndf, 2, self, reduce);

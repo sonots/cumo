@@ -554,7 +554,7 @@ cumo_na_mdai_for_struct(cumo_na_mdai_t *mdai, int ndim)
             //fputs("compati\n",stderr);
             return 1;
         }
-        // otherwise, multi-dimention
+        // otherwise, multi-dimension
         if (ndim >= mdai->capa) {
             //fprintf(stderr,"exeed capa\n");            abort();
             cumo_na_mdai_realloc(mdai,4);

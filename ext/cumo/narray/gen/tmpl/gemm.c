@@ -42,7 +42,7 @@
 #define CHECK_DIM_EQ(na1,nd)                                    \
     if ((na1)->ndim != (nd)) {                                  \
         rb_raise(cumo_na_eShapeError,                           \
-                 "dimention mismatch: %d != %d",                \
+                 "dimension mismatch: %d != %d",                \
                  (na1)->ndim, (nd));                            \
     }
 
@@ -258,7 +258,7 @@ static void
   def mat(v,*a,**h)
     tp = h[:type] || class_name
     a.map!{|x| x==:inplace ? "inplace allowed" : x}
-    a.unshift ">=2-dimentional NArray"
+    a.unshift ">=2-dimensional NArray"
     "@param #{v} [#{tp}]  matrix (#{a.join(', ')})."
   end
 
