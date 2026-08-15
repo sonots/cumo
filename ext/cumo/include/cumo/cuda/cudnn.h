@@ -40,7 +40,7 @@ extern VALUE cumo_na_eShapeError;
 #define CUMO_CUDA_CUDNN_CHECK_DIM_EQ(nd1,nd2)        \
     if ((nd1) != (nd2)) {                            \
         rb_raise(cumo_na_eShapeError,                \
-                 "dimention mismatch: %d != %d",     \
+                 "dimension mismatch: %d != %d",     \
                  (int)(nd1), (int)(nd2));            \
     }
 

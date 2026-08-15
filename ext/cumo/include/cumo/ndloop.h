@@ -21,7 +21,7 @@ typedef struct {
 // pass this structure to user iterator
 typedef struct {
     int  narg;
-    int  ndim;             // n of user dimention used at user function.
+    int  ndim;             // n of user dimension used at user function.
     size_t *n;             // n of elements for each dim (=shape)
     cumo_na_loop_args_t *args;  // for each arg
     VALUE  option;

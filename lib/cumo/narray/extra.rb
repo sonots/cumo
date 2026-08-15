@@ -949,7 +949,7 @@ module Cumo
       else
         arg = arg.to_a
         if arg.size != c.shape[axis]
-          raise ArgumentError, "repeat size shoud be equal to size along axis"
+          raise ArgumentError, "repeat size should be equal to size along axis"
         end
         arg.each do |i|
           if !i.kind_of?(Integer) || i < 0
@@ -1041,7 +1041,7 @@ module Cumo
       end
     end
 
-    # Return the indices for the uppler-triangle on and above the k-th diagonal.
+    # Return the indices for the upper-triangle on and above the k-th diagonal.
     def triu_indices(k=0)
       if ndim < 2
         raise NArray::ShapeError, "must be >= 2-dimensional array"
@@ -1050,7 +1050,7 @@ module Cumo
       NArray.triu_indices(m, n, k)
     end
 
-    # Return the indices for the uppler-triangle on and above the k-th diagonal.
+    # Return the indices for the upper-triangle on and above the k-th diagonal.
     def self.triu_indices(m, n, k=0)
       x = Cumo::Int64.new(m, 1).seq + k
       y = Cumo::Int64.new(1, n).seq

@@ -40,7 +40,7 @@ typedef struct CUMO_NA_LOOP_XARGS {
 typedef struct CUMO_NA_MD_LOOP {
     int  narg;
     int  nin;
-    int  ndim;                // n of total dimention looped at loop_narray. NOTE: lp->ndim + lp-.user.ndim is the total dimension.
+    int  ndim;                // n of total dimension looped at loop_narray. NOTE: lp->ndim + lp-.user.ndim is the total dimension.
     unsigned int copy_flag;   // set i-th bit if i-th arg is cast
     void    *ptr;             // memory for n
     cumo_na_loop_iter_t *iter_ptr; // memory for iter

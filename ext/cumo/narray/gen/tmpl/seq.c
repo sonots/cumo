@@ -75,7 +75,7 @@ static void
      beg+i*step
   where i is 1-dimensional index.
   @overload seq([beg,[step]])
-  @param [Numeric] beg  begining of sequence. (default=0)
+  @param [Numeric] beg  beginning of sequence. (default=0)
   @param [Numeric] step  step of sequence. (default=1)
   @return [Cumo::<%=class_name%>] self.
   @example

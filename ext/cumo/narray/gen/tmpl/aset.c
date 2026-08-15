@@ -6,7 +6,7 @@
   @return [Numeric] returns val (last argument).
 
   --- Replace element(s) at +dim0+, +dim1+, ... (index/range/array/true
-  for each dimention). Broadcasting mechanism is applied.
+  for each dimension). Broadcasting mechanism is applied.
 
   @example
       a = Cumo::DFloat.new(3,4).seq

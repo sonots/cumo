@@ -13,7 +13,7 @@
 #endif
 
 
-// note: the memory refed by this pointer is not freed and causes memroy leak.
+// note: the memory refed by this pointer is not freed and causes memory leak.
 //
 // @example
 //     a[1..3,1] generates two cumo_na_index_arg_t(s). First is for 1..3, and second is for 1.
@@ -427,7 +427,7 @@ cumo_na_index_parse_args(VALUE args, cumo_narray_t *na, cumo_na_index_arg_t *q, 
             cumo_na_index_parse_each(v, 1, k, &q[j]);
             j++;
         }
-        // other dimention
+        // other dimension
         else {
             cumo_na_index_parse_each(v, na->shape[k], k, &q[j]);
             if (q[j].n > 1) {
@@ -1058,7 +1058,7 @@ check_index_count(int argc, int cumo_na_ndim, int count_new, int count_rest)
                  argc,cumo_na_ndim);
         break;
     default:
-        rb_raise(rb_eIndexError,"multiple rest-dimension is not allowd");
+        rb_raise(rb_eIndexError,"multiple rest-dimension is not allowed");
     }
     return -1;
 }
