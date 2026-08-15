@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # to replace the ccache entry
     strategy:
       fail-fast: false
       matrix:
@@ -43,6 +46,7 @@ jobs:
         run: |
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -yq \
+            curl \
             git \
             build-essential \
             ruby-full \
@@ -56,13 +60,14 @@ jobs:
       - name: Fix Git directory ownership
         run: git config --global --add safe.directory '*'
 
-      - name: Cache ccache
-        uses: actions/cache@v6
+      # One entry per CUDA version, replaced on every push to master. A key
+      # carrying the SHA never repeats, so every run saved a new entry rather
+      # than refreshing one.
+      - name: Restore ccache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ccache
-          key: ccache-${{ matrix.cuda_version }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ matrix.cuda_version }}-
+          key: ccache-${{ matrix.cuda_version }}
 
       - name: Install Ruby dependencies
         run: bundle install
@@ -80,7 +85,7 @@ jobs:
           export PATH=/opt/ccache-bin:$PATH
 
           export CCACHE_DIR=~/.cache/ccache
-          export CCACHE_MAXSIZE=1G
+          export CCACHE_MAXSIZE=500M
           export CCACHE_CPP2=1
           ccache -z
 
@@ -88,3 +93,23 @@ jobs:
           bundle exec rake build_ctest
 
           ccache -s
+
+      - name: Drop the ccache entry being replaced
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 204 replaced, 404 none yet; anything else and the save below is
+          # refused, leaving the entry stale
+          status=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/caches?key=ccache-${{ matrix.cuda_version }}" || echo 000)
+          echo "delete ccache-${{ matrix.cuda_version }} -> HTTP ${status}"
+
+      - name: Save ccache
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ matrix.cuda_version }}
