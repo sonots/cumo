@@ -445,11 +445,19 @@ Init_cumo_cuda_driver()
     rb_define_const(mDriver, "CU_JIT_INPUT_OBJECT", INT2NUM(CU_JIT_INPUT_OBJECT));
     rb_define_const(mDriver, "CU_JIT_INPUT_PTX", INT2NUM(CU_JIT_INPUT_PTX));
 
-    cuInit(0);
-    cuDeviceGet(&cuDevice, 0);
+    check_status(cuInit(0));
+
+    // A driver API call needs a current context, and the runtime API only
+    // creates its primary one once an array operation happens, so this covers
+    // the gap in between. Losing it is not fatal -- everything but a driver
+    // call made before any array operation still works -- so a device that
+    // refuses a context is left for that call to report. cuDeviceGet leaves
+    // cuDevice untouched when it fails, hence the guard.
+    if (cuDeviceGet(&cuDevice, 0) == CUDA_SUCCESS) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 13000
-    cuCtxCreate(&context, NULL, 0, cuDevice);
+        cuCtxCreate(&context, NULL, 0, cuDevice);
 #else
-    cuCtxCreate(&context, 0, cuDevice);
+        cuCtxCreate(&context, 0, cuDevice);
 #endif
+    }
 }
