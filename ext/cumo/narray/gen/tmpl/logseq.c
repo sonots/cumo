@@ -90,6 +90,7 @@ static VALUE
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
 
     g = ALLOCA_N(logseq_opt_t,1);
+    g->count = 0;
     rb_scan_args(argc, args, "21", &vbeg, &vstep, &vbase);
     g->beg = m_num_to_data(vbeg);
     g->step = m_num_to_data(vstep);

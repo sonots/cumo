@@ -774,7 +774,6 @@ class NArrayAltCoverageTest < CumoTestBase
   end
 
   def test_robject_logseq
-    omit("Cumo::RObject#logseq returns Infinity")
     assert_equal(Cumo::RObject[1, 10, 100, 1000], Cumo::RObject.new(4).logseq(0, 1))
     assert_equal(Cumo::RObject[16, 8, 4, 2, 1], Cumo::RObject.new(5).logseq(4, -1, 2))
   end
