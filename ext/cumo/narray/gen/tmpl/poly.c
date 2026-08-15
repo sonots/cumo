@@ -1,21 +1,20 @@
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
-    size_t  i;
+    size_t  i, n;
     dtype  x, y, a;
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    x = *(dtype*)(lp->args[0].ptr + lp->args[0].iter[0].pos);
-    i = lp->narg - 2;
-    y = *(dtype*)(lp->args[i].ptr + lp->args[i].iter[0].pos);
-    for (; --i;) {
+    n = lp->narg - 2;
+    x = *(dtype*)CUMO_NDL_PTR(lp,0);
+    y = *(dtype*)CUMO_NDL_PTR(lp,n);
+    for (i=1; i<n; i++) {
         y = m_mul(x,y);
-        a = *(dtype*)(lp->args[i].ptr + lp->args[i].iter[0].pos);
+        a = *(dtype*)CUMO_NDL_PTR(lp,n-i);
         y = m_add(y,a);
     }
-    i = lp->narg - 1;
-    *(dtype*)(lp->args[i].ptr + lp->args[i].iter[0].pos) = y;
+    *(dtype*)CUMO_NDL_PTR(lp,lp->narg-1) = y;
 }
 
 /*
@@ -39,6 +38,7 @@ static VALUE
     ndf.ain = ALLOCA_N(cumo_ndfunc_arg_in_t,argc+1);
     for (i=0; i<argc+1; i++) {
         ndf.ain[i].type = cT;
+        ndf.ain[i].dim = 0;
     }
     argv = ALLOCA_N(VALUE,argc+1);
     argv[0] = self;
