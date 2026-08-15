@@ -1457,6 +1457,33 @@ class NArrayTest < Test::Unit::TestCase
     assert { v[true, :new].to_a == [[0], [1], [2], [3]] }
   end
 
+  test "marshal_load rejects a non-array shape" do
+    [42, "AAAAAAAAAAAAAAAA", nil, {}, 1.5, :abc, true, Object.new].each do |bad|
+      assert_raise(ArgumentError) { Cumo::DFloat.allocate.marshal_load([1, bad, 0, +""]) }
+      assert_raise(ArgumentError) { Cumo::RObject.allocate.marshal_load([1, bad, 0, []]) }
+    end
+  end
+
+  test "marshal_load rejects non-string content" do
+    [[1, 2], {}, Object.new, 12_345, nil, :abc].each do |bad|
+      assert_raise(TypeError) { Cumo::DFloat.allocate.marshal_load([1, [2], 0, bad]) }
+    end
+  end
+
+  test "marshal_load rejects a malformed stream" do
+    # A user-class stream whose payload Marshal.load hands straight to marshal_load.
+    body = Marshal.dump([1, 42, 0, ""]).byteslice(2..)
+    name = "Cumo::DFloat"
+    stream = "\x04\x08U:#{(name.bytesize + 5).chr}#{name}#{body}".b
+    assert_raise(ArgumentError) { Marshal.load(stream) }
+
+    a = Cumo::DFloat[1.5, 2.5]
+    assert { Marshal.load(Marshal.dump(a)) == a }
+
+    b = Cumo::RObject[1, :x, nil]
+    assert { Marshal.load(Marshal.dump(b)) == b }
+  end
+
   test "indexing by an array does not leak host memory" do
     # The index list was staged in pinned host memory released from a CUDA
     # stream callback, but a callback may not call the CUDA API: cudaFreeHost

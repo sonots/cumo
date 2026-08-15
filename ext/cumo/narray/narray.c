@@ -1549,6 +1549,9 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         rb_raise(rb_eArgError,"NArray marshal version %d is not supported "
                  "(only version 1)", NUM2INT(RARRAY_AREF(a,0)));
     }
+    if (TYPE(RARRAY_AREF(a,1)) != T_ARRAY) {
+        rb_raise(rb_eArgError,"marshal shape should be array");
+    }
     cumo_na_initialize(self,RARRAY_AREF(a,1));
     CUMO_NA_FL0_SET(self,FIX2INT(RARRAY_AREF(a,2)));
     v = RARRAY_AREF(a,3);
@@ -1565,6 +1568,7 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         ptr = cumo_na_get_pointer_for_write(self);
         memcpy(ptr, RARRAY_PTR(v), CUMO_NA_SIZE(na)*sizeof(VALUE));
     } else {
+        Check_Type(v, T_STRING);
         rb_str_freeze(v);
         cumo_na_store_binary(1,&v,self);
         if (CUMO_TEST_BYTE_SWAPPED(self)) {
