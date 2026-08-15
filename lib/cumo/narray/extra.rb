@@ -81,7 +81,7 @@ module Cumo
 
     def to_i
       if size == 1
-        self.extract_cpu.to_i
+        self[0].extract_cpu.to_i
       else
         # convert to Int?
         raise TypeError, "can't convert #{self.class} into Integer"
@@ -90,7 +90,7 @@ module Cumo
 
     def to_f
       if size == 1
-        self.extract_cpu.to_f
+        self[0].extract_cpu.to_f
       else
         # convert to DFloat?
         raise TypeError, "can't convert #{self.class} into Float"
@@ -99,7 +99,7 @@ module Cumo
 
     def to_c
       if size == 1
-        Complex(self.extract_cpu)
+        Complex(self[0].extract_cpu)
       else
         # convert to DComplex?
         raise TypeError, "can't convert #{self.class} into Complex"
