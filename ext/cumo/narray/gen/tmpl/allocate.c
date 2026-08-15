@@ -10,6 +10,9 @@ static VALUE
     case CUMO_NARRAY_DATA_T:
         ptr = CUMO_NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
+            if (na->size > SIZE_MAX / sizeof(dtype)) {
+                rb_raise(rb_eRangeError, "total byte size of data is too large");
+            }
             <% if is_object %>
             ptr = xmalloc(sizeof(dtype) * na->size);
             {   size_t i;
