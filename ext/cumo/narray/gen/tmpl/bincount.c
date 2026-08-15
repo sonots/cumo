@@ -23,6 +23,7 @@ static void
     }
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_<%=bits%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     if (idx1) {
         for (; i--;) {
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
@@ -77,6 +78,9 @@ static void
                  "size mismatch along last axis between self and weight");
     }
 
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_<%=fn%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     // initialize
     for (x=0; x < n; x++) {
         *(<%=cnt_type%>*)(p3 + s3*x) = 0;
@@ -101,6 +105,17 @@ static VALUE
 }
 <% end %>
 // ------- end of Float count with weights -------
+
+// Reductions hand back the 0-dimensional NArray rather than a Ruby numeric, to
+// avoid a device synchronization. The length below has to be a host value.
+static VALUE
+<%=c_func%>_extract(VALUE v)
+{
+    if (rb_obj_is_kind_of(v, cT)) {
+        return <%=type_name%>_extract_cpu(v);
+    }
+    return v;
+}
 
 /*
   Count the number of occurrences of each non-negative integer value.
@@ -147,13 +162,13 @@ static VALUE
     rb_get_kwargs(kw, table, 0, 1, opts);
 
   <% if is_unsigned %>
-    v = <%=type_name%>_max(0,0,self);
+    v = <%=c_func%>_extract(<%=type_name%>_max(0,0,self));
   <% else %>
     v = <%=type_name%>_minmax(0,0,self);
-    if (m_num_to_data(RARRAY_AREF(v,0)) < 0) {
-        rb_raise(rb_eArgError,"array items must be non-netagive");
+    if (m_num_to_data(<%=c_func%>_extract(RARRAY_AREF(v,0))) < 0) {
+        rb_raise(rb_eArgError,"array items must be non-negative");
     }
-    v = RARRAY_AREF(v,1);
+    v = <%=c_func%>_extract(RARRAY_AREF(v,1));
   <% end %>
     length = NUM2SIZET(v) + 1;
 
