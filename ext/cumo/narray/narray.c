@@ -1487,13 +1487,17 @@ cumo_na_to_binary(VALUE self)
     char *ptr;
     VALUE str;
     cumo_narray_t *na;
+    int offset_in_bits;
 
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     CumoGetNArray(self,na);
     if (na->type == CUMO_NARRAY_VIEW_T) {
-        if (cumo_na_check_contiguous(self)==Qtrue) {
+        // Cumo::Bit measures the offset in bits, so it cannot be added to a
+        // char pointer; kind_of because a subclass must not slip past either.
+        offset_in_bits = RTEST(rb_obj_is_kind_of(self, cumo_cBit)) && CUMO_NA_VIEW_OFFSET(na) != 0;
+        if (!offset_in_bits && cumo_na_check_contiguous(self)==Qtrue) {
             offset = CUMO_NA_VIEW_OFFSET(na);
         } else {
             self = rb_funcall(self,cumo_id_dup,0);
@@ -1530,7 +1534,7 @@ cumo_na_marshal_dump(VALUE self)
         CumoGetNArray(self,na);
         if (na->type == CUMO_NARRAY_VIEW_T) {
             if (cumo_na_check_contiguous(self)==Qtrue) {
-                offset = CUMO_NA_VIEW_OFFSET(na);
+                offset = CUMO_NA_VIEW_OFFSET(na) / sizeof(VALUE);
             } else {
                 self = rb_funcall(self,cumo_id_dup,0);
             }
