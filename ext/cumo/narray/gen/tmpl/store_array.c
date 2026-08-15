@@ -16,7 +16,7 @@ static void
 {
     size_t i, n;
     size_t i1, n1;
-    VALUE  v1, *ptr;
+    VALUE  v1;
     char   *p1;
     size_t s1, *idx1;
     VALUE  x;
@@ -51,12 +51,9 @@ static void
         goto loop_end;
     }
 
-    ptr = &v1;
-
     switch(TYPE(v1)) {
     case T_ARRAY:
         n1 = RARRAY_LEN(v1);
-        ptr = RARRAY_PTR(v1);
         break;
     case T_NIL:
         n1 = 0;
@@ -71,8 +68,8 @@ static void
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
         if (idx1) {
-            for (i=i1=0; i1<n1 && i<n; i++,i1++) {
-                x = ptr[i1];
+            for (i=i1=0; i1<n1 && i<n; i1++) {
+                if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
                 if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq)) {
 #else
@@ -88,11 +85,12 @@ static void
                 else if (TYPE(x) != T_ARRAY) {
                     z = m_num_to_data(x);
                     CUMO_SET_DATA_INDEX(p1, idx1, dtype, z);
+                    i++;
                 }
             }
         } else {
-            for (i=i1=0; i1<n1 && i<n; i++,i1++) {
-                x = ptr[i1];
+            for (i=i1=0; i1<n1 && i<n; i1++) {
+                if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
                 if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq)) {
 #else
@@ -108,6 +106,7 @@ static void
                 else if (TYPE(x) != T_ARRAY) {
                     z = m_num_to_data(x);
                     CUMO_SET_DATA_STRIDE(p1, s1, dtype, z);
+                    i++;
                 }
             }
         }
@@ -125,7 +124,7 @@ static void
         // https://devtalk.nvidia.com/default/topic/822942/why-does-cudastreamaddcallback-serialize-kernel-execution-and-break-concurrency-/
         dtype* host_z = ALLOC_N(dtype, n);
         for (i=i1=0; i1<n1 && i<n; i1++) {
-            x = ptr[i1];
+            if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
             if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq)) {
 #else

@@ -191,4 +191,20 @@ class BitTest < Test::Unit::TestCase
     x[Cumo::Bit.cast([0, 1, 0])] = nil
     assert { x.to_a == [1, nil, 3] }
   end
+
+  test "store a Range element once" do
+    assert_equal([0] + [1] * 63, Cumo::Bit.cast([(0...64)]).to_a)
+  end
+
+  test "store fills every slot after a Range" do
+    assert_equal([1, 0, 1, 0], Cumo::Bit.cast([1, 0...2, 0]).to_a)
+    assert_equal([0, 1, 0, 0], Cumo::Bit.ones(4).store([(0...2), 0, 0]).to_a)
+  end
+
+  test "store a Range does not write past the destination" do
+    a = Cumo::Bit.new(128)
+    a.store(0)
+    a[0...64].store([(0...64)])
+    assert_equal(0, a[64].to_a.first)
+  end
 end
