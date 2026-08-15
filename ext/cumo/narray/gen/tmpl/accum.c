@@ -23,6 +23,7 @@ static void
         p2 = lp->args[1].ptr + lp->args[1].iter[0].pos;
 
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         *(<%=dtype%>*)p2 = f_<%=name%><%=nan%>(n,p1,s1);
     }
     //<% elsif !indexer_ops.include?(name) %>

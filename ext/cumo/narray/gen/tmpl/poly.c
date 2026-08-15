@@ -5,6 +5,7 @@ static void
     dtype  x, y, a;
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     x = *(dtype*)(lp->args[0].ptr + lp->args[0].iter[0].pos);
     i = lp->narg - 2;
     y = *(dtype*)(lp->args[i].ptr + lp->args[i].iter[0].pos);

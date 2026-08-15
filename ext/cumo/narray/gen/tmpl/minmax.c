@@ -11,6 +11,7 @@ static void
     CUMO_INIT_PTR(lp, 0, p1, s1);
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     f_<%=name%><%=j%>(n,p1,s1,&xmin,&xmax);
 
     *(dtype*)(lp->args[1].ptr + lp->args[1].iter[0].pos) = xmin;
