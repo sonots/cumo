@@ -1194,6 +1194,32 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # Shrinking the source keeps the buffer, so this reads past the end rather
+  # than through a freed pointer: wrong values, no crash.
+  test "store stops where a shrunk source array ends" do
+    shrink = Class.new do
+      def initialize(a) = @a = a
+      def to_int
+        4.times { @a.shift }
+        1
+      end
+      def to_f = to_int.to_f
+    end
+
+    {
+      Cumo::Int64 => [1, 105, 106, 107, 0, 0, 0, 0],
+      Cumo::DFloat => [1.0, 105.0, 106.0, 107.0, 0.0, 0.0, 0.0, 0.0],
+    }.each do |dtype, expected|
+      src = Array.new(8) { |i| i + 100 }
+      src[0] = shrink.new(src)
+      assert_equal(expected, dtype.cast(src).to_a)
+
+      src = Array.new(8) { |i| i + 100 }
+      src[0] = shrink.new(src)
+      assert_equal(expected, dtype.new(8).store(src).to_a)
+    end
+  end
+
   test "zero-sized multi-dimensional arrays" do
     # The free functions used to skip releasing base.shape when size == 0,
     # leaking the shape array allocated for ndim >= 2.
