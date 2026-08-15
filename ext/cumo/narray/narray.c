@@ -941,6 +941,9 @@ cumo_na_check_ladder(VALUE self, int start_dim)
     cumo_narray_t *na;
     CumoGetNArray(self,na);
 
+    if (na->ndim == 0) {
+        return Qtrue;
+    }
     if (start_dim < -na->ndim || start_dim >= na->ndim) {
         rb_bug("start_dim (%d) out of range",start_dim);
     }
@@ -985,6 +988,9 @@ cumo_na_check_contiguous(VALUE self)
         return Qtrue;
     case CUMO_NARRAY_VIEW_T:
         if (CUMO_NA_VIEW_STRIDX(na)==0) {
+            return Qtrue;
+        }
+        if (CUMO_NA_NDIM(na)==0) {
             return Qtrue;
         }
         if (cumo_na_check_ladder(self,0)==Qtrue) {

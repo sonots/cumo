@@ -440,7 +440,11 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
         } else {
             stridx = na2->stridx;
         }
-        stride = CUMO_SDX_GET_STRIDE(na2->stridx[na->ndim-1]);
+        if (na->ndim == 0) {
+            stride = cumo_na_element_stride(self);
+        } else {
+            stride = CUMO_SDX_GET_STRIDE(na2->stridx[na->ndim-1]);
+        }
         for (i=argc; i--;) {
             CUMO_SDX_SET_STRIDE(stridx[i],stride);
             stride *= shape[i];
