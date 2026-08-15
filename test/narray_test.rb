@@ -1457,6 +1457,40 @@ class NArrayTest < Test::Unit::TestCase
     assert { v[true, :new].to_a == [[0], [1], [2], [3]] }
   end
 
+  test "a shape whose element count overflows raises" do
+    assert_raise(RangeError) { Cumo::Int8.new((2**62) + 1, 4) }
+    assert_raise(RangeError) { Cumo::Bit.new((2**62) + 1, 4) }
+    assert_raise(RangeError) { Cumo::DFloat.new(2**32, 2**32) }
+    assert_raise(RangeError) { Cumo::DFloat.zeros(2**40, 2**40, 2**40) }
+
+    assert_equal(0, Cumo::DFloat.new(0, 2**62).size)
+    assert_equal([3, 4], Cumo::DFloat.zeros(3, 4).shape)
+  end
+
+  test "a one-dimensional size whose byte count overflows raises" do
+    # A one-dimensional shape is not a product, so it reaches the allocator
+    # untouched by the check above.
+    assert_raise(RangeError) { Cumo::DFloat.new((2**61) + 4).allocate }
+    assert_raise(RangeError) { Cumo::DComplex.new((2**60) + 1).allocate }
+    assert_raise(RangeError) { Cumo::RObject.new((2**61) + 4).allocate }
+
+    assert_equal(4, Cumo::DFloat.new(4).allocate.size)
+  end
+
+  test "from_binary rejects a size whose byte count overflows" do
+    assert_raise(ArgumentError) { Cumo::DFloat.from_binary(+"12345678", 2**61) }
+    assert_raise(ArgumentError) { Cumo::DFloat.from_binary("12345678", [2**61]) }
+    assert_raise(ArgumentError) { Cumo::DFloat.from_binary("12345678", [2**60, 4]) }
+    assert_raise(ArgumentError) { Cumo::Int16.from_binary("12345678", [(2**63) + 1]) }
+  end
+
+  test "store_binary rejects a size whose byte count overflows" do
+    # A frozen String takes cumo_na_set_pointer, which never allocates, so the
+    # allocator check does not cover this path.
+    assert_raise(ArgumentError) { Cumo::DFloat.new(2**61).store_binary(("A" * 4096).freeze) }
+    assert_raise(ArgumentError) { Cumo::DComplex.new(2**60).store_binary(("A" * 4096).freeze) }
+  end
+
   test "marshal_load rejects a non-array shape" do
     [42, "AAAAAAAAAAAAAAAA", nil, {}, 1.5, :abc, true, Object.new].each do |bad|
       assert_raise(ArgumentError) { Cumo::DFloat.allocate.marshal_load([1, bad, 0, +""]) }
