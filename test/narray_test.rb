@@ -1457,6 +1457,30 @@ class NArrayTest < Test::Unit::TestCase
     assert { v[true, :new].to_a == [[0], [1], [2], [3]] }
   end
 
+  sub_test_case "poly" do
+    test "evaluates the polynomial" do
+      x = Cumo::DFloat.new(4).seq(1)
+      assert_equal([3.0, 5.0, 7.0, 9.0], x.poly(1.0, 2.0).to_a)
+      assert_equal([6.0, 17.0, 34.0, 57.0], x.poly(1.0, 2.0, 3.0).to_a)
+      assert_equal([3.0, 3.0, 3.0, 3.0], x.poly(3.0).to_a)
+      assert_equal([1.0, 2.0, 3.0, 4.0], x.poly.to_a)
+      assert_equal([5.0], Cumo::DFloat[2.0].poly(1.0, 2.0).to_a)
+    end
+
+    test "narray coefficients" do
+      x = Cumo::DFloat.new(4).seq(1)
+      a0 = Cumo::DFloat[1, 1, 1, 1]
+      a1 = Cumo::DFloat[2, 2, 2, 2]
+      assert_equal([3.0, 5.0, 7.0, 9.0], x.poly(a0, a1).to_a)
+    end
+
+    test "every dtype" do
+      assert_equal([3.0, 5.0, 7.0, 9.0], Cumo::SFloat.new(4).seq(1).poly(1.0, 2.0).to_a)
+      assert_equal([3, 5, 7, 9], Cumo::Int32.new(4).seq(1).poly(1, 2).to_a)
+      assert_equal([3, 5, 7, 9], Cumo::RObject.new(4).seq(1).poly(1, 2).to_a)
+    end
+  end
+
   sub_test_case "bincount" do
     int_types = [
       Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64,
