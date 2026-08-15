@@ -777,4 +777,24 @@ class NArrayAltCoverageTest < CumoTestBase
     assert_equal(Cumo::RObject[1, 10, 100, 1000], Cumo::RObject.new(4).logseq(0, 1))
     assert_equal(Cumo::RObject[16, 8, 4, 2, 1], Cumo::RObject.new(5).logseq(4, -1, 2))
   end
+  def test_zero_dimensional_view_is_contiguous
+    a = Cumo::DFloat.cast(3.5)
+    bin = [3.5].pack("d")
+
+    assert_predicate(a.view, :contiguous?)
+    assert_equal(bin, a.view.to_binary)
+    assert_equal(bin, a.transpose.to_binary)
+    assert_equal(bin, a.flatten.to_binary)
+    assert_equal([1, [], 0, bin], a.view.marshal_dump)
+    assert_equal(a, Marshal.load(Marshal.dump(a.view)))
+
+    assert_equal([1, [], 0, [:sym]], Cumo::RObject.cast(:sym).view.marshal_dump)
+  end
+
+  def test_reshape_bang_on_a_zero_dimensional_view
+    a = Cumo::DFloat.cast(3.5)
+
+    assert_equal([3.5], a.view.reshape!(1).to_a)
+    assert_equal([[3.5]], a.view.reshape!(1, 1).to_a)
+  end
 end
