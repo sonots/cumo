@@ -589,6 +589,25 @@ cumo_na_s_eye(int argc, VALUE *argv, VALUE klass)
 #define READ 1
 #define WRITE 2
 
+// Byte size of the data buffer self owns, the same expression allocate() sized
+// it with.
+size_t
+cumo_na_data_byte_size(VALUE self)
+{
+    const cumo_narray_type_info_t *info;
+    cumo_narray_t *na;
+
+    CumoGetNArray(self,na);
+    if (na->size == 0) {
+        return 0;
+    }
+    info = (const cumo_narray_type_info_t *)(RTYPEDDATA_TYPE(self)->data);
+    if (info->element_bits > 0) {
+        return ((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
+    }
+    return na->size * info->element_bytes;
+}
+
 // allocate() takes xmalloc for RObject and the CUDA allocator for every other
 // type, so the deallocator has to be picked the same way. cudaFree() on host
 // memory raises, and xfree() on device memory reads a malloc header that is not
@@ -600,6 +619,7 @@ cumo_na_free_owned_ptr(VALUE self, void *ptr)
         xfree(ptr);
     } else {
         cumo_cuda_runtime_free(ptr);
+        rb_gc_adjust_memory_usage(-(ssize_t)cumo_na_data_byte_size(self));
     }
 }
 

@@ -1,4 +1,17 @@
 static size_t
+<%=type_name%>_data_bytes(const cumo_narray_data_t *na)
+{
+    if (na->base.size == 0) {
+        return 0;
+    }
+  <% if is_bit %>
+    return ((na->base.size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
+  <% else %>
+    return na->base.size * sizeof(dtype);
+  <% end %>
+}
+
+static size_t
 <%=type_name%>_memsize(const void* ptr)
 {
     size_t size = sizeof(cumo_narray_data_t);
@@ -7,11 +20,7 @@ static size_t
     assert(na->base.type == CUMO_NARRAY_DATA_T);
 
     if (na->ptr != NULL) {
-  <% if is_bit %>
-        size += ((na->base.size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
-  <% else %>
-        size += na->base.size * sizeof(dtype);
-  <% end %>
+        size += <%=type_name%>_data_bytes(na);
     }
     if (na->base.size > 0) {
         if (na->base.shape != NULL && na->base.shape != &(na->base.size)) {
@@ -34,6 +43,7 @@ static void
             xfree(na->ptr);
   <% else %>
             cumo_cuda_runtime_free(na->ptr);
+            rb_gc_adjust_memory_usage(-(ssize_t)<%=type_name%>_data_bytes(na));
   <% end %>
         }
         na->ptr = NULL;
