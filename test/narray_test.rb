@@ -597,6 +597,68 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    if [Cumo::DFloat, Cumo::SFloat].include?(dtype)
+      sub_test_case "#{dtype}, #max/#min corner cases" do
+        nan = Float::NAN
+
+        test "max and min ignore nan wherever it sits" do
+          assert { dtype[nan, 3, 1, 7].max == 7 }
+          assert { dtype[3, nan, 1, 7].max == 7 }
+          assert { dtype[3, 1, 7, nan].max == 7 }
+          assert { dtype[nan, 3, 1, 7].min == 1 }
+          assert { dtype[3, nan, 1, 7].min == 1 }
+          assert { dtype[3, 1, 7, nan].min == 1 }
+          assert { dtype[-Float::INFINITY, nan].max == -Float::INFINITY }
+          assert { dtype[Float::INFINITY, nan].min == Float::INFINITY }
+        end
+
+        test "max and min answer nan only when every element is nan" do
+          assert { dtype[nan].max.to_f.nan? }
+          assert { dtype[nan].min.to_f.nan? }
+          assert { dtype[nan, nan].max.to_f.nan? }
+          assert { dtype[nan, nan].min.to_f.nan? }
+
+          a = dtype[[1, nan], [nan, nan]]
+          assert { a.max(axis: 1).to_a[0] == 1 }
+          assert { a.max(axis: 1).to_a[1].nan? }
+          assert { a.min(axis: 1).to_a[0] == 1 }
+          assert { a.min(axis: 1).to_a[1].nan? }
+        end
+
+        # More than one block, so the shared-memory tree reduction runs.
+        test "max and min over a large reduction" do
+          a = dtype.cast(Array.new(5000) { |i| (i * 37) % 97 })
+          a[2500] = nan
+          assert { a.max == 96 }
+          assert { a.min == 0 }
+          assert { dtype.new(5000).fill(nan).max.to_f.nan? }
+          assert { dtype.new(5000).fill(nan).min.to_f.nan? }
+        end
+
+        test "max and min over views" do
+          a = dtype[9, 3, 1, 7, nan]
+          assert { a[1..4].max == 7 }
+          assert { a[1..4].min == 1 }
+          assert { dtype[9, nan, nan][1..2].max.to_f.nan? }
+          assert { dtype[9, nan, nan][1..2].min.to_f.nan? }
+        end
+
+        test "max(nan: true) and min(nan: true) propagate nan" do
+          assert { dtype[3, nan, 1, 7].max(nan: true).to_f.nan? }
+          assert { dtype[3, nan, 1, 7].min(nan: true).to_f.nan? }
+          assert { dtype[3, 10, 1, 7].max(nan: true) == 10 }
+          assert { dtype[3, 10, 1, 7].min(nan: true) == 1 }
+        end
+
+        test "max and min keep the earlier of two equal elements" do
+          assert { 1.0 / dtype[0.0, -0.0].min.to_f == Float::INFINITY }
+          assert { 1.0 / dtype[0.0, -0.0].max.to_f == Float::INFINITY }
+          assert { 1.0 / dtype[-0.0, 0.0].min.to_f == -Float::INFINITY }
+          assert { 1.0 / dtype[-0.0, 0.0].max.to_f == -Float::INFINITY }
+        end
+      end
+    end
+
     sub_test_case "#{dtype}, #mulsum" do
       test "vector.mulsum(vector)" do
         a = dtype[1..3]

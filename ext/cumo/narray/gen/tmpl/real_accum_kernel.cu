@@ -20,16 +20,31 @@ struct cumo_<%=type_name%>_prod_impl {
 };
 
 struct cumo_<%=type_name%>_min_impl {
+<% if is_float %>
+    // A NaN loses the comparison, so it is skipped unless the accumulator is
+    // still the identity: the reduction then answers NaN only when every
+    // element was NaN, and equal elements keep the earlier one as numo does.
+    __device__ dtype Identity(int64_t /*index*/) { return (dtype)nan(""); }
+    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
+    __device__ void Reduce(dtype next, dtype& accum) { if (next < accum || !not_nan(accum)) { accum = next; } }
+<% else %>
     __device__ dtype Identity(int64_t /*index*/) { return DATA_MAX; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, dtype& accum) { accum = next < accum ? next : accum; }
+<% end %>
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_max_impl {
+<% if is_float %>
+    __device__ dtype Identity(int64_t /*index*/) { return (dtype)nan(""); }
+    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
+    __device__ void Reduce(dtype next, dtype& accum) { if (accum < next || !not_nan(accum)) { accum = next; } }
+<% else %>
     __device__ dtype Identity(int64_t /*index*/) { return DATA_MIN; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, dtype& accum) { accum = next < accum ? accum : next; }
+<% end %>
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
