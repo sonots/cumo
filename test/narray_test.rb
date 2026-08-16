@@ -559,6 +559,42 @@ class NArrayTest < Test::Unit::TestCase
           assert { a.mulsum(b, nan: true) == (0 + 2 * 3 + 3 * 4) }
         end
       end
+
+      # The elementwise reference squares before it sums, so keep the values
+      # small enough that the 8-bit dtypes do not wrap.
+      small = ->(shape) { dtype.cast(Array.new(shape.reduce(:*)) { |i| i % 4 + 1 }).reshape(*shape) }
+
+      test "mulsum over every axis" do
+        [[3], [3, 1], [1, 3], [3, 2], [2, 3], [3, 1, 1], [2, 3, 1], [2, 1, 3], [2, 3, 4]].each do |shape|
+          a = small.call(shape)
+          (-shape.size...shape.size).each do |axis|
+            assert { a.mulsum(a, axis: axis) == (a * a).sum(axis: axis) }
+          end
+        end
+        # mulsum accumulates in its own dtype while sum widens, so compare the
+        # two only where the total still fits the narrowest dtype.
+        a = small.call([3, 1])
+        assert { a.mulsum(a) == (a * a).sum }
+      end
+
+      test "mulsum with a broadcast operand" do
+        [[3, 1], [3, 2], [2, 3], [2, 3, 1], [2, 3, 4]].each do |shape|
+          a = small.call(shape)
+          b = dtype.cast([2]).reshape(*shape.map { 1 })
+          (0...shape.size).each do |axis|
+            assert { a.mulsum(b, axis: axis) == (a * b).sum(axis: axis) }
+          end
+        end
+      end
+
+      test "mulsum over a reversed view" do
+        a = small.call([6])
+        assert { a.reverse(0).mulsum(a.reverse(0), axis: 0) == (a * a).sum(axis: 0) }
+        b = small.call([3, 2])
+        assert { b.reverse(0).mulsum(b.reverse(0), axis: 0) == (b * b).sum(axis: 0) }
+        c = a[(0..5).step(2)].reverse(0)
+        assert { c.mulsum(c, axis: 0) == (c * c).sum(axis: 0) }
+      end
     end
 
     sub_test_case "#{dtype}, #dot" do
@@ -586,6 +622,11 @@ class NArrayTest < Test::Unit::TestCase
         a = dtype[1..2]
         b = dtype[1..6].reshape(2, 3)
         assert { a.dot(b) == [9, 12, 15] }
+      end
+      test "vector.dot(matrix) of a single column" do
+        a = dtype[1..3]
+        b = dtype[4..6].reshape(3, 1)
+        assert { a.dot(b) == [32] }
       end
       test "matrix.dot(matrix)" do
         a = dtype[1..6].reshape(3, 2)
