@@ -33,14 +33,26 @@ struct cumo_<%=type_name%>_max_impl {
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
-// TODO(sonots): Implement minmax
-__global__ void cumo_<%=type_name%>_ptp_kernel(cumo_na_reduction_arg_t arg)
-{
-    dtype min=0,max=1;
-    //<%=type_name%>_minmax_kernel<<<1,1>>>(n,p1,s1,&min,&max);
-    char* p2 = arg.out.ptr;
-    *(dtype*)p2 = m_sub(max,min);
-}
+struct cumo_<%=type_name%>_ptp_impl {
+    struct MinAndMax {
+        dtype min;
+        dtype max;
+    };
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
+    __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
+    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
+        if (next.min < accum.min) { accum.min = next.min; }
+        if (accum.max < next.max) { accum.max = next.max; }
+    }
+    __device__ dtype MapOut(MinAndMax accum) {
+    <% if is_float %>
+        // A NaN loses both comparisons above, so every element being NaN leaves
+        // the identity untouched. An empty reduction raises before it gets here.
+        if (accum.max < accum.min) { return (dtype)nan(""); }
+    <% end %>
+        return m_sub(accum.max, accum.min);
+    }
+};
 
 #if defined(__cplusplus)
 extern "C" {
@@ -71,6 +83,5 @@ void cumo_<%=type_name%>_max_kernel_launch(cumo_na_reduction_arg_t* arg)
 
 void cumo_<%=type_name%>_ptp_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
-    cumo_<%=type_name%>_ptp_kernel<<<1,1>>>(*arg);
-    cumo_cuda_runtime_check_kernel_launch();
+    cumo_reduce<dtype, dtype, cumo_<%=type_name%>_ptp_impl>(*arg, cumo_<%=type_name%>_ptp_impl{});
 }
