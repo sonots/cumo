@@ -544,6 +544,59 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    unless [Cumo::DComplex, Cumo::SComplex].include?(dtype)
+      sub_test_case "#{dtype}, #ptp" do
+        test "ptp" do
+          assert { dtype[3, 10, 1, 7].ptp == 9 }
+          assert { dtype[5].ptp == 0 }
+          a = dtype[1..6].reshape(2, 3)
+          assert { a.ptp == 5 }
+          assert { a.ptp(axis: 0) == [3, 3, 3] }
+          assert { a.ptp(axis: 1) == [2, 2] }
+          assert { a.ptp(axis: 0, keepdims: true) == [[3, 3, 3]] }
+        end
+
+        test "ptp over every axis" do
+          [[5], [3, 1], [1, 3], [3, 2], [2, 3], [2, 3, 1], [2, 1, 3], [2, 3, 4]].each do |shape|
+            a = dtype.cast(Array.new(shape.reduce(:*)) { |i| (i * 7 + 3) % 11 }).reshape(*shape)
+            (-shape.size...shape.size).each do |axis|
+              assert { a.ptp(axis: axis) == a.max(axis: axis) - a.min(axis: axis) }
+            end
+            assert { a.ptp == a.max - a.min }
+          end
+        end
+
+        # More than one block, so the shared-memory tree reduction runs.
+        test "ptp over a large reduction" do
+          a = dtype.cast(Array.new(5000) { |i| (i * 37) % 97 })
+          assert { a.ptp == a.max - a.min }
+          b = a.reshape(50, 100)
+          assert { b.ptp(axis: 0) == b.max(axis: 0) - b.min(axis: 0) }
+          assert { b.ptp(axis: 1) == b.max(axis: 1) - b.min(axis: 1) }
+        end
+
+        test "ptp over views" do
+          v = dtype.cast(Array.new(12) { |i| (i * 5 + 1) % 13 }).reshape(4, 3)
+          [v[1..2, 0..1], v.transpose, v.reverse(0), v[(0..3).step(2), true]].each do |w|
+            assert { w.ptp == w.max - w.min }
+            assert { w.ptp(axis: 0) == w.max(axis: 0) - w.min(axis: 0) }
+          end
+        end
+
+        if [Cumo::DFloat, Cumo::SFloat].include?(dtype)
+          test "ptp ignores nan, and ptp(nan: true) propagates it" do
+            nan = Float::NAN
+            assert { dtype[3, nan, 1, 7].ptp == 6 }
+            assert { dtype[nan, 3, 1, 7].ptp == 6 }
+            assert { dtype[3, 1, 7, nan].ptp == 6 }
+            assert { dtype[nan, nan].ptp.to_f.nan? }
+            assert { dtype[3, nan, 1, 7].ptp(nan: true).to_f.nan? }
+            assert { dtype[3, 10, 1, 7].ptp(nan: true) == 9 }
+          end
+        end
+      end
+    end
+
     sub_test_case "#{dtype}, #mulsum" do
       test "vector.mulsum(vector)" do
         a = dtype[1..3]
