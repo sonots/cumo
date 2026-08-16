@@ -19,6 +19,26 @@ cumo_cuda_runtime_check_kernel_launch(void)
     check_status(cudaGetLastError());
 }
 
+int*
+cumo_cuda_runtime_divzero_flag_new(void)
+{
+    static int *flag = NULL;
+
+    if (flag == NULL) {
+        check_status(cudaHostAlloc((void**)&flag, sizeof(int),
+                                   cudaHostAllocMapped | cudaHostAllocPortable));
+    }
+    *flag = 0;
+    return flag;
+}
+
+bool
+cumo_cuda_runtime_divzero_flag_get(int *flag)
+{
+    check_status(cudaDeviceSynchronize());
+    return (*flag != 0);
+}
+
 ///////////////////////////////////////////
 // Version Management
 ///////////////////////////////////////////

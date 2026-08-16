@@ -768,10 +768,37 @@ class NArrayAltCoverageTest < CumoTestBase
     end
   end
   def test_integer_division_by_zero
-    omit("Cumo's integer division has no zero check: the guard in binary.c is in the robject branch, and the kernel has none")
-    INTEGER_TYPES.each do |dtype|
+    (INTEGER_TYPES + UNSIGNED_INTEGER_TYPES).each do |dtype|
       assert_raise(ZeroDivisionError) { dtype[1, 0].reciprocal }
       assert_raise(ZeroDivisionError) { dtype[1] / dtype[0] }
+      assert_raise(ZeroDivisionError) { dtype[1, 2, 3] / dtype[1, 0, 3] }
+      assert_raise(ZeroDivisionError) { dtype[1, 2, 3] / 0 }
+      assert_raise(ZeroDivisionError) { dtype[1, 2, 3] % dtype[1, 0, 3] }
+      assert_raise(ZeroDivisionError) { dtype[1, 2, 3].divmod(dtype[1, 0, 3]) }
+      assert_raise(ZeroDivisionError) { dtype[1, 2, 3].inplace / dtype[1, 0, 3] }
+    end
+  end
+
+  def test_integer_division_by_zero_through_a_view
+    (INTEGER_TYPES + UNSIGNED_INTEGER_TYPES).each do |dtype|
+      divisor = dtype[1, 9, 0, 9, 3, 9][(0..5).step(2)]
+
+      assert_raise(ZeroDivisionError) { dtype[1, 2, 3] / divisor }
+      assert_raise(ZeroDivisionError) { dtype[1, 2, 3] % divisor }
+      assert_raise(ZeroDivisionError) { dtype[1, 0, 3][[0, 1, 2]].reciprocal }
+    end
+  end
+
+  def test_integer_division_without_a_zero_divisor
+    (INTEGER_TYPES + UNSIGNED_INTEGER_TYPES).each do |dtype|
+      a = dtype[10, 20, 30]
+      b = dtype[3, 4, 5]
+
+      assert_equal([3, 5, 6], (a / b).to_a)
+      assert_equal([1, 0, 0], (a % b).to_a)
+      assert_equal([[3, 5, 6], [1, 0, 0]], a.divmod(b).map(&:to_a))
+      assert_equal([1, 0, 0], dtype[1, 2, 3].reciprocal.to_a)
+      assert_equal([3, 6, 10], (a / dtype[3, 3, 3]).to_a)
     end
   end
 
