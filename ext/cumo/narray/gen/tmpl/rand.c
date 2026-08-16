@@ -69,7 +69,14 @@ end
 typedef struct {
     dtype low;
     <%=rand_type%> max;
+    u_int64_t seed;
+    u_int64_t offset;
 } rand_opt_t;
+
+<% unless is_object %>
+void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift, uint64_t n);
+<% end %>
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
@@ -78,7 +85,6 @@ static void
     char    *p1;
     ssize_t  s1;
     size_t  *idx1;
-    dtype    x;
     rand_opt_t *g;
     dtype    low;
     <%=rand_type%> max;
@@ -91,19 +97,39 @@ static void
     max = g->max;
     <%=shift_set%>
 
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    if (idx1) {
-        for (; i--;) {
-            x = m_add(<%=m_rand%>,low);
-            CUMO_SET_DATA_INDEX(p1,idx1,dtype,x);
-        }
-    } else {
-        for (; i--;) {
-            x = m_add(<%=m_rand%>,low);
-            CUMO_SET_DATA_STRIDE(p1,s1,dtype,x);
+    <% if is_object %>
+    {
+        dtype x;
+
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        if (idx1) {
+            for (; i--;) {
+                x = m_add(<%=m_rand%>,low);
+                CUMO_SET_DATA_INDEX(p1,idx1,dtype,x);
+            }
+        } else {
+            for (; i--;) {
+                x = m_add(<%=m_rand%>,low);
+                CUMO_SET_DATA_STRIDE(p1,s1,dtype,x);
+            }
         }
     }
+    <% else %>
+    {
+        size_t n = i;
+        int shift_arg = 0;
+        <% if is_int %>
+        shift_arg = shift;
+        <% end %>
+        if (idx1) {
+            <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,idx1,g->seed,g->offset,low,max,shift_arg,n);
+        } else {
+            <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,s1,g->seed,g->offset,low,max,shift_arg,n);
+        }
+        g->offset += n;
+    }
+    <% end %>
 }
 
 
@@ -116,15 +142,15 @@ static void
   @example
     Cumo::DFloat.new(6).rand
     # => Cumo::DFloat#shape=[6]
-    #    [0.0617545, 0.373067, 0.794815, 0.201042, 0.116041, 0.344032]
+    #    [0.600954, 0.483321, 0.97507, 0.0599206, 0.0541459, 0.203269]
 
     Cumo::DComplex.new(6).rand(5+5i)
     # => Cumo::DComplex#shape=[6]
-    #    [2.69974+3.68908i, 0.825443+0.254414i, 0.540323+0.34354i, 4.52061+2.39322i, ...]
+    #    [3.00477+0.597399i, 2.4166+0.30171i, 4.87535+1.43536i, 0.299603+4.66121i, ...]
 
     Cumo::Int32.new(6).rand(2,5)
     # => Cumo::Int32#shape=[6]
-    #    [4, 3, 3, 2, 4, 2]
+    #    [3, 4, 2, 2, 4, 4]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *args, VALUE self)
@@ -164,6 +190,9 @@ static VALUE
         rb_raise(rb_eArgError,"high must be larger than low");
     }
     <% end %>
+    g.seed = cumo_cuda_rand_seed();
+    g.offset = cumo_cuda_rand_offset();
     cumo_na_ndloop3(&ndf, &g, 1, self);
+    cumo_cuda_rand_set_offset(g.offset);
     return self;
 }

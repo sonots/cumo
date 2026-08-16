@@ -1,7 +1,12 @@
 typedef struct {
     dtype mu;
     rtype sigma;
+    u_int64_t seed;
+    u_int64_t offset;
 } randn_opt_t;
+
+void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype mu, rtype sigma, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype mu, rtype sigma, uint64_t n);
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
@@ -10,11 +15,6 @@ static void
     char    *p1;
     ssize_t  s1;
     size_t  *idx1;
-    <% if is_complex %>
-    dtype   *a0;
-    <% else %>
-    dtype   *a0, *a1;
-    <% end %>
     dtype    mu;
     rtype    sigma;
     randn_opt_t *g;
@@ -25,46 +25,14 @@ static void
     mu = g->mu;
     sigma = g->sigma;
 
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    if (idx1) {
-        <% if is_complex %>
-        for (; i--;) {
-            a0 = (dtype*)(p1+*idx1);
-            m_rand_norm(mu,sigma,a0);
-            idx1 += 1;
+    {
+        size_t n = i;
+        if (idx1) {
+            <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,idx1,g->seed,g->offset,mu,sigma,n);
+        } else {
+            <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,s1,g->seed,g->offset,mu,sigma,n);
         }
-        <% else %>
-        for (; i>1; i-=2) {
-            a0 = (dtype*)(p1+*idx1);
-            a1 = (dtype*)(p1+*(idx1+1));
-            m_rand_norm(mu,sigma,a0,a1);
-            idx1 += 2;
-        }
-        if (i>0) {
-            a0 = (dtype*)(p1+*idx1);
-            m_rand_norm(mu,sigma,a0,0);
-        }
-        <% end %>
-    } else {
-        <% if is_complex %>
-        for (; i--;) {
-            a0 = (dtype*)(p1);
-            m_rand_norm(mu,sigma,a0);
-            p1 += s1;
-        }
-        <% else %>
-        for (; i>1; i-=2) {
-            a0 = (dtype*)(p1);
-            a1 = (dtype*)(p1+s1);
-            m_rand_norm(mu,sigma,a0,a1);
-            p1 += s1*2;
-        }
-        if (i>0) {
-            a0 = (dtype*)(p1);
-            m_rand_norm(mu,sigma,a0,0);
-        }
-        <% end %>
+        g->offset += n;
     }
 }
 
@@ -78,25 +46,25 @@ static void
   @example
     Cumo::DFloat.new(5,5).rand_norm
     # => Cumo::DFloat#shape=[5,5]
-    #    [[-0.581255, -0.168354, 0.586895, -0.595142, -0.802802],
-    #     [-0.326106, 0.282922, 1.68427, 0.918499, -0.0485384],
-    #     [-0.464453, -0.992194, 0.413794, -0.60717, -0.699695],
-    #     [-1.64168, 0.48676, -0.875871, -1.43275, 0.812172],
-    #     [-0.209975, -0.103612, -0.878617, -1.42495, 1.0968]]
+    #    [[-0.310396, -0.0343281, 0.175595, -2.28038, 0.50386],
+    #     [0.559625, -0.0749621, 0.969067, -0.23566, -0.458208],
+    #     [0.566074, 1.2851, -1.86667, -0.0312267, 1.24331],
+    #     [1.36889, -1.07531, -0.0157597, -1.44813, -1.30887],
+    #     [0.697989, -0.330042, -0.770826, -0.494565, 3.17022]]
 
     Cumo::DFloat.new(5,5).rand_norm(10,0.1)
     # => Cumo::DFloat#shape=[5,5]
-    #    [[9.9019, 9.90339, 10.0826, 9.98384, 9.72861],
-    #     [9.81507, 10.0272, 9.91445, 10.0568, 9.88923],
-    #     [10.0234, 9.97874, 9.96011, 9.9006, 9.99964],
-    #     [10.0186, 9.94598, 9.92236, 9.99811, 9.97003],
-    #     [9.79266, 9.95044, 9.95212, 9.93692, 10.2027]]
+    #    [[9.96896, 9.99657, 10.0176, 9.77196, 10.0504],
+    #     [10.056, 9.9925, 10.0969, 9.97643, 9.95418],
+    #     [10.0566, 10.1285, 9.81333, 9.99688, 10.1243],
+    #     [10.1369, 9.89247, 9.99842, 9.85519, 9.86911],
+    #     [10.0698, 9.967, 9.92292, 9.95054, 10.317]]
 
     Cumo::DComplex.new(3,3).rand_norm(5+5i)
     # => Cumo::DComplex#shape=[3,3]
-    #    [[5.84303+4.40052i, 4.00984+6.08982i, 5.10979+5.13215i],
-    #     [4.26477+3.99655i, 4.90052+5.00763i, 4.46607+2.3444i],
-    #     [4.5528+7.11003i, 5.62117+6.69094i, 5.05443+5.35133i]]
+    #    [[4.6896+4.60233i, 4.96567+4.64886i, 5.17559+4.19631i],
+    #     [2.71962+4.57164i, 5.50386+5.9536i, 5.55962+5.70959i],
+    #     [4.92504+6.0447i, 5.96907+5.35384i, 4.76434+5.41498i]]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *args, VALUE self)
@@ -118,6 +86,9 @@ static VALUE
     } else {
         g.sigma = 1;
     }
+    g.seed = cumo_cuda_rand_seed();
+    g.offset = cumo_cuda_rand_offset();
     cumo_na_ndloop3(&ndf, &g, 1, self);
+    cumo_cuda_rand_set_offset(g.offset);
     return self;
 }
