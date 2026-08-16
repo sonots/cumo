@@ -51,6 +51,14 @@ cumo_cuda_runtime_is_device_memory(void* ptr)
     return (attrs.type != cudaMemoryTypeUnregistered);
 }
 
+// A kernel cannot raise, so an integer division reports a zero divisor through
+// this flag and the caller turns it into the exception ndloop expects. The
+// buffer is pinned host memory the device writes through, not pool memory: a
+// four-byte pool allocation lands in the same bin as a small output array, and
+// the managed page then migrates back and forth once per operation.
+int* cumo_cuda_runtime_divzero_flag_new(void);
+bool cumo_cuda_runtime_divzero_flag_get(int *flag);
+
 #if defined(__cplusplus)
 #if 0
 { /* satisfy cc-mode */

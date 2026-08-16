@@ -1,10 +1,45 @@
 <% if type_name == 'robject' || name == 'map' %>
 <% else %>
-void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, uint64_t n);
-void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, uint64_t n);
-void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, uint64_t n);
-void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n);
-void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, uint64_t n);
+void <%="cumo_#{c_iter}_index_index_kernel_launch"%>(char *p1, char *p2, size_t *idx1, size_t *idx2, uint64_t n, int* divzero);
+void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(char *p1, char *p2, size_t *idx1, ssize_t s2, uint64_t n, int* divzero);
+void <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(char *p1, char *p2, ssize_t s1, size_t *idx2, uint64_t n, int* divzero);
+void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n, int* divzero);
+void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(char *p1, char *p2, uint64_t n, int* divzero);
+
+static void
+<%=c_iter%>_launch(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t *idx1, size_t *idx2, size_t n, int* divzero)
+{
+    if (idx1) {
+        if (idx2) {
+            <%="cumo_#{c_iter}_index_index_kernel_launch"%>(p1,p2,idx1,idx2,n,divzero);
+        } else {
+            <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(p1,p2,idx1,s2,n,divzero);
+        }
+    } else {
+        if (idx2) {
+            <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(p1,p2,s1,idx2,n,divzero);
+        } else {
+            //<% if need_align %>
+            if (cumo_is_aligned(p1,sizeof(dtype)) &&
+                cumo_is_aligned(p2,sizeof(dtype)) ) {
+                if (s1 == sizeof(dtype) &&
+                    s2 == sizeof(dtype) ) {
+                    <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(p1,p2,n,divzero);
+                    return;
+                }
+                if (cumo_is_aligned_step(s1,sizeof(dtype)) &&
+                    cumo_is_aligned_step(s2,sizeof(dtype)) ) {
+                    //<% end %>
+                    <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,n,divzero);
+                    return;
+                    //<% if need_align %>
+                }
+            }
+            <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,n,divzero);
+            //<% end %>
+        }
+    }
+}
 <% end %>
 
 static void
@@ -79,36 +114,16 @@ static void
     }
     <% else %>
     {
-        if (idx1) {
-            if (idx2) {
-                <%="cumo_#{c_iter}_index_index_kernel_launch"%>(p1,p2,idx1,idx2,n);
-            } else {
-                <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(p1,p2,idx1,s2,n);
-            }
-        } else {
-            if (idx2) {
-                <%="cumo_#{c_iter}_stride_index_kernel_launch"%>(p1,p2,s1,idx2,n);
-            } else {
-                //<% if need_align %>
-                if (cumo_is_aligned(p1,sizeof(dtype)) &&
-                    cumo_is_aligned(p2,sizeof(dtype)) ) {
-                    if (s1 == sizeof(dtype) &&
-                        s2 == sizeof(dtype) ) {
-                        <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(p1,p2,n);
-                        return;
-                    }
-                    if (cumo_is_aligned_step(s1,sizeof(dtype)) &&
-                        cumo_is_aligned_step(s2,sizeof(dtype)) ) {
-                        //<% end %>
-                        <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,n);
-                        return;
-                        //<% if need_align %>
-                    }
-                }
-                <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,s1,s2,n);
-                //<% end %>
-            }
+        //<% if is_int and name == 'reciprocal' %>
+        int *divzero = cumo_cuda_runtime_divzero_flag_new();
+        <%=c_iter%>_launch(p1,p2,s1,s2,idx1,idx2,n,divzero);
+        CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        if (cumo_cuda_runtime_divzero_flag_get(divzero)) {
+            lp->err_type = rb_eZeroDivError;
         }
+        //<% else %>
+        <%=c_iter%>_launch(p1,p2,s1,s2,idx1,idx2,n,0);
+        //<% end %>
     }
     <% end %>
 }

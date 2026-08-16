@@ -1,6 +1,3 @@
-// TODO(sonots): handle zero division error in CUDA kernel?
-// ref. https://devtalk.nvidia.com/default/topic/415951/divide-by-zero-handling/
-
 //<% if is_int and %w[div mod divmod].include? name %>
 #define check_intdivzero(y)              \
     if ((y)==0) {                        \
@@ -12,7 +9,7 @@
 //<% end %>
 
 <% unless type_name == 'robject' %>
-void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* divzero);
 <% end %>
 
 static void
@@ -117,7 +114,16 @@ static void
         cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[2]);
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer);
+        //<% if is_int and %w[div mod].include? name %>
+        int *divzero = cumo_cuda_runtime_divzero_flag_new();
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer,divzero);
+        CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        if (cumo_cuda_runtime_divzero_flag_get(divzero)) {
+            lp->err_type = rb_eZeroDivError;
+        }
+        //<% else %>
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer,0);
+        //<% end %>
     }
     <% end %>
 }
