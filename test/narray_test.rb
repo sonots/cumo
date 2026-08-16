@@ -1872,6 +1872,63 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  sub_test_case "integer #sum / #prod widen to 64 bits" do
+    # The shared-memory tree merges partials that have already outgrown the
+    # element type, so anything narrower than 64 bits has to survive the merge.
+    sum_widths = {
+      Cumo::Int8 => 5,
+      Cumo::Int16 => 12,
+      Cumo::Int32 => 30,
+      Cumo::Int64 => 50,
+      Cumo::UInt8 => 5,
+      Cumo::UInt16 => 12,
+      Cumo::UInt32 => 30,
+      Cumo::UInt64 => 50
+    }
+
+    sum_widths.each do |dtype, bits|
+      test "#{dtype}#sum over partials wider than the element" do
+        [4, 8, 64, 1024].each do |n|
+          assert_equal(n * (2**bits), dtype.new(n).fill(2**bits).sum)
+        end
+      end
+
+      test "#{dtype}#sum over a long sequence" do
+        a = dtype.new(100_000).seq
+        assert_equal(a.to_a.sum, a.sum)
+      end
+
+      test "#{dtype}#sum over an axis" do
+        a = dtype.new(4, 256).seq
+        rows = a.to_a
+        assert_equal(rows.map(&:sum), a.sum(axis: 1).to_a)
+        assert_equal(rows.transpose.map(&:sum), a.sum(axis: 0).to_a)
+      end
+    end
+
+    # A merged partial only outgrows a 32 bit element once the whole product has
+    # outgrown the 64 bit accumulator, so prod can only show this on 8 and 16 bit.
+    prod_values = {
+      Cumo::Int8 => 8,
+      Cumo::UInt8 => 8,
+      Cumo::Int16 => 32,
+      Cumo::UInt16 => 32
+    }
+
+    prod_values.each do |dtype, value|
+      test "#{dtype}#prod over partials wider than the element" do
+        assert_equal(value**8, dtype.new(8).fill(value).prod)
+      end
+    end
+
+    sum_widths.each_key do |dtype|
+      test "#{dtype}#prod over small values" do
+        a = dtype.new(6).seq(1)
+        assert_equal(a.to_a.reduce(:*), a.prod)
+      end
+    end
+  end
+
   sub_test_case "bincount" do
     int_types = [
       Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64,
