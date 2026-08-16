@@ -674,6 +674,24 @@ class NArrayTest < Test::Unit::TestCase
           alpha = [Cumo::DComplex, Cumo::SComplex].include?(dtype) ? Complex(3) : 3
           assert { a.gemm(b.transpose) * alpha == a.gemm(b.transpose, alpha: alpha) }
         end
+        test "matrix.gemm(matrix) of another dtype" do
+          a = dtype[1..6].reshape(2, 3)
+          real = [Cumo::SFloat, Cumo::DFloat].include?(dtype)
+          [Cumo::Int32, Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex].each do |btype|
+            b = btype[1..6].reshape(3, 2)
+            if real && [Cumo::SComplex, Cumo::DComplex].include?(btype)
+              assert_raise(Cumo::NArray::CastError) { a.gemm(b) }
+              next
+            end
+            c = a.gemm(b)
+            assert { c.instance_of?(dtype) }
+            assert { c == [[22, 28], [49, 64]] }
+          end
+        end
+        test "matrix.gemm(array)" do
+          a = dtype[1..6].reshape(2, 3)
+          assert { a.gemm([[1, 2], [3, 4], [5, 6]]) == [[22, 28], [49, 64]] }
+        end
       end
     end
 
@@ -851,6 +869,33 @@ class NArrayTest < Test::Unit::TestCase
   test "cast any object that responds to to_a" do
     object = Struct.new(:to_a).new([1, 2, 3])
     assert { Cumo::NArray.cast(object) == [1, 2, 3] }
+  end
+
+  sub_test_case "#dot between types" do
+    dot_types = [
+      Cumo::Int32,
+      Cumo::Int64,
+      Cumo::UInt8,
+      Cumo::SFloat,
+      Cumo::DFloat,
+      Cumo::SComplex,
+      Cumo::DComplex,
+    ]
+
+    dot_types.each do |atype|
+      dot_types.each do |btype|
+        test "#{atype}.dot(#{btype})" do
+          upcast = atype::UPCAST[btype] || btype::UPCAST[atype]
+          a = atype[1..6].reshape(2, 3)
+          b = btype[1..6].reshape(3, 2)
+          assert { a.dot(b).instance_of?(upcast) }
+          assert { a.dot(b) == [[22, 28], [49, 64]] }
+          assert { a.dot(btype[1..3]) == [14, 32] }
+          assert { atype[1..3].dot(b) == [22, 28] }
+          assert { atype[1..3].dot(btype[1..3]) == 14 }
+        end
+      end
+    end
   end
 
   sub_test_case "reshape argument validation" do
