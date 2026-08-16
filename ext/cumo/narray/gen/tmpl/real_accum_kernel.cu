@@ -5,17 +5,20 @@
 }  /* extern "C" { */
 #endif
 
+// Reduce also combines two accumulators, so next has to be the accumulator type:
+// the integer types widen to 64 bits and taking dtype there truncates every
+// partial the shared-memory tree merges.
 struct cumo_<%=type_name%>_sum_impl {
     __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_zero; }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, <%=dtype%>& accum) { accum += next; }
+    __device__ <%=dtype%> MapIn(dtype in, int64_t /*index*/) { return in; }
+    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum += next; }
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_prod_impl {
     __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_one; }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, <%=dtype%>& accum) { accum *= next; }
+    __device__ <%=dtype%> MapIn(dtype in, int64_t /*index*/) { return in; }
+    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum *= next; }
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
