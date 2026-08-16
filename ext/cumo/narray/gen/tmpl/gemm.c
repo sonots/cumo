@@ -307,6 +307,12 @@ static VALUE
     beta = cumo_cuda_cublas_option_value(opts[1],Qnil);
     g.beta = RTEST(beta) ? m_num_to_data(beta) : m_zero;
 
+    // b is handed to cuBLAS as a raw <%=cutype%>*, so another dtype would be
+    // reinterpreted, and a narrower one read past its end.
+    if (rb_obj_class(b) != cT) {
+        b = rb_funcall(cT, rb_intern("cast"), 1, b);
+    }
+
     CumoGetNArray(a, na);
     CumoGetNArray(b, nb);
     CHECK_DIM_GE(na, 2);

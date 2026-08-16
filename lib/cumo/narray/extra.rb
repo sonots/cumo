@@ -1148,21 +1148,22 @@ module Cumo
         return self * b
       end
       if [SFloat, DFloat, SComplex, DComplex].include?(t)
-        b = self.class.asarray(b)
-        case self.ndim
+        a = t.cast(self)
+        b = t.asarray(t.cast(b))
+        case a.ndim
         when 1
           case b.ndim
           when 1
-            self.mulsum(b, axis:-1)
+            a.mulsum(b, axis:-1)
           else
-            self[:new, false].gemm(b).flatten
+            a[:new, false].gemm(b).flatten
           end
         else
           case b.ndim
           when 1
-            self.gemm(b[false, :new]).flatten
+            a.gemm(b[false, :new]).flatten
           else
-            self.gemm(b)
+            a.gemm(b)
           end
         end
       else
