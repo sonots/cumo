@@ -26,6 +26,8 @@ class NArrayAltCoverageTest < CumoTestBase
     Cumo::UInt8,
   ]
 
+  CUMO_NA_MAX_DIMENSION = 12
+
   def test_each
     TYPES.each do |dtype|
       a = dtype[1, 2, 3, 5, 7, 11]
@@ -830,5 +832,56 @@ class NArrayAltCoverageTest < CumoTestBase
     assert_equal(bits.join, a.to_binary.unpack1("b*"))
     assert_equal(bits[8, 8], a[8..15].to_a)
     assert_raise(Cumo::NArray::CastError) { a[8..15].to_binary }
+  end
+
+  def test_reshape_bang_leaves_the_array_untouched_when_it_raises
+    ones = [1] * (CUMO_NA_MAX_DIMENSION + 1)
+    a = Cumo::DFloat.new(1).seq
+
+    assert_raise(Cumo::NArray::DimensionError) { a.reshape!(*ones) }
+    assert_equal([1], a.shape)
+    assert_equal([0.0], a.to_a)
+  end
+
+  def test_reshape_bang_leaves_a_view_untouched_when_it_raises
+    ones = [1] * (CUMO_NA_MAX_DIMENSION - 1)
+    v = Cumo::DFloat.new(6).seq[0..5]
+
+    assert_raise(Cumo::NArray::DimensionError) { v.reshape!(2, 3, *ones) }
+    assert_equal([6], v.shape)
+    assert_equal([0.0, 1.0, 2.0, 3.0, 4.0, 5.0], v.to_a)
+  end
+
+  def test_marshal_load_leaves_the_array_untouched_on_an_overflowing_shape
+    a = Cumo::DFloat.new(2).seq
+
+    assert_raise(RangeError) { a.marshal_load([1, [2**40, 2**40, 8], 0, ""]) }
+    assert_equal([2], a.shape)
+    assert_equal([0.0, 1.0], a.to_a)
+  end
+
+  def test_marshal_load_rejects_a_frozen_narray
+    a = Cumo::DFloat.new(2).seq.freeze
+    payload = Cumo::DFloat.new(4, 5).seq.marshal_dump
+
+    assert_raise(RuntimeError) { a.marshal_load(payload) }
+    assert_equal([2], a.shape)
+    assert_equal([0.0, 1.0], a.to_a)
+  end
+
+  def test_reshape_bang_rejects_a_frozen_narray
+    a = Cumo::DFloat.new(2, 3).seq.freeze
+
+    assert_raise(RuntimeError) { a.reshape!(6) }
+    assert_equal([2, 3], a.shape)
+  end
+
+  def test_reshape_keeps_the_shape_buffer_off_the_machine_stack
+    ones = [1] * 1000
+    a = Cumo::DFloat.new(1).seq
+
+    assert_raise(Cumo::NArray::DimensionError) { a.reshape(*ones) }
+    assert_raise(Cumo::NArray::DimensionError) { a.reshape!(*ones) }
+    assert_equal([1], a.shape)
   end
 end
