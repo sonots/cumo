@@ -61,6 +61,12 @@ static VALUE
         size_t pos;
 
         result_nd = cumo_na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
+        if (result_nd == 0) {
+            // Numeric indices read an element, so an unallocated array has to
+            // raise here. Returning the view instead only defers it to whatever
+            // touches the data, and each_over_axis never does.
+            (void)cumo_na_get_pointer_for_read(self);
+        }
         return cumo_na_aref_main(argc, argv, self, 0, result_nd, pos);
     }
 }

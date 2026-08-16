@@ -168,8 +168,26 @@ class NArrayExtraTest < CumoTestBase
   end
 
   def test_each_over_axis_on_an_unallocated_array
-    omit("Cumo yields the array instead of raising on an unallocated one")
     assert_raise(RuntimeError) { Cumo::DFloat.new.each_over_axis { |_v| nil } }
+
+    # Above zero dimensions it yields slices, which stay views whether or not
+    # the array is allocated.
+    yielded = []
+    Cumo::DFloat.new(2, 3).each_over_axis { |v| yielded << v.shape }
+    assert_equal([[3], [3]], yielded)
+  end
+
+  def test_aref_on_an_unallocated_array
+    # A numeric index reads an element, so it has to raise rather than hand back
+    # a view of memory that was never allocated.
+    assert_raise(RuntimeError) { Cumo::DFloat.new(3)[1] }
+    assert_raise(RuntimeError) { Cumo::DFloat.new(4, 5)[1, 1] }
+    assert_raise(RuntimeError) { Cumo::Bit.new(3)[1] }
+    assert_raise(RuntimeError) { Cumo::RObject.new(3)[1] }
+
+    # A slice stays a view, allocated or not.
+    assert_equal([2], Cumo::DFloat.new(3)[0..1].shape)
+    assert_equal(2.0, Cumo::DFloat.new(3).seq(1)[1].extract_cpu)
   end
 
   def test_append
