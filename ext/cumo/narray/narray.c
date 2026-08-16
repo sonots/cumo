@@ -700,6 +700,8 @@ cumo_na_pointer_copy_on_write(VALUE self)
     }
     CUMO_NA_DATA_PTR(na) = NULL;
     rb_funcall(self, cumo_id_allocate, 0);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_pointer_copy_on_write", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     memcpy(CUMO_NA_DATA_PTR(na), ptr, byte_size);
     rb_ivar_set(self, cumo_id_source, Qnil);
 }
@@ -1440,6 +1442,11 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
     vna = cumo_na_new(type, nd, shape);
     ptr = cumo_na_get_pointer_for_write(vna);
 
+    // The pool hands back chunks a still-running kernel may be writing, and a
+    // host write into managed memory does not wait for the stream. to_binary
+    // synchronizes for the same reason on the way out.
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_s_from_binary", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     memcpy(ptr, RSTRING_PTR(vstr), byte_size);
 
     return vna;
@@ -1495,6 +1502,8 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
         rb_ivar_set(self, cumo_id_source, vstr);
     } else {
         void *ptr = cumo_na_get_pointer_for_write(self);
+        CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_store_binary", "any");
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         memcpy(ptr, RSTRING_PTR(vstr)+offset, byte_size);
     }
 

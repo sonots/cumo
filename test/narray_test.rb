@@ -2015,6 +2015,40 @@ class NArrayTest < Test::Unit::TestCase
   # These all run a host loop over managed memory, so they read whatever the
   # last kernel has written so far unless they synchronize first. The arrays
   # are large enough that the kernel filling them is still in flight.
+  # A host memcpy into managed memory does not wait for the stream, and the pool
+  # hands back chunks a still-running kernel may be writing.
+  sub_test_case "host writes synchronize before touching device memory" do
+    n = 1 << 18
+    rounds = 30
+
+    test "from_binary over a recycled chunk" do
+      zeros = ("\0" * (n * 8)).freeze
+      rounds.times do
+        a = Cumo::DFloat.new(n).seq(1)
+        a.free
+        b = Cumo::DFloat.from_binary(zeros)
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+        assert_equal(0, b.ne(0.0).count_true.to_i)
+      end
+    end
+
+    test "store_binary over memory a kernel is still writing" do
+      rounds.times do
+        a = Cumo::DFloat.new(n).seq(1)
+        a.store_binary(+("\0" * (n * 8)))
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+        assert_equal(0, a.ne(0.0).count_true.to_i)
+      end
+    end
+
+    # A frozen string is pointed at rather than copied, so nothing is written.
+    test "store_binary of a frozen string" do
+      a = Cumo::DFloat.new(n).seq(1)
+      a.store_binary(("\0" * (n * 8)).freeze)
+      assert_equal(0, a.ne(0.0).count_true.to_i)
+    end
+  end
+
   sub_test_case "host loops synchronize before reading device memory" do
     n = 1 << 20
     last = n.to_f
