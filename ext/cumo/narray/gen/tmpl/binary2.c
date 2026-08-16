@@ -35,10 +35,10 @@ static void
     <% else %>
     {
         //<% if is_int and %w[divmod].include? name %>
-        int *divzero = cumo_cuda_runtime_divzero_flag_new();
+        int *divzero = cumo_cuda_runtime_error_flag_new();
         <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,p4,s1,s2,s3,s4,n,divzero);
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        if (cumo_cuda_runtime_divzero_flag_get(divzero)) {
+        if (cumo_cuda_runtime_error_flag_get(divzero)) {
             lp->err_type = rb_eZeroDivError;
         }
         //<% else %>

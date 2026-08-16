@@ -659,6 +659,58 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    unless [Cumo::DComplex, Cumo::SComplex].include?(dtype)
+      sub_test_case "#{dtype}, #clip" do
+        test "clip" do
+          a = dtype[0..9]
+          assert { a.clip(1, 8) == [1, 1, 2, 3, 4, 5, 6, 7, 8, 8] }
+          assert { a.clip(nil, 8) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 8] }
+          assert { a.clip(3, nil) == [3, 3, 3, 3, 4, 5, 6, 7, 8, 9] }
+        end
+
+        test "clip with array bounds" do
+          a = dtype[0..9]
+          assert { a.clip(dtype[3, 4, 1, 1, 1, 4, 4, 4, 4, 4], 8) == [3, 4, 2, 3, 4, 5, 6, 7, 8, 8] }
+          assert { a.clip(1, dtype[9, 9, 9, 5, 5, 5, 5, 5, 5, 5]) == [1, 1, 2, 3, 4, 5, 5, 5, 5, 5] }
+          assert { a.clip(dtype.new(10).fill(2), dtype.new(10).fill(7)) == [2, 2, 2, 3, 4, 5, 6, 7, 7, 7] }
+        end
+
+        test "clip in place" do
+          a = dtype[0..9]
+          a.inplace.clip(3, 6)
+          assert { a == [3, 3, 3, 3, 4, 5, 6, 6, 6, 6] }
+        end
+
+        test "clip over views" do
+          a = dtype[0..11].reshape(3, 4)
+          assert { a[1..2, 1..2].clip(6, 9) == [[6, 6], [9, 9]] }
+          assert { a.transpose.clip(2, 8) == [[2, 4, 8], [2, 5, 8], [2, 6, 8], [3, 7, 8]] }
+          assert { a.reverse(1).clip(2, 8) == [[3, 2, 2, 2], [7, 6, 5, 4], [8, 8, 8, 8]] }
+        end
+
+        # More than one block, so the whole launch is exercised.
+        test "clip over a large array" do
+          a = dtype.cast(Array.new(100_000) { |i| i % 100 })
+          c = a.clip(20, 80)
+          assert { c.min == 20 }
+          assert { c.max == 80 }
+          assert { c[0..24].to_a == ([20] * 21) + [21, 22, 23, 24] }
+        end
+
+        test "clip raises without a usable range" do
+          a = dtype[0..9]
+          assert_raise(Cumo::NArray::OperationError) { a.clip(6, 3) }
+          assert_raise(ArgumentError) { a.clip(nil, nil) }
+        end
+
+        test "clip leaves the array untouched when it raises" do
+          a = dtype[0..9]
+          assert_raise(Cumo::NArray::OperationError) { a.inplace.clip(6, 3) }
+          assert { a == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+        end
+      end
+    end
+
     sub_test_case "#{dtype}, #mulsum" do
       test "vector.mulsum(vector)" do
         a = dtype[1..3]
