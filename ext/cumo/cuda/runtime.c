@@ -20,7 +20,7 @@ cumo_cuda_runtime_check_kernel_launch(void)
 }
 
 int*
-cumo_cuda_runtime_divzero_flag_new(void)
+cumo_cuda_runtime_error_flag_new(void)
 {
     static int *flag = NULL;
 
@@ -33,7 +33,7 @@ cumo_cuda_runtime_divzero_flag_new(void)
 }
 
 bool
-cumo_cuda_runtime_divzero_flag_get(int *flag)
+cumo_cuda_runtime_error_flag_get(int *flag)
 {
     check_status(cudaDeviceSynchronize());
     return (*flag != 0);

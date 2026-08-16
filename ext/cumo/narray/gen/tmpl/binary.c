@@ -115,10 +115,10 @@ static void
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
         //<% if is_int and %w[div mod].include? name %>
-        int *divzero = cumo_cuda_runtime_divzero_flag_new();
+        int *divzero = cumo_cuda_runtime_error_flag_new();
         <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer,divzero);
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        if (cumo_cuda_runtime_divzero_flag_get(divzero)) {
+        if (cumo_cuda_runtime_error_flag_get(divzero)) {
             lp->err_type = rb_eZeroDivError;
         }
         //<% else %>

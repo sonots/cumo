@@ -115,10 +115,10 @@ static void
     <% else %>
     {
         //<% if is_int and name == 'reciprocal' %>
-        int *divzero = cumo_cuda_runtime_divzero_flag_new();
+        int *divzero = cumo_cuda_runtime_error_flag_new();
         <%=c_iter%>_launch(p1,p2,s1,s2,idx1,idx2,n,divzero);
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        if (cumo_cuda_runtime_divzero_flag_get(divzero)) {
+        if (cumo_cuda_runtime_error_flag_get(divzero)) {
             lp->err_type = rb_eZeroDivError;
         }
         //<% else %>
