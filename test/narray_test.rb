@@ -1810,9 +1810,9 @@ class NArrayTest < Test::Unit::TestCase
     total = n * (n + 1) / 2.0
 
     test "minmax" do
-      assert_equal([1.0, last], Cumo::DFloat.new(n).seq(1).minmax.map { |x| x.to_a.first })
-      assert_equal([1, n], Cumo::Int32.new(n).seq(1).minmax.map { |x| x.to_a.first })
-      assert_equal([1, 3], Cumo::Int32[1, 2, 3].minmax.map { |x| x.to_a.first })
+      assert_equal([1.0, last], Cumo::DFloat.new(n).seq(1).minmax)
+      assert_equal([1, n], Cumo::Int32.new(n).seq(1).minmax)
+      assert_equal([1, 3], Cumo::Int32[1, 2, 3].minmax)
     end
 
     test "nan-aware reductions" do

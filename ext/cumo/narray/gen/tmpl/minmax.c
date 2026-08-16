@@ -34,7 +34,7 @@ static void
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
-    VALUE reduce;
+    VALUE reduce, ret;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT, 2,2, ain,aout};
@@ -44,5 +44,11 @@ static VALUE
   <% else %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    return cumo_na_ndloop(&ndf, 2, self, reduce);
+    ret = cumo_na_ndloop(&ndf, 2, self, reduce);
+    // ndloop ignores CUMO_NDF_EXTRACT, so each method carrying it extracts for itself.
+    if (cumo_compatible_mode_enabled_p()) {
+        return rb_assoc_new(rb_funcall(RARRAY_AREF(ret,0), rb_intern("extract_cpu"), 0),
+                            rb_funcall(RARRAY_AREF(ret,1), rb_intern("extract_cpu"), 0));
+    }
+    return ret;
 }
