@@ -42,6 +42,30 @@ module Cumo::CUDA
       assert_nothing_raised { MemoryPool.total_bytes }
     end
 
+    # Device memory does not pass through ruby_xmalloc, so unless the GC is told
+    # about it these tiny Ruby objects never trigger one and the pool grows to
+    # the total churn instead of the live set.
+    def test_dropped_arrays_do_not_grow_the_pool_by_their_total_size
+      MemoryPool.enable
+      GC.start
+      MemoryPool.free_all_blocks
+      base = MemoryPool.total_bytes
+      # 1 MiB each, 1 GiB of churn against a live set of one array
+      1024.times { Cumo::SFloat.new(1 << 18).allocate }
+      GC.start
+      assert { MemoryPool.total_bytes - base < 256 << 20 }
+    end
+
+    def test_dropped_bit_arrays_do_not_grow_the_pool_by_their_total_size
+      MemoryPool.enable
+      GC.start
+      MemoryPool.free_all_blocks
+      base = MemoryPool.total_bytes
+      1024.times { Cumo::Bit.new(1 << 23).allocate }
+      GC.start
+      assert { MemoryPool.total_bytes - base < 256 << 20 }
+    end
+
     def test_malloc_with_size_whose_rounding_overflows
       MemoryPool.enable
       # 8 * (2**61 - 1) is SIZE_MAX - 7. Rounding it up to a multiple of the

@@ -26,6 +26,12 @@ static VALUE
             <% end %>
             CUMO_NA_DATA_PTR(na) = ptr;
             CUMO_NA_DATA_OWNED(na) = TRUE;
+            <% unless is_object %>
+            // Device memory never passes through ruby_xmalloc, so the GC sees a
+            // few-byte object holding an arbitrarily large buffer and does not
+            // run until the host itself runs out.
+            rb_gc_adjust_memory_usage(sizeof(dtype) * na->size);
+            <% end %>
         }
         break;
     case CUMO_NARRAY_VIEW_T:
