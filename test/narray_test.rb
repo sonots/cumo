@@ -1419,6 +1419,108 @@ class NArrayTest < Test::Unit::TestCase
     assert { c.min >= -2 && c.max < 3 }
   end
 
+  sub_test_case "#rand / #rand_norm" do
+    real_types = [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex, Cumo::RObject]
+    signed_types = [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64]
+    unsigned_types = [Cumo::UInt8, Cumo::UInt16, Cumo::UInt32, Cumo::UInt64]
+    rand_types = real_types.map { |t| [t, []] } +
+                 (signed_types + unsigned_types).map { |t| [t, [2, 60]] }
+
+    rand_types.each do |dtype, args|
+      test "#{dtype}#rand repeats under the same seed" do
+        Cumo::NArray.srand(7)
+        a = dtype.new(64).rand(*args).to_a
+        Cumo::NArray.srand(7)
+        assert_equal(a, dtype.new(64).rand(*args).to_a)
+      end
+
+      test "#{dtype}#rand moves on between calls" do
+        Cumo::NArray.srand(7)
+        a = dtype.new(64).rand(*args).to_a
+        b = dtype.new(64).rand(*args).to_a
+        assert_not_equal(a, b)
+      end
+
+      # Every element draws from its own subsequence, so where the call
+      # boundaries fall must not change what any of them gets.
+      test "#{dtype}#rand does not depend on how the calls are split" do
+        Cumo::NArray.srand(7)
+        whole = dtype.new(128).rand(*args).to_a
+        Cumo::NArray.srand(7)
+        halves = dtype.new(64).rand(*args).to_a + dtype.new(64).rand(*args).to_a
+        assert_equal(whole, halves)
+      end
+
+      test "#{dtype}#rand stays within range" do
+        Cumo::NArray.srand(7)
+        low, high = args.empty? ? [0.0, 1.0] : args
+        drawn = dtype.new(256).rand(*args).to_a
+        values = drawn.flat_map { |x| x.is_a?(Complex) ? [x.real, x.imag] : [x] }
+        assert { values.all? { |x| x >= low && x < high } }
+      end
+    end
+
+    test "rand over a view" do
+      a = Cumo::DFloat.new(8, 8).seq
+      a[1..6, 1..6].rand
+      assert { a[1..6, 1..6].to_a.flatten.all? { |x| x >= 0.0 && x < 1.0 } }
+
+      b = Cumo::DFloat.new(8, 8).seq.transpose
+      b.rand
+      assert { b.to_a.flatten.all? { |x| x >= 0.0 && x < 1.0 } }
+    end
+
+    test "rand is uniform" do
+      a = Cumo::DFloat.new(1 << 20).rand
+      assert { (a.mean.extract_cpu - 0.5).abs < 0.005 }
+      counts = Array.new(10, 0)
+      Cumo::Int32.new(1 << 20).rand(0, 10).to_a.each { |x| counts[x] += 1 }
+      assert { counts.all? { |c| (c - (1 << 20) / 10).abs < (1 << 20) / 100 } }
+    end
+
+    [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex].each do |dtype|
+      test "#{dtype}#rand_norm repeats under the same seed" do
+        Cumo::NArray.srand(3)
+        a = dtype.new(64).rand_norm.to_a
+        Cumo::NArray.srand(3)
+        assert_equal(a, dtype.new(64).rand_norm.to_a)
+      end
+
+      test "#{dtype}#rand_norm does not depend on how the calls are split" do
+        Cumo::NArray.srand(3)
+        whole = dtype.new(128).rand_norm.to_a
+        Cumo::NArray.srand(3)
+        halves = dtype.new(64).rand_norm.to_a + dtype.new(64).rand_norm.to_a
+        assert_equal(whole, halves)
+      end
+    end
+
+    test "rand_norm follows mu and sigma" do
+      a = Cumo::DFloat.new(1 << 20).rand_norm
+      assert { a.mean.extract_cpu.abs < 0.01 }
+      assert { (a.stddev.extract_cpu - 1.0).abs < 0.01 }
+
+      b = Cumo::DFloat.new(1 << 20).rand_norm(10, 0.1)
+      assert { (b.mean.extract_cpu - 10).abs < 0.01 }
+      assert { (b.stddev.extract_cpu - 0.1).abs < 0.005 }
+
+      c = Cumo::DComplex.new(1 << 19).rand_norm(Complex(1, 2), 0.5)
+      assert { (c.real.mean.extract_cpu - 1).abs < 0.01 }
+      assert { (c.imag.mean.extract_cpu - 2).abs < 0.01 }
+      assert { (c.real.stddev.extract_cpu - 0.5).abs < 0.01 }
+    end
+
+    test "rand_norm over a view" do
+      a = Cumo::DFloat.new(8, 8).seq
+      a[1..6, 1..6].rand_norm
+      assert { a[1..6, 1..6].to_a.flatten.size == 36 }
+
+      b = Cumo::DFloat.new(8, 8).seq.transpose
+      b.rand_norm
+      assert { b.to_a.flatten.size == 64 }
+    end
+  end
+
   test "store fills every slot after a Range" do
     assert_equal([9.0, 0.0, 1.0, 5.0], Cumo::DFloat.cast([9, 0...2, 5]).to_a)
     assert_equal([0, 1, 2, 5], Cumo::Int64.cast([(0...3), 5]).to_a)

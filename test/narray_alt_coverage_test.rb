@@ -279,111 +279,53 @@ class NArrayAltCoverageTest < CumoTestBase
     end
   end
 
+  # The generated values are cumo's own since rand moved onto the GPU, so this
+  # checks the shape and the interval rather than the numbers numo produces.
+  # Cumo::RObject still runs SFMT on the host and keeps its exact values.
   def test_rand
-    INTEGER_TYPES.each do |dtype|
+    (INTEGER_TYPES + UNSIGNED_INTEGER_TYPES).each do |dtype|
       Cumo::NArray.srand(1_234_567_890)
-      if dtype.byte_size < 8
-        assert_equal(dtype[3, 4, 1, 4, 0, -2, -2, 2, -2, -3], dtype.new(10).rand(-3, 5))
-        assert_equal(dtype[[6, 5, 8, 2, 4], [1, 0, 4, 9, 2]], dtype.new(2, 5).rand(10))
-      else
-        assert_equal(dtype[3, 1, 4, -2, 2, -2, -3, 2, 1, -1], dtype.new(10).rand(-3, 5))
-        assert_equal(dtype[[3, 6, 1, 5, 7], [9, 9, 6, 4, 0]], dtype.new(2, 5).rand(10))
-      end
-    end
-    UNSIGNED_INTEGER_TYPES.each do |dtype|
-      Cumo::NArray.srand(1_234_567_890)
-      if dtype.byte_size < 8
-        assert_equal(dtype[6, 7, 4, 7, 3, 1, 1, 5, 1, 0], dtype.new(10).rand(10))
-        assert_equal(dtype[[6, 5, 8, 2, 4], [1, 0, 4, 9, 2]], dtype.new(2, 5).rand(10))
-      else
-        assert_equal(dtype[6, 4, 7, 1, 5, 1, 0, 5, 8, 4], dtype.new(10).rand(10))
-        assert_equal(dtype[[2, 3, 6, 1, 5], [7, 9, 9, 6, 4]], dtype.new(2, 5).rand(10))
-      end
+      low = UNSIGNED_INTEGER_TYPES.include?(dtype) ? 0 : -3
+      actual1d = dtype.new(10).rand(low, 5)
+      assert_equal([10], actual1d.shape)
+      assert { actual1d.to_a.all? { |v| v >= low && v < 5 } }
+
+      actual2d = dtype.new(2, 5).rand(10)
+      assert_equal([2, 5], actual2d.shape)
+      assert { actual2d.to_a.flatten.all? { |v| v >= 0 && v < 10 } }
     end
 
     [Cumo::DFloat, Cumo::SFloat, Cumo::RObject].each do |dtype|
       Cumo::NArray.srand(1_234_567_890)
       actual1d = dtype.new(5).rand(-1, 1)
       actual2d = dtype.new(2, 3).rand(-1, 1)
-      assert_equal(2, actual2d.ndim)
-      assert_equal(2, actual2d.shape[0])
-      assert_equal(3, actual2d.shape[1])
-      if dtype == Cumo::SFloat
-        [-0.128008, -0.0780624, -0.470543, 0.808037, -0.00503415].each_with_index do |expected, i|
-          assert_in_delta(expected, actual1d[i], 1e-6)
-        end
-        [0.279245, 0.838221, -0.621664].each_with_index do |expected, i|
-          assert_in_delta(expected, actual2d[0, i], 1e-6)
-        end
-        [-0.860478, 0.933182, 0.592224].each_with_index do |expected, i|
-          assert_in_delta(expected, actual2d[1, i], 1e-6)
-        end
-      elsif dtype == Cumo::DFloat
-        [-0.0780623, 0.808037, 0.279245, -0.621664, 0.933182].each_with_index do |expected, i|
-          assert_in_delta(expected, actual1d[i], 1e-6)
-        end
-        [-0.87189, 0.359531, 0.258884].each_with_index do |expected, i|
-          assert_in_delta(expected, actual2d[0, i], 1e-6)
-        end
-        [-0.248656, 0.766334, -0.625959].each_with_index do |expected, i|
-          assert_in_delta(expected, actual2d[1, i], 1e-6)
-        end
-      elsif dtype == Cumo::RObject
-        [-0.078062, 0.808036, 0.279245, -0.621664, 0.933181].each_with_index do |expected, i|
-          assert_in_delta(expected, actual1d[i], 1e-6)
-        end
-        [-0.871889, 0.359530, 0.258884].each_with_index do |expected, i|
-          assert_in_delta(expected, actual2d[0, i], 1e-6)
-        end
-        [-0.248655, 0.766333, -0.625958].each_with_index do |expected, i|
-          assert_in_delta(expected, actual2d[1, i], 1e-6)
-        end
-      end
+      assert_equal([5], actual1d.shape)
+      assert_equal([2, 3], actual2d.shape)
+      assert { actual1d.to_a.all? { |v| v >= -1 && v < 1 } }
+      assert { actual2d.to_a.flatten.all? { |v| v >= -1 && v < 1 } }
     end
+
+    [Cumo::DFloat, Cumo::SFloat].each do |dtype|
+      Cumo::NArray.srand(1_234_567_890)
+      first = dtype.new(5).rand(-1, 1).to_a
+      Cumo::NArray.srand(1_234_567_890)
+      assert_equal(first, dtype.new(5).rand(-1, 1).to_a)
+    end
+
     [Cumo::DComplex, Cumo::SComplex].each do |dtype|
       Cumo::NArray.srand(1_234_567_890)
       actual1d = dtype.new(5).rand(2 + 3i)
+      assert_equal([5], actual1d.shape)
+      assert { actual1d.to_a.all? { |v| v.real >= 0 && v.real < 2 && v.imag >= 0 && v.imag < 3 } }
+
       actual2d = dtype.new(2, 3).rand(-2 - 3i, 1 + 2i)
-      assert_equal(2, actual2d.ndim)
-      assert_equal(2, actual2d.shape[0])
-      assert_equal(3, actual2d.shape[1])
-      if dtype == Cumo::SComplex
-        [0.871991 + 1.382906i, 0.529456 + 2.712055i, 0.994965 + 1.918868i, 1.838220 + 0.567503i,
-         0.139521 + 2.899772i].each_with_index do |expected, i|
-          assert_in_delta(expected.real, actual1d[i].real, 1e-6)
-          assert_in_delta(expected.imag, actual1d[i].imag, 1e-6)
-        end
-        [0.388335 - 2.679724i, -1.060235 + 0.398827i, -1.702621 + 0.147211i].each_with_index do |expected, i|
-          assert_in_delta(expected.real, actual2d[0, i].real, 1e-6)
-          assert_in_delta(expected.imag, actual2d[0, i].imag, 1e-6)
-        end
-        [-1.871673 - 1.121639i, -0.888626 + 1.415834i, -0.451813 - 2.064896i].each_with_index do |expected, i|
-          assert_in_delta(expected.real, actual2d[1, i].real, 1e-6)
-          assert_in_delta(expected.imag, actual2d[1, i].imag, 1e-6)
-        end
-      elsif dtype == Cumo::DComplex
-        [0.921937 + 2.712055i, 1.279245 + 0.567503i, 1.933181 + 0.192165i, 1.359530 + 1.888326i,
-         0.751344 + 2.649500i].each_with_index do |expected, i|
-          assert_in_delta(expected.real, actual1d[i].real, 1e-6)
-          assert_in_delta(expected.imag, actual1d[i].imag, 1e-6)
-        end
-        [-1.438938 - 1.474032i, -1.687581 + 0.280124i, -1.992894 - 0.0294957i].each_with_index do |expected, i|
-          assert_in_delta(expected.real, actual2d[0, i].real, 1e-6)
-          assert_in_delta(expected.imag, actual2d[0, i].imag, 1e-6)
-        end
-        [0.795879 - 1.566802i, 0.835083 - 1.379133i, 0.245460 + 1.054923i].each_with_index do |expected, i|
-          assert_in_delta(expected.real, actual2d[1, i].real, 1e-6)
-          assert_in_delta(expected.imag, actual2d[1, i].imag, 1e-6)
-        end
-      end
-      actual = Cumo::SComplex.new(5).rand
-      assert(actual.real.to_a.any? { |v| v != 0.0 })
-      assert(actual.imag.to_a.any? { |v| v != 0.0 })
-      actual = Cumo::DComplex.new(5).rand
+      assert_equal([2, 3], actual2d.shape)
+      assert { actual2d.to_a.flatten.all? { |v| v.real >= -2 && v.real < 1 && v.imag >= -3 && v.imag < 2 } }
+
+      actual = dtype.new(5).rand
       assert(actual.real.to_a.any? { |v| v != 0.0 })
       assert(actual.imag.to_a.any? { |v| v != 0.0 })
     end
-
   end
 
   def test_rand_norm

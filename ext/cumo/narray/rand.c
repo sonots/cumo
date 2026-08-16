@@ -20,6 +20,38 @@ random_seed()
     return tv.tv_sec ^ tv.tv_usec ^ getpid() ^ n++;
 }
 
+// The kernels draw from Philox keyed by this seed, giving every element its own
+// subsequence. The offset advances by the number of elements drawn so that two
+// calls under one seed do not repeat the same stream.
+static u_int64_t cumo_cuda_rand_seed_value;
+static u_int64_t cumo_cuda_rand_offset_value;
+
+u_int64_t
+cumo_cuda_rand_seed(void)
+{
+    return cumo_cuda_rand_seed_value;
+}
+
+u_int64_t
+cumo_cuda_rand_offset(void)
+{
+    return cumo_cuda_rand_offset_value;
+}
+
+void
+cumo_cuda_rand_set_offset(u_int64_t offset)
+{
+    cumo_cuda_rand_offset_value = offset;
+}
+
+static void
+cumo_na_seed(u_int64_t seed)
+{
+    init_gen_rand(seed);
+    cumo_cuda_rand_seed_value = seed;
+    cumo_cuda_rand_offset_value = 0;
+}
+
 static VALUE
 cumo_na_s_srand(int argc, VALUE *argv, VALUE obj)
 {
@@ -33,7 +65,7 @@ cumo_na_s_srand(int argc, VALUE *argv, VALUE obj)
     else {
         seed = NUM2UINT64(vseed);
     }
-    init_gen_rand(seed);
+    cumo_na_seed(seed);
 
     return Qnil;
 }
@@ -41,5 +73,5 @@ cumo_na_s_srand(int argc, VALUE *argv, VALUE obj)
 void
 Init_cumo_na_rand() {
     rb_define_singleton_method(cNArray, "srand", cumo_na_s_srand, -1);
-    init_gen_rand(0);
+    cumo_na_seed(0);
 }

@@ -84,6 +84,11 @@ VALUE cumo_na_at_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result
 // defined in array, used in math
 VALUE cumo_na_ary_composition_dtype(VALUE ary);
 
+// defined in rand, used by the generated rand and rand_norm
+u_int64_t cumo_cuda_rand_seed(void);
+u_int64_t cumo_cuda_rand_offset(void);
+void cumo_cuda_rand_set_offset(u_int64_t offset);
+
 #include "ruby/version.h"
 
 #if RUBY_API_VERSION_CODE == 20100 // 2.1.0
