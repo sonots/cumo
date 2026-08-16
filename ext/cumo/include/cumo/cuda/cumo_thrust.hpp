@@ -53,7 +53,12 @@ class cumo_thrust_strided_range
 
     // construct strided_range for the range [first,last)
     cumo_thrust_strided_range(Iterator first, Iterator last, difference_type stride)
-        : first(first), last(last), stride(stride) {}
+        : first(first), stride(stride), count(((last - first) + (stride - 1)) / stride) {}
+
+    // A stride of 0 repeats one element and a negative stride walks backwards, so
+    // neither can be counted from (last - first); those callers pass the count.
+    cumo_thrust_strided_range(Iterator first, difference_type stride, difference_type count)
+        : first(first), stride(stride), count(count) {}
 
     iterator begin(void) const
     {
@@ -62,13 +67,13 @@ class cumo_thrust_strided_range
 
     iterator end(void) const
     {
-        return begin() + ((last - first) + (stride - 1)) / stride;
+        return begin() + count;
     }
 
     protected:
     Iterator first;
-    Iterator last;
     difference_type stride;
+    difference_type count;
 };
 
 

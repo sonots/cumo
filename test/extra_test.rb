@@ -585,10 +585,6 @@ class NArrayExtraTest < CumoTestBase
     a = Cumo::Int32[1, 2, 3]
     b = Cumo::DFloat[[4], [5], [6]]
     assert_equal(Cumo::DFloat[32], a.dot(b))
-  end
-
-  def test_dot_between_types_without_upcast
-    omit("Cumo's mulsum reduces the wrong axis when the reduced axis is not the last one and the last dimension is 1")
     assert_equal(Cumo::DFloat[32], Cumo::DFloat[1, 2, 3].dot(Cumo::Int32[[4], [5], [6]]))
   end
 

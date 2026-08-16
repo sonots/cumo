@@ -14,7 +14,7 @@
 template<typename Iterator1, typename Iterator2>
 __global__ void <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%>(Iterator1 p1_begin, Iterator1 p1_end, Iterator2 p2_begin, dtype* p3)
 {
-    dtype init = m_zero;
+    dtype init = *p3;
     *p3 = thrust::inner_product(thrust::cuda::par, p1_begin, p1_end, p2_begin, init, cumo_thrust_plus(), cumo_thrust_multiplies<%= "_mulsum#{nan}" unless nan.empty? %>());
 }
 
@@ -36,22 +36,19 @@ void <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel_launch"%>(char *p1, char *
 {
     ssize_t s1_idx = s1 / sizeof(dtype);
     ssize_t s2_idx = s2 / sizeof(dtype);
-    if (n == 1) { // when n == 1, s1 and s3 could be 0
-        s1_idx = 1;
-        s2_idx = 1;
-    }
     thrust::device_ptr<dtype> p1_begin = thrust::device_pointer_cast((dtype*)p1);
-    thrust::device_ptr<dtype> p1_end   = thrust::device_pointer_cast(((dtype*)p1) + n * s1_idx);
     thrust::device_ptr<dtype> p2_begin = thrust::device_pointer_cast((dtype*)p2);
-    thrust::device_ptr<dtype> p2_end   = thrust::device_pointer_cast(((dtype*)p2) + n * s2_idx);
-    if (s1_idx > 1 || s2_idx > 1) {
-        cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> r1(p1_begin, p1_end, s1_idx);
-        cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> r2(p2_begin, p2_end, s2_idx);
-        <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%><<<1,1>>>(r1.begin(), r1.end(), r2.begin(), (dtype*)p3);
+    // A broadcast operand has stride 0 and a reversed view a negative one, so
+    // anything but 1 has to go through the strided range.
+    if (s1_idx == 1 && s2_idx == 1) {
+        // ref. https://github.com/thrust/thrust/blob/master/examples/cuda/async_reduce.cu
+        <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%><<<1,1>>>(p1_begin, p1_begin + n, p2_begin, (dtype*)p3);
         cumo_cuda_runtime_check_kernel_launch();
     } else {
-        // ref. https://github.com/thrust/thrust/blob/master/examples/cuda/async_reduce.cu
-        <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%><<<1,1>>>(p1_begin, p1_end, p2_begin, (dtype*)p3);
+        typedef cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range_t;
+        range_t r1(p1_begin, (range_t::difference_type)s1_idx, (range_t::difference_type)n);
+        range_t r2(p2_begin, (range_t::difference_type)s2_idx, (range_t::difference_type)n);
+        <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%><<<1,1>>>(r1.begin(), r1.end(), r2.begin(), (dtype*)p3);
         cumo_cuda_runtime_check_kernel_launch();
     }
 }
