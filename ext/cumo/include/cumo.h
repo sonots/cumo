@@ -10,8 +10,8 @@ extern "C" {
 #endif
 #endif
 
-#define CUMO_VERSION "0.5.7"
-#define CUMO_VERSION_CODE 51
+#define CUMO_VERSION "0.5.8"
+#define CUMO_VERSION_CODE 58
 
 bool cumo_compatible_mode_enabled_p();
 bool cumo_show_warning_enabled_p();

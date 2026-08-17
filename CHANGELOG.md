@@ -1,3 +1,52 @@
+# 0.5.8 (2026/08/17)
+
+Breaking changes:
+
+* Random numbers are generated on the GPU, so `srand` no longer reproduces `Numo::NArray`'s values for the same seed. Reproducibility within Cumo is unchanged and no longer depends on how the calls are split (PR #223)
+* Integer division by zero raises `ZeroDivisionError` instead of returning whatever the hardware produced, matching `Numo::NArray` (PR #218)
+* A numeric index into an unallocated NArray raises instead of returning a view nothing ever reads (PR #225)
+
+Fixes:
+
+* Fix `rb_raise` from inside a C++ catch leaking the exception object (PR #229)
+* Fix a failed Array store leaking its staging buffer, as much as the destination holds per failure (PR #228)
+* Fix the GC free hook raising when a device free fails, which surfaced at whatever line triggered the collection (PR #227)
+* Fix `from_binary` and `store_binary` writing managed memory while a kernel was still reading it (PR #226)
+* Fix integer `sum` and `prod` truncating every partial the reduction merged (PR #224)
+* Fix `minmax` ignoring compatible mode and returning zero-dimensional NArrays (PR #220)
+* Fix `nan` poisoning `max` and an all-`nan` `min` answering `DBL_MAX` (PR #219)
+* Fix `reshape!` and `marshal_load` mutating the array before they validate their arguments (PR #217)
+* Fix `ptp` answering 1 whatever the input (PR #216)
+* Fix `mulsum` ignoring the accumulator and the operand strides, which faulted the GPU on 8-bit dtypes (PR #215)
+* Fix `dot` handing `gemm` operands of a different dtype, an out-of-bounds read (PR #214)
+* Fix view offsets being added in the wrong unit (PR #213)
+* Fix interpreter abort on a zero-dimensional view (PR #212)
+* Fix `Cumo::RObject#logseq` returning `Infinity` (PR #210)
+* Fix `to_i`, `to_f` and `to_c` recursing forever on a one-element array (PR #208)
+* Fix complex `log2` and `log10` discarding the logarithm on the GPU (PR #207)
+* Fix segfault in `max_index` and `min_index` with `nan: true` (PR #206)
+* Fix `poly` failing on every input from an uninitialized `ndfunc` dimension (PR #205)
+* Fix out-of-bounds writes in `bincount` from an overflowing length and a stale scan (PR #204)
+* Fix `bincount` raising `TypeError` for every input (PR #203)
+* Fix host loops reading device memory without synchronizing, which silently corrupted `minmax`, the `nan: true` reductions, `kahan_sum`, `modf`, `frexp` and `set_imag` (PR #202)
+* Fix out-of-bounds access from three unchecked `size_t` multiplications (PR #201)
+* Fix segfaults from an unvalidated marshal payload (PR #200)
+* Fix `store_array` reading a source Array that its own elements rewrite (PR #198)
+* Fix CUDA initialisation statuses being ignored at `require` time (PR #196)
+* Fix kernel launch errors being discarded, which let a rejected launch return an untouched buffer as success (PR #195)
+* Fix wrong `Cumo::RObject` results from driving host memory with asynchronous CUDA work (PR #194)
+* Fix device memory being invisible to the GC, which let a program churning temporaries run the GPU out of memory (PR #221)
+
+Changes:
+
+* Run `rand` and `rand_norm` on the GPU (PR #223)
+* Run `clip` on the GPU (PR #222)
+* Correct spelling in messages, docs and comments (PR #211)
+* Add the math, extra and narray test suites `numo-narray-alt` has and cumo lacked (PR #207, PR #208, PR #209)
+* Add a `store_array` regression test for a shrunk source Array (PR #199)
+* Stop the ccache cache growing past the 10 GB limit in CI (PR #197)
+* Add a benchmark script under `bench/` (commit 3127f84)
+
 # 0.5.7 (2026/08/13)
 
 Breaking changes:
