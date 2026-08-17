@@ -80,5 +80,10 @@ cumo_get_block_dim(size_t n)
 // because raising needs ruby.h, which the .cu translation units do not include.
 void cumo_cuda_runtime_check_kernel_launch(void);
 
+// Scratch memory for a kernel that needs somewhere to put partial results.
+// Declared here rather than including cuda/memory_pool.h, which needs ruby.h.
+char* cumo_cuda_runtime_malloc(size_t size);
+void cumo_cuda_runtime_free(char *ptr);
+
 
 #endif /* ifndef CUMO_TEMPLATE_KERNEL_H */
