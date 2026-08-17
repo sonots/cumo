@@ -2285,4 +2285,66 @@ class NArrayTest < Test::Unit::TestCase
     every_other = Cumo::Bit.cast(expected.each_slice(2).map(&:first))
     assert_equal(every_other, a[(0...values.size).step(2)].signbit)
   end
+
+  # NaN never equals itself and -0.0 equals 0.0, so map both to a tag before
+  # comparing: the sign of a zero is exactly what modf and frexp have to keep
+  def float_tags(ary)
+    ary.map do |x|
+      if x.nan?
+        :nan
+      elsif x.zero?
+        (1 / x).negative? ? :negative_zero : :zero
+      else
+        x
+      end
+    end
+  end
+
+  def modf_expect(val)
+    return [val, val] if val.nan? || val.zero?
+
+    # modf keeps the sign of the argument in the fraction, zero included
+    signed_zero = val.negative? ? -(0.0) : 0.0
+    return [signed_zero, val] if val.infinite?
+
+    whole = val.abs.floor.to_f
+    whole = -whole if val.negative?
+    frac = val - whole
+    frac = signed_zero if frac.zero?
+    [frac, whole]
+  end
+
+  test "modf and frexp over long arrays and views" do
+    inf = Float::INFINITY
+    specials = { 0 => Float::NAN, 1 => inf, 2 => -inf, 3 => -0.0 }
+    values = Array.new(200) { |i| specials.fetch(i % 9, (i - 100) / 8.0) }
+    stepped = (0...200).step(3).to_a
+    reversed = (0...200).to_a.reverse
+
+    [Cumo::DFloat, Cumo::SFloat].each do |dtype|
+      a = dtype.cast(values)
+      # SFloat rounds on the way in, so the expectation has to start from the
+      # stored value rather than the literal
+      stored = a.to_a
+      cases = [
+        [:flat, a, (0...200).to_a],
+        [:stepped, a[(0...200).step(3)], stepped],
+        [:reversed, a[reversed], reversed]
+      ]
+      cases.each do |what, view, idxs|
+        src = idxs.map { |i| stored[i] }
+        expected = src.map { |x| modf_expect(x) }
+
+        frac, whole = view.modf
+        assert_equal(float_tags(expected.map(&:first)), float_tags(frac.to_a), "#{dtype} #{what} frac")
+        assert_equal(float_tags(expected.map(&:last)), float_tags(whole.to_a), "#{dtype} #{what} whole")
+
+        split = src.map { |x| Math.frexp(x) }
+        mantissa, exponent = dtype::Math.frexp(view)
+        assert_kind_of(Cumo::Int32, exponent)
+        assert_equal(float_tags(split.map(&:first)), float_tags(mantissa.to_a), "#{dtype} #{what} mantissa")
+        assert_equal(split.map(&:last), exponent.to_a, "#{dtype} #{what} exponent")
+      end
+    end
+  end
 end
