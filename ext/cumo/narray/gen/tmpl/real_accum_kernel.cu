@@ -110,30 +110,30 @@ extern "C" {
 
 void cumo_<%=type_name%>_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, <%=dtype%>, cumo_<%=type_name%>_sum_impl>(*arg, cumo_<%=type_name%>_sum_impl{});
+    cumo_reduce_split<dtype, <%=dtype%>, cumo_<%=type_name%>_sum_impl>(*arg, cumo_<%=type_name%>_sum_impl{});
 }
 
 void cumo_<%=type_name%>_prod_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, <%=dtype%>, cumo_<%=type_name%>_prod_impl>(*arg, cumo_<%=type_name%>_prod_impl{});
+    cumo_reduce_split<dtype, <%=dtype%>, cumo_<%=type_name%>_prod_impl>(*arg, cumo_<%=type_name%>_prod_impl{});
 }
 
 void cumo_<%=type_name%>_min_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, dtype, cumo_<%=type_name%>_min_impl>(*arg, cumo_<%=type_name%>_min_impl{});
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_min_impl>(*arg, cumo_<%=type_name%>_min_impl{});
 }
 
 void cumo_<%=type_name%>_max_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, dtype, cumo_<%=type_name%>_max_impl>(*arg, cumo_<%=type_name%>_max_impl{});
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_max_impl>(*arg, cumo_<%=type_name%>_max_impl{});
 }
 
 void cumo_<%=type_name%>_ptp_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, dtype, cumo_<%=type_name%>_ptp_impl>(*arg, cumo_<%=type_name%>_ptp_impl{});
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_ptp_impl>(*arg, cumo_<%=type_name%>_ptp_impl{});
 }
 
 void cumo_<%=type_name%>_minmax_kernel_launch(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* out2)
 {
-    cumo_reduce_pair<dtype, dtype, cumo_<%=type_name%>_minmax_impl>(*arg, *out2, cumo_<%=type_name%>_minmax_impl{});
+    cumo_reduce_pair_split<dtype, dtype, cumo_<%=type_name%>_minmax_impl>(*arg, *out2, cumo_<%=type_name%>_minmax_impl{});
 }

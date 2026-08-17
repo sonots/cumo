@@ -2428,4 +2428,43 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([1.0, 4.0], float_tags(a.max(axis: 1).to_a), dtype.to_s)
     end
   end
+
+  test "a reduction wide enough to be split across blocks" do
+    # a reduction gets one block per output, so a single output is split across
+    # a second launch; the answer has to be what one block would have said
+    n = (1 << 20) + 7 # not a multiple of the split count, so the tail counts
+    a = Cumo::DFloat.new(n).seq
+    assert_equal([549_762_629_653.0], reduction_to_a(a.sum))
+    assert_equal([0.0], reduction_to_a(a.min))
+    assert_equal([n - 1.0], reduction_to_a(a.max))
+    assert_equal([n - 1.0], reduction_to_a(a.ptp))
+    min, max = a.minmax
+    assert_equal([0.0], reduction_to_a(min))
+    assert_equal([n - 1.0], reduction_to_a(max))
+
+    # a handful of outputs leaves the grid nearly empty too
+    rows = 8
+    cols = 300_000
+    b = Cumo::Int32.new(rows * cols).seq.reshape(rows, cols)
+    assert_equal((0...rows).map { |r| r * cols }, b.min(axis: 1).to_a)
+    assert_equal((0...rows).map { |r| ((r + 1) * cols) - 1 }, b.max(axis: 1).to_a)
+  end
+
+  test "a split reduction keeps the NaN rules" do
+    n = 1 << 20
+    a = Cumo::DFloat.new(n).seq
+    a[n / 2] = Float::NAN
+    assert_equal([:nan], float_tags(reduction_to_a(a.sum)))
+    # min and max skip a NaN unless every element is one
+    assert_equal([0.0], reduction_to_a(a.min))
+    assert_equal([n - 1.0], reduction_to_a(a.max))
+
+    all_nan = Cumo::DFloat.new(n).fill(Float::NAN)
+    assert_equal([:nan], float_tags(reduction_to_a(all_nan.min)))
+    assert_equal([:nan], float_tags(reduction_to_a(all_nan.max)))
+    assert_equal([:nan], float_tags(reduction_to_a(all_nan.ptp)))
+    min, max = all_nan.minmax
+    assert_equal([:nan], float_tags(reduction_to_a(min)))
+    assert_equal([:nan], float_tags(reduction_to_a(max)))
+  end
 end
