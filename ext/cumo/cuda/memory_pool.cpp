@@ -20,30 +20,77 @@ static bool memory_pool_enabled;
 
 VALUE cumo_cuda_eOutOfMemoryError;
 
+// How a call into the pool ended, so that the raise can wait until the handler
+// has been left. rb_raise longjmps, and a longjmp out of an active handler
+// skips __cxa_end_catch: the exception object is never destroyed and leaks for
+// the life of the process.
+enum pool_outcome {
+    POOL_OK,
+    POOL_CUDA_ERROR,
+    POOL_OUT_OF_MEMORY,
+    POOL_UNKNOWN_ERROR,
+};
+
+struct pool_error {
+    cudaError_t status;
+    char message[256];
+};
+
+static enum pool_outcome
+pool_malloc(size_t size, char **ptr, struct pool_error *err)
+{
+    try {
+        // TODO(sonots): Get current CUDA stream and pass it
+        *ptr = reinterpret_cast<char*>(pool.Malloc(size));
+        return POOL_OK;
+    } catch (const cumo::internal::CUDARuntimeError& e) {
+        err->status = e.status();
+        return POOL_CUDA_ERROR;
+    } catch (const cumo::internal::OutOfMemoryError& e) {
+        // A std::string here would in turn be leaked by the raise.
+        std::snprintf(err->message, sizeof(err->message), "%s", e.what());
+        return POOL_OUT_OF_MEMORY;
+    } catch (const std::exception& e) {
+        // Nothing may reach the C caller: it has no handler, so an escaping
+        // exception is std::terminate.
+        std::snprintf(err->message, sizeof(err->message), "%s", e.what());
+        return POOL_UNKNOWN_ERROR;
+    } catch (...) {
+        std::snprintf(err->message, sizeof(err->message), "unknown C++ exception");
+        return POOL_UNKNOWN_ERROR;
+    }
+}
+
 char*
 cumo_cuda_runtime_malloc(size_t size)
 {
-    if (memory_pool_enabled) {
-        try {
-            // TODO(sonots): Get current CUDA stream and pass it
-            return reinterpret_cast<char*>(pool.Malloc(size));
-        } catch (const cumo::internal::CUDARuntimeError& e) {
-            cumo_cuda_runtime_check_status(e.status());
-        } catch (const cumo::internal::OutOfMemoryError& e) {
-            // retry after GC
-            rb_funcall(rb_define_module("GC"), rb_intern("start"), 0);
-            try {
-                return reinterpret_cast<char*>(pool.Malloc(size));
-            } catch (const cumo::internal::CUDARuntimeError& e) {
-                cumo_cuda_runtime_check_status(e.status());
-            } catch (const cumo::internal::OutOfMemoryError& e) {
-                rb_raise(cumo_cuda_eOutOfMemoryError, "%s", e.what());
-            }
-        }
-    } else {
-        void *ptr = 0;
-        cumo_cuda_runtime_check_status(cudaMallocManaged(&ptr, size, cudaMemAttachGlobal));
-        return reinterpret_cast<char*>(ptr);
+    char *ptr = 0;
+    struct pool_error err;
+    enum pool_outcome outcome;
+
+    if (!memory_pool_enabled) {
+        void *raw = 0;
+        cumo_cuda_runtime_check_status(cudaMallocManaged(&raw, size, cudaMemAttachGlobal));
+        return reinterpret_cast<char*>(raw);
+    }
+
+    outcome = pool_malloc(size, &ptr, &err);
+    if (outcome == POOL_OUT_OF_MEMORY) {
+        // retry after GC
+        rb_funcall(rb_define_module("GC"), rb_intern("start"), 0);
+        outcome = pool_malloc(size, &ptr, &err);
+    }
+
+    switch (outcome) {
+    case POOL_OK:
+        return ptr;
+    case POOL_CUDA_ERROR:
+        cumo_cuda_runtime_check_status(err.status);
+        break;
+    case POOL_OUT_OF_MEMORY:
+        rb_raise(cumo_cuda_eOutOfMemoryError, "%s", err.message);
+    case POOL_UNKNOWN_ERROR:
+        rb_raise(rb_eRuntimeError, "%s", err.message);
     }
     return 0; // should not reach here
 }
@@ -62,6 +109,8 @@ runtime_free(char *ptr)
         }
     } catch (const cumo::internal::CUDARuntimeError& e) {
         return e.status();
+    } catch (...) {
+        return cudaErrorUnknown;
     }
     // No pool owns it, so it came straight from cudaMallocManaged.
     return cudaFree((void*)ptr);
@@ -130,17 +179,22 @@ rb_memory_pool_enabled_p(VALUE self)
 static VALUE
 rb_memory_pool_free_all_blocks(int argc, VALUE* argv, VALUE self)
 {
+    // TODO(sonots): FIX if we create a Stream object
+    cudaStream_t stream_ptr = (argc < 1) ? 0 : (cudaStream_t)NUM2SIZET(argv[0]);
+    cudaError_t status = cudaSuccess;
+
     try {
         if (argc < 1) {
             pool.FreeAllBlocks();
         } else {
-            // TODO(sonots): FIX if we create a Stream object
-            cudaStream_t stream_ptr = (cudaStream_t)NUM2SIZET(argv[0]);
             pool.FreeAllBlocks(stream_ptr);
         }
     } catch (const cumo::internal::CUDARuntimeError& e) {
-        cumo_cuda_runtime_check_status(e.status());
+        status = e.status();
+    } catch (...) {
+        status = cudaErrorUnknown;
     }
+    cumo_cuda_runtime_check_status(status);
     return Qnil;
 }
 

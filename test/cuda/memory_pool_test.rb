@@ -130,6 +130,41 @@ module Cumo::CUDA
       end
     end
 
+    # Both handlers around pool.Malloc used to raise from inside the catch, and
+    # rb_raise longjmps: __cxa_end_catch never runs, so the exception object is
+    # never destroyed. An allocation which fails twice has two of them live.
+    # In a fresh interpreter, because the retry runs GC.start and marking this
+    # suite's heap makes each failed allocation eight times more expensive.
+    def test_a_failing_allocation_does_not_leak_the_cxx_exception
+      omit "needs /proc/self/status" unless File.readable?("/proc/self/status")
+      lib = File.expand_path("../../lib", __dir__)
+      script = <<~'RUBY'
+        require "cumo/narray"
+
+        rss = -> { Integer(File.read("/proc/self/status")[/VmRSS:\s+(\d+)/, 1], 10) }
+        too_big = (2**61) - 1
+        burn = lambda do |n|
+          n.times do
+            Cumo::DFloat.new(too_big).allocate
+          rescue Cumo::CUDA::OutOfMemoryError
+            nil
+          end
+        end
+
+        burn.call(200)
+        GC.start
+        before = rss.call
+        burn.call(2000)
+        GC.start
+        print "rss:#{rss.call - before}"
+      RUBY
+
+      out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+      assert_match(/\Arss:-?\d+\z/, out)
+      # the leak alone was 1060 KB for 2000 failed allocations
+      assert { Integer(out[/-?\d+/], 10) < 256 }
+    end
+
     def test_malloc_with_size_whose_rounding_overflows
       MemoryPool.enable
       # 8 * (2**61 - 1) is SIZE_MAX - 7. Rounding it up to a multiple of the
