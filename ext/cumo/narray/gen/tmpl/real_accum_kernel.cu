@@ -51,6 +51,35 @@ struct cumo_<%=type_name%>_max_impl {
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
+// min and max fused, so that minmax reads the input once. The rules per
+// component are the two above verbatim: minmax must not answer differently
+// from min and max.
+struct cumo_<%=type_name%>_minmax_impl {
+    struct MinAndMax {
+        dtype min;
+        dtype max;
+    };
+<% if is_float %>
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)nan(""), (dtype)nan("")}; }
+    __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
+    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
+        if (next.min < accum.min || !not_nan(accum.min)) { accum.min = next.min; }
+        if (accum.max < next.max || !not_nan(accum.max)) { accum.max = next.max; }
+    }
+<% else %>
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
+    __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
+    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
+        accum.min = next.min < accum.min ? next.min : accum.min;
+        accum.max = next.max < accum.max ? accum.max : next.max;
+    }
+<% end %>
+    __device__ void MapOut(MinAndMax accum, dtype* out_min, dtype* out_max) {
+        *out_min = accum.min;
+        *out_max = accum.max;
+    }
+};
+
 struct cumo_<%=type_name%>_ptp_impl {
     struct MinAndMax {
         dtype min;
@@ -102,4 +131,9 @@ void cumo_<%=type_name%>_max_kernel_launch(cumo_na_reduction_arg_t* arg)
 void cumo_<%=type_name%>_ptp_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce<dtype, dtype, cumo_<%=type_name%>_ptp_impl>(*arg, cumo_<%=type_name%>_ptp_impl{});
+}
+
+void cumo_<%=type_name%>_minmax_kernel_launch(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* out2)
+{
+    cumo_reduce_pair<dtype, dtype, cumo_<%=type_name%>_minmax_impl>(*arg, *out2, cumo_<%=type_name%>_minmax_impl{});
 }

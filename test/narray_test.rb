@@ -2347,4 +2347,54 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
   end
+
+  def reduction_to_a(val)
+    val.is_a?(Numeric) ? [val] : val.to_a
+  end
+
+  test "minmax answers the same as min and max" do
+    # the kernel fuses the two reductions into one pass over the input, so the
+    # pair has to stay identical to running min and max separately
+    reductions = [{}, { axis: 0 }, { axis: 1 }, { axis: 1, keepdims: true }]
+    dtypes = [Cumo::DFloat, Cumo::SFloat, Cumo::Int32, Cumo::Int64, Cumo::Int8, Cumo::UInt8]
+    dtypes.each do |dtype|
+      # 3000 elements so the reduction spans more than one block
+      a = ((dtype.new(3000).seq * 37) % 251).reshape(30, 100)
+      { whole: a, strided: a[true, (0...100).step(7)] }.each do |what, view|
+        reductions.each do |opts|
+          min, max = view.minmax(**opts)
+          assert_equal(reduction_to_a(view.min(**opts)), reduction_to_a(min), "#{dtype} #{what} #{opts}")
+          assert_equal(reduction_to_a(view.max(**opts)), reduction_to_a(max), "#{dtype} #{what} #{opts}")
+        end
+      end
+    end
+  end
+
+  test "minmax over several axes" do
+    a = ((Cumo::Int32.new(2 * 3 * 4 * 5).seq * 17) % 61).reshape(2, 3, 4, 5)
+    [[0, 2], [1, 3], [0, 1, 2, 3], [3]].each do |axis|
+      min, max = a.minmax(axis: axis)
+      assert_equal(reduction_to_a(a.min(axis: axis)), reduction_to_a(min), axis.inspect)
+      assert_equal(reduction_to_a(a.max(axis: axis)), reduction_to_a(max), axis.inspect)
+    end
+  end
+
+  test "minmax of an all-NaN reduction is NaN on both sides" do
+    # numo answers 0.0 for the max here, which disagrees with its own max.
+    # cumo's max returns NaN (PR #219), and minmax now says the same.
+    nan = Float::NAN
+    [Cumo::DFloat, Cumo::SFloat].each do |dtype|
+      a = dtype[[1.0, nan, -3.0, 2.0], [nan, nan, nan, nan]]
+      min, max = a.minmax(axis: 1)
+      assert_equal([-3.0, :nan], float_tags(min.to_a), dtype.to_s)
+      assert_equal([2.0, :nan], float_tags(max.to_a), dtype.to_s)
+      assert_equal(float_tags(a.max(axis: 1).to_a), float_tags(max.to_a), dtype.to_s)
+
+      # nan: true is still the host loop, and keeps numo's rule of answering
+      # NaN as soon as one element is NaN
+      min, max = a.minmax(axis: 1, nan: true)
+      assert_equal([:nan, :nan], float_tags(min.to_a), dtype.to_s)
+      assert_equal([:nan, :nan], float_tags(max.to_a), dtype.to_s)
+    end
+  end
 end

@@ -28,7 +28,7 @@ static void
     }
     <% else %>
     {
-        cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp);
+        cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 1);
         cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(&arg);
     }
     <% end %>
