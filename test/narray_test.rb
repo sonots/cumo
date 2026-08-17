@@ -2243,4 +2243,46 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal(dtype[1, 2], dtype[-1, 2].abs)
     end
   end
+
+  def cond_unary_expect(meth, val)
+    case meth
+    when :isnan then val.nan?
+    when :isinf then val.infinite?
+    when :isposinf then val.infinite? == 1
+    when :isneginf then val.infinite? == -1
+    when :isfinite then val.finite?
+    end
+  end
+
+  test "cond_unary over long arrays and views" do
+    inf = Float::INFINITY
+    n = 200
+    specials = { 0 => Float::NAN, 1 => inf, 2 => -inf }
+    values = Array.new(n) { |i| specials.fetch(i % 7, i - 100.0) }
+    a = Cumo::DFloat.cast(values)
+    stepped = (0...n).step(3).to_a
+    picked = [5, 0, 199, 64, 63, 32, 31, 100]
+    # a strided 2-d view runs the loop once per row, so the result starts at a
+    # bit offset which is not a multiple of the bit-digit width
+    cols = (0...25).step(2).to_a
+    grid = (0...8).flat_map { |r| cols.map { |c| (r * 25) + c } }
+
+    [:isnan, :isinf, :isposinf, :isneginf, :isfinite].each do |meth|
+      bits = ->(idxs) { Cumo::Bit.cast(idxs.map { |i| cond_unary_expect(meth, values[i]) ? 1 : 0 }) }
+      assert_equal(bits.call((0...n).to_a), a.public_send(meth), meth)
+      assert_equal(bits.call(stepped), a[(0...n).step(3)].public_send(meth), meth)
+      assert_equal(bits.call(picked), a[picked].public_send(meth), meth)
+      actual = a.reshape(8, 25)[true, (0...25).step(2)].public_send(meth)
+      assert_equal(bits.call(grid).reshape(8, cols.size), actual, meth)
+    end
+  end
+
+  test "signbit over a view" do
+    values = [1.0, -2.0, 0.0, -0.0, 3.5, -0.25] * 20
+    a = Cumo::SFloat.cast(values)
+    expected = values.map { |x| x.negative? || (x.zero? && (1 / x).negative?) ? 1 : 0 }
+    assert_equal(Cumo::Bit.cast(expected), a.signbit)
+    every_other = Cumo::Bit.cast(expected.each_slice(2).map(&:first))
+    assert_equal(every_other, a[(0...values.size).step(2)].signbit)
+  end
 end
