@@ -950,9 +950,11 @@ class NArrayTest < Test::Unit::TestCase
                   [[7, 4, 3],
                    [9, 1, 0],
                    [4, 1, 6]]]
-        assert { a.max_index(2) == [[1, 5, 8], [9, 12, 17]] }
+        # the last row of the first plane is [4, 5, 5], and a tie takes the
+        # earlier of the two, as numo does
+        assert { a.max_index(2) == [[1, 5, 7], [9, 12, 17]] }
         assert { a.max(2) == [[8, 6, 5], [7, 9, 6]] }
-        assert { a.argmax(2) == [[1, 2, 2], [0, 0, 2]] }
+        assert { a.argmax(2) == [[1, 2, 1], [0, 0, 2]] }
         assert { a.argmin(2) == [[2, 0, 0], [2, 2, 1]] }
 
         unless [Cumo::UInt64, Cumo::UInt32, Cumo::UInt16, Cumo::UInt8].include?(dtype)
@@ -2466,5 +2468,32 @@ class NArrayTest < Test::Unit::TestCase
     min, max = all_nan.minmax
     assert_equal([:nan], float_tags(reduction_to_a(min)))
     assert_equal([:nan], float_tags(reduction_to_a(max)))
+  end
+
+  test "an index reduction takes the earlier of two equal elements" do
+    # the reduction folds blocks in an order unrelated to the input, so without
+    # a tie-break the answer is whichever thread happened to hold the extremum
+    [Cumo::DFloat, Cumo::Int32].each do |dtype|
+      a = dtype[1, 0, 0, 2, 2]
+      assert_equal([1], reduction_to_a(a.min_index), dtype.to_s)
+      assert_equal([3], reduction_to_a(a.max_index), dtype.to_s)
+      assert_equal([1], reduction_to_a(a.argmin), dtype.to_s)
+      assert_equal([3], reduction_to_a(a.argmax), dtype.to_s)
+
+      # more elements than one block can hold at once, so the tie lands in
+      # different threads
+      long = dtype.cast(Array.new(2000) { |i| i % 3 })
+      assert_equal([0], reduction_to_a(long.min_index), dtype.to_s)
+      assert_equal([2], reduction_to_a(long.max_index), dtype.to_s)
+      assert_equal([0], reduction_to_a(long.argmin), dtype.to_s)
+      assert_equal([2], reduction_to_a(long.argmax), dtype.to_s)
+
+      # min_index counts through the whole array, argmin along the axis
+      grid = dtype.cast(Array.new(2048) { |i| i % 3 }).reshape(4, 512)
+      assert_equal([0, 513, 1026, 1536], grid.min_index(axis: 1).to_a, dtype.to_s)
+      assert_equal([2, 512, 1025, 1538], grid.max_index(axis: 1).to_a, dtype.to_s)
+      assert_equal([0, 1, 2, 0], grid.argmin(axis: 1).to_a, dtype.to_s)
+      assert_equal([2, 0, 1, 2], grid.argmax(axis: 1).to_a, dtype.to_s)
+    end
   end
 end
