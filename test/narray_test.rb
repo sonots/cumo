@@ -2184,4 +2184,32 @@ class NArrayTest < Test::Unit::TestCase
     # the leak alone was 20_000 * 500 * 8 bytes = 78 MB
     assert { grew < 40_000 }
   end
+
+  test "a store which raises does not leak its staging buffer" do
+    # Storing a Ruby Array stages the values in a host buffer as wide as the
+    # destination. m_num_to_data raises for a value which is not a number, and
+    # the buffer used to be a plain malloc ndloop knew nothing about, so every
+    # failed store leaked all of it.
+    omit "needs /proc/self/status" unless File.readable?("/proc/self/status")
+    # Address space rather than RSS: the buffer is not zero filled, so a store
+    # which fails on the second element only ever touches its first page.
+    vm_size = -> { File.read("/proc/self/status")[/VmSize:\s+(\d+)/, 1].to_i }
+
+    n = 1 << 19 # 4 MiB of DFloat
+    a = Cumo::DFloat.new(n)
+    a.store(0)
+    bad = [1, "x"]
+    assert_raise(TypeError) { a.store(bad) }
+    GC.start
+
+    before = vm_size.call
+    100.times do
+      a.store(bad)
+    rescue TypeError
+      nil
+    end
+    GC.start
+    # the leak alone was 100 * 4 MiB = 400 MiB
+    assert { vm_size.call - before < 100 * 1024 }
+  end
 end
