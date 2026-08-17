@@ -19,8 +19,10 @@ struct cumo_<%=type_name%>_argmin_int<%=i%>_impl {
     };
     __device__ MinAndArgMin Identity(idx_t index) { return {DATA_MAX, index}; }
     __device__ MinAndArgMin MapIn(dtype in, idx_t index) { return {in, index}; }
+    // A tie keeps the earlier element, whichever thread found it: the blocks
+    // and the shared-memory tree fold in an order unrelated to the input.
     __device__ void Reduce(MinAndArgMin next, MinAndArgMin& accum) {
-        if (accum.min > next.min) {
+        if (accum.min > next.min || (accum.min == next.min && next.argmin < accum.argmin)) {
             accum = next;
         }
     }
@@ -35,7 +37,7 @@ struct cumo_<%=type_name%>_argmax_int<%=i%>_impl {
     __device__ MaxAndArgMax Identity(idx_t index) { return {DATA_MIN, index}; }
     __device__ MaxAndArgMax MapIn(dtype in, idx_t index) { return {in, index}; }
     __device__ void Reduce(MaxAndArgMax next, MaxAndArgMax& accum) {
-        if (accum.max < next.max) {
+        if (accum.max < next.max || (accum.max == next.max && next.argmax < accum.argmax)) {
             accum = next;
         }
     }
