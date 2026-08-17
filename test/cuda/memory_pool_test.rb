@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../test_helper"
+require "tempfile"
 
 module Cumo::CUDA
   class MemoryPoolTest < Test::Unit::TestCase
@@ -64,6 +65,69 @@ module Cumo::CUDA
       1024.times { Cumo::Bit.new(1 << 23).allocate }
       GC.start
       assert { MemoryPool.total_bytes - base < 256 << 20 }
+    end
+
+    # Destroying the context leaves every pointer allocated under it invalid, so
+    # cudaFree fails for the rest of the process. That has to be reported rather
+    # than raised: the free runs from the GC sweep, where a raise surfaces at
+    # whatever line happened to trigger the collection. Needs a fresh
+    # interpreter because it makes CUDA unusable for good.
+    def test_a_failing_free_from_the_gc_hook_does_not_raise
+      lib = File.expand_path("../../lib", __dir__)
+      script = <<~'RUBY'
+        require "cumo/narray"
+        require "fiddle"
+
+        # Unbuffered, or the answer is lost with the process when the raise the
+        # test is about takes the interpreter down with it.
+        STDOUT.sync = true
+
+        name = %w[cuCtxDestroy_v2 cuCtxDestroy].find do |sym|
+          begin
+            Fiddle::Handle::DEFAULT[sym]
+            true
+          rescue Fiddle::DLError
+            false
+          end
+        end
+        if name.nil?
+          print "no-cuCtxDestroy"
+          exit
+        end
+        destroy = Fiddle::Function.new(Fiddle::Handle::DEFAULT[name],
+                                       [Fiddle::TYPE_VOIDP], Fiddle::TYPE_INT)
+
+        def make_garbage
+          200.times { Cumo::DFloat.new(4096).seq }
+          nil
+        end
+
+        # A pooled chunk goes back to the free list without a CUDA call, so the
+        # free only reaches cudaFree for memory allocated with the pool off.
+        Cumo::CUDA::MemoryPool.disable
+
+        GC.disable
+        make_garbage
+        ctx = Cumo::CUDA::Driver.cuCtxGetCurrent
+
+        STDERR.reopen(ARGV.fetch(0), "w")
+        destroy.call(ctx)
+        GC.enable
+        begin
+          GC.start
+          print "ok"
+        rescue Exception => e
+          print "raised #{e.class}"
+        end
+      RUBY
+
+      Tempfile.create("cumo-free-hook") do |log|
+        out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script, log.path], &:read)
+        omit("cuCtxDestroy is not available") if out == "no-cuCtxDestroy"
+        assert_equal("ok", out)
+        # Without this the test passes even when nothing was freed at all.
+        assert_match(/failed to free device memory/, log.read)
+      end
     end
 
     def test_malloc_with_size_whose_rounding_overflows

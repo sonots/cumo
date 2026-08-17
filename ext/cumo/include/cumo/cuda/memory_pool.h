@@ -18,6 +18,11 @@ cumo_cuda_runtime_malloc(size_t size);
 void
 cumo_cuda_runtime_free(char *ptr);
 
+// For GC free hooks, which cannot take a raise: reports a failed free on stderr
+// instead of raising.
+void
+cumo_cuda_runtime_free_no_raise(char *ptr);
+
 #if defined(__cplusplus)
 #if 0
 { /* satisfy cc-mode */

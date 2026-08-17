@@ -172,7 +172,7 @@ cumo_na_view_free(void* ptr)
         for (i=0; i<na->base.ndim; i++) {
             if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
                 void *idx = CUMO_SDX_GET_INDEX(na->stridx[i]);
-                cumo_cuda_runtime_free(idx);
+                cumo_cuda_runtime_free_no_raise(idx);
             }
         }
         xfree(na->stridx);
