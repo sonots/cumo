@@ -116,8 +116,10 @@ cumo_na_make_iarray(cumo_na_loop_args_t* arg)
     return cumo_na_make_iarray_given_ndim(arg, arg->ndim);
 }
 
+// out_arg names the loop argument to reduce into. It is 1 for a reduction with
+// a single result; minmax has two and reduces the same input into each.
 static cumo_na_reduction_arg_t
-cumo_na_make_reduction_arg(cumo_na_loop_t* lp_user)
+cumo_na_make_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
 {
     cumo_na_reduction_arg_t arg;
     int i;
@@ -140,7 +142,7 @@ cumo_na_make_reduction_arg(cumo_na_loop_t* lp_user)
             ++arg.out_indexer.ndim;
         }
     }
-    arg.out = cumo_na_make_iarray_given_ndim(&lp_user->args[1], arg.out_indexer.ndim);
+    arg.out = cumo_na_make_iarray_given_ndim(&lp_user->args[out_arg], arg.out_indexer.ndim);
 
     if (cumo_na_debug_flag) {
         print_cumo_na_reduction_arg_t(&arg);

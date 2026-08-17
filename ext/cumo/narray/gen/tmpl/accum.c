@@ -42,7 +42,7 @@ static void
     {
         // TODO(sonots): How to compute Kahan summation algorithm in parallel?
         // TODO(sonots): Implement nan CUDA version
-        cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp);
+        cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 1);
         cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(&arg);
     }
     <% end %>

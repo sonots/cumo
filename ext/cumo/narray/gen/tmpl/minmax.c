@@ -1,21 +1,35 @@
+<% unless type_name == 'robject' %>
+void cumo_<%=type_name%>_minmax_kernel_launch(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* out2);
+<% end %>
+
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
 static void
 <%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
 {
-    size_t   n;
-    char    *p1;
-    ssize_t  s1;
-    dtype    xmin,xmax;
+    <% if type_name == 'robject' || j == '_nan' %>
+    {
+        size_t   n;
+        char    *p1;
+        ssize_t  s1;
+        dtype    xmin,xmax;
 
-    CUMO_INIT_COUNTER(lp, n);
-    CUMO_INIT_PTR(lp, 0, p1, s1);
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, p1, s1);
 
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    f_<%=name%><%=j%>(n,p1,s1,&xmin,&xmax);
+        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        f_<%=name%><%=j%>(n,p1,s1,&xmin,&xmax);
 
-    *(dtype*)(lp->args[1].ptr + lp->args[1].iter[0].pos) = xmin;
-    *(dtype*)(lp->args[2].ptr + lp->args[2].iter[0].pos) = xmax;
+        *(dtype*)(lp->args[1].ptr + lp->args[1].iter[0].pos) = xmin;
+        *(dtype*)(lp->args[2].ptr + lp->args[2].iter[0].pos) = xmax;
+    }
+    <% else %>
+    {
+        cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 1);
+        cumo_na_iarray_t out2 = cumo_na_make_iarray_given_ndim(&lp->args[2], arg.out_indexer.ndim);
+        cumo_<%=type_name%>_minmax_kernel_launch(&arg, &out2);
+    }
+    <% end %>
 }
 <% end %>
 
@@ -44,7 +58,19 @@ static VALUE
   <% else %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    ret = cumo_na_ndloop(&ndf, 2, self, reduce);
+    //<% unless type_name == 'robject' %>
+    // Only the kernel reads the indexer. The nan iterator above is a host loop
+    // over lp->args[0].iter[0], which CUMO_NDF_INDEXER_LOOP does not set up.
+    if (ndf.func == <%=c_iter%>) {
+        ndf.flag |= CUMO_NDF_INDEXER_LOOP;
+    }
+    //<% end %>
+    if (cumo_na_has_idx_p(self)) {
+        VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous
+        ret = cumo_na_ndloop(&ndf, 2, copy, reduce);
+    } else {
+        ret = cumo_na_ndloop(&ndf, 2, self, reduce);
+    }
     // ndloop ignores CUMO_NDF_EXTRACT, so each method carrying it extracts for itself.
     if (cumo_compatible_mode_enabled_p()) {
         return rb_assoc_new(rb_funcall(RARRAY_AREF(ret,0), rb_intern("extract_cpu"), 0),
