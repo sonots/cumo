@@ -3,12 +3,6 @@ void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, dtype* z,
 void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, dtype* z, uint64_t n);
 void <%="cumo_#{c_iter}_index_scalar_kernel_launch"%>(char *p1, size_t *idx1, dtype z, uint64_t n);
 void <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(char *p1, ssize_t s1, dtype z, uint64_t n);
-
-static void CUDART_CB
-<%=c_iter%>_callback(cudaStream_t stream, cudaError_t status, void *data)
-{
-    xfree(data);
-}
 //<% end %>
 
 static void
@@ -118,11 +112,12 @@ static void
         // 2. copy to contiguous device memory
         // 3. launch kernel to copy the contiguous device memory into strided (or indexed) narray cuda memory
         // 4. free the contiguous device memory
-        // 5. run callback to free the heap memory after kernel finishes
         //
-        // FYI: We may have to care of cuda stream callback serializes stream execution when we support stream.
-        // https://devtalk.nvidia.com/default/topic/822942/why-does-cudastreamaddcallback-serialize-kernel-execution-and-break-concurrency-/
-        dtype* host_z = ALLOC_N(dtype, n);
+        // The staging buffer is held by a Ruby object rather than a plain local:
+        // the conversion loop below raises for a value which is not a number,
+        // and ndloop has no way to free a buffer it does not know about.
+        VALUE  buf;
+        dtype* host_z = RB_ALLOCV_N(dtype, buf, n);
         for (i=i1=0; i1<n1 && i<n; i1++) {
             if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
@@ -144,13 +139,12 @@ static void
 
         if (!idx1 && s1 == sizeof(dtype)) {
             // optimization: Since p1 is contiguous, we skip creating another contiguous device memory
-            cudaError_t status = cudaMemcpyAsync(p1,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0);
-            if (status == 0) {
-                cumo_cuda_runtime_check_status(cudaStreamAddCallback(0,<%=c_iter%>_callback,host_z,0));
-            } else {
-                xfree(host_z);
-            }
-            cumo_cuda_runtime_check_status(status);
+            //
+            // host_z is pageable, so cudaMemcpyAsync only returns once it has
+            // been copied into the driver's staging buffer and the buffer may
+            // be released right away.
+            cumo_cuda_runtime_check_status(
+                cudaMemcpyAsync(p1,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0));
         } else {
             dtype* device_z = (dtype*)cumo_cuda_runtime_malloc(sizeof(dtype) * n);
             cudaError_t status = cudaMemcpyAsync(device_z,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0);
@@ -166,12 +160,10 @@ static void
                 // for the stream, so the kernel would read the new contents.
                 status = cudaStreamSynchronize(0);
             }
-            // Freeing here rather than from a stream callback: the copy is over
-            // by now, and a callback may not call the CUDA API anyway.
-            xfree(host_z);
             cumo_cuda_runtime_free((void*)device_z);
             cumo_cuda_runtime_check_status(status);
         }
+        RB_ALLOCV_END(buf);
     }
     //<% end %>
 
