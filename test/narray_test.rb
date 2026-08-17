@@ -2212,4 +2212,35 @@ class NArrayTest < Test::Unit::TestCase
     # the leak alone was 100 * 4 MiB = 400 MiB
     assert { vm_size.call - before < 100 * 1024 }
   end
+
+  test "abs over a view" do
+    # A complex abs writes half as wide as it reads, so the contiguous kernel
+    # is only reachable when the output stride matches the real type.
+    z = Cumo::DComplex[[3 + 4i, -8 - 6i, 0 + 0i], [0 - 4i, -5 + 12i, 1 + 0i]]
+    assert_equal(Cumo::DFloat[[5, 10, 0], [4, 13, 1]], z.abs)
+    assert_equal(Cumo::DFloat[5, 4], z[true, 0].abs)
+    assert_equal(Cumo::DFloat[[0, 5, 10], [1, 4, 13]], z[true, [2, 0, 1]].abs)
+
+    a = Cumo::DFloat[[3.5, -2.1, 0.0], [-0.7, -0.9, 1.25]]
+    assert_equal(Cumo::DFloat[3.5, 0.7], a[true, 0].abs)
+    assert_equal(Cumo::DFloat[[0.0, 3.5, 2.1], [1.25, 0.7, 0.9]], a[true, [2, 0, 1]].abs)
+
+    i = Cumo::Int32[[3, -2, 0], [-7, -9, 4]]
+    assert_equal(Cumo::Int32[3, 7], i[true, 0].abs)
+    assert_equal(Cumo::Int32[[0, 3, 2], [4, 7, 9]], i[true, [2, 0, 1]].abs)
+  end
+
+  test "abs of the minimum integer raises" do
+    {
+      Cumo::Int8 => -128,
+      Cumo::Int16 => -32_768,
+      Cumo::Int32 => -2_147_483_648,
+      Cumo::Int64 => -9_223_372_036_854_775_808
+    }.each do |dtype, min|
+      assert_raise(Cumo::NArray::ValueError) { dtype[min, 1].abs }
+      # the flag the kernel reports through is shared, so it has to be clear
+      # again for the next call
+      assert_equal(dtype[1, 2], dtype[-1, 2].abs)
+    end
+  end
 end
