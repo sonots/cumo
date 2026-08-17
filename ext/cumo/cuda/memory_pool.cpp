@@ -4,6 +4,7 @@
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <string>
 
@@ -47,8 +48,8 @@ cumo_cuda_runtime_malloc(size_t size)
     return 0; // should not reach here
 }
 
-void
-cumo_cuda_runtime_free(char *ptr)
+static cudaError_t
+runtime_free(char *ptr)
 {
     // Always offer the pointer to the pool first, whatever memory_pool_enabled
     // says now: MemoryPool.enable/disable is public, so the state can differ
@@ -57,14 +58,33 @@ cumo_cuda_runtime_free(char *ptr)
     // which is not at the head of its buffer.
     try {
         if (pool.Free(reinterpret_cast<intptr_t>(ptr))) {
-            return;
+            return cudaSuccess;
         }
     } catch (const cumo::internal::CUDARuntimeError& e) {
-        cumo_cuda_runtime_check_status(e.status());
-        return;
+        return e.status();
     }
     // No pool owns it, so it came straight from cudaMallocManaged.
-    cumo_cuda_runtime_check_status(cudaFree((void*)ptr));
+    return cudaFree((void*)ptr);
+}
+
+void
+cumo_cuda_runtime_free(char *ptr)
+{
+    cumo_cuda_runtime_check_status(runtime_free(ptr));
+}
+
+void
+cumo_cuda_runtime_free_no_raise(char *ptr)
+{
+    cudaError_t status = runtime_free(ptr);
+    // rb_raise from a GC free hook longjmps out of the sweep, so report the
+    // failure the way ~Memory does. cudaFree only fails once the context is
+    // unusable, and the next runtime call reports the same status anyway.
+    if (status == cudaSuccess || status == cudaErrorCudartUnloading) {
+        return;
+    }
+    std::fprintf(stderr, "cumo: failed to free device memory: %s (error=%d)\n",
+                 cudaGetErrorString(status), static_cast<int>(status));
 }
 
 /*

@@ -42,7 +42,7 @@ static void
   <% if is_object %>
             xfree(na->ptr);
   <% else %>
-            cumo_cuda_runtime_free(na->ptr);
+            cumo_cuda_runtime_free_no_raise(na->ptr);
             rb_gc_adjust_memory_usage(-(ssize_t)<%=type_name%>_data_bytes(na));
   <% end %>
         }
