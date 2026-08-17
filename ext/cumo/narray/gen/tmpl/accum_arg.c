@@ -79,6 +79,9 @@ static VALUE
     {
         cumo_narray_t *na;
         VALUE reduce, ret;
+        <% if is_float %>
+        cumo_na_iter_func_t iter_nan;
+        <% end %>
         cumo_ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_reduce,0}};
         cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
         cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT|CUMO_NDF_INDEXER_LOOP, 2,1, ain,aout};
@@ -91,7 +94,8 @@ static VALUE
             aout[0].type = cumo_cInt64;
             ndf.func = <%=c_iter%>_arg64;
             <% if is_float %>
-            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_arg64_nan);
+            iter_nan = <%=c_iter%>_arg64_nan;
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, iter_nan);
             <% else %>
             reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
             <% end %>
@@ -99,11 +103,20 @@ static VALUE
             aout[0].type = cumo_cInt32;
             ndf.func = <%=c_iter%>_arg32;
             <% if is_float %>
-            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_arg32_nan);
+            iter_nan = <%=c_iter%>_arg32_nan;
+            reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, iter_nan);
             <% else %>
             reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
             <% end %>
         }
+
+        <% if is_float %>
+        // Only the kernel reads the indexer. The nan iterator just selected is a
+        // host loop over lp->args[0].iter[0], which the indexer path does not set up.
+        if (ndf.func == iter_nan) {
+            ndf.flag &= ~CUMO_NDF_INDEXER_LOOP;
+        }
+        <% end %>
 
         if (cumo_na_has_idx_p(self)) {
             VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous

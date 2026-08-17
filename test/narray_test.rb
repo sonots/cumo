@@ -2397,4 +2397,35 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([:nan, :nan], float_tags(max.to_a), dtype.to_s)
     end
   end
+
+  test "nan:true reductions answer what the host rules say" do
+    # every nan variant is a host loop reading lp->args[0].iter[0], which the
+    # indexer path leaves unset, so the flag has to come off once one is chosen
+    nan = Float::NAN
+    [Cumo::DFloat, Cumo::SFloat].each do |dtype|
+      a = dtype[[1.0, nan, -3.0], [4.0, -5.0, 2.0]]
+      assert_equal([-2.0, 1.0], a.sum(axis: 1, nan: true).to_a, dtype.to_s)
+      assert_equal([-3.0, -40.0], a.prod(axis: 1, nan: true).to_a, dtype.to_s)
+      assert_equal([:nan, -5.0], float_tags(a.min(axis: 1, nan: true).to_a), dtype.to_s)
+      assert_equal([:nan, 4.0], float_tags(a.max(axis: 1, nan: true).to_a), dtype.to_s)
+      assert_equal([:nan, 9.0], float_tags(a.ptp(axis: 1, nan: true).to_a), dtype.to_s)
+      assert_equal([1, 1], a.argmin(axis: 1, nan: true).to_a, dtype.to_s)
+      assert_equal([1, 0], a.argmax(axis: 1, nan: true).to_a, dtype.to_s)
+      assert_equal([1, 4], a.min_index(axis: 1, nan: true).to_a, dtype.to_s)
+      assert_equal([1, 3], a.max_index(axis: 1, nan: true).to_a, dtype.to_s)
+
+      # a reduction over every axis takes the same path with one output
+      assert_equal([-1.0], reduction_to_a(a.sum(nan: true)), dtype.to_s)
+      assert_equal([120.0], reduction_to_a(a.prod(nan: true)), dtype.to_s)
+      assert_equal([:nan], float_tags(reduction_to_a(a.min(nan: true))), dtype.to_s)
+      assert_equal([:nan], float_tags(reduction_to_a(a.max(nan: true))), dtype.to_s)
+      assert_equal([1], reduction_to_a(a.argmin(nan: true)), dtype.to_s)
+
+      # and the kernel path is untouched: without nan:true a NaN propagates
+      # through sum, while min and max skip it
+      assert_equal([:nan, 1.0], float_tags(a.sum(axis: 1).to_a), dtype.to_s)
+      assert_equal([-3.0, -5.0], float_tags(a.min(axis: 1).to_a), dtype.to_s)
+      assert_equal([1.0, 4.0], float_tags(a.max(axis: 1).to_a), dtype.to_s)
+    end
+  end
 end
