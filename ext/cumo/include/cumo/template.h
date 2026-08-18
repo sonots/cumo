@@ -61,6 +61,11 @@
         }                                                    \
     }
 
+// A bit reduction along a short axis runs its loop once per output element, so
+// a launch per call costs more than walking the bits on the host. Measured on an
+// RTX 5070 Ti the two meet at about this many elements.
+#define CUMO_BIT_REDUCE_MIN_KERNEL_SIZE 8192
+
 #define CUMO_GET_DATA( ptr, type, val )                 \
     {                                              \
         val = *(type*)(ptr);                       \

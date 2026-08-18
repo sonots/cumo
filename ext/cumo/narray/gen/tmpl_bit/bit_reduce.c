@@ -1,3 +1,7 @@
+void <%="cumo_#{c_iter}_elementwise_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, ssize_t s1, size_t *idx1, CUMO_BIT_DIGIT *a2, size_t p2, ssize_t s2, size_t *idx2, uint64_t n);
+void <%="cumo_#{c_iter}_reduce_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, ssize_t s1, size_t *idx1, CUMO_BIT_DIGIT *a2, size_t p2, uint64_t n);
+void <%="cumo_#{c_iter}_contiguous_reduce_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, CUMO_BIT_DIGIT *a2, size_t p2, uint64_t n);
+
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
@@ -8,13 +12,23 @@ static void
     size_t    *idx1, *idx2;
     CUMO_BIT_DIGIT  x=0, y=0;
 
-    // TODO(sonots): CUDA kernelize
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     CUMO_INIT_PTR_BIT_IDX(lp, 1, a2, p2, s2, idx2);
+    if (i >= CUMO_BIT_REDUCE_MIN_KERNEL_SIZE) {
+        if (idx2 || s2) {
+            <%="cumo_#{c_iter}_elementwise_kernel_launch"%>(a1,p1,s1,idx1,a2,p2,s2,idx2,i);
+        } else if (idx1 || s1 != 1) {
+            <%="cumo_#{c_iter}_reduce_kernel_launch"%>(a1,p1,s1,idx1,a2,p2,i);
+        } else {
+            <%="cumo_#{c_iter}_contiguous_reduce_kernel_launch"%>(a1,p1,a2,p2,i);
+        }
+        return;
+    }
+
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     if (idx2) {
         if (idx1) {
             for (; i--;) {
