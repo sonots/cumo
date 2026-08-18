@@ -159,8 +159,8 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.sum == 29 }
         if float_types.include?(dtype)
           assert { a.mean == 29.0 / 6 }
-          assert { a.var == 13.766666666666666 }
-          assert { a.stddev == 3.7103458958251676 }
+          assert { a.var == 13.76666666666667 }
+          assert { a.stddev == 3.710345895825168 }
           assert { a.rms == 5.901977069875258 }
         end
         assert { a.dup.fill(12) == [12] * 6 }
@@ -2795,6 +2795,108 @@ class NArrayTest < Test::Unit::TestCase
         assert(nan_eq(b.cumprod(nan: true).to_a, running_skip_nan(muls) { |x, y| x * y }),
                "cumprod nan:true #{lbl}")
       end
+    end
+  end
+
+  # the two-pass variance numo computes, in exact arithmetic
+  def exact_var(values)
+    mean = values.sum(0r, &:to_r) / values.size
+    (values.sum(0r) { |x| (x.to_r - mean)**2 } / (values.size - 1)).to_f
+  end
+
+  test "var and stddev over an axis long enough to split the reduction" do
+    # one output over a long axis is the shape cumo_reduce_split exists for, and
+    # the shifted data is where a one-pass accumulator loses digits if the
+    # running mean is not carried along with the deviations
+    rows = 5
+    cols = 40_000
+    xs = Array.new(rows * cols) { |i| 1000.0 + ((i * 7919) % 2003) / 1000.0 }
+
+    flat = Cumo::DFloat.cast(xs)
+    assert_in_delta(exact_var(xs), flat.var.to_f, exact_var(xs) * 1e-9)
+    assert_in_delta(Math.sqrt(exact_var(xs)), flat.stddev.to_f, Math.sqrt(exact_var(xs)) * 1e-9)
+
+    a = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    (0...rows).each do |r|
+      want = exact_var(xs[r * cols, cols])
+      assert_in_delta(want, a.var(axis: 1).to_a[r], want * 1e-9, "row #{r}")
+    end
+    assert_equal([rows, 1], a.var(axis: 1, keepdims: true).shape)
+
+    # a column reduction is the many-outputs shape, and a strided view starts
+    # each row at a different offset
+    down = (0...cols).map { |c| exact_var((0...rows).map { |r| xs[r * cols + c] }) }
+    got = a.var(axis: 0).to_a
+    [0, 1, cols / 2, cols - 1].each do |c|
+      assert_in_delta(down[c], got[c], down[c] * 1e-9, "col #{c}")
+    end
+
+    sel = (0...cols).step(3).to_a
+    want = exact_var(sel.map { |c| xs[c] })
+    assert_in_delta(want, a[true, (0...cols).step(3)].var(axis: 1).to_a[0], want * 1e-9)
+  end
+
+  test "mean and rms over an axis long enough to split the reduction" do
+    rows = 5
+    cols = 40_000
+    xs = Array.new(rows * cols) { |i| ((i * 7919) % 2003) / 100.0 - 10.0 }
+
+    flat = Cumo::DFloat.cast(xs)
+    want_mean = (xs.sum(0r, &:to_r) / xs.size).to_f
+    want_rms = Math.sqrt((xs.sum(0r) { |x| x.to_r**2 } / xs.size).to_f)
+    assert_in_delta(want_mean, flat.mean.to_f, want_mean.abs * 1e-9)
+    assert_in_delta(want_rms, flat.rms.to_f, want_rms * 1e-9)
+
+    a = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    got = a.mean(axis: 1).to_a
+    (0...rows).each do |r|
+      row = xs[r * cols, cols]
+      want = (row.sum(0r, &:to_r) / cols).to_f
+      assert_in_delta(want, got[r], want.abs * 1e-9, "row #{r}")
+    end
+
+    # the many-outputs shape, and a strided view starting each row elsewhere
+    down = (0...cols).map { |c| ((0...rows).sum(0r) { |r| xs[r * cols + c].to_r } / rows).to_f }
+    got = a.mean(axis: 0).to_a
+    [0, 1, cols / 2, cols - 1].each { |c| assert_in_delta(down[c], got[c], down[c].abs * 1e-9, "col #{c}") }
+
+    sel = (0...cols).step(3).to_a
+    want = (sel.sum(0r) { |c| xs[c].to_r } / sel.size).to_f
+    assert_in_delta(want, a[true, (0...cols).step(3)].mean(axis: 1).to_a[0], want.abs * 1e-9)
+  end
+
+  test "mean of nearly cancelling values stays close to the exact answer" do
+    # the mean is tiny next to the elements, so it carries whatever error the
+    # sum accumulated and a mis-combined accumulator shows up immediately
+    n = 100_000
+    xs = Array.new(n) { |i| Math.sin(i * 1.7) * 10 }
+    exact = (xs.sum(0r, &:to_r) / n).to_f
+    assert_in_delta(exact, Cumo::DFloat.cast(xs).mean.to_f, 1e-12)
+    assert_in_delta(exact, Cumo::SFloat.cast(xs).mean.to_f, 1e-4)
+
+    want_rms = Math.sqrt((xs.sum(0r) { |x| x.to_r**2 } / n).to_f)
+    assert_in_delta(want_rms, Cumo::DFloat.cast(xs).rms.to_f, want_rms * 1e-12)
+  end
+
+  test "var and stddev keep their corner answers" do
+    # a single element has no degrees of freedom left, and nan:true drops the
+    # nan rather than spreading it
+    assert(Cumo::DFloat[3.5].var.to_f.nan?)
+    assert(Cumo::DFloat[3.5].stddev.to_f.nan?)
+    assert_equal(0.0, Cumo::DFloat[3.5, 3.5].var.to_f)
+
+    n = 20_000
+    xs = Array.new(n) { |i| (i % 17) + 1.0 }
+    [0, n / 2, n - 1].each do |at|
+      ys = xs.dup
+      ys[at] = Float::NAN
+      a = Cumo::DFloat.cast(ys)
+      assert(a.var.to_f.nan?, "nan spreads at=#{at}")
+      assert(a.stddev.to_f.nan?, "nan spreads at=#{at}")
+
+      kept = xs.each_with_index.reject { |_, i| i == at }
+      want = exact_var(kept.map(&:first))
+      assert_in_delta(want, a.var(nan: true).to_f, want * 1e-9, "nan:true at=#{at}")
     end
   end
 end
