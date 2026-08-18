@@ -2899,4 +2899,86 @@ class NArrayTest < Test::Unit::TestCase
       assert_in_delta(want, a.var(nan: true).to_f, want * 1e-9, "nan:true at=#{at}")
     end
   end
+
+  test "mulsum over long axes, views and broadcasts" do
+    rows = 5
+    cols = 40_000
+    xs = Array.new(rows * cols) { |i| ((i % 13) - 6).to_f }
+    ys = Array.new(rows * cols) { |i| ((i % 7) - 3).to_f }
+    a = Cumo::DFloat.cast(xs)
+    b = Cumo::DFloat.cast(ys)
+
+    assert_equal(xs.each_index.sum { |i| xs[i] * ys[i] }, a.mulsum(b).to_f)
+    assert_equal(xs.each_index.sum { |i| xs[i] * ys[i] }, a.dot(b).to_f)
+
+    sel = (0...xs.size).step(3).to_a
+    assert_equal(sel.sum { |i| xs[i] * ys[i] },
+                 a[(0...xs.size).step(3)].mulsum(b[(0...xs.size).step(3)]).to_f)
+    rev = (xs.size - 1).downto(0).to_a
+    want_rev = rev.each_index.sum { |i| xs[rev[i]] * ys[i] }
+    assert_equal(want_rev,
+                 a[(xs.size - 1).step(0, -1)].mulsum(b).to_f)
+
+    g = a.reshape(rows, cols)
+    h = b.reshape(rows, cols)
+    assert_equal((0...rows).map { |r| (0...cols).sum { |c| xs[r * cols + c] * ys[r * cols + c] } },
+                 g.mulsum(h, axis: 1).to_a)
+
+    # a broadcast operand walks the same element for every row
+    v = Array.new(cols) { |i| ((i % 5) - 2).to_f }
+    assert_equal((0...rows).map { |r| (0...cols).sum { |c| xs[r * cols + c] * v[c] } },
+                 g.mulsum(Cumo::DFloat.cast(v), axis: 1).to_a)
+  end
+
+  # the multi-dimensional index of the i-th element of a C-contiguous shape
+  def unravel(shape, flat)
+    idx = []
+    rest = flat
+    shape.reverse_each do |d|
+      idx.unshift(rest % d)
+      rest /= d
+    end
+    idx
+  end
+
+  test "mulsum accumulates over reduce axes that cannot be flattened" do
+    # non-adjacent axes leave ndloop no single run to hand the kernel, so it
+    # calls it once per piece and each call has to add to what it finds
+    shape = [2, 3, 4, 5]
+    n = shape.reduce(:*)
+    xs = Array.new(n) { |i| ((i % 13) - 6).to_f }
+    ys = Array.new(n) { |i| ((i % 7) - 3).to_f }
+    a = Cumo::DFloat.cast(xs).reshape(*shape)
+    b = Cumo::DFloat.cast(ys).reshape(*shape)
+
+    [[0, 2], [1, 3], [0, 2, 3]].each do |axes|
+      kept = (0...shape.size).reject { |d| axes.include?(d) }
+      exp = Hash.new(0.0)
+      (0...n).each do |i|
+        idx = unravel(shape, i)
+        exp[kept.map { |d| idx[d] }] += xs[i] * ys[i]
+      end
+      got = a.mulsum(b, axis: axes).to_a.flatten
+      assert_equal(exp.keys.sort.map { |k| exp[k] }, got, "axis=#{axes.inspect}")
+    end
+  end
+
+  test "mulsum with nan: true drops the pair rather than spreading it" do
+    n = 20_000
+    xs = Array.new(n) { |i| ((i % 13) - 6).to_f }
+    ys = Array.new(n) { |i| ((i % 7) - 3).to_f }
+    [0, n / 2, n - 1].each do |at|
+      [:x, :y].each do |which|
+        a = xs.dup
+        b = ys.dup
+        (which == :x ? a : b)[at] = Float::NAN
+        ca = Cumo::DFloat.cast(a)
+        cb = Cumo::DFloat.cast(b)
+        assert(ca.mulsum(cb).to_f.nan?, "#{which} at=#{at} spreads")
+        pairs = (0...n).reject { |i| i == at }
+        want = pairs.sum { |i| a[i] * b[i] }
+        assert_equal(want, ca.mulsum(cb, nan: true).to_f, "#{which} at=#{at} nan:true")
+      end
+    end
+  end
 end
