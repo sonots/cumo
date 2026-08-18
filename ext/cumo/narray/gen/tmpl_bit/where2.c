@@ -12,10 +12,6 @@ static void
     size_t  e;
     where_opt_t *g;
 
-    // TODO(sonots): CUDA kernelize
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
     g = (where_opt_t*)(lp->opt_ptr);
     count = g->count;
     idx0  = g->idx0;
@@ -23,6 +19,16 @@ static void
     e     = g->elmsz;
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a, p, s, idx);
+    if (i >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
+        cumo_bit_where_kernel_launch(a,p,s,idx,i,0,idx1,e,count,g->scratch);
+        cumo_bit_where_kernel_launch(a,p,s,idx,i,1,idx0,e,count,g->scratch);
+        g->count = count + i;
+        return;
+    }
+
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     if (idx) {
         for (; i--;) {
             CUMO_LOAD_BIT(a, p+*idx, x);
@@ -73,7 +79,7 @@ static VALUE
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 1, 0, ain, 0 };
 
     size = CUMO_RNARRAY_SIZE(self);
-    n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, self));
+    n_1 = bit_where_count_true(self);
     n_0 = size - n_1;
     g = ALLOCA_N(where_opt_t,1);
     g->count = 0;
@@ -88,7 +94,14 @@ static VALUE
     }
     g->idx1 = cumo_na_get_pointer_for_write(idx_1);
     g->idx0 = cumo_na_get_pointer_for_write(idx_0);
+    g->scratch = NULL;
+    if (size >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
+        g->scratch = cumo_bit_where_scratch_new();
+    }
     cumo_na_ndloop3(&ndf, g, 1, self);
+    if (g->scratch) {
+        cumo_cuda_runtime_free(g->scratch);
+    }
     cumo_na_release_lock(idx_0);
     cumo_na_release_lock(idx_1);
     return rb_assoc_new(idx_1,idx_0);

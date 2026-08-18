@@ -2646,4 +2646,45 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(Cumo::Bit.cast(want.map { |row| row.none? { |x| x == 1 } ? 1 : 0 }),
                  (~v).all?(axis: 1))
   end
+
+  test "bit where and where2 over long arrays and views" do
+    n = 20_000
+    xs = Array.new(n) { |i| ((i * 2_654_435_761) >> 11) & 1 }
+    picked = Array.new(n) { |i| ((i * 7) + 3) % n }
+    views = [
+      ["flat", (0...n).to_a, ->(v) { v }],
+      ["offset 13", (13...n).to_a, ->(v) { v[13...n] }],
+      ["step 2", (0...n).step(2).to_a, ->(v) { v[(0...n).step(2)] }],
+      ["reversed", (n - 1).downto(0).to_a, ->(v) { v[(n - 1).step(0, -1)] }],
+      ["indexed", picked, ->(v) { v[picked] }],
+    ]
+
+    a = Cumo::Bit.cast(xs)
+    views.each do |label, idxs, slice|
+      seq = idxs.map { |i| xs[i] }
+      want_one = seq.each_index.select { |i| seq[i] == 1 }
+      want_zero = seq.each_index.select { |i| seq[i] == 0 }
+      v = slice.call(a)
+      assert_equal(want_one, v.where.to_a, label)
+      w1, w0 = v.where2
+      assert_equal(want_one, w1.to_a, label)
+      assert_equal(want_zero, w0.to_a, label)
+    end
+  end
+
+  test "bit where along the rows of a 2-d view" do
+    rows = 4
+    cols = 20_000
+    xs = Array.new(rows * cols) { |i| ((i * 40_503) >> 7) & 1 }
+    a = Cumo::Bit.cast(xs).reshape(rows, cols)
+
+    # each row is long enough to run on the device, and the view drops a
+    # column at either end so the rows stay separate calls
+    v = a[true, 1..-2]
+    seq = (0...rows).flat_map { |r| xs[r * cols + 1, cols - 2] }
+    assert_equal(seq.each_index.select { |i| seq[i] == 1 }, v.where.to_a)
+    w1, w0 = v.where2
+    assert_equal(seq.each_index.select { |i| seq[i] == 1 }, w1.to_a)
+    assert_equal(seq.each_index.select { |i| seq[i] == 0 }, w0.to_a)
+  end
 end
