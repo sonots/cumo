@@ -16,6 +16,7 @@ static VALUE
 static VALUE
 <%=c_func(0)%>(VALUE ary)
 {
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     return cumo_na_ndloop_inspect(ary, <%=c_iter%>, Qnil);
 }
