@@ -2981,4 +2981,42 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
   end
+
+  test "store into and out of views that ndloop cannot flatten" do
+    # a column slice, a transpose and an index view each leave more than one
+    # dimension for the kernel to walk; before the indexer loop the kernel ran
+    # once per row of them
+    rows = 40
+    cols = 12
+    xs = Array.new(rows * cols) { |i| (i % 11) + 1.0 }
+    src = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    grid = (0...rows).map { |r| xs[r * cols, cols] }
+
+    want = grid.map { |row| row[2...(cols - 1)] }
+    assert_equal(want, Cumo::DFloat.zeros(rows, cols - 3).store(src[true, 2...(cols - 1)]).to_a)
+
+    assert_equal(grid.transpose, Cumo::DFloat.zeros(cols, rows).store(src.transpose).to_a)
+
+    idx = Array.new(rows) { |i| ((i * 7) + 3) % rows }
+    assert_equal(idx.map { |i| grid[i] }, Cumo::DFloat.zeros(rows, cols).store(src[idx, true]).to_a)
+
+    # a store into a slice must leave the columns on either side alone
+    dst = Cumo::DFloat.zeros(rows, cols)
+    dst[true, 2...(cols - 1)] = src[true, 0...(cols - 3)]
+    assert_equal(grid.map { |row| [0.0, 0.0] + row[0...(cols - 3)] + [0.0] }, dst.to_a)
+
+    # a 5-d shape runs past the dimension-specialised kernels
+    deep = [2, 2, 3, 2, 5]
+    n = deep.reduce(:*)
+    ys = Array.new(n) { |i| (i % 7) + 1.0 }
+    a = Cumo::DFloat.cast(ys).reshape(*deep)
+    assert_equal(ys, Cumo::DFloat.zeros(*deep).store(a).to_a.flatten)
+    assert_equal(a.transpose.to_a.flatten,
+                 Cumo::DFloat.zeros(*deep.reverse).store(a.transpose).to_a.flatten)
+
+    # broadcast and dtype conversion still reach every element
+    assert_equal([[1.0, 2.0, 3.0]] * 4, Cumo::DFloat.zeros(4, 3).store(Cumo::Int32[1, 2, 3]).to_a)
+    assert_equal(grid.map { |row| row.map(&:to_i) },
+                 Cumo::Int32.zeros(rows, cols).store(src).to_a)
+  end
 end
