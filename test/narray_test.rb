@@ -2697,4 +2697,104 @@ class NArrayTest < Test::Unit::TestCase
     ones.each { |i| a[i] = 1 }
     assert_equal(ones.size, a.count_true.to_i)
   end
+
+  # cumsum and cumprod had no tests at all before the scan was moved to the device
+  def running(values)
+    acc = nil
+    values.map { |x| acc = acc.nil? ? x : yield(acc, x) }
+  end
+
+  # what the host loop does with nan:true: the first element is copied through,
+  # and a nan in the accumulator is replaced by the next value rather than spread
+  def running_skip_nan(values)
+    acc = values[0]
+    out = [acc]
+    values[1..-1].each do |y|
+      if acc.nan?
+        acc = y
+      elsif !y.nan?
+        acc = yield(acc, y)
+      end
+      out << acc
+    end
+    out
+  end
+
+  def nan_eq(got, want)
+    got.size == want.size &&
+      got.each_index.all? { |i| (got[i].nan? && want[i].nan?) || got[i] == want[i] }
+  end
+
+  test "cumsum and cumprod over long arrays and views" do
+    # long enough that the scan runs on the device, with values that keep every
+    # partial result exactly representable, so the answer cannot depend on the
+    # order a parallel scan associates in
+    n = 20_000
+    adds = Array.new(n) { |i| (i % 3) + 1 }
+    muls = Array.new(n) { |i| i % 4 < 2 ? 2 : 0.5 }
+    views = [
+      ["flat", (0...n).to_a, ->(v) { v }],
+      ["offset 13", (13...n).to_a, ->(v) { v[13...n] }],
+      ["step 2", (0...n).step(2).to_a, ->(v) { v[(0...n).step(2)] }],
+      ["reversed", (n - 1).downto(0).to_a, ->(v) { v[(n - 1).step(0, -1)] }],
+    ]
+
+    [Cumo::Int32, Cumo::DFloat, Cumo::SFloat].each do |klass|
+      a = klass.cast(adds)
+      views.each do |label, idxs, slice|
+        want = running(idxs.map { |i| adds[i] }) { |x, y| x + y }
+        assert_equal(want, slice.call(a).cumsum.to_a, "#{klass} cumsum #{label}")
+      end
+    end
+
+    [Cumo::DFloat, Cumo::SFloat].each do |klass|
+      a = klass.cast(muls)
+      views.each do |label, idxs, slice|
+        want = running(idxs.map { |i| muls[i] }) { |x, y| x * y }
+        assert_equal(want, slice.call(a).cumprod.to_a, "#{klass} cumprod #{label}")
+      end
+    end
+  end
+
+  test "cumsum and cumprod along an axis" do
+    rows = 6
+    cols = 20_000
+    adds = Array.new(rows * cols) { |i| (i % 3) + 1 }
+    muls = Array.new(rows * cols) { |i| i % 4 < 2 ? 2 : 0.5 }
+
+    a = Cumo::DFloat.cast(adds).reshape(rows, cols)
+    rowwise = (0...rows).map { |r| running(adds[r * cols, cols]) { |x, y| x + y } }
+    assert_equal(rowwise, a.cumsum(axis: 1).to_a)
+
+    down = (0...cols).map { |c| running((0...rows).map { |r| adds[r * cols + c] }) { |x, y| x + y } }
+    assert_equal((0...rows).map { |r| (0...cols).map { |c| down[c][r] } },
+                 a.cumsum(axis: 0).to_a)
+
+    b = Cumo::DFloat.cast(muls).reshape(rows, cols)
+    assert_equal((0...rows).map { |r| running(muls[r * cols, cols]) { |x, y| x * y } },
+                 b.cumprod(axis: 1).to_a)
+  end
+
+  test "cumsum and cumprod carry a nan the same way on either path" do
+    # one size below the threshold that keeps the host loop and one above it
+    [64, 20_000].each do |n|
+      [0, 1, n / 2, n - 1].each do |at|
+        adds = Array.new(n) { |i| (i % 3) + 1.0 }
+        muls = Array.new(n) { |i| i % 4 < 2 ? 2.0 : 0.5 }
+        adds[at] = Float::NAN
+        muls[at] = Float::NAN
+        lbl = "n=#{n} at=#{at}"
+
+        a = Cumo::DFloat.cast(adds)
+        assert(nan_eq(a.cumsum.to_a, running(adds) { |x, y| x + y }), "cumsum #{lbl}")
+        assert(nan_eq(a.cumsum(nan: true).to_a, running_skip_nan(adds) { |x, y| x + y }),
+               "cumsum nan:true #{lbl}")
+
+        b = Cumo::DFloat.cast(muls)
+        assert(nan_eq(b.cumprod.to_a, running(muls) { |x, y| x * y }), "cumprod #{lbl}")
+        assert(nan_eq(b.cumprod(nan: true).to_a, running_skip_nan(muls) { |x, y| x * y }),
+               "cumprod nan:true #{lbl}")
+      end
+    end
+  end
 end
