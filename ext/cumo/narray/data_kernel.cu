@@ -1,4 +1,5 @@
 #include "cumo/narray_kernel.h"
+#include "cumo/indexer.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -37,6 +38,97 @@ __global__ void cumo_na_diagonal_stride_index_kernel(size_t *idx, ssize_t s0, si
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         idx[i] = s0*(i+k0) + idx1[i+k1];
     }
+}
+
+// Copying a whole view in one launch, so that ndloop does not have to walk the
+// outer dimensions itself. It synchronizes once per outer step when an operand
+// carries an index array, which for a gathered view costs far more than the
+// copy: 6250 rows took 37.6 ms that way and 0.2 ms through here.
+__global__ void cumo_iter_copy_bytes_indexer_kernel_dim0(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim0(&indexer, i);
+        char* p1 = cumo_na_iarray_at_dim0(&a1, &indexer);
+        char* p2 = cumo_na_iarray_at_dim0(&a2, &indexer);
+        memcpy(p2, p1, elmsz);
+    }
+}
+
+__global__ void cumo_iter_copy_bytes_indexer_kernel_dim1(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim1(&indexer, i);
+        char* p1 = cumo_na_iarray_at_dim1(&a1, &indexer);
+        char* p2 = cumo_na_iarray_at_dim1(&a2, &indexer);
+        memcpy(p2, p1, elmsz);
+    }
+}
+
+__global__ void cumo_iter_copy_bytes_indexer_kernel_dim2(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim2(&indexer, i);
+        char* p1 = cumo_na_iarray_at_dim2(&a1, &indexer);
+        char* p2 = cumo_na_iarray_at_dim2(&a2, &indexer);
+        memcpy(p2, p1, elmsz);
+    }
+}
+
+__global__ void cumo_iter_copy_bytes_indexer_kernel_dim3(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim3(&indexer, i);
+        char* p1 = cumo_na_iarray_at_dim3(&a1, &indexer);
+        char* p2 = cumo_na_iarray_at_dim3(&a2, &indexer);
+        memcpy(p2, p1, elmsz);
+    }
+}
+
+__global__ void cumo_iter_copy_bytes_indexer_kernel_dim4(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim4(&indexer, i);
+        char* p1 = cumo_na_iarray_at_dim4(&a1, &indexer);
+        char* p2 = cumo_na_iarray_at_dim4(&a2, &indexer);
+        memcpy(p2, p1, elmsz);
+    }
+}
+
+__global__ void cumo_iter_copy_bytes_indexer_kernel_dim(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim(&indexer, i);
+        char* p1 = cumo_na_iarray_at_dim(&a1, &indexer);
+        char* p2 = cumo_na_iarray_at_dim(&a2, &indexer);
+        memcpy(p2, p1, elmsz);
+    }
+}
+
+void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz)
+{
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+    case 0:
+        cumo_iter_copy_bytes_indexer_kernel_dim0<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        break;
+    case 1:
+        cumo_iter_copy_bytes_indexer_kernel_dim1<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        break;
+    case 2:
+        cumo_iter_copy_bytes_indexer_kernel_dim2<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        break;
+    case 3:
+        cumo_iter_copy_bytes_indexer_kernel_dim3<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        break;
+    case 4:
+        cumo_iter_copy_bytes_indexer_kernel_dim4<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        break;
+    default:
+        cumo_iter_copy_bytes_indexer_kernel_dim<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        break;
+    }
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 void cumo_iter_copy_bytes_kernel_launch(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t *idx1, size_t *idx2, uint64_t n, ssize_t elmsz)

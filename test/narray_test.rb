@@ -3122,4 +3122,48 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(xs.sum, b.sum(axis: 1).to_a.sum)
     assert_equal(xs.min, b.min(axis: 1).to_a.min)
   end
+
+  test "copy of a view built from an index array" do
+    # ndloop used to walk the outer dimension itself here, and an index array
+    # made it synchronize once per row
+    rows = 50
+    cols = 9
+    xs = Array.new(rows * cols) { |i| ((i * 11) % 23) - 11.0 }
+    a = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    grid = (0...rows).map { |r| xs[r * cols, cols] }
+    idx = Array.new(rows) { |i| ((i * 7) + 3) % rows }
+
+    assert_equal(idx.map { |i| grid[i] }, a[idx, true].copy.to_a)
+    assert_equal(idx.map { |i| grid[i][2...(cols - 1)] }, a[idx, 2...(cols - 1)].copy.to_a)
+    assert_equal(grid, a.copy.to_a)
+    assert_equal(grid.transpose, a.transpose.copy.to_a)
+
+    # a reduction over such a view copies it first, so it must agree
+    assert_equal(idx.map { |i| grid[i].sum }, a[idx, true].sum(axis: 1).to_a)
+    assert_equal((0...cols).map { |c2| idx.sum { |i| grid[i][c2] } },
+                 a[idx, true].sum(axis: 0).to_a)
+
+    # the copy must not alias the source, so writing through the source after
+    # it was taken must leave it alone
+    mutable = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    taken = mutable[idx, true].copy
+    mutable[idx[0], 0] = 999.0
+    assert_equal(grid[idx[0]][0], taken[0, 0].to_f)
+
+    # 5-d runs past the dimension-specialised kernels
+    deep = [2, 2, 3, 2, 5]
+    ys = Array.new(deep.reduce(:*)) { |i| ((i * 13) % 29) - 14.0 }
+    b = Cumo::DFloat.cast(ys).reshape(*deep)
+    assert_equal(ys, b.copy.to_a.flatten)
+    assert_equal(b.transpose.to_a.flatten, b.transpose.copy.to_a.flatten)
+    assert_equal(b[[1, 0], true, true, true, true].to_a.flatten,
+                 b[[1, 0], true, true, true, true].copy.to_a.flatten)
+  end
+
+  test "copy of an RObject view stays on the host" do
+    # RObject data is host memory, so it must not take the kernel path
+    a = Cumo::RObject.cast([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    assert_equal([[7, 8, 9], [1, 2, 3]], a[[2, 0], true].copy.to_a)
+    assert_equal([[1, 4, 7], [2, 5, 8], [3, 6, 9]], a.transpose.copy.to_a)
+  end
 end
