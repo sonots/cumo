@@ -55,17 +55,25 @@ cumo_bit_gather_word(const CUMO_BIT_DIGIT *a, ssize_t o, uint64_t nw, uint64_t w
     return x;
 }
 
+// The bits of word w that belong to a loop covering bits [p, p+n). The words at
+// either end are shared with elements the loop must not read or write.
+__device__ static inline CUMO_BIT_DIGIT
+cumo_bit_word_mask(size_t p, uint64_t n, uint64_t w)
+{
+    size_t lb = (w == 0) ? p : 0;
+    size_t hb = ((w + 1) * CUMO_NB <= p + n) ? CUMO_NB : (p + n - w * CUMO_NB);
+    return CUMO_SLB(hb) & ~CUMO_SLB(lb);
+}
+
 // Stores z as word w of a loop covering bits [p, p+n) of a. Only one thread
 // owns a word, so the partial words at either end need no atomic.
 __device__ static inline void
 cumo_bit_store_word(CUMO_BIT_DIGIT *a, uint64_t w, CUMO_BIT_DIGIT z, size_t p, uint64_t n)
 {
-    size_t lb = (w == 0) ? p : 0;
-    size_t hb = ((w + 1) * CUMO_NB <= p + n) ? CUMO_NB : (p + n - w * CUMO_NB);
-    if (lb == 0 && hb == CUMO_NB) {
+    CUMO_BIT_DIGIT mask = cumo_bit_word_mask(p, n, w);
+    if (mask == CUMO_BALL) {
         a[w] = z;
     } else {
-        CUMO_BIT_DIGIT mask = CUMO_SLB(hb) & ~CUMO_SLB(lb);
         a[w] = (z & mask) | (a[w] & ~mask);
     }
 }

@@ -2590,4 +2590,60 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(Cumo::Bit.cast(grid.transpose.map { |col| col.any? { |x| x == 1 } ? 1 : 0 }),
                  rev.any?(axis: 0))
   end
+
+  test "bit reductions over long arrays and views" do
+    # long enough that the reduction runs on the device, and not a multiple of
+    # the bit-digit width so the words at either end are only partly in the view
+    n = 20_000
+    base = Array.new(n) { 1 }
+    picked = Array.new(n) { |i| ((i * 7) + 3) % n }
+    views = [
+      ["flat", (0...n).to_a, ->(v) { v }],
+      ["offset 13", (13...n).to_a, ->(v) { v[13...n] }],
+      ["offset 32", (32...n).to_a, ->(v) { v[32...n] }],
+      ["step 2", (0...n).step(2).to_a, ->(v) { v[(0...n).step(2)] }],
+      ["indexed", picked, ->(v) { v[picked] }],
+    ]
+
+    # the deciding element at the start, in the middle, at the end, and nowhere
+    [nil, 0, n / 2, n - 1].each do |zero_at|
+      xs = base.dup
+      xs[zero_at] = 0 if zero_at
+      a = Cumo::Bit.cast(xs)
+      b = ~a
+      views.each do |label, idxs, slice|
+        want_all = idxs.all? { |i| xs[i] == 1 }
+        lbl = "#{label} zero_at=#{zero_at.inspect}"
+        assert_equal(want_all, slice.call(a).all?, lbl)
+        assert_equal(!want_all, slice.call(b).any?, lbl)
+        assert_equal(want_all, slice.call(b).none?, lbl)
+      end
+    end
+  end
+
+  test "bit reductions along an axis" do
+    rows = 6
+    cols = 20_000
+    xs = Array.new(rows * cols) { |i| (i % 20_001).zero? ? 0 : 1 }
+    a = Cumo::Bit.cast(xs).reshape(rows, cols)
+    grid = (0...rows).map { |r| xs[r * cols, cols] }
+
+    assert_equal(Cumo::Bit.cast(grid.map { |row| row.all? { |x| x == 1 } ? 1 : 0 }),
+                 a.all?(axis: 1))
+    assert_equal(Cumo::Bit.cast(grid.map { |row| row.any? { |x| x == 1 } ? 1 : 0 }),
+                 a.any?(axis: 1))
+    assert_equal(Cumo::Bit.cast(grid.transpose.map { |col| col.all? { |x| x == 1 } ? 1 : 0 }),
+                 a.all?(axis: 0))
+    assert_equal(Cumo::Bit.cast(grid.map { |row| row.all? { |x| x == 1 } ? 1 : 0 }).reshape(rows, 1),
+                 a.all?(axis: 1, keepdims: true))
+
+    # a strided view starts each row at a different bit offset
+    sel = (0...cols).step(2).to_a
+    v = a[true, (0...cols).step(2)]
+    want = grid.map { |row| sel.map { |c| row[c] } }
+    assert_equal(Cumo::Bit.cast(want.map { |row| row.all? { |x| x == 1 } ? 1 : 0 }),
+                 v.all?(axis: 1))
+    assert_equal(Cumo::Bit.cast(want.map { |row| row.none? { |x| x == 1 } ? 1 : 0 }),
+                 (~v).all?(axis: 1))
+  end
 end

@@ -22,7 +22,13 @@ static VALUE
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
-        val = ((*((ptr)+(pos)/CUMO_NB)) >> ((pos)%CUMO_NB)) & 1u;
+        {
+            // Reading through the managed pointer faults the whole page back from
+            // the device, which costs more than the kernel that wrote it.
+            CUMO_BIT_DIGIT word;
+            cumo_cuda_runtime_check_status(cudaMemcpy(&word, ptr+(pos)/CUMO_NB, sizeof(CUMO_BIT_DIGIT), cudaMemcpyDeviceToHost));
+            val = (word >> ((pos)%CUMO_NB)) & 1u;
+        }
         cumo_na_release_lock(self);
         return INT2FIX(val);
     }
