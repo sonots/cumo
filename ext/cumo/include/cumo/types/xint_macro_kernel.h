@@ -43,8 +43,8 @@
 
 #define m_mulsum(x,y,z) {z += x*y;}
 #define m_mulsum_init 0
-//#define m_cumsum(x,y) {x += y;}
-//#define m_cumprod(x,y) {x *= y;}
+#define m_cumsum(x,y) {x += y;}
+#define m_cumprod(x,y) {x *= y;}
 
 __host__ __device__ static inline double f_seq(double x, double y, double c)
 {

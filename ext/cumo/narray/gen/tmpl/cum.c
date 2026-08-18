@@ -1,3 +1,9 @@
+<% unless type_name == 'robject' %>
+<% (is_float ? ["","_nan"] : [""]).each do |j| %>
+cudaError_t <%="cumo_#{type_name}_#{name}#{j}_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n);
+<% end %>
+<% end %>
+
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
 static void
 <%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
@@ -11,6 +17,13 @@ static void
     CUMO_INIT_PTR(lp, 0, p1, s1);
     CUMO_INIT_PTR(lp, 1, p2, s2);
     //printf("i=%lu p1=%lx s1=%lu p2=%lx s2=%lu\n",i,(size_t)p1,s1,(size_t)p2,s2);
+
+  <% unless type_name == 'robject' %>
+    if (i >= CUMO_CUM_MIN_KERNEL_SIZE) {
+        cumo_cuda_runtime_check_status(<%="cumo_#{type_name}_#{name}#{j}_kernel_launch"%>(p1,p2,s1,s2,i));
+        return;
+    }
+  <% end %>
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());

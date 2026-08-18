@@ -10,8 +10,24 @@
 #include <thrust/iterator/transform_iterator.h>
 #include <thrust/iterator/permutation_iterator.h>
 #include <thrust/reduce.h>
+#include <thrust/scan.h>
 #include <thrust/system/cuda/execution_policy.h>
+#include <thrust/system_error.h>
 #include <thrust/transform_reduce.h>
+
+// Scratch for an algorithm that needs it, taken from the same pool as array
+// data so that a loop calling one per row reuses a free-list entry instead of
+// going to cudaMalloc every time. Declared here rather than including
+// cuda/memory_pool.h, which needs ruby.h.
+extern "C" char* cumo_cuda_runtime_malloc(size_t size);
+extern "C" void cumo_cuda_runtime_free(char *ptr);
+
+struct cumo_thrust_pool_allocator
+{
+    typedef char value_type;
+    char *allocate(std::ptrdiff_t n) { return cumo_cuda_runtime_malloc((size_t)n); }
+    void deallocate(char *p, size_t) { cumo_cuda_runtime_free(p); }
+};
 
 // this example illustrates how to make strided access to a range of values
 // examples:
