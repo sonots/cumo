@@ -3019,4 +3019,49 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(grid.map { |row| row.map(&:to_i) },
                  Cumo::Int32.zeros(rows, cols).store(src).to_a)
   end
+
+  test "unary operations on views that ndloop cannot flatten" do
+    # same shape of view the store tests use: before the indexer loop each of
+    # these ran one kernel per row of the view
+    rows = 40
+    cols = 12
+    xs = Array.new(rows * cols) { |i| ((i % 9) - 4).to_f }
+    a = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    grid = (0...rows).map { |r| xs[r * cols, cols] }
+    idx = Array.new(rows) { |i| ((i * 7) + 3) % rows }
+
+    views = [
+      [:flat, ->(m) { m }, grid],
+      [:colslice, ->(m) { m[true, 2...(cols - 1)] }, grid.map { |row| row[2...(cols - 1)] }],
+      [:transpose, :transpose.to_proc, grid.transpose],
+      [:idxview, ->(m) { m[idx, true] }, idx.map { |i| grid[i] }]
+    ]
+
+    views.each do |label, slice, want|
+      v = slice.call(a)
+      assert_equal(want.map { |row| row.map(&:-@) }, (-v).to_a, "minus #{label}")
+      assert_equal(want.map { |row| row.map { |x| x * x } }, v.square.to_a, "square #{label}")
+      assert_equal(want.map { |row| row.map(&:abs) }, v.abs.to_a, "abs #{label}")
+      got = Cumo::NMath.exp(v).to_a
+      want.each_with_index do |row, r|
+        row.each_with_index { |x, c| assert_in_delta(Math.exp(x), got[r][c], 1e-6, "exp #{label} #{r},#{c}") }
+      end
+    end
+
+    # a 5-d shape runs past the dimension-specialised kernels
+    deep = [2, 2, 3, 2, 5]
+    ys = Array.new(deep.reduce(:*)) { |i| ((i % 7) - 3).to_f }
+    b = Cumo::DFloat.cast(ys).reshape(*deep)
+    assert_equal(ys.map(&:-@), (-b).to_a.flatten)
+    assert_equal(b.transpose.to_a.flatten.map(&:abs), b.transpose.abs.to_a.flatten)
+  end
+
+  test "the unary error flags still fire from the indexer kernel" do
+    # the flag is read after the launch, so it has to survive the rewrite
+    assert_raise(ZeroDivisionError) { Cumo::Int32.cast([[1, 0], [2, 3]])[true, 0..1].reciprocal }
+    assert_raise(Cumo::NArray::ValueError) do
+      Cumo::Int32.cast([[-2_147_483_648, 1], [2, 3]])[true, 0..1].abs
+    end
+    assert_equal([[1, 0], [0, 0]], Cumo::Int32.cast([[1, 2], [3, 4]]).reciprocal.to_a)
+  end
 end
