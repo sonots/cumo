@@ -179,6 +179,7 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     // is a String so the raise below cannot leak it.
     buf = rb_str_tmp_new((long)(sizeof(ssize_t)*n));
     host_idx = (ssize_t*)RSTRING_PTR(buf);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
     cumo_cuda_runtime_check_status(
         cudaMemcpy(host_idx,nidxp,sizeof(ssize_t)*n,cudaMemcpyDeviceToHost));
     for (k=0; k<n; k++) {
