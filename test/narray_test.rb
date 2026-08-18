@@ -2555,4 +2555,39 @@ class NArrayTest < Test::Unit::TestCase
     want = xs.each_with_index.map { |x, i| view.cover?(i) ? (1 - x) : x }
     assert_equal(Cumo::Bit.cast(want), a)
   end
+  test "a bit view with a negative step reads the elements below its first one" do
+    # the view starts at the last element, so every element after it sits in a
+    # lower word than the one the loop starts in
+    [8, 32, 33, 64, 65, 200].each do |n|
+      xs = Array.new(n) { |i| (i % 3).zero? ? 1 : 0 }
+      a = Cumo::Bit.cast(xs)
+      rev = a[(n - 1).step(0, -1)]
+      assert_equal(xs.reverse, rev.to_a, "n=#{n}")
+      assert_equal(Cumo::Bit.cast(xs.reverse.map { |x| 1 - x }), ~rev, "n=#{n}")
+      ones = xs.reverse.each_index.select { |i| xs.reverse[i] == 1 }
+      assert_equal(ones, rev.where.to_a, "n=#{n}")
+      assert_equal(false, rev.all?, "n=#{n}")
+      assert_equal(true, rev.any?, "n=#{n}")
+      assert_equal(xs.count(1), rev.count_true.to_i, "n=#{n}")
+
+      # and as the destination of a store
+      dst = Cumo::Bit.zeros(n)
+      dst[(n - 1).step(0, -1)].store(a)
+      assert_equal(Cumo::Bit.cast(xs.reverse), dst, "n=#{n}")
+    end
+  end
+
+  test "a bit reduction along an axis of a reversed 2-d view" do
+    rows = 7
+    cols = 33
+    xs = Array.new(rows * cols) { |i| (i % 3).zero? ? 1 : 0 }
+    a = Cumo::Bit.cast(xs).reshape(rows, cols)
+    rev = a[true, (cols - 1).step(0, -1)]
+    grid = (0...rows).map { |r| (0...cols).map { |c| xs[(r * cols) + (cols - 1 - c)] } }
+    assert_equal(grid, rev.to_a)
+    assert_equal(Cumo::Bit.cast(grid.map { |row| row.all? { |x| x == 1 } ? 1 : 0 }),
+                 rev.all?(axis: 1))
+    assert_equal(Cumo::Bit.cast(grid.transpose.map { |col| col.any? { |x| x == 1 } ? 1 : 0 }),
+                 rev.any?(axis: 0))
+  end
 end

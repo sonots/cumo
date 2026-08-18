@@ -34,21 +34,31 @@
         es = ((lp)->args[i]).elmsz;                             \
     }
 
+// pos is the first position in iteration order, so a step below zero walks down
+// from there and rebasing the pointer onto pos would underflow the position of
+// every element past the first word. A step of zero comes with an index, whose
+// entries only ever move forward.
 #define CUMO_INIT_PTR_BIT( lp, i, ad, ps, st )               \
     {                                                   \
         ps = ((lp)->args[i].iter[0]).pos;                       \
-        ad = (CUMO_BIT_DIGIT*)(((lp)->args[i]).ptr) + ps/CUMO_NB; \
-        ps %= CUMO_NB;                                       \
         st = ((lp)->args[i].iter[0]).step;                      \
+        ad = (CUMO_BIT_DIGIT*)(((lp)->args[i]).ptr);            \
+        if (st >= 0) {                                       \
+            ad += ps/CUMO_NB;                                \
+            ps %= CUMO_NB;                                   \
+        }                                                    \
     }
 
 #define CUMO_INIT_PTR_BIT_IDX( lp, i, ad, ps, st, id )       \
     {                                                   \
         ps = ((lp)->args[i].iter[0]).pos;                       \
-        ad = (CUMO_BIT_DIGIT*)(((lp)->args[i]).ptr) + ps/CUMO_NB; \
-        ps %= CUMO_NB;                                       \
         st = ((lp)->args[i].iter[0]).step;                      \
         id = ((lp)->args[i].iter[0]).idx;                       \
+        ad = (CUMO_BIT_DIGIT*)(((lp)->args[i]).ptr);            \
+        if (st >= 0) {                                       \
+            ad += ps/CUMO_NB;                                \
+            ps %= CUMO_NB;                                   \
+        }                                                    \
     }
 
 #define CUMO_GET_DATA( ptr, type, val )                 \
