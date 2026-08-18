@@ -2496,4 +2496,63 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([2, 0, 1, 2], grid.argmax(axis: 1).to_a, dtype.to_s)
     end
   end
+
+  test "bit operators over long arrays and views" do
+    n = 200
+    xs = Array.new(n) { |i| (i % 3).zero? ? 1 : 0 }
+    ys = Array.new(n) { |i| (i % 5) < 2 ? 1 : 0 }
+    a = Cumo::Bit.cast(xs)
+    b = Cumo::Bit.cast(ys)
+    picked = Array.new(n) { |i| ((i * 7) + 3) % n }
+    # an offset that is not a multiple of the bit-digit width has to shift every
+    # word into place, and a strided or indexed view drops to a bit at a time
+    views = [
+      ["flat", (0...n).to_a, ->(v) { v }],
+      ["offset 13", (13...n).to_a, ->(v) { v[13...n] }],
+      ["offset 33", (33...n).to_a, ->(v) { v[33...n] }],
+      ["step 2", (0...n).step(2).to_a, ->(v) { v[(0...n).step(2)] }],
+      ["indexed", picked, ->(v) { v[picked] }],
+    ]
+
+    views.each do |label, idxs, slice|
+      va = slice.call(a)
+      vb = slice.call(b)
+      assert_equal(Cumo::Bit.cast(idxs.map { |i| 1 - xs[i] }), ~va, label)
+      [:&, :|, :^].each do |op|
+        want = Cumo::Bit.cast(idxs.map { |i| xs[i].public_send(op, ys[i]) })
+        assert_equal(want, va.public_send(op, vb), "#{label} #{op}")
+      end
+    end
+
+    # a strided 2-d view runs the loop once per row, so each row starts at a
+    # different bit offset
+    cols = (0...25).step(2).to_a
+    grid = (0...8).flat_map { |r| cols.map { |c| (r * 25) + c } }
+    ga = a.reshape(8, 25)[true, (0...25).step(2)]
+    gb = b.reshape(8, 25)[true, (0...25).step(2)]
+    assert_equal(Cumo::Bit.cast(grid.map { |i| 1 - xs[i] }).reshape(8, cols.size), ~ga)
+    [:&, :|, :^].each do |op|
+      want = Cumo::Bit.cast(grid.map { |i| xs[i].public_send(op, ys[i]) }).reshape(8, cols.size)
+      assert_equal(want, ga.public_send(op, gb), op.to_s)
+    end
+  end
+
+  test "a bit operator in place leaves the bits outside the view alone" do
+    n = 200
+    xs = Array.new(n) { |i| (i % 3).zero? ? 1 : 0 }
+    ys = Array.new(n) { |i| (i % 5) < 2 ? 1 : 0 }
+    # the view starts and ends inside a word it shares with elements it must not
+    # touch
+    view = (10...100)
+
+    a = Cumo::Bit.cast(xs)
+    a[view].inplace & Cumo::Bit.cast(ys[view])
+    want = xs.each_with_index.map { |x, i| view.cover?(i) ? (x & ys[i]) : x }
+    assert_equal(Cumo::Bit.cast(want), a)
+
+    a = Cumo::Bit.cast(xs)
+    a[view].inplace.~
+    want = xs.each_with_index.map { |x, i| view.cover?(i) ? (1 - x) : x }
+    assert_equal(Cumo::Bit.cast(want), a)
+  end
 end
