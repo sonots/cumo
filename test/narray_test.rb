@@ -3064,4 +3064,62 @@ class NArrayTest < Test::Unit::TestCase
     end
     assert_equal([[1, 0], [0, 0]], Cumo::Int32.cast([[1, 2], [3, 4]]).reciprocal.to_a)
   end
+
+  test "a reduction answers the same on a flat layout and a strided one" do
+    # the flat layout skips the indexer, so the two paths are different kernels
+    # and have to be compared against each other, not just against a literal
+    rows = 96
+    cols = 130
+    xs = Array.new(rows * cols) { |i| ((i * 37) % 101) - 50.0 }
+    a = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    grid = (0...rows).map { |r| xs[r * cols, cols] }
+
+    assert_equal(grid.map(&:sum), a.sum(axis: 1).to_a)
+    assert_equal(grid.transpose.map(&:sum), a.sum(axis: 0).to_a)
+    assert_equal(xs.sum, a.sum.to_f)
+    assert_equal(grid.map(&:min), a.min(axis: 1).to_a)
+    assert_equal(grid.map(&:max), a.max(axis: 1).to_a)
+    assert_equal(grid.map { |row| row.max - row.min }, a.ptp(axis: 1).to_a)
+
+    # a transpose leaves the input non-contiguous, which takes the indexer path
+    t = a.transpose
+    assert_equal(grid.transpose.map(&:sum), t.sum(axis: 1).to_a)
+    assert_equal(grid.map(&:sum), t.sum(axis: 0).to_a)
+    assert_equal(grid.transpose.map(&:max), t.max(axis: 1).to_a)
+
+    # so does a strided view
+    sel = (0...cols).step(3).to_a
+    v = a[true, (0...cols).step(3)]
+    assert_equal(grid.map { |row| sel.sum { |c| row[c] } }, v.sum(axis: 1).to_a)
+    want_min = grid.map { |row| sel.map { |c| row[c] } }
+    assert_equal(want_min.map(&:min), v.min(axis: 1).to_a)
+
+    # and a reduction over an axis that is neither first nor last
+    deep = [4, 5, 6]
+    ys = Array.new(deep.reduce(:*)) { |i| ((i * 13) % 29) - 14.0 }
+    b = Cumo::DFloat.cast(ys).reshape(*deep)
+    want =
+      (0...deep[0]).map do |i|
+        (0...deep[2]).map { |k| (0...deep[1]).sum { |j| ys[(i * 30) + (j * 6) + k] } }
+      end
+    assert_equal(want, b.sum(axis: 1).to_a)
+    assert_equal([deep[0], 1, deep[2]], b.sum(axis: 1, keepdims: true).shape)
+  end
+
+  test "a split reduction answers the same as an unsplit one" do
+    # one output over a long axis is the shape that goes through the two-pass
+    # split, and its first pass has a flat variant too
+    n = 300_000
+    xs = Array.new(n) { |i| ((i * 7) % 13) - 6.0 }
+    a = Cumo::DFloat.cast(xs)
+    assert_equal(xs.sum, a.sum.to_f)
+    assert_equal(xs.min, a.min.to_f)
+    assert_equal(xs.max, a.max.to_f)
+
+    # the same values reduced in rows, which is not split
+    rows = 300
+    b = Cumo::DFloat.cast(xs).reshape(rows, n / rows)
+    assert_equal(xs.sum, b.sum(axis: 1).to_a.sum)
+    assert_equal(xs.min, b.min(axis: 1).to_a.min)
+  end
 end
