@@ -2,62 +2,92 @@
 <% $cumo_narray_gen_tmpl_accum_binary_kernel_included = 1 %>
 
 <% unless type_name == 'robject' %>
+// One output at a time, so the reduce is a plain block tree over n elements of
+// two operands. Enough blocks to fill the device, then one block folds their
+// partials and adds the result to whatever the init argument left in the output.
+#define CUMO_MULSUM_BLOCK_DIM 512
+#define CUMO_MULSUM_MAX_GRID_DIM 1024
+
 //<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
-#if defined(__cplusplus)
-#if 0
-{ /* satisfy cc-mode */
-#endif
-}  /* extern "C" { */
-#endif
-
-template<typename Iterator1, typename Iterator2>
-__global__ void <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%>(Iterator1 p1_begin, Iterator1 p1_end, Iterator2 p2_begin, dtype* p3)
+__device__ static void <%="cumo_#{type_name}_#{name}#{nan}_block_reduce"%>(dtype *sdata, dtype acc)
 {
-    dtype init = *p3;
-    *p3 = thrust::inner_product(thrust::cuda::par, p1_begin, p1_end, p2_begin, init, cumo_thrust_plus(), cumo_thrust_multiplies<%= "_mulsum#{nan}" unless nan.empty? %>());
+    sdata[threadIdx.x] = acc;
+    __syncthreads();
+    for (unsigned int stride = CUMO_MULSUM_BLOCK_DIM / 2; stride > 0; stride >>= 1) {
+        if (threadIdx.x < stride) {
+            sdata[threadIdx.x] = m_add(sdata[threadIdx.x], sdata[threadIdx.x + stride]);
+        }
+        __syncthreads();
+    }
 }
 
-__global__ void <%="cumo_#{type_name}_mulsum#{nan}_kernel"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
+// Writes its block's partial to partial[blockIdx.x], or straight to the output
+// when the grid is one block and there is nothing left to combine.
+__global__ void <%="cumo_#{type_name}_#{name}#{nan}_partial_kernel"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, uint64_t n, dtype *partial)
+{
+    __shared__ dtype sdata[CUMO_MULSUM_BLOCK_DIM];
+    dtype acc = m_zero;
+
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        dtype x = *(dtype*)(p1 + i * s1);
+        dtype y = *(dtype*)(p2 + i * s2);
+        m_<%=name%><%=nan%>(x, y, acc);
+    }
+    <%="cumo_#{type_name}_#{name}#{nan}_block_reduce"%>(sdata, acc);
+    if (threadIdx.x == 0) {
+        if (partial) {
+            partial[blockIdx.x] = sdata[0];
+        } else {
+            *(dtype*)p3 = m_add(*(dtype*)p3, sdata[0]);
+        }
+    }
+}
+
+__global__ void <%="cumo_#{type_name}_#{name}#{nan}_combine_kernel"%>(char *p3, dtype *partial, uint64_t n)
+{
+    __shared__ dtype sdata[CUMO_MULSUM_BLOCK_DIM];
+    dtype acc = m_zero;
+
+    for (uint64_t i = threadIdx.x; i < n; i += CUMO_MULSUM_BLOCK_DIM) {
+        acc = m_add(acc, partial[i]);
+    }
+    <%="cumo_#{type_name}_#{name}#{nan}_block_reduce"%>(sdata, acc);
+    if (threadIdx.x == 0) {
+        *(dtype*)p3 = m_add(*(dtype*)p3, sdata[0]);
+    }
+}
+
+__global__ void <%="cumo_#{type_name}_#{name}#{nan}_kernel"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
 {
     for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         m_<%=name%><%=nan%>(*(dtype*)(p1+(i*s1)), *(dtype*)(p2+(i*s2)), *(dtype*)(p3+(i*s3)));
     }
 }
 
-#if defined(__cplusplus)
-extern "C" {
-#if 0
-} /* satisfy cc-mode */
-#endif
-#endif
-
-void <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, uint64_t n)
+void <%="cumo_#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, uint64_t n)
 {
-    ssize_t s1_idx = s1 / sizeof(dtype);
-    ssize_t s2_idx = s2 / sizeof(dtype);
-    thrust::device_ptr<dtype> p1_begin = thrust::device_pointer_cast((dtype*)p1);
-    thrust::device_ptr<dtype> p2_begin = thrust::device_pointer_cast((dtype*)p2);
-    // A broadcast operand has stride 0 and a reversed view a negative one, so
-    // anything but 1 has to go through the strided range.
-    if (s1_idx == 1 && s2_idx == 1) {
-        // ref. https://github.com/thrust/thrust/blob/master/examples/cuda/async_reduce.cu
-        <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%><<<1,1>>>(p1_begin, p1_begin + n, p2_begin, (dtype*)p3);
-        cumo_cuda_runtime_check_kernel_launch();
-    } else {
-        typedef cumo_thrust_strided_range<thrust::device_vector<dtype>::iterator> range_t;
-        range_t r1(p1_begin, (range_t::difference_type)s1_idx, (range_t::difference_type)n);
-        range_t r2(p2_begin, (range_t::difference_type)s2_idx, (range_t::difference_type)n);
-        <%="cumo_#{type_name}_mulsum#{nan}_reduce_kernel"%><<<1,1>>>(r1.begin(), r1.end(), r2.begin(), (dtype*)p3);
-        cumo_cuda_runtime_check_kernel_launch();
+    uint64_t grid_dim = (n + CUMO_MULSUM_BLOCK_DIM - 1) / CUMO_MULSUM_BLOCK_DIM;
+    dtype *partial = NULL;
+
+    if (grid_dim == 0) grid_dim = 1;
+    if (grid_dim > CUMO_MULSUM_MAX_GRID_DIM) grid_dim = CUMO_MULSUM_MAX_GRID_DIM;
+    if (grid_dim > 1) {
+        partial = (dtype*)cumo_cuda_runtime_malloc(sizeof(dtype) * grid_dim);
     }
+    <%="cumo_#{type_name}_#{name}#{nan}_partial_kernel"%><<<grid_dim, CUMO_MULSUM_BLOCK_DIM>>>(p1,p2,p3,s1,s2,n,partial);
+    if (partial) {
+        <%="cumo_#{type_name}_#{name}#{nan}_combine_kernel"%><<<1, CUMO_MULSUM_BLOCK_DIM>>>(p3,partial,grid_dim);
+        cumo_cuda_runtime_free((char*)partial);
+    }
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
-void <%="cumo_#{type_name}_mulsum#{nan}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
+void <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{type_name}_mulsum#{nan}_kernel"%><<<grid_dim, block_dim>>>(p1,p2,p3,s1,s2,s3,n);
+    <%="cumo_#{type_name}_#{name}#{nan}_kernel"%><<<grid_dim, block_dim>>>(p1,p2,p3,s1,s2,s3,n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 //<% end %>

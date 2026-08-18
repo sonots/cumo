@@ -72,41 +72,4 @@ __host__ __device__ static inline dtype f_minimum_nan(dtype x, dtype y)
 /* --------- thrust ----------------- */
 #include "cumo/cuda/cumo_thrust.hpp"
 
-struct cumo_thrust_plus
-{
-    using first_argument_type  = dtype;
-    using second_argument_type = dtype;
-    using result_type          = dtype;
-    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_add(x,y); }
-};
-
-struct cumo_thrust_multiplies
-{
-    using first_argument_type  = dtype;
-    using second_argument_type = dtype;
-    using result_type          = dtype;
-    __host__ __device__ dtype operator()(dtype x, dtype y) { return m_mul(x,y); }
-};
-
-struct cumo_thrust_multiplies_mulsum_nan
-{
-    using first_argument_type  = dtype;
-    using second_argument_type = dtype;
-    using result_type          = dtype;
-    __host__ __device__ dtype operator()(dtype x, dtype y) {
-        if (not_nan(x) && not_nan(y)) {
-            return m_mul(x, y);
-        } else {
-            return m_zero;
-        }
-    }
-};
-
-struct cumo_thrust_square
-{
-    using argument_type = dtype;
-    using result_type   = dtype;
-    __host__ __device__ rtype operator()(const dtype& x) const { return m_square(x); }
-};
-
 #endif // CUMO_REAL_ACCUM_KERNEL_H
