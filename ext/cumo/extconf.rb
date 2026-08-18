@@ -28,6 +28,9 @@ MakeMakefileCuda.install!(cxx: true)
 
 if ENV['DEBUG']
   $CFLAGS << " -g -O0 -Wall"
+  $CXXFLAGS << " -g -O0 -Wall"
+else
+  $CXXFLAGS << " #{RbConfig::CONFIG['optflags']}"
 end
 $CXXFLAGS << " -std=c++17"
 #$CFLAGS=" $(cflags) -O3 -m64 -msse2 -funroll-loops"
