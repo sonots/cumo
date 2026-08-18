@@ -4,6 +4,7 @@
 #include "cumo/cuda/runtime.h"
 #include "cumo/narray.h"
 #include "cumo/template.h"
+#include "cumo/indexer.h"
 
 static ID cumo_id_mulsum;
 static ID cumo_id_store;
@@ -52,6 +53,7 @@ static ID cumo_id_swap_byte;
 }
 
 void cumo_iter_copy_bytes_kernel_launch(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t *idx1, size_t *idx2, size_t n, int elmsz);
+void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz);
 #define m_memcpy(src,dst) memcpy(dst,src,e)
 
 static void
@@ -79,6 +81,16 @@ iter_copy_bytes(cumo_na_loop_t *const lp)
     LOOP_UNARY_PTR(lp,m_memcpy);
 }
 
+static void
+iter_copy_bytes_indexer(cumo_na_loop_t *const lp)
+{
+    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+    cumo_iter_copy_bytes_indexer_kernel_launch(&a1, &a2, &indexer, (ssize_t)lp->args[0].elmsz);
+}
+
 VALUE
 cumo_na_copy(VALUE self)
 {
@@ -86,6 +98,15 @@ cumo_na_copy(VALUE self)
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
     cumo_ndfunc_t ndf = { iter_copy_bytes, CUMO_FULL_LOOP, 1, 1, ain, aout };
+
+    // Cumo::RObject data is host memory, which the kernel below must not touch.
+    // Everything else goes through the indexer so that ndloop hands the whole
+    // view over at once: walking the outer dimensions itself costs a
+    // synchronization per step when an operand carries an index array.
+    if (rb_obj_class(self) != cumo_cRObject) {
+        ndf.func = iter_copy_bytes_indexer;
+        ndf.flag = CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
+    }
 
     v = cumo_na_ndloop(&ndf, 1, self);
     return v;
