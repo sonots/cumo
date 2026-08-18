@@ -2687,4 +2687,14 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(seq.each_index.select { |i| seq[i] == 1 }, w1.to_a)
     assert_equal(seq.each_index.select { |i| seq[i] == 0 }, w0.to_a)
   end
+
+  test "a bit count over more than 2**32 bits" do
+    # in the window where a grid-stride step of blockDim * gridDim wraps past
+    # an unsigned int, an uncapped grid loops forever
+    n = 1 << 32
+    a = Cumo::Bit.new(n).fill(0)
+    ones = [0, n / 2, n - 1]
+    ones.each { |i| a[i] = 1 }
+    assert_equal(ones.size, a.count_true.to_i)
+  end
 end

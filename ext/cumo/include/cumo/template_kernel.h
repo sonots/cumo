@@ -56,7 +56,11 @@
 // val -> val&1 ??
 
 #define CUMO_MAX_BLOCK_DIM 128
-#define CUMO_MAX_GRID_DIM 2147483647 // ref. http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
+// Grid-stride loops step by blockDim.x * gridDim.x, a product of two unsigned
+// ints, so the grid is capped where the product of the largest block and the
+// grid would reach 2^32 and the step would wrap to zero. The hardware grid
+// limit of 2^31-1 is far above this.
+#define CUMO_MAX_GRID_DIM (4294967295ul / CUMO_MAX_BLOCK_DIM)
 
 static inline size_t
 cumo_get_grid_dim(size_t n)
