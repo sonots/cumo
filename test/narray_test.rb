@@ -3686,6 +3686,15 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([7], Cumo::Int32[7].sort.to_a, "one element")
   end
 
+  # Horner from Ruby, so the expectation does not come from another cumo call.
+  # A coefficient is either one number or a value per element.
+  def poly_expect(values, coefs)
+    values.each_with_index.map do |x, i|
+      cs = coefs.map { |c| c.is_a?(Array) ? c[i] : c }
+      cs.empty? ? x : cs.reverse.reduce { |y, c| y * x + c }
+    end
+  end
+
   test "sort_index says where every element of a row came from" do
     # The sort ran on the host, one row at a time, behind a device
     # synchronization, and it read the array through its own index array, which
@@ -3726,6 +3735,53 @@ class NArrayTest < Test::Unit::TestCase
 
     assert_equal([0], Cumo::Int32[7].sort_index.to_a, "one element")
     assert_equal([1, 2, 0], Cumo::Int32[3, 1, 2].sort_index.to_a, "smallest case")
+  end
+
+  test "poly evaluates every element, whatever the coefficients and the layout" do
+    # poly ran with CUMO_NO_LOOP, so ndloop called the iterator once per
+    # element and each call synchronized with the device.
+    rows = 6
+    cols = 10
+    small = Array.new(rows * cols) { |i| (i * 13) % 3 }
+    wide = Array.new(rows * cols) { |i| (i * 13) % 5 }
+
+    # every dtype, with values an 8-bit result still holds
+    [Cumo::Int8, Cumo::Int32, Cumo::UInt8, Cumo::UInt32,
+     Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex, Cumo::RObject].each do |dtype|
+      src = dtype.cast(small).reshape(rows, cols)
+      assert_equal(poly_expect(small, []), src.poly.to_a.flatten, "#{dtype} no coefficient")
+      assert_equal(poly_expect(small, [3]), src.poly(3).to_a.flatten, "#{dtype} one coefficient")
+      assert_equal(poly_expect(small, [1, 2, 3]), src.poly(1, 2, 3).to_a.flatten, "#{dtype} three")
+      assert_equal(poly_expect(small, [small, 2]), src.poly(src, 2).to_a.flatten,
+                   "#{dtype} a coefficient that varies per element")
+    end
+
+    [Cumo::Int32, Cumo::Int64, Cumo::SFloat, Cumo::DFloat, Cumo::DComplex].each do |dtype|
+      src = dtype.cast(wide).reshape(rows, cols)
+      coefs = [1, 2, 3, 4, 5, 6]
+      assert_equal(poly_expect(wide, coefs), src.poly(*coefs).to_a.flatten, "#{dtype} six coefficients")
+
+      view = src[true, 0.step(cols - 1, 3)]
+      assert_equal(poly_expect(view.to_a.flatten, [1, 2, 3]), view.poly(1, 2, 3).to_a.flatten,
+                   "#{dtype} column slice")
+
+      rev = src[(rows - 1).step(0, -1), true]
+      assert_equal(poly_expect(rev.to_a.flatten, [1, 2, 3]), rev.poly(1, 2, 3).to_a.flatten,
+                   "#{dtype} reversed rows")
+
+      idx = src[[3, 0, 5, 1], true]
+      assert_equal(poly_expect(idx.to_a.flatten, [1, 2, 3]), idx.poly(1, 2, 3).to_a.flatten,
+                   "#{dtype} index view")
+      assert_equal(poly_expect(idx.to_a.flatten, [idx.to_a.flatten, 2]), idx.poly(idx, 2).to_a.flatten,
+                   "#{dtype} index view with a coefficient of its own")
+
+      # a shape past the dimension the indexer has a specialized accessor for
+      deep = dtype.cast(wide[0, 2 * 2 * 2 * 2 * 2]).reshape(2, 2, 2, 2, 2)
+      assert_equal(poly_expect(deep.to_a.flatten, [1, 2, 3]), deep.poly(1, 2, 3).to_a.flatten,
+                   "#{dtype} 5-d")
+    end
+
+    assert_equal([17], Cumo::Int32[2].poly(1, 2, 3).to_a, "smallest case")
   end
 
   test "an RObject loop waits for the kernel that fills an index array" do

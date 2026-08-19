@@ -1,3 +1,25 @@
+<% unless type_name == 'robject' %>
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* x, cumo_na_iarray_t* coef, int ncoef, cumo_na_iarray_t* z, cumo_na_indexer_t* indexer);
+
+// Horner over every element in one launch. The host loop this replaces ran
+// once per element, each time behind a cudaDeviceSynchronize.
+static void
+<%=c_iter%>_kernel(cumo_na_loop_t *const lp)
+{
+    int i, ncoef = lp->narg - 2;
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+    cumo_na_iarray_t x = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_iarray_t z = cumo_na_make_iarray(&lp->args[lp->narg - 1]);
+    cumo_na_iarray_t *coef = ALLOCA_N(cumo_na_iarray_t, ncoef > 0 ? ncoef : 1);
+
+    for (i = 0; i < ncoef; ++i) {
+        coef[i] = cumo_na_make_iarray(&lp->args[i + 1]);
+    }
+    <%="cumo_#{c_iter}_kernel_launch"%>(&x, coef, ncoef, &z, &indexer);
+}
+<% end %>
+
+<% if type_name == 'robject' %>
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
@@ -16,6 +38,7 @@ static void
     }
     *(dtype*)CUMO_NDL_PTR(lp,lp->narg-1) = y;
 }
+<% end %>
 
 /*
   Calculate polynomial.
@@ -31,7 +54,11 @@ static VALUE
     VALUE *argv;
     volatile VALUE v, a;
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
+    <% if type_name == 'robject' %>
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_NO_LOOP, 0, 1, 0, aout };
+    <% else %>
+    cumo_ndfunc_t ndf = { <%=c_iter%>_kernel, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_INDEXER_LOOP, 0, 1, 0, aout };
+    <% end %>
 
     argc = RARRAY_LEN(args);
     ndf.nin = argc+1;
