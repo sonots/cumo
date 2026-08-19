@@ -30,10 +30,35 @@ typedef struct {
     ssize_t step[CUMO_NA_MAX_DIMENSION]; // or strides
 } cumo_na_iarray_t;
 
+/* A structure to get a Bit element's position with indexer.
+ *
+ * An element of a Bit array is one bit, so neither the offset of the first
+ * element nor the steps are byte counts and cumo_na_iarray_t cannot hold them.
+ * The position stays absolute rather than being split into a word pointer and
+ * an offset within it, which a negative step would take out of the array.
+ */
+typedef struct {
+    CUMO_BIT_DIGIT* ptr;
+    size_t pos;
+    ssize_t step[CUMO_NA_MAX_DIMENSION];
+} cumo_na_bit_iarray_t;
+
 typedef struct {
     char* ptr;
     cumo_stridx_t stridx[CUMO_NA_MAX_DIMENSION];
 } cumo_na_iarray_stridx_t;
+
+/* The same for a Bit operand that may be backed by an index array.
+ *
+ * ndloop cannot stage a Bit operand into a buffer for us: a buffer copy moves
+ * whole bytes, and a Bit element is one bit. So a Bit loop has to address its
+ * own index arrays.
+ */
+typedef struct {
+    CUMO_BIT_DIGIT* ptr;
+    size_t pos;
+    cumo_stridx_t stridx[CUMO_NA_MAX_DIMENSION];
+} cumo_na_bit_iarray_stridx_t;
 
 typedef struct {
     cumo_na_iarray_t in;
@@ -114,6 +139,34 @@ static cumo_na_iarray_t
 cumo_na_make_iarray(cumo_na_loop_args_t* arg)
 {
     return cumo_na_make_iarray_given_ndim(arg, arg->ndim);
+}
+
+static cumo_na_bit_iarray_stridx_t
+cumo_na_make_bit_iarray_stridx(cumo_na_loop_args_t* arg)
+{
+    cumo_na_bit_iarray_stridx_t iarray;
+    iarray.ptr = (CUMO_BIT_DIGIT*)(arg->ptr);
+    iarray.pos = arg->iter[0].pos;
+    for (int idim = 0; idim < arg->ndim; ++idim) {
+        if (arg->iter[idim].idx) {
+            CUMO_SDX_SET_INDEX(iarray.stridx[idim], arg->iter[idim].idx);
+        } else {
+            CUMO_SDX_SET_STRIDE(iarray.stridx[idim], arg->iter[idim].step);
+        }
+    }
+    return iarray;
+}
+
+static cumo_na_bit_iarray_t
+cumo_na_make_bit_iarray(cumo_na_loop_args_t* arg)
+{
+    cumo_na_bit_iarray_t iarray;
+    iarray.ptr = (CUMO_BIT_DIGIT*)(arg->ptr);
+    iarray.pos = arg->iter[0].pos;
+    for (int idim = arg->ndim; --idim >= 0;) {
+        iarray.step[idim] = arg->iter[idim].step;
+    }
+    return iarray;
 }
 
 // out_arg names the loop argument to reduce into. It is 1 for a reduction with
@@ -221,6 +274,86 @@ __host__ __device__
 static inline char*
 cumo_na_iarray_at_dim1(cumo_na_iarray_t* iarray, cumo_na_indexer_t* indexer) {
     return iarray->ptr + iarray->step[0] * indexer->raw_index;
+}
+
+__host__ __device__
+static inline size_t
+cumo_na_bit_iarray_at_dim(cumo_na_bit_iarray_t* iarray, cumo_na_indexer_t* indexer) {
+    size_t pos = iarray->pos;
+    for (int idim = 0; idim < indexer->ndim; ++idim) {
+        pos += iarray->step[idim] * indexer->index[idim];
+    }
+    return pos;
+}
+
+// Let compiler optimize
+#define CUMO_NA_BIT_IARRAY_AT(NDIM) \
+__host__ __device__ \
+static inline size_t \
+cumo_na_bit_iarray_at_dim##NDIM(cumo_na_bit_iarray_t* iarray, cumo_na_indexer_t* indexer) { \
+    size_t pos = iarray->pos; \
+    for (int idim = 0; idim < NDIM; ++idim) { \
+        pos += iarray->step[idim] * indexer->index[idim]; \
+    } \
+    return pos; \
+}
+
+CUMO_NA_BIT_IARRAY_AT(4)
+CUMO_NA_BIT_IARRAY_AT(3)
+CUMO_NA_BIT_IARRAY_AT(2)
+CUMO_NA_BIT_IARRAY_AT(0)
+
+__host__ __device__
+static inline size_t
+cumo_na_bit_iarray_at_dim1(cumo_na_bit_iarray_t* iarray, cumo_na_indexer_t* indexer) {
+    return iarray->pos + iarray->step[0] * indexer->raw_index;
+}
+
+__host__ __device__
+static inline size_t
+cumo_na_bit_iarray_stridx_at_dim(cumo_na_bit_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer) {
+    size_t pos = iarray->pos;
+    for (int idim = 0; idim < indexer->ndim; ++idim) {
+        if (CUMO_SDX_IS_INDEX(iarray->stridx[idim])) {
+            pos += CUMO_SDX_GET_INDEX(iarray->stridx[idim])[indexer->index[idim]];
+        } else {
+            pos += CUMO_SDX_GET_STRIDE(iarray->stridx[idim]) * indexer->index[idim];
+        }
+    }
+    return pos;
+}
+
+// Let compiler optimize
+#define CUMO_NA_BIT_IARRAY_STRIDX_AT(NDIM) \
+__host__ __device__ \
+static inline size_t \
+cumo_na_bit_iarray_stridx_at_dim##NDIM(cumo_na_bit_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer) { \
+    size_t pos = iarray->pos; \
+    for (int idim = 0; idim < NDIM; ++idim) { \
+        if (CUMO_SDX_IS_INDEX(iarray->stridx[idim])) { \
+            pos += CUMO_SDX_GET_INDEX(iarray->stridx[idim])[indexer->index[idim]]; \
+        } else { \
+            pos += CUMO_SDX_GET_STRIDE(iarray->stridx[idim]) * indexer->index[idim]; \
+        } \
+    } \
+    return pos; \
+}
+
+CUMO_NA_BIT_IARRAY_STRIDX_AT(4)
+CUMO_NA_BIT_IARRAY_STRIDX_AT(3)
+CUMO_NA_BIT_IARRAY_STRIDX_AT(2)
+CUMO_NA_BIT_IARRAY_STRIDX_AT(0)
+
+// cumo_na_indexer_set_dim1 leaves index[] alone, so one dimension has to be
+// addressed through raw_index
+__host__ __device__
+static inline size_t
+cumo_na_bit_iarray_stridx_at_dim1(cumo_na_bit_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer) {
+    if (CUMO_SDX_IS_INDEX(iarray->stridx[0])) {
+        return iarray->pos + CUMO_SDX_GET_INDEX(iarray->stridx[0])[indexer->raw_index];
+    } else {
+        return iarray->pos + CUMO_SDX_GET_STRIDE(iarray->stridx[0]) * indexer->raw_index;
+    }
 }
 
 __host__ __device__

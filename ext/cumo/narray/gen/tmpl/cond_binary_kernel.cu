@@ -1,19 +1,31 @@
 <% unless type_name == 'robject' %>
-__global__ void <%="cumo_#{c_iter}_stride_kernel"%>(char *p1, char *p2, CUMO_BIT_DIGIT *a3, size_t p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
+<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+__global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_bit_iarray_t a3, cumo_na_indexer_t indexer)
 {
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
-        dtype x = *(dtype*)(p1+(i*s1));
-        dtype y = *(dtype*)(p2+(i*s2));
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
+        dtype x = *(dtype*)cumo_na_iarray_at_dim<%=idim%>(&a1, &indexer);
+        dtype y = *(dtype*)cumo_na_iarray_at_dim<%=idim%>(&a2, &indexer);
         CUMO_BIT_DIGIT b = (m_<%=name%>(x,y)) ? 1:0;
-        CUMO_STORE_BIT(a3,p3+(i*s3),b);
+        CUMO_STORE_BIT(a3.ptr, cumo_na_bit_iarray_at_dim<%=idim%>(&a3, &indexer), b);
     }
 }
+<% end %>
 
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, CUMO_BIT_DIGIT *a3, size_t p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_bit_iarray_t* a3, cumo_na_indexer_t* indexer)
 {
-    size_t grid_dim = cumo_get_grid_dim(n);
-    size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim>>>(p1,p2,a3,p3,s1,s2,s3,n);
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+    <% (0..opt_indexer_ndim).each do |idim| %>
+    case <%=idim%>:
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
+        break;
+    <% end %>
+    default:
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
+        break;
+    }
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

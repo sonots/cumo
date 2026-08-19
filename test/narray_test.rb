@@ -3241,6 +3241,121 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(ZeroDivisionError) { ints[true, 1..-2].divmod(0) }
   end
 
+  # Combines two nested Bit arrays element by element, whatever their depth
+  def zip_bits(a, b, &blk)
+    if a.first.is_a?(Array)
+      a.zip(b).map { |x, y| zip_bits(x, y, &blk) }
+    else
+      a.zip(b).map { |x, y| blk.call(x, y) }
+    end
+  end
+
+  test "Bit results reach every element of a view they cannot flatten" do
+    # A Bit element is one bit, so its position and steps are bit counts and
+    # the byte indexer cannot address it. Comparisons, the isnan family and the
+    # Bit operators each ran once per row of a view before the bit indexer.
+    rows = 9
+    cols = 7
+    xs = Array.new(rows * cols) { |i| ((i * 3) % 13) - 6.0 }
+    src = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    other = Cumo::DFloat.cast(xs.rotate(5)).reshape(rows, cols)
+    m1 = Cumo::Int32.cast(Array.new(rows * cols) { |i| i % 3 }).reshape(rows, cols).gt(1)
+    m2 = Cumo::Int32.cast(Array.new(rows * cols) { |i| i % 4 }).reshape(rows, cols).gt(1)
+    idx = [5, 0, 3, 8, 1]
+
+    views = {
+      "column slice" => ->(a) { a[true, 1...(cols - 1)] },
+      "reversed" => ->(a) { a[true, (cols - 1).step(0, -1)] },
+      "row stride" => ->(a) { a[0.step(rows - 1, 2), true] },
+      "index view" => ->(a) { a[idx, true] },
+      "transpose" => ->(a) { a.transpose },
+    }
+
+    views.each do |what, take|
+      a = take.call(src)
+      b = take.call(other)
+      p1 = take.call(m1)
+      p2 = take.call(m2)
+      fa = a.copy
+      fb = b.copy
+      f1 = p1.copy
+      f2 = p2.copy
+
+      %i[gt ge lt le eq ne].each do |op|
+        assert_equal(fa.send(op, fb).to_a, a.send(op, b).to_a, "#{op} of #{what}")
+      end
+      %i[isnan isinf isfinite signbit].each do |op|
+        assert_equal(fa.send(op).to_a, a.send(op).to_a, "#{op} of #{what}")
+      end
+      # The Bit operators are checked against the elements Ruby sees rather
+      # than against a copy: copy is the same template, so a copy taken the
+      # wrong way would agree with an operator taken the wrong way
+      w1 = p1.to_a
+      w2 = p2.to_a
+      assert_equal(zip_bits(w1, w2) { |u, v| u & v }, (p1 & p2).to_a, "and of #{what}")
+      assert_equal(zip_bits(w1, w2) { |u, v| u | v }, (p1 | p2).to_a, "or of #{what}")
+      assert_equal(zip_bits(w1, w2) { |u, v| u ^ v }, (p1 ^ p2).to_a, "xor of #{what}")
+      assert_equal(zip_bits(w1, w1) { |u, _| u ^ 1 }, (~p1).to_a, "not of #{what}")
+      assert_equal(w1.flatten.count(1), p1.count_true, "count_true of #{what}")
+      assert_equal(w1, f1.to_a, "copy of #{what}")
+
+      cells = take.call(Cumo::DFloat.cast((0...(rows * cols)).to_a).reshape(rows, cols))
+                  .to_a.flatten.map(&:to_i)
+      d = Cumo::Bit.new(rows, cols).fill(0)
+      take.call(d).fill(1)
+      assert_equal(Array.new(rows * cols) { |i| cells.include?(i) ? 1 : 0 }, d.to_a.flatten,
+                   "Bit fill of #{what}")
+    end
+
+    # One dimension is addressed through the indexer's raw index rather than
+    # its per-dimension indices, a path no two-dimensional view reaches
+    len = 40
+    ys = Array.new(len) { |i| ((i * 5) % 17) - 8.0 }
+    flat = Cumo::DFloat.cast(ys)
+    flat2 = Cumo::DFloat.cast(ys.rotate(3))
+    bits1 = Cumo::Int32.cast(Array.new(len) { |i| i % 3 }).gt(1)
+    bits2 = Cumo::Int32.cast(Array.new(len) { |i| i % 4 }).gt(1)
+
+    one_d = {
+      "step 3" => ->(a) { a[0.step(len - 1, 3)] },
+      "reversed" => ->(a) { a[(len - 1).step(0, -1)] },
+      "reversed by 2" => ->(a) { a[(len - 1).step(0, -2)] },
+      "fancy" => ->(a) { a[[7, 2, 39, 0, 15, 15]] },
+      "tail" => ->(a) { a[3..-4] },
+    }
+
+    one_d.each do |what, take|
+      a = take.call(flat)
+      b = take.call(flat2)
+      p1 = take.call(bits1)
+      p2 = take.call(bits2)
+
+      assert_equal(a.copy.gt(b.copy).to_a, a.gt(b).to_a, "1-d gt of #{what}")
+      assert_equal(a.copy.signbit.to_a, a.signbit.to_a, "1-d signbit of #{what}")
+      w1 = p1.to_a
+      w2 = p2.to_a
+      assert_equal(w1.zip(w2).map { |u, v| u & v }, (p1 & p2).to_a, "1-d and of #{what}")
+      assert_equal(w1.map { |u| u ^ 1 }, (~p1).to_a, "1-d not of #{what}")
+      assert_equal(w1.count(1), p1.count_true, "1-d count_true of #{what}")
+      assert_equal(w1, p1.copy.to_a, "1-d copy of #{what}")
+
+      cells = take.call(Cumo::DFloat.cast((0...len).to_a)).to_a.map(&:to_i)
+      d = Cumo::Bit.new(len).fill(0)
+      take.call(d).fill(1)
+      assert_equal(Array.new(len) { |i| cells.include?(i) ? 1 : 0 }, d.to_a, "1-d Bit fill of #{what}")
+    end
+
+    # a 5-d shape runs past the dimension-specialised kernels
+    deep = [2, 2, 3, 2, 5]
+    n = deep.reduce(:*)
+    zs = Array.new(n) { |i| ((i * 7) % 11) - 5.0 }
+    a = Cumo::DFloat.cast(zs).reshape(*deep)
+    assert_equal(zs.map { |x| x > 0 ? 1 : 0 }, a.gt(0).to_a.flatten)
+    assert_equal(a.transpose.copy.gt(0).to_a.flatten, a.transpose.gt(0).to_a.flatten)
+    bd = Cumo::Int32.cast(Array.new(n) { |i| i % 3 }).reshape(*deep).gt(1)
+    assert_equal(bd.transpose.to_a.flatten.map { |u| u ^ 1 }, (~bd.transpose).to_a.flatten)
+  end
+
   test "copy of an RObject view stays on the host" do
     # RObject data is host memory, so it must not take the kernel path
     a = Cumo::RObject.cast([[1, 2, 3], [4, 5, 6], [7, 8, 9]])

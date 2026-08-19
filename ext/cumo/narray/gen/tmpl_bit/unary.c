@@ -1,22 +1,30 @@
-void <%="cumo_#{c_iter}_elementwise_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, ssize_t s1, size_t *idx1, CUMO_BIT_DIGIT *a3, size_t p3, ssize_t s3, size_t *idx3, uint64_t n);
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_iarray_stridx_t* a1, cumo_na_bit_iarray_stridx_t* a3, cumo_na_indexer_t* indexer);
 void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, CUMO_BIT_DIGIT *a3, size_t p3, uint64_t n);
+
+static int
+<%=c_iter%>_is_flat(cumo_na_bit_iarray_stridx_t* a, cumo_na_indexer_t* indexer)
+{
+    return indexer->ndim == 1 &&
+        CUMO_SDX_IS_STRIDE(a->stridx[0]) && CUMO_SDX_GET_STRIDE(a->stridx[0]) == 1;
+}
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
-    size_t  n;
-    size_t  p1, p3;
-    ssize_t s1, s3;
-    size_t *idx1, *idx3;
-    CUMO_BIT_DIGIT *a1, *a3;
+    cumo_na_bit_iarray_stridx_t a1 = cumo_na_make_bit_iarray_stridx(&lp->args[0]);
+    cumo_na_bit_iarray_stridx_t a3 = cumo_na_make_bit_iarray_stridx(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    CUMO_INIT_COUNTER(lp, n);
-    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
-    CUMO_INIT_PTR_BIT_IDX(lp, 1, a3, p3, s3, idx3);
-    if (s1!=1 || s3!=1 || idx1 || idx3) {
-        <%="cumo_#{c_iter}_elementwise_kernel_launch"%>(a1,p1,s1,idx1,a3,p3,s3,idx3,n);
+    // A word at a time is worth a separate kernel, but it needs both operands
+    // laid out end to end, which after the loop is contracted means one
+    // dimension of step one.
+    if (<%=c_iter%>_is_flat(&a1,&indexer) && <%=c_iter%>_is_flat(&a3,&indexer)) {
+        <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(
+            a1.ptr + a1.pos / CUMO_NB, a1.pos % CUMO_NB,
+            a3.ptr + a3.pos / CUMO_NB, a3.pos % CUMO_NB,
+            indexer.total_size);
     } else {
-        <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(a1,p1,a3,p3,n);
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a3,&indexer);
     }
 }
 
@@ -30,7 +38,7 @@ static VALUE
 {
     cumo_ndfunc_arg_in_t ain[1] = {{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,1, ain,aout};
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain, aout };
 
     return cumo_na_ndloop(&ndf, 1, self);
 }
