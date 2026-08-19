@@ -3318,6 +3318,10 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(ZeroDivisionError) { ints[true, 1..-2].divmod(0) }
   end
 
+  def ints_of(narray)
+    narray.to_a.map { |row| row.map(&:to_i) }
+  end
+
   # Combines two nested arrays element by element, whatever their depth
   def zip_deep(a, b, &blk)
     if a.first.is_a?(Array)
@@ -3495,6 +3499,52 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(a.transpose.copy.gt(0).to_a.flatten, a.transpose.gt(0).to_a.flatten)
     bd = Cumo::Int32.cast(Array.new(n) { |i| i % 3 }).reshape(*deep).gt(1)
     assert_equal(bd.transpose.to_a.flatten.map { |u| u ^ 1 }, (~bd.transpose).to_a.flatten)
+  end
+
+  test "storing an Array of narrays zeroes the rest of each row" do
+    # The zero fill was placed one whole sub-narray past where it belonged: the
+    # branch that copies the sub-narray advanced the pointer, and the kernel it
+    # launches was then handed the same offset a second time. On the last row
+    # that runs off the end of the array, which Ruby cannot see; what it can see
+    # is that the fill lands in the row after the one it belongs to.
+    rows = 3
+    cols = 7
+    dtypes = [Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::SFloat, Cumo::DFloat, Cumo::RObject]
+
+    dtypes.each do |dtype|
+      whole = [dtype.new(cols).seq, dtype[1, 2, 3], dtype[4, 5]]
+      want = [[0, 1, 2, 3, 4, 5, 6], [1, 2, 3, 0, 0, 0, 0], [4, 5, 0, 0, 0, 0, 0]]
+
+      dst = dtype.new(rows, cols).fill(9)
+      dst.store(whole)
+      assert_equal(want, ints_of(dst), "#{dtype} sub-narray rows")
+
+      # the same rows as a Ruby Array take the other branch, which never
+      # advanced and so has to keep working unchanged
+      dst = dtype.new(rows, cols).fill(9)
+      dst.store([[0, 1, 2, 3, 4, 5, 6], [1, 2, 3], [4, 5]])
+      assert_equal(want, ints_of(dst), "#{dtype} Array rows")
+
+      dst = dtype.new(rows, cols).fill(9)
+      dst[true, (cols - 1).step(0, -1)].store(whole)
+      assert_equal([[6, 5, 4, 3, 2, 1, 0], [0, 0, 0, 0, 3, 2, 1], [0, 0, 0, 0, 0, 5, 4]],
+                   ints_of(dst), "#{dtype} reversed destination")
+
+      dst = dtype.new(rows, cols).fill(9)
+      dst.store([dtype[1, 2, 3], nil, dtype[4, 5]])
+      assert_equal([[1, 2, 3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0], [4, 5, 0, 0, 0, 0, 0]],
+                   ints_of(dst), "#{dtype} nil row")
+
+      dst = dtype.new(rows, cols).fill(9)
+      dst.store([dtype[1, 2, 3], 5, dtype[4, 5]])
+      assert_equal([[1, 2, 3, 0, 0, 0, 0], [5, 0, 0, 0, 0, 0, 0], [4, 5, 0, 0, 0, 0, 0]],
+                   ints_of(dst), "#{dtype} scalar row")
+
+      # a sub-narray longer than the row fills it and nothing else
+      dst = dtype.new(2, 3).fill(9)
+      dst.store([dtype.new(6).seq, dtype.new(5).seq])
+      assert_equal([[0, 1, 2], [0, 1, 2]], ints_of(dst), "#{dtype} row shorter than the sub-narray")
+    end
   end
 
   test "stores between Bit and another dtype reach every element of a view" do
