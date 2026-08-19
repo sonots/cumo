@@ -75,13 +75,15 @@ static VALUE
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_prnan);
     if (ndf.func == <%=c_iter%>_ignan) {
         ndf.func = <%=c_iter%>_kernel;
-        ndf.flag = CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP;
+        // or rather than assign: cumo_na_reduce_dimension may have set
+        // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
+        ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
     }
   <% else %>
     ndf.func = <%=c_iter%>;
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     ndf.func = <%=c_iter%>_kernel;
-    ndf.flag = CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP;
+    ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
   <% end %>
     cumo_na_ndloop(&ndf, 2, self, reduce);
     return self;

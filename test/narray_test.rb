@@ -3547,6 +3547,58 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "median takes the middle of every row, whatever the axis" do
+    # median sorted on the host, one row at a time, behind a device
+    # synchronization. The expectations are worked out in Ruby, and the values
+    # stay small so that the average of the middle two cannot overflow the
+    # narrower integer types.
+    rows = 12
+    cols = 25
+    xs = Array.new(rows * cols) { |i| (i * 37) % 53 }
+    middle = lambda do |vals, int|
+      sorted = vals.sort
+      n = sorted.size
+      return sorted[(n - 1) / 2] if n.odd?
+
+      pair = sorted[(n / 2) - 1] + sorted[n / 2]
+      int ? pair / 2 : pair / 2.0
+    end
+
+    [Cumo::Int8, Cumo::Int32, Cumo::UInt8, Cumo::UInt32, Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      int = dtype != Cumo::SFloat && dtype != Cumo::DFloat
+      src = dtype.cast(xs).reshape(rows, cols)
+      table = src.to_a.map { |r| r.map(&:to_i) }
+
+      assert_equal([middle.call(table.flatten, int)], src.median.to_a, "#{dtype} flat")
+      assert_equal(table.map { |r| middle.call(r, int) }, src.median(axis: 1).to_a, "#{dtype} axis 1")
+      assert_equal(table.transpose.map { |r| middle.call(r, int) }, src.median(axis: 0).to_a, "#{dtype} axis 0")
+      assert_equal(table.map { |r| [middle.call(r, int)] }, src.median(axis: 1, keepdims: true).to_a,
+                   "#{dtype} keepdims")
+
+      view = src[true, 0.step(cols - 1, 3)]
+      assert_equal(view.to_a.map { |r| middle.call(r.map(&:to_i), int) }, view.median(axis: 1).to_a,
+                   "#{dtype} column slice")
+
+      cube = dtype.cast(xs[0, 2 * 5 * 3]).reshape(2, 5, 3)
+      want = map_deep(cube.to_a, &:to_i).map { |plane| plane.transpose.map { |r| middle.call(r, int) } }
+      assert_equal(want, cube.median(axis: 1).to_a, "#{dtype} 3-d axis 1")
+
+      # an odd row length takes the other branch
+      odd = dtype.cast(xs[0, rows * (cols - 2)]).reshape(rows, cols - 2)
+      assert_equal(odd.to_a.map { |r| middle.call(r.map(&:to_i), int) }, odd.median(axis: 1).to_a,
+                   "#{dtype} odd row length")
+    end
+
+    # trailing NaNs are dropped before the middle is taken, which is what numo
+    # 0.9 does; numo-narray-alt lost that in a rewrite and answers 3.0 here
+    nan = Float::NAN
+    [Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      assert_equal([2.0], dtype.cast([3.0, nan, 1.0, nan, 2.0]).median.to_a, "#{dtype} NaN dropped")
+      assert(dtype.cast([nan, nan]).median.to_a.first.nan?, "#{dtype} all NaN")
+      assert_equal([5.0], dtype.cast([5.0]).median.to_a, "#{dtype} one element")
+    end
+  end
+
   test "sort orders every row, whatever the axis and the layout" do
     # The sort ran on the host, one row at a time, behind a device
     # synchronization. The expectations are sorted in Ruby rather than taken

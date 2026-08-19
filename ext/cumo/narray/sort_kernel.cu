@@ -162,6 +162,73 @@ void sort_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, 
     cumo_cuda_runtime_free((char*)out);
 }
 
+// The rows are already sorted, so the middle of each is the answer. Trailing
+// NaNs are dropped first, which is what the host loop this replaces does and
+// what numo 0.9 does; numo-narray-alt lost that in a rewrite.
+template <typename T, bool IS_FLOAT>
+__global__ void median_kernel(const T* sorted, int64_t row_len, cumo_na_iarray_t out, cumo_na_indexer_t out_indexer) {
+    for (uint64_t r = blockIdx.x * blockDim.x + threadIdx.x; r < out_indexer.total_size; r += blockDim.x * gridDim.x) {
+        const T* row = sorted + (int64_t)r * row_len;
+        int64_t n = row_len;
+        T v;
+        if constexpr (IS_FLOAT) {
+            while (n > 0 && isnan(row[n - 1])) --n;
+        }
+        if (n == 0) {
+            v = row[0];
+        } else if (n % 2 == 0) {
+            v = (row[n / 2 - 1] + row[n / 2]) / 2;
+        } else {
+            v = row[(n - 1) / 2];
+        }
+        cumo_na_indexer_set_dim(&out_indexer, r);
+        *(T*)cumo_na_iarray_at_dim(&out, &out_indexer) = v;
+    }
+}
+
+// median throws the sorted rows away, so unlike sort it never has to put them
+// back where they came from.
+template <typename T, bool IS_FLOAT>
+void median_rows(cumo_na_reduction_arg_t* arg, int flat) {
+    int64_t total = (int64_t)arg->in_indexer.total_size;
+    int64_t n_rows = (int64_t)arg->out_indexer.total_size;
+    if (total == 0 || n_rows == 0) return;
+    int64_t row_len = total / n_rows;
+
+    size_t grid_dim = cumo_get_grid_dim(total);
+    size_t block_dim = cumo_get_block_dim(total);
+
+    T* data = (T*)arg->in.ptr;
+    T* gathered = 0;
+    if (!flat) {
+        gathered = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
+        gather_kernel<T><<<grid_dim, block_dim>>>(arg->in, arg->in_indexer, gathered);
+        cumo_cuda_runtime_check_kernel_launch();
+        data = gathered;
+    }
+
+    T* sorted = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
+    if constexpr (IS_FLOAT) {
+        typedef typename float_key<T>::type key_t;
+        key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
+        key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
+        float_key_kernel<T><<<grid_dim, block_dim>>>(data, kin, total);
+        cumo_cuda_runtime_check_kernel_launch();
+        sort_pairs(kin, kout, data, sorted, total, n_rows, row_len);
+        cumo_cuda_runtime_free((char*)kout);
+        cumo_cuda_runtime_free((char*)kin);
+    } else {
+        sort_keys(data, sorted, total, n_rows, row_len);
+    }
+
+    median_kernel<T, IS_FLOAT><<<cumo_get_grid_dim(n_rows), cumo_get_block_dim(n_rows)>>>(
+        sorted, row_len, arg->out, arg->out_indexer);
+    cumo_cuda_runtime_check_kernel_launch();
+
+    cumo_cuda_runtime_free((char*)sorted);
+    if (gathered) cumo_cuda_runtime_free((char*)gathered);
+}
+
 } // namespace
 
 // float_key is only defined for the two float types, so the integer entry
@@ -171,6 +238,10 @@ void sort_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, 
         cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, int64_t row_len, int flat) \
     {                                                                                           \
         sort_rows<type, is_float>(a, indexer, n_rows, row_len, flat);                           \
+    }                                                                                           \
+    extern "C" void cumo_##name##_median_kernel_launch(cumo_na_reduction_arg_t* arg, int flat)  \
+    {                                                                                           \
+        median_rows<type, is_float>(arg, flat);                                                 \
     }
 
 CUMO_DEF_SORT(int8, int8_t, false)
