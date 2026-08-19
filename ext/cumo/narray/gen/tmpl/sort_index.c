@@ -1,3 +1,37 @@
+void cumo_<%=type_name%>_sort_index_kernel_launch(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer,
+        cumo_na_iarray_t* idx, cumo_na_iarray_t* out, int64_t n_rows, int64_t row_len, int flat, int idx_bytes);
+
+// args[1] holds the answer for each position, so the sort only has to say
+// which position each rank came from. nan:true keeps the host path, as sort does.
+static void
+<%=c_iter%>_kernel(cumo_na_loop_t *const lp)
+{
+    cumo_na_iarray_t a = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+    cumo_na_iarray_t idx = cumo_na_make_iarray_given_ndim(&lp->args[1], indexer.ndim);
+    cumo_na_iarray_t out = cumo_na_make_iarray_given_ndim(&lp->args[2], indexer.ndim);
+    int64_t row_len = 1;
+    int64_t n_rows;
+    ssize_t expect = sizeof(dtype);
+    int i, flat = 1;
+
+    for (i = indexer.ndim - lp->reduce_dim; i < indexer.ndim; ++i) {
+        row_len *= (int64_t)indexer.shape[i];
+    }
+    n_rows = row_len > 0 ? (int64_t)indexer.total_size / row_len : 0;
+
+    for (i = indexer.ndim; --i >= 0;) {
+        if (a.step[i] != expect) {
+            flat = 0;
+            break;
+        }
+        expect *= (ssize_t)indexer.shape[i];
+    }
+
+    cumo_<%=type_name%>_sort_index_kernel_launch(&a, &indexer, &idx, &out, n_rows, row_len, flat,
+                                                 (int)lp->args[2].elmsz);
+}
+
 <% (is_float ? ["_ignan","_prnan"] : [""]).each do |j|
    [64,32].each do |i| %>
 #define idx_t int<%=i%>_t
@@ -64,6 +98,7 @@ static VALUE
     cumo_narray_t *na;
     VALUE idx, tmp, reduce, res;
     char *buf;
+    int kernel;
     cumo_ndfunc_arg_in_t ain[3] = {{cT,0},{0,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
     cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM, 3,1, ain,aout};
@@ -80,9 +115,11 @@ static VALUE
          ndf.func = <%=type_name%>_index64_qsort_ignan;
          reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf,
                                       <%=type_name%>_index64_qsort_prnan);
+         kernel = (ndf.func == <%=type_name%>_index64_qsort_ignan);
        <% else %>
          ndf.func = <%=type_name%>_index64_qsort;
          reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+         kernel = 1;
        <% end %>
     } else {
         ain[1].type =
@@ -92,12 +129,23 @@ static VALUE
          ndf.func = <%=type_name%>_index32_qsort_ignan;
          reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf,
                                       <%=type_name%>_index32_qsort_prnan);
+         kernel = (ndf.func == <%=type_name%>_index32_qsort_ignan);
        <% else %>
          ndf.func = <%=type_name%>_index32_qsort;
          reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+         kernel = 1;
        <% end %>
     }
     rb_funcall(idx, rb_intern("seq"), 0);
+
+    if (kernel) {
+        ndf.func = <%=c_iter%>_kernel;
+        ndf.flag |= CUMO_NDF_INDEXER_LOOP;
+        if (cumo_na_has_idx_p(self)) {
+            self = cumo_na_copy(self); // the indexer loop does not support idx, make contiguous
+        }
+        return cumo_na_ndloop3(&ndf, 0, 3, self, idx, reduce);
+    }
 
     size = na->size*sizeof(void*); // max capa
     buf = rb_alloc_tmp_buffer(&tmp, size);

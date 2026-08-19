@@ -3599,6 +3599,33 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # Where each element of a row sits once the row is in order, ties left in the
+  # order they came and NaN last. The kernel's radix sort is stable, so this is
+  # an exact expectation rather than one of several valid answers.
+  def sort_index_expect(view, axis)
+    flat = view.to_a.flatten
+    shape = view.shape
+    strides = shape.each_index.map { |i| shape[(i + 1)..].inject(1, :*) }
+    rank = ->(p) { [flat[p].is_a?(Float) && flat[p].nan? ? 1 : 0, flat[p].is_a?(Float) && flat[p].nan? ? 0 : flat[p]] }
+    want = Array.new(flat.size)
+    flat.each_index.group_by { |p|
+      shape.each_index.reject { |d| axis.include?(d) }.map { |d| (p / strides[d]) % shape[d] }
+    }.each_value do |row|
+      order = row.sort_by.with_index { |p, i| rank.call(p) + [i] }
+      row.each_with_index { |p, i| want[p] = order[i] }
+    end
+    want
+  end
+
+  def assert_sort_index(view, what, axes: nil)
+    axes ||= (0...view.ndim).map { |i| [i] } + [(0...view.ndim).to_a]
+    axes.each do |axis|
+      got = axis.size == view.ndim ? view.sort_index : view.sort_index(axis: axis)
+      assert_equal(sort_index_expect(view, axis), got.to_a.flatten,
+                   "#{what} sort_index axis #{axis.inspect}")
+    end
+  end
+
   test "sort orders every row, whatever the axis and the layout" do
     # The sort ran on the host, one row at a time, behind a device
     # synchronization. The expectations are sorted in Ruby rather than taken
@@ -3649,6 +3676,48 @@ class NArrayTest < Test::Unit::TestCase
 
     assert_equal([1, 2, 3], Cumo::Int32[3, 1, 2].sort.to_a, "smallest case")
     assert_equal([7], Cumo::Int32[7].sort.to_a, "one element")
+  end
+
+  test "sort_index says where every element of a row came from" do
+    # The sort ran on the host, one row at a time, behind a device
+    # synchronization, and it read the array through its own index array, which
+    # the indexer loop cannot address.
+    rows = 12
+    cols = 25
+    n = rows * cols
+    xs = Array.new(n) { |i| ((i * 37) % 101) - 50 }
+    int_types = [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::UInt32]
+
+    (int_types + [Cumo::SFloat, Cumo::DFloat]).each do |dtype|
+      vals = dtype == Cumo::UInt8 || dtype == Cumo::UInt32 ? xs.map(&:abs) : xs
+      src = dtype.cast(vals).reshape(rows, cols)
+      assert_sort_index(src, dtype.to_s)
+      assert_sort_index(src[true, 0.step(cols - 1, 3)], "#{dtype} column slice")
+      assert_sort_index(src[(rows - 1).step(0, -1), true], "#{dtype} reversed rows")
+      assert_sort_index(src[[7, 0, 4, 11, 2], true], "#{dtype} index view")
+
+      cube = dtype.cast(vals[0, 2 * 5 * 3]).reshape(2, 5, 3)
+      assert_sort_index(cube, "#{dtype} 3-d", axes: [[0], [1], [2], [0, 1], [1, 2], [0, 1, 2]])
+    end
+
+    # every NaN sorts last whatever its sign, and -0.0 sorts below +0.0
+    nan = Float::NAN
+    neg_nan = Float::INFINITY - Float::INFINITY
+    [Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      got = dtype.cast([3.0, nan, 1.0, neg_nan, 2.0]).sort_index.to_a
+      assert_equal([2, 4, 0], got[0, 3], "#{dtype} NaN last")
+      assert_equal([1, 3], got[3, 2].sort, "#{dtype} NaN last")
+
+      assert_equal([1, 2, 0, 3], dtype.cast([0.0, -1.0, -0.0, 1.0]).sort_index.to_a,
+                   "#{dtype} signed zero")
+    end
+
+    # nan:true keeps the host path, and it answers what numo answers there
+    assert_equal([0, 1, 2, 3], Cumo::DFloat[3.0, nan, 1.0, 2.0].sort_index(nan: true).to_a,
+                 "nan:true")
+
+    assert_equal([0], Cumo::Int32[7].sort_index.to_a, "one element")
+    assert_equal([1, 2, 0], Cumo::Int32[3, 1, 2].sort_index.to_a, "smallest case")
   end
 
   test "an RObject loop waits for the kernel that fills an index array" do
