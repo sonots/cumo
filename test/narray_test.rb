@@ -3547,6 +3547,58 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "sort orders every row, whatever the axis and the layout" do
+    # The sort ran on the host, one row at a time, behind a device
+    # synchronization. The expectations are sorted in Ruby rather than taken
+    # from another cumo call.
+    rows = 12
+    cols = 25
+    n = rows * cols
+    xs = Array.new(n) { |i| ((i * 37) % 101) - 50 }
+    int_types = [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::UInt32]
+
+    (int_types + [Cumo::SFloat, Cumo::DFloat]).each do |dtype|
+      vals = dtype == Cumo::UInt8 || dtype == Cumo::UInt32 ? xs.map(&:abs) : xs
+      src = dtype.cast(vals).reshape(rows, cols)
+      table = src.to_a.map { |r| r.map(&:to_i) }
+
+      assert_equal(table.flatten.sort, ints_of(src.sort).flatten, "#{dtype} flat")
+      assert_equal(table.map(&:sort), ints_of(src.sort(axis: 1)), "#{dtype} axis 1")
+      assert_equal(table.transpose.map(&:sort).transpose, ints_of(src.sort(axis: 0)), "#{dtype} axis 0")
+
+      # a view the rows of which are not laid out end to end
+      view = src[true, 0.step(cols - 1, 3)]
+      assert_equal(view.to_a.map { |r| r.map(&:to_i).sort }, ints_of(view.sort(axis: 1)), "#{dtype} column slice")
+
+      rev = src[(rows - 1).step(0, -1), true]
+      assert_equal(rev.to_a.map { |r| r.map(&:to_i).sort }, ints_of(rev.sort(axis: 1)), "#{dtype} reversed rows")
+
+      idx = src[[7, 0, 4, 11, 2], true]
+      assert_equal(idx.to_a.map { |r| r.map(&:to_i).sort }, ints_of(idx.sort(axis: 1)), "#{dtype} index view")
+
+      # a 3-d shape, and an axis that is neither the first nor the last
+      cube = dtype.cast(vals[0, 2 * 5 * 3]).reshape(2, 5, 3)
+      want = map_deep(cube.to_a, &:to_i).map { |plane| plane.transpose.map(&:sort).transpose }
+      assert_equal(want, map_deep(cube.sort(axis: 1).to_a, &:to_i), "#{dtype} 3-d axis 1")
+    end
+
+    # every NaN sorts last whatever its sign, and -0.0 sorts below +0.0
+    nan = Float::NAN
+    neg_nan = Float::INFINITY - Float::INFINITY
+    [Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      got = dtype.cast([3.0, nan, 1.0, neg_nan, 2.0]).sort.to_a
+      assert_equal([1.0, 2.0, 3.0], got[0, 3], "#{dtype} NaN last")
+      assert(got[3].nan? && got[4].nan?, "#{dtype} NaN last")
+
+      zeros = dtype.cast([0.0, -1.0, -0.0, 1.0]).sort.to_a
+      assert_equal([-1.0, 0.0, 0.0, 1.0], zeros, "#{dtype} signed zero")
+      assert_equal([1, 1, 0, 0], zeros.map { |x| (1.0 / x).negative? ? 1 : 0 }, "#{dtype} signed zero order")
+    end
+
+    assert_equal([1, 2, 3], Cumo::Int32[3, 1, 2].sort.to_a, "smallest case")
+    assert_equal([7], Cumo::Int32[7].sort.to_a, "one element")
+  end
+
   test "an RObject loop waits for the kernel that fills an index array" do
     # Index arrays are filled by a kernel. Every dtype but RObject hands the
     # index on to a kernel of its own, which the stream already orders, but
