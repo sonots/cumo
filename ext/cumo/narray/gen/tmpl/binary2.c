@@ -1,21 +1,21 @@
 <% unless type_name == 'robject' %>
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, char *p4, ssize_t s1, ssize_t s2, ssize_t s3, ssize_t s4, uint64_t n, int* divzero);
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_iarray_t* a4, cumo_na_indexer_t* indexer, int* divzero);
 <% end %>
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
-    size_t   n;
-    char    *p1, *p2, *p3, *p4;
-    ssize_t  s1, s2, s3, s4;
-    CUMO_INIT_COUNTER(lp, n);
-    CUMO_INIT_PTR(lp, 0, p1, s1);
-    CUMO_INIT_PTR(lp, 1, p2, s2);
-    CUMO_INIT_PTR(lp, 2, p3, s3);
-    CUMO_INIT_PTR(lp, 3, p4, s4);
     <% if type_name == 'robject' %>
     {
-        size_t i;
+        size_t   i, n;
+        char    *p1, *p2, *p3, *p4;
+        ssize_t  s1, s2, s3, s4;
+
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, p1, s1);
+        CUMO_INIT_PTR(lp, 1, p2, s2);
+        CUMO_INIT_PTR(lp, 2, p3, s3);
+        CUMO_INIT_PTR(lp, 3, p4, s4);
         for (i=n; i--;) {
             dtype    x, y, a, b;
             CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
@@ -34,15 +34,21 @@ static void
     }
     <% else %>
     {
+        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+        cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
+        cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[2]);
+        cumo_na_iarray_t a4 = cumo_na_make_iarray(&lp->args[3]);
+        cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
         //<% if is_int and %w[divmod].include? name %>
         int *divzero = cumo_cuda_runtime_error_flag_new();
-        <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,p4,s1,s2,s3,s4,n,divzero);
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&a4,&indexer,divzero);
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         if (cumo_cuda_runtime_error_flag_get(divzero)) {
             lp->err_type = rb_eZeroDivError;
         }
         //<% else %>
-        <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,p3,p4,s1,s2,s3,s4,n,0);
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&a4,&indexer,0);
         //<% end %>
     }
     <% end %>
@@ -53,7 +59,11 @@ static VALUE
 {
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_arg_out_t aout[2] = {{cT,0},{cT,0}};
+    <% if type_name == 'robject' %>
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP, 2, 2, ain, aout };
+    <% else %>
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 2, ain, aout };
+    <% end %>
 
     return cumo_na_ndloop(&ndf, 2, self, other);
 }

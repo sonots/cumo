@@ -3160,6 +3160,87 @@ class NArrayTest < Test::Unit::TestCase
                  b[[1, 0], true, true, true, true].copy.to_a.flatten)
   end
 
+  test "elementwise kernels reach every element of a view they cannot flatten" do
+    # pow, clip, divmod, maximum, frexp, modf, fill and seq each ran once per
+    # row of a view with more than one dimension left before the indexer loop.
+    # Each view is checked against a contiguous copy of the same elements, so
+    # only the walk is under test and not the operation's own semantics.
+    rows = 9
+    cols = 7
+    xs = Array.new(rows * cols) { |i| ((i * 3) % 13) + 1.0 }
+    src = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    idx = [5, 0, 3, 8, 1]
+
+    views = {
+      "column slice" => ->(a) { a[true, 1...(cols - 1)] },
+      "reversed" => ->(a) { a[true, (cols - 1).step(0, -1)] },
+      "row stride" => ->(a) { a[0.step(rows - 1, 2), true] },
+      "index view" => ->(a) { a[idx, true] },
+      "transpose" => ->(a) { a.transpose },
+    }
+
+    ops = {
+      "pow" => ->(a) { a**2.0 },
+      "pow_int32" => ->(a) { a**3 },
+      "clip" => ->(a) { a.clip(4.0, 9.0) },
+      "clip min" => ->(a) { a.clip(4.0, nil) },
+      "clip max" => ->(a) { a.clip(nil, 9.0) },
+      "clip array" => ->(a) { a.clip(a - 1.0, a + 1.0) },
+      "maximum" => ->(a) { Cumo::DFloat.maximum(a, 6.0) },
+      "minimum" => ->(a) { Cumo::DFloat.minimum(a, 6.0) },
+      "divmod" => ->(a) { a.divmod(4.0).map(&:to_a) },
+      "frexp" => ->(a) { Cumo::NMath.frexp(a).map(&:to_a) },
+      "modf" => ->(a) { a.modf.map(&:to_a) },
+    }
+
+    views.each do |what, take|
+      view = take.call(src)
+      flat = view.copy
+      assert_equal(flat.to_a, view.to_a, "#{what} itself")
+      ops.each do |op, f|
+        want = f.call(flat)
+        got = f.call(view)
+        assert_equal(want.is_a?(Array) ? want : want.to_a,
+                     got.is_a?(Array) ? got : got.to_a, "#{op} of #{what}")
+      end
+    end
+
+    # fill and seq write through the view, so the elements outside it must be
+    # left alone and the ones inside must all be reached
+    views.each do |what, take|
+      cells = take.call(Cumo::DFloat.cast((0...(rows * cols)).to_a).reshape(rows, cols))
+                  .to_a.flatten.map(&:to_i)
+
+      dst = Cumo::DFloat.zeros(rows, cols)
+      take.call(dst).fill(5.0)
+      want = Array.new(rows * cols) { |i| cells.include?(i) ? 5.0 : 0.0 }
+      assert_equal(want, dst.to_a.flatten, "fill #{what}")
+
+      dst = Cumo::DFloat.zeros(rows, cols)
+      take.call(dst).seq(2.0, 0.5)
+      seen = cells.each_with_index.to_h { |cell, i| [cell, 2.0 + (0.5 * i)] }
+      want = Array.new(rows * cols) { |i| seen.fetch(i, 0.0) }
+      assert_equal(want, dst.to_a.flatten, "seq #{what}")
+    end
+
+    # a 5-d shape runs past the dimension-specialised kernels
+    deep = [2, 2, 3, 2, 5]
+    n = deep.reduce(:*)
+    ys = Array.new(n) { |i| (i % 7) + 1.0 }
+    a = Cumo::DFloat.cast(ys).reshape(*deep)
+    assert_equal(ys.map { |x| x**2 }, (a**2.0).to_a.flatten)
+    assert_equal(ys.map { |x| x.clamp(2.0, 5.0) }, a.clip(2.0, 5.0).to_a.flatten)
+    assert_equal(a.transpose.copy.modf.map(&:to_a), a.transpose.modf.map(&:to_a))
+    d = Cumo::DFloat.zeros(*deep)
+    d.transpose.seq(1.0)
+    assert_equal((0...n).map { |i| 1.0 + i }, d.transpose.to_a.flatten)
+
+    # the error paths still fire from the kernel
+    assert_raise(Cumo::NArray::OperationError) { src[true, 1..-2].clip(9.0, 1.0) }
+    ints = Cumo::Int32.cast(xs.map(&:to_i)).reshape(rows, cols)
+    assert_raise(ZeroDivisionError) { ints[true, 1..-2].divmod(0) }
+  end
+
   test "copy of an RObject view stays on the host" do
     # RObject data is host memory, so it must not take the kernel path
     a = Cumo::RObject.cast([[1, 2, 3], [4, 5, 6], [7, 8, 9]])

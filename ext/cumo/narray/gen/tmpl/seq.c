@@ -17,30 +17,30 @@ typedef struct {
 } seq_opt_t;
 
 <% unless is_object %>
-void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t* idx1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n);
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n);
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, seq_data_t beg, seq_data_t step, seq_count_t c);
 <% end %>
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
-    size_t  i;
-    char   *p1;
-    ssize_t s1;
-    size_t *idx1;
     seq_data_t beg, step;
     seq_count_t c;
     seq_opt_t *g;
 
-    CUMO_INIT_COUNTER(lp, i);
-    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     g = (seq_opt_t*)(lp->opt_ptr);
     beg  = g->beg;
     step = g->step;
     c    = g->count;
     <% if is_object %>
     {
+        size_t  i;
+        char   *p1;
+        ssize_t s1;
+        size_t *idx1;
         dtype x;
+
+        CUMO_INIT_COUNTER(lp, i);
+        CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         if (idx1) {
             for (; i--;) {
@@ -59,13 +59,11 @@ static void
     }
     <% else %>
     {
-        size_t n = i;
-        if (idx1) {
-            <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,idx1,beg,step,c,n);
-        } else {
-            <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,s1,beg,step,c,n);
-        }
-        g->count += n;
+        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+        cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,beg,step,c);
+        g->count += indexer.total_size;
     }
     <% end %>
 }
@@ -93,7 +91,11 @@ static VALUE
     seq_opt_t *g;
     VALUE vbeg=Qnil, vstep=Qnil;
     cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,0}};
+    <% if is_object %>
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
+    <% else %>
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1,0, ain,0};
+    <% end %>
 
     g = ALLOCA_N(seq_opt_t,1);
     g->beg = m_zero;

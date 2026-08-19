@@ -16,24 +16,23 @@
 <% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>
-void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(char *p1, char* p2, char* p3, ssize_t s1, ssize_t s2, ssize_t s3, size_t n);
+void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
 <% end %>
 
 static void
 <%=c_iter%><%=nan%>(cumo_na_loop_t *const lp)
 {
-    size_t   n;
-    char    *p1, *p2, *p3;
-    ssize_t  s1, s2, s3;
-
-    CUMO_INIT_COUNTER(lp, n);
-    CUMO_INIT_PTR(lp, 0, p1, s1);
-    CUMO_INIT_PTR(lp, 1, p2, s2);
-    CUMO_INIT_PTR(lp, 2, p3, s3);
-
     <% if type_name == 'robject' %>
     {
-        size_t i;
+        size_t   i, n;
+        char    *p1, *p2, *p3;
+        ssize_t  s1, s2, s3;
+
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, p1, s1);
+        CUMO_INIT_PTR(lp, 1, p2, s2);
+        CUMO_INIT_PTR(lp, 2, p3, s3);
+
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         for (i=0; i<n; i++) {
             dtype x, y, z;
@@ -46,7 +45,12 @@ static void
     }
     <% else %>
     {
-        cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(p1,p2,p3,s1,s2,s3,n);
+        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+        cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
+        cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[2]);
+        cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+        cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(&a1,&a2,&a3,&indexer);
     }
     <% end %>
 }
@@ -59,7 +63,11 @@ static VALUE
     VALUE a2 = Qnil;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
+    <% if type_name == 'robject' %>
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP, 2, 1, ain, aout };
+    <% else %>
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
+    <% end %>
 
     <% if is_float %>
     VALUE kw_hash = Qnil;
