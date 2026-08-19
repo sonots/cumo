@@ -1,4 +1,4 @@
-void cumo_<%=type_name%>_sort_kernel_launch(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, int64_t row_len, int flat);
+void cumo_<%=type_name%>_sort_kernel_launch(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, int64_t row_len, int flat);
 
 // One call sorts every row, so a loop over many short rows costs no more
 // launches than one long row. nan:true keeps the host path: its comparator
@@ -6,7 +6,7 @@ void cumo_<%=type_name%>_sort_kernel_launch(cumo_na_iarray_t* a, cumo_na_indexer
 static void
 <%=c_iter%>_kernel(cumo_na_loop_t *const lp)
 {
-    cumo_na_iarray_t a = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_iarray_stridx_t a = cumo_na_make_iarray_stridx(&lp->args[0]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
     int64_t row_len = 1;
     int64_t n_rows;
@@ -21,7 +21,7 @@ static void
     // The rows have to be laid out end to end for a segmented sort to address
     // them; anything else is gathered into a buffer of its own first.
     for (i = indexer.ndim; --i >= 0;) {
-        if (a.step[i] != expect) {
+        if (!CUMO_SDX_IS_STRIDE(a.stridx[i]) || CUMO_SDX_GET_STRIDE(a.stridx[i]) != expect) {
             flat = 0;
             break;
         }

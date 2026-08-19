@@ -58,22 +58,33 @@ __global__ void float_key_kernel(const Float* in, typename float_key<Float>::typ
     }
 }
 
+// sort writes its answer back where it read it, so an in-place sort of a view
+// backed by an index array has to address that array; the other two callers
+// hand over an array they copied themselves and never do.
+__device__ static inline char* at(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer) {
+    return cumo_na_iarray_at_dim(a, indexer);
+}
+
+__device__ static inline char* at(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer) {
+    return cumo_na_iarray_stridx_at_dim(a, indexer);
+}
+
 // Rows that are not laid out end to end are gathered into a buffer of their
 // own, sorted there and put back, which is two passes over the data against
 // one launch per row.
-template <typename T>
-__global__ void gather_kernel(cumo_na_iarray_t a, cumo_na_indexer_t indexer, T* buf) {
+template <typename T, typename Iarray>
+__global__ void gather_kernel(Iarray a, cumo_na_indexer_t indexer, T* buf) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
         cumo_na_indexer_set_dim(&indexer, i);
-        buf[i] = *(T*)cumo_na_iarray_at_dim(&a, &indexer);
+        buf[i] = *(T*)at(&a, &indexer);
     }
 }
 
-template <typename T>
-__global__ void scatter_kernel(cumo_na_iarray_t a, cumo_na_indexer_t indexer, const T* buf) {
+template <typename T, typename Iarray>
+__global__ void scatter_kernel(Iarray a, cumo_na_indexer_t indexer, const T* buf) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
         cumo_na_indexer_set_dim(&indexer, i);
-        *(T*)cumo_na_iarray_at_dim(&a, &indexer) = buf[i];
+        *(T*)at(&a, &indexer) = buf[i];
     }
 }
 
@@ -121,7 +132,7 @@ void sort_keys(const Key* kin, Key* kout, int64_t total, int64_t n_rows, int64_t
 }
 
 template <typename T, bool IS_FLOAT>
-void sort_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, int64_t row_len, int flat) {
+void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, int64_t row_len, int flat) {
     int64_t total = (int64_t)indexer->total_size;
     if (total == 0) return;
 
@@ -303,7 +314,7 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
 // points must not instantiate it; the bool picks the branch at compile time.
 #define CUMO_DEF_SORT(name, type, is_float)                                                     \
     extern "C" void cumo_##name##_sort_kernel_launch(                                           \
-        cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, int64_t row_len, int flat) \
+        cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, int64_t row_len, int flat) \
     {                                                                                           \
         sort_rows<type, is_float>(a, indexer, n_rows, row_len, flat);                           \
     }                                                                                           \
