@@ -58,6 +58,11 @@ cumo_cuda_runtime_is_device_memory(void* ptr)
 // once per operation.
 int* cumo_cuda_runtime_error_flag_new(void);
 bool cumo_cuda_runtime_error_flag_get(int *flag);
+size_t* cumo_cuda_runtime_error_item_new(void);
+// The same buffers without the reset, so a loop that launches once per row can
+// reset before it and read after it rather than synchronizing every row.
+int* cumo_cuda_runtime_error_flag_ptr(void);
+size_t* cumo_cuda_runtime_error_item_ptr(void);
 
 #if defined(__cplusplus)
 #if 0

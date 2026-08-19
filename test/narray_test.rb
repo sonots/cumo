@@ -2007,6 +2007,83 @@ class NArrayTest < Test::Unit::TestCase
       assert_raise(ArgumentError) { a.bincount(minlength: setter.new(a, -1)) }
     end
 
+    def bincount_expect(nested, length)
+      return nested.map { |row| bincount_expect(row, length) } if nested.first.is_a?(Array)
+
+      counts = Array.new(length, 0)
+      nested.each { |x| counts[x] += 1 }
+      counts
+    end
+
+    def bincount_expect_weighted(nested, weights, length)
+      if nested.first.is_a?(Array)
+        return nested.zip(weights).map { |row, w| bincount_expect_weighted(row, w, length) }
+      end
+
+      sums = Array.new(length, 0.0)
+      nested.each_with_index { |x, i| sums[x] += weights[i] }
+      sums
+    end
+
+    test "every element of a view is counted" do
+      # The count ran on the host, one element at a time, behind a device
+      # synchronization. The expectations are tallied in Ruby rather than taken
+      # from a contiguous copy, so a wrong address cannot cancel out.
+      rows = 12
+      cols = 25
+      lim = 37
+      xs = Array.new(rows * cols) { |i| (i * 7) % lim }
+      idx = [9, 0, 4, 11, 2]
+
+      views = {
+        "contiguous" => ->(a) { a },
+        "column slice" => ->(a) { a[true, 3...(cols - 4)] },
+        "reversed" => ->(a) { a[true, (cols - 1).step(0, -1)] },
+        "row stride" => ->(a) { a[0.step(rows - 1, 3), true] },
+        "index view" => ->(a) { a[idx, true] },
+        # the index has to be on the last axis for one to reach the kernel; on
+        # an outer axis ndloop walks it itself
+        "column index" => ->(a) { a[true, [7, 0, 19, 3, 24, 11]] },
+        "transpose" => ->(a) { a.transpose },
+      }
+
+      int_types.each do |dtype|
+        next if dtype == Cumo::Int8 # lim does not fit
+
+        src = dtype.cast(xs).reshape(rows, cols)
+        views.each do |what, take|
+          v = take.call(src)
+          length = v.to_a.flatten.max + 1
+          assert_equal(bincount_expect(v.to_a, length), v.bincount.to_a, "#{dtype} #{what}")
+          assert_equal(bincount_expect(v.to_a, length + 9), v.bincount(minlength: length + 9).to_a,
+                       "#{dtype} #{what} minlength")
+        end
+
+        flat = dtype.cast(xs)
+        [flat[[13, 2, 40, 7, 99, 0, 61]], flat[(0...(rows * cols)).step(5)],
+         flat[((rows * cols) - 1).step(0, -2)]].each_with_index do |v, i|
+          length = v.to_a.max + 1
+          assert_equal(bincount_expect(v.to_a, length), v.bincount.to_a, "#{dtype} 1-d view #{i}")
+        end
+      end
+
+      # weights, whose sums stay exact so the order the additions run in cannot
+      # show up in the answer
+      ws = Array.new(rows * cols) { |i| ((i * 3) % 11) - 5.0 }
+      [Cumo::SFloat, Cumo::DFloat].each do |wtype|
+        src = Cumo::Int32.cast(xs).reshape(rows, cols)
+        weight = wtype.cast(ws).reshape(rows, cols)
+        views.each do |what, take|
+          v = take.call(src)
+          w = take.call(weight)
+          length = v.to_a.flatten.max + 1
+          got = v.bincount(w).to_a
+          want = bincount_expect_weighted(v.to_a, w.to_a, length)
+          assert_equal(want, got, "#{wtype} #{what}")
+        end
+      end
+    end
+
     test "an array large enough that the filling kernel is still running" do
       r = (Cumo::Int32.new(1 << 20).seq % 997).bincount
       assert_equal(997, r.size)

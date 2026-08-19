@@ -15,39 +15,28 @@ static inline void
    cnt_cT = "cumo_cUInt#{bits}"
    cnt_type = "u_int#{bits}_t"
 %>
+void <%="cumo_#{c_iter}_#{bits}_kernel_launch"%>(char *p1, ssize_t s1, size_t *idx1, uint64_t count, char *p2, ssize_t s2, uint64_t n, int *oor, size_t *item);
+
 static void
 <%=c_iter%>_<%=bits%>(cumo_na_loop_t *const lp)
 {
-    size_t   i, x, n;
+    size_t   i, n;
     char    *p1, *p2;
     ssize_t  s1, s2;
     size_t  *idx1;
+    int     *oor;
+    size_t  *item;
 
     CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     CUMO_INIT_PTR(lp, 1, p2, s2);
     i = lp->args[0].shape[0];
     n = lp->args[1].shape[0];
 
-    // initialize
-    for (x=0; x < n; x++) {
-        *(<%=cnt_type%>*)(p2 + s2*x) = 0;
-    }
-
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_<%=bits%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    if (idx1) {
-        for (; i--;) {
-            CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
-            <%=c_func%>_check_item(x, n);
-            (*(<%=cnt_type%>*)(p2 + s2*x))++;
-        }
-    } else {
-        for (; i--;) {
-            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
-            <%=c_func%>_check_item(x, n);
-            (*(<%=cnt_type%>*)(p2 + s2*x))++;
-        }
-    }
+    // The flag is reset before the loop and read after it, so a multi-row input
+    // costs one synchronization rather than one per row.
+    oor = cumo_cuda_runtime_error_flag_ptr();
+    item = cumo_cuda_runtime_error_item_ptr();
+    <%="cumo_#{c_iter}_#{bits}_kernel_launch"%>(p1,s1,idx1,i,p2,s2,n,oor,item);
 }
 
 static VALUE
@@ -58,8 +47,15 @@ static VALUE
     cumo_ndfunc_arg_out_t aout[1] = {{<%=cnt_cT%>,1,shape_out}};
     cumo_ndfunc_t ndf = {<%=c_iter%>_<%=bits%>, CUMO_NO_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP,
                     1, 1, ain, aout};
+    int *oor = cumo_cuda_runtime_error_flag_new();
+    size_t *item = cumo_cuda_runtime_error_item_new();
+    VALUE v = cumo_na_ndloop(&ndf, 1, self);
 
-    return cumo_na_ndloop(&ndf, 1, self);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>_<%=bits%>", "<%=type_name%>");
+    if (cumo_cuda_runtime_error_flag_get(oor)) {
+        <%=c_func%>_check_item(*item, length);
+    }
+    return v;
 }
 <% end %>
 // ------- end of Integer count without weights -------
@@ -71,13 +67,16 @@ static VALUE
   cnt_cT = "cumo_c#{fn}loat"
   fn = fn.downcase
 %>
+void <%="cumo_#{c_iter}_#{fn}_kernel_launch"%>(char *p1, ssize_t s1, char *p2, ssize_t s2, uint64_t count, char *p3, ssize_t s3, uint64_t n, int *oor, size_t *item);
+
 static void
 <%=c_iter%>_<%=fn%>(cumo_na_loop_t *const lp)
 {
-    <%=cnt_type%> w;
-    size_t   i, x, n, m;
+    size_t   i, n, m;
     char    *p1, *p2, *p3;
     ssize_t  s1, s2, s3;
+    int     *oor;
+    size_t  *item;
 
     CUMO_INIT_PTR(lp, 0, p1, s1);
     CUMO_INIT_PTR(lp, 1, p2, s2);
@@ -91,19 +90,9 @@ static void
                  "size mismatch along last axis between self and weight");
     }
 
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>_<%=fn%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-    // initialize
-    for (x=0; x < n; x++) {
-        *(<%=cnt_type%>*)(p3 + s3*x) = 0;
-    }
-    for (; i--;) {
-        CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
-        CUMO_GET_DATA_STRIDE(p2,s2,<%=cnt_type%>,w);
-        <%=c_func%>_check_item(x, n);
-        (*(<%=cnt_type%>*)(p3 + s3*x)) += w;
-    }
+    oor = cumo_cuda_runtime_error_flag_ptr();
+    item = cumo_cuda_runtime_error_item_ptr();
+    <%="cumo_#{c_iter}_#{fn}_kernel_launch"%>(p1,s1,p2,s2,i,p3,s3,n,oor,item);
 }
 
 static VALUE
@@ -114,8 +103,15 @@ static VALUE
     cumo_ndfunc_arg_out_t aout[1] = {{<%=cnt_cT%>,1,shape_out}};
     cumo_ndfunc_t ndf = {<%=c_iter%>_<%=fn%>, CUMO_NO_LOOP|CUMO_NDF_STRIDE_LOOP,
                     2, 1, ain, aout};
+    int *oor = cumo_cuda_runtime_error_flag_new();
+    size_t *item = cumo_cuda_runtime_error_item_new();
+    VALUE v = cumo_na_ndloop(&ndf, 2, self, weight);
 
-    return cumo_na_ndloop(&ndf, 2, self, weight);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>_<%=fn%>", "<%=type_name%>");
+    if (cumo_cuda_runtime_error_flag_get(oor)) {
+        <%=c_func%>_check_item(*item, length);
+    }
+    return v;
 }
 <% end %>
 // ------- end of Float count with weights -------
