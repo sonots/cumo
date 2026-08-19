@@ -2,31 +2,37 @@
 # frozen_string_literal: true
 
 # ---------------------------------------------------------------------------
-# 損益分岐点スイープ — 演算種別ごとに Numo と Cumo が入れ替わる要素数を求める
+# Crossover sweep - the element count at which Cumo overtakes Numo, per kind of
+# operation.
 #
-#   ruby crossover_bench.rb                     # 両方を 1 プロセスで測る
+#   ruby crossover_bench.rb                     # both in one process
 #   ONLY=cumo JSON=cumo.json ruby crossover_bench.rb
 #   ONLY=numo JSON=numo.json ruby crossover_bench.rb
-#   MERGE=numo.json,cumo.json ruby crossover_bench.rb   # 別プロセスの結果を合成
+#   MERGE=numo.json,cumo.json ruby crossover_bench.rb   # combine separate runs
 #
 #   SIZES=1024,4096,16384 TIME_CAP=0.5 ruby crossover_bench.rb
 #
-# 「大きい配列で何倍速いか」ではなく「小さい配列でいつ負けるか」を測る。
-# Cumo の 1 演算あたりの固定費(起動 + Ruby + ndloop)を回収できる要素数は
-# 演算種別で違うはずで、その分岐点がそのまま利用者への指針になる。
+# This asks "how small is too small", not "how many times faster on a big
+# array". The element count that pays back Cumo's per-operation fixed cost
+# (launch + Ruby + ndloop) differs by operation, and that point is the
+# guidance a user actually needs.
 #
-# 各点を 2 通りで測る:
-#   連続  BATCH 回まとめて流して最後に 1 度だけ同期する。続けて演算を流す
-#         使い方の 1 演算あたりのコストで、分岐点はこちらで判定する。
-#   同期  1 演算ごとに同期する。結果をすぐ読み戻す使い方の値。
-# Cumo は同期を挟むと次の起動を重ねられないので、同じ演算でも 2〜4 倍違う。
+# Every point is measured two ways:
+#   pipelined  BATCH operations with a single synchronize at the end. This is
+#              the per-operation cost of a run of work, and what the crossover
+#              is computed from.
+#   per-op     one synchronize after every operation, for code that reads the
+#              result straight back.
+# Cumo cannot overlap the next launch with the previous operation once a
+# synchronize sits between them, so the two differ by 2-4x on the same work.
 #
-# 計測は best-of-N。さらに開始前に GPU を 1 秒空回しして、
-# ラップトップのクロック立ち上がりを計測から外す。
+# Timing is best-of-N, and the GPU is spun for a second first so that a
+# laptop's clock ramp stays out of the measurement.
 #
-# Numo 側の実行時間は同一プロセスの履歴で数倍ぶれる(確保が glibc の mmap
-# 閾値 128 KB を超えると毎回 page fault が入る)ので、分岐点は桁として読む。
-# 気になるときは ONLY と MERGE でプロセスを分けること。
+# Numo's times swing several-fold with the history of the process: above
+# glibc's 128 KB mmap threshold every allocation takes page faults. Read the
+# crossover as an order of magnitude, and split the processes with ONLY and
+# MERGE when it matters.
 # ---------------------------------------------------------------------------
 
 require 'json'
@@ -34,14 +40,15 @@ require 'json'
 ONLY      = ENV['ONLY']
 JSON_OUT  = ENV['JSON']
 MERGE     = ENV['MERGE']
-TIME_CAP  = (ENV['TIME_CAP'] || 1.0).to_f  # 1 回がこれを超えたらそのサイズで打ち切り
-WARMUP    = (ENV['WARMUP']   || 1.0).to_f  # GPU クロックを上げるための空回し秒数
+TIME_CAP  = (ENV['TIME_CAP'] || 1.0).to_f  # stop a sweep once one run exceeds this
+WARMUP    = (ENV['WARMUP']   || 1.0).to_f  # seconds of idle work to raise the GPU clock
 MIN_REPS  = 3
 MAX_REPS  = 30
-MIN_TOTAL = 0.15                            # 各点にかける時間の目安
-MAX_BATCH = (ENV['BATCH'] || 64).to_i       # 連続実行でまとめる演算数の上限
-# まとめている間の出力は生かしておけないので(プールが再利用できなくなる)
-# 1 回ごとに解放する。そのぶん確保と解放の代金は連続の値にも含まれる。
+MIN_TOTAL = 0.15                            # roughly how long to spend on a point
+MAX_BATCH = (ENV['BATCH'] || 64).to_i       # most operations to pipeline at once
+# The outputs cannot be held on to while pipelining, or the pool has nothing to
+# reuse, so each one is freed as it is produced. Allocation and free are part of
+# the pipelined number for that reason.
 BATCH_BYTES = (ENV['BATCH_BYTES'] || (64 << 20)).to_i
 
 SIZES = (ENV['SIZES'] || '256,1024,4096,16384,65536,262144,1048576,4194304,16777216,67108864')
@@ -51,8 +58,8 @@ def clock
   Process.clock_gettime(Process::CLOCK_MONOTONIC)
 end
 
-# --- バックエンドの読み込み ------------------------------------------------
-# Numo と Cumo は名前空間が別なので同一プロセスに同居できる。
+# --- backends --------------------------------------------------------------
+# Numo and Cumo have separate namespaces, so both can live in one process.
 
 BACKENDS = {}
 
@@ -61,7 +68,7 @@ unless ONLY == 'cumo'
     require 'numo/narray'
     BACKENDS[:numo] = { mod: Numo, sync: -> {} }
   rescue LoadError => e
-    warn "numo-narray を読み込めません: #{e.message}"
+    warn "cannot load numo-narray: #{e.message}"
   end
 end
 
@@ -70,11 +77,11 @@ unless ONLY == 'numo'
     require 'cumo/narray'
     BACKENDS[:cumo] = { mod: Cumo, sync: -> { Cumo::CUDA::Runtime.cudaDeviceSynchronize } }
   rescue LoadError => e
-    warn "cumo を読み込めません: #{e.message}"
+    warn "cannot load cumo: #{e.message}"
   end
 end
 
-# --- 計測 ------------------------------------------------------------------
+# --- timing ----------------------------------------------------------------
 
 def best_of(&block)
   best = Float::INFINITY
@@ -91,14 +98,15 @@ def best_of(&block)
   best
 end
 
-# 出力を残したままにするとプールが再利用できず確保が毎回新品になるので、
-# どちらの測り方でも同じように解放する。2 つの列の差を同期だけにするため。
+# Holding on to the outputs leaves the pool nothing to reuse and every
+# allocation is a fresh one, so both ways of measuring free alike. The two
+# columns then differ by the synchronize and nothing else.
 def run_once(callable, frees)
   r = callable.call
   r.free if frees && r.respond_to?(:free)
 end
 
-# 1 演算ごとに同期する。結果をすぐ読み戻す使い方の値。
+# One synchronize per operation, for code that reads the result straight back.
 def measure_sync(callable, sync, frees)
   run_once(callable, frees)
   sync.call
@@ -108,7 +116,7 @@ def measure_sync(callable, sync, frees)
   end
 end
 
-# batch 回まとめて流し、最後に 1 度だけ同期する。1 演算あたりに直して返す。
+# batch operations with a single synchronize at the end, reported per operation.
 def measure_pipelined(callable, sync, batch, frees)
   run_once(callable, frees)
   sync.call
@@ -121,15 +129,15 @@ def measure_pipelined(callable, sync, batch, frees)
   t / batch
 end
 
-# まとめる回数は、生かしておく出力の合計が BATCH_BYTES を超えない範囲で決める。
+# Pipeline as many as fit in BATCH_BYTES of live output.
 def batch_for(bytes)
   return MAX_BATCH if bytes <= 0
 
   (BATCH_BYTES / bytes).clamp(1, MAX_BATCH)
 end
 
-# --- 演算の定義 ------------------------------------------------------------
-# dims が 2 のものは一辺 sqrt(n) の正方形にする。
+# --- operations ------------------------------------------------------------
+# The two-dimensional ones use a square of side sqrt(n).
 
 OPS = [
   {
@@ -170,7 +178,7 @@ OPS = [
     }
   },
   {
-    # store は書き込み先そのものを返すので、解放してはいけない
+    # store returns the destination itself, which must not be freed
     name: 'store colslice', dims: 2, out_bytes: ->(_n) { 0 }, frees: false,
     setup: lambda { |xm, n|
       s = Integer(Math.sqrt(n))
@@ -191,7 +199,7 @@ OPS = [
   }
 ].freeze
 
-# --- 実行 ------------------------------------------------------------------
+# --- run -------------------------------------------------------------------
 
 results = Hash.new { |h, k| h[k] = Hash.new { |h2, k2| h2[k2] = {} } }
 
@@ -214,28 +222,29 @@ else
     end
     puts format('%-10s: %s %s', key, be[:mod], version)
   end
-  puts "sizes     : #{SIZES.first} .. #{SIZES.last} (#{SIZES.size} 点)"
+  puts "sizes     : #{SIZES.first} .. #{SIZES.last} (#{SIZES.size} points)"
   puts "params    : TIME_CAP=#{TIME_CAP}s WARMUP=#{WARMUP}s"
   puts
 
-  # GPU のクロックを上げてから測る
+  # raise the GPU clock before measuring anything
   if BACKENDS[:cumo] && WARMUP.positive?
     a = Cumo::SFloat.new(4_000_000).seq
     t0 = clock
     (a * 1.0001).free while clock - t0 < WARMUP
     BACKENDS[:cumo][:sync].call
-    puts format('  ウォームアップ %.1f s 完了', WARMUP)
+    puts format('  warmed up for %.1f s', WARMUP)
     puts
   end
 
-  # 最初に測る演算はプロセス 1 回きりの初期化を抱えるので、全部を一度捨て打ちする
+  # Whichever operation is measured first carries the process's one-time setup,
+  # so every one of them gets a discarded pass first.
   BACKENDS.each do |key, be|
     OPS.each do |op|
       call = op[:setup].call(be[:mod], SIZES.first)
       3.times { run_once(call, op.fetch(:frees, true)) }
       be[:sync].call
     rescue StandardError => e
-      warn format('  %s / %s の捨て打ち: %s', key, op[:name], e.class)
+      warn format('  discarded pass %s / %s: %s', key, op[:name], e.class)
     end
   end
 
@@ -248,7 +257,7 @@ else
         t_pipe = measure_pipelined(call, be[:sync], batch_for(op[:out_bytes].call(n)), frees)
         results[key][op[:name]][n] = [t_sync, t_pipe]
         GC.start
-        break if t_sync > TIME_CAP # これ以上大きくすると時間がかかりすぎる
+        break if t_sync > TIME_CAP # anything larger takes too long to be useful
       rescue StandardError, NoMemoryError => e
         warn format('  %s / %s / n=%d: %s', key, op[:name], n, e.class)
         break
@@ -262,7 +271,7 @@ else
   end
 end
 
-# --- 報告 ------------------------------------------------------------------
+# --- report ----------------------------------------------------------------
 
 def fmt_time(t)
   return '        -' unless t
@@ -274,7 +283,7 @@ def fmt_time(t)
   end
 end
 
-# 比が 1 をまたぐ区間を対数線形で内挿する
+# Interpolate the interval where the ratio crosses 1, in log space.
 def crossover(points)
   bracket = points.each_cons(2).find { |(_, r1), (_, r2)| r1 < 1.0 && r2 >= 1.0 }
   return nil unless bracket
@@ -284,7 +293,7 @@ def crossover(points)
   Math.exp(Math.log(n1) + (f * (Math.log(n2) - Math.log(n1))))
 end
 
-# 各点は [1 演算ごとに同期した時間, 連続で流したときの 1 演算あたりの時間]
+# A point is [time with a synchronize per operation, time per operation pipelined]
 def pipe(points, n)
   v = points[n]
   v.is_a?(Array) ? v[1] : v
@@ -303,7 +312,7 @@ OPS.each do |op|
   next if numo.empty? && cumo.empty?
 
   puts "[#{op[:name]}]"
-  puts format('  %12s %11s %11s %10s %13s', '要素数', 'numo', 'cumo', 'numo/cumo', 'cumo(同期毎)')
+  puts format('  %12s %11s %11s %10s %13s', 'elements', 'numo', 'cumo', 'numo/cumo', 'cumo per-op')
 
   ratios = []
   marked = false
@@ -314,7 +323,7 @@ OPS.each do |op|
     ratios << [n, ratio] if ratio
     mark = if ratio && ratio >= 1.0 && !marked
              marked = true
-             '  <== ここから Cumo が速い'
+             '  <== Cumo wins from here'
            else
              ''
            end
@@ -333,9 +342,9 @@ OPS.each do |op|
   puts
 end
 
-puts '== まとめ'
+puts '== summary'
 puts format('  %-16s %14s %12s %12s %10s',
-            '演算', '分岐点(要素数)', 'cumo 固定費', '同期込み', '最大倍率')
+            'operation', 'crossover', 'cumo fixed', 'with sync', 'best ratio')
 summary.each do |name, cross, fixed, fixed_sync, best|
   puts format('  %-16s %14s %12s %12s %10s',
               name,
@@ -346,18 +355,20 @@ summary.each do |name, cross, fixed, fixed_sync, best|
 end
 
 puts
-puts '  cumo の列と分岐点は「連続で流したとき」の値です。'
-puts '  「cumo 固定費」は最小サイズでの 1 演算あたり = 起動 + Ruby + ndloop の下限。'
-puts '  「同期込み」は 1 演算ごとに完了を待った場合で、その差は同期そのものの'
-puts '  代金ではなく、次の起動を前の演算に重ねられない分です。'
-puts '  分岐点はこの固定費を CPU 側の計算時間が追い越す点なので、'
-puts '  固定費が下がるか、演算あたりの仕事が増えるほど左に動きます。'
-puts '  分岐点が出ない演算は、測った範囲では常に一方が速いということです。'
+puts '  The cumo column and the crossover are the pipelined numbers.'
+puts '  "cumo fixed" is the per-operation cost at the smallest size, which is'
+puts '  the floor of launch + Ruby + ndloop. "with sync" waits for each'
+puts '  operation to finish; the difference is not what a synchronize costs but'
+puts '  what it prevents, namely overlapping the next launch with this one.'
+puts '  The crossover is where the CPU takes longer than that fixed cost, so it'
+puts '  moves left as the fixed cost falls or the work per operation grows.'
+puts '  An operation with no crossover had one side ahead over the whole range.'
 puts
 if results[:numo].key?('dot (GEMM)') && !defined?(Numo::Linalg)
-  puts '  注意: numo-linalg が無いので dot は Numo 内蔵の素朴な実装が相手です。'
-  puts '  BLAS を入れると dot の分岐点は大きく右に動きます。'
+  puts '  Note: without numo-linalg, dot runs against the built-in Numo'
+  puts '  implementation. With BLAS its crossover moves far to the right.'
 end
-puts '  注意: Numo 側は同一プロセスの履歴で数倍ぶれます(確保が glibc の mmap'
-puts '  閾値 128 KB を超えると毎回 page fault が入るため)。分岐点は桁として'
-puts '  読み、詰めるときは ONLY と MERGE でプロセスを分けてください。'
+puts '  Note: Numo swings several-fold with the history of the process, since'
+puts '  above glibc\'s 128 KB mmap threshold every allocation takes page faults.'
+puts '  Read the crossover as an order of magnitude, and split the processes'
+puts '  with ONLY and MERGE when the number has to be tight.'
