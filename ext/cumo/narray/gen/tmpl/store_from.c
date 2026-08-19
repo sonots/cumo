@@ -1,6 +1,24 @@
 //<% unless c_iter.include? 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer);
 //<% end %>
+//<% if type_name == class_name && !c_iter.include?('robject') %>
+void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_iarray_stridx_t* a2, cumo_na_indexer_t* indexer);
+
+// store_array calls this iterator with a loop of its own that keeps
+// CUMO_NDF_INDEX_LOOP on, so an index array can reach here. cumo_na_iarray_t
+// carries byte steps only, and an indexed operand has a step of zero.
+static int
+<%=c_iter%>_has_index(cumo_na_loop_t *const lp)
+{
+    int j, i;
+    for (j = 0; j < 2; ++j) {
+        for (i = 0; i < lp->args[j].ndim; ++i) {
+            if (lp->args[j].iter[i].idx) return 1;
+        }
+    }
+    return 0;
+}
+//<% end %>
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
@@ -49,11 +67,22 @@ static void
     }
     //<% else %>
     {
-        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
-        cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&indexer);
+        //<% if type_name == class_name %>
+        if (<%=c_iter%>_has_index(lp)) {
+            cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
+            cumo_na_iarray_stridx_t b2 = cumo_na_make_iarray_stridx(&lp->args[1]);
+
+            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&b2,&indexer);
+        } else
+        //<% end %>
+        {
+            cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+            cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
+
+            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&indexer);
+        }
     }
     //<% end %>
 }

@@ -3547,6 +3547,42 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "an index array reaches the store an Array of narrays runs" do
+    # store_array runs the same-type store inside a loop of its own, which keeps
+    # CUMO_NDF_INDEX_LOOP on, so an index array reaches a kernel whose iarray
+    # carries byte steps only. An indexed operand has a step of zero there, so
+    # every element of the row went to one address.
+    cols = 7
+    order = [6, 0, 5, 1, 4, 2, 3]
+    rowvals = [[0, 1, 1, 0, 1, 1, 0], [1, 0, 1], [0, 1]]
+
+    # Cumo::RObject keeps its data on the host and takes a loop of its own,
+    # which addresses an index already
+    [Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::DFloat, Cumo::Bit].each do |dtype|
+      srcs = rowvals.map { |v| dtype.cast(v) }
+      want = srcs.map do |src|
+        vals = src.to_a.map(&:to_i)
+        line = Array.new(cols) { |p| vals[p] || 0 }
+        out = Array.new(cols)
+        cols.times { |p| out[order[p]] = line[p] }
+        out
+      end
+
+      dst = dtype.new(srcs.size, cols).fill(0)
+      dst[true, order].store(srcs)
+      assert_equal(want, ints_of(dst), "#{dtype} indexed destination")
+
+      dst = dtype.new(srcs.size, cols).fill(0)
+      dst[true, order] = srcs
+      assert_equal(want, ints_of(dst), "#{dtype} indexed destination through []=")
+
+      picked = dtype.cast([0, 1, 1, 0, 1])[[2, 0, 1]]
+      one = dtype.new(1, 3).fill(0)
+      one.store([picked])
+      assert_equal([picked.to_a.map(&:to_i)], ints_of(one), "#{dtype} indexed sub-narray")
+    end
+  end
+
   test "stores between Bit and another dtype reach every element of a view" do
     # A Bit element is one bit, so the byte iarray cannot address it and ndloop
     # cannot stage it into a buffer either. Both directions ran once per row of
