@@ -1,13 +1,16 @@
-__global__ void <%="cumo_#{c_iter}_elementwise_kernel"%>(CUMO_BIT_DIGIT *a1, size_t p1, ssize_t s1, size_t *idx1, CUMO_BIT_DIGIT *a2, size_t p2, ssize_t s2, size_t *idx2, CUMO_BIT_DIGIT *a3, size_t p3, ssize_t s3, size_t *idx3, uint64_t n)
+<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+__global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_bit_iarray_stridx_t a1, cumo_na_bit_iarray_stridx_t a2, cumo_na_bit_iarray_stridx_t a3, cumo_na_indexer_t indexer)
 {
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
         CUMO_BIT_DIGIT x, y;
-        CUMO_LOAD_BIT(a1, cumo_bit_pos(p1,s1,idx1,i), x);
-        CUMO_LOAD_BIT(a2, cumo_bit_pos(p2,s2,idx2,i), y);
+        CUMO_LOAD_BIT(a1.ptr, cumo_na_bit_iarray_stridx_at_dim<%=idim%>(&a1, &indexer), x);
+        CUMO_LOAD_BIT(a2.ptr, cumo_na_bit_iarray_stridx_at_dim<%=idim%>(&a2, &indexer), y);
         CUMO_BIT_DIGIT z = m_<%=name%>(x,y) & 1u;
-        CUMO_STORE_BIT(a3, cumo_bit_pos(p3,s3,idx3,i), z);
+        CUMO_STORE_BIT(a3.ptr, cumo_na_bit_iarray_stridx_at_dim<%=idim%>(&a3, &indexer), z);
     }
 }
+<% end %>
 
 __global__ void <%="cumo_#{c_iter}_contiguous_kernel"%>(CUMO_BIT_DIGIT *a1, ssize_t o1, uint64_t w1, CUMO_BIT_DIGIT *a2, ssize_t o2, uint64_t w2, CUMO_BIT_DIGIT *a3, size_t p3, uint64_t n, uint64_t w3)
 {
@@ -18,11 +21,20 @@ __global__ void <%="cumo_#{c_iter}_contiguous_kernel"%>(CUMO_BIT_DIGIT *a1, ssiz
     }
 }
 
-void <%="cumo_#{c_iter}_elementwise_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, ssize_t s1, size_t *idx1, CUMO_BIT_DIGIT *a2, size_t p2, ssize_t s2, size_t *idx2, CUMO_BIT_DIGIT *a3, size_t p3, ssize_t s3, size_t *idx3, uint64_t n)
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_iarray_stridx_t* a1, cumo_na_bit_iarray_stridx_t* a2, cumo_na_bit_iarray_stridx_t* a3, cumo_na_indexer_t* indexer)
 {
-    size_t grid_dim = cumo_get_grid_dim(n);
-    size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_elementwise_kernel"%><<<grid_dim, block_dim>>>(a1,p1,s1,idx1,a2,p2,s2,idx2,a3,p3,s3,idx3,n);
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+    <% (0..opt_indexer_ndim).each do |idim| %>
+    case <%=idim%>:
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
+        break;
+    <% end %>
+    default:
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
+        break;
+    }
     cumo_cuda_runtime_check_kernel_launch();
 }
 
