@@ -3513,6 +3513,104 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(bd.transpose.to_a.flatten.map { |u| u ^ 1 }, (~bd.transpose).to_a.flatten)
   end
 
+  test "Bit stores a Ruby Array into the bits of a view and no others" do
+    # The store walked the bits from the host behind a device synchronization.
+    # It also declared the step unsigned, which stopped CUMO_INIT_PTR_BIT_IDX
+    # from leaving the position alone for a view that walks backwards, so a
+    # reversed view starting past the first word walked below the array.
+    [1, 31, 32, 33, 64, 65, 100].each do |n|
+      vals = Array.new(n) { |i| (i * 7) % 3 == 0 ? 1 : 0 }
+      assert_equal(vals, bit_list(Cumo::Bit.cast(vals)), "cast #{n}")
+
+      a = Cumo::Bit.new(n).fill(1)
+      a.store(vals[0, n / 2])
+      assert_equal(vals[0, n / 2] + Array.new(n - n / 2, 0), bit_list(a), "source shorter than #{n}")
+
+      a = Cumo::Bit.new(n).fill(0)
+      a.store(vals + vals)
+      assert_equal(vals, bit_list(a), "source longer than #{n}")
+    end
+
+    # a run that starts and ends inside a word
+    # the last two are a whole number of words that does not start on one, the
+    # shape the word-at-a-time path must not take
+    [[3, 40], [31, 33], [32, 64], [0, 99], [63, 65], [3, 34], [33, 96]].each do |b, e|
+      vals = Array.new(e - b + 1) { |i| i % 2 }
+      a = Cumo::Bit.new(100).fill(0)
+      a[b..e].store(vals)
+      want = Array.new(100, 0)
+      vals.each_with_index { |v, i| want[b + i] = v }
+      assert_equal(want, bit_list(a), "#{b}..#{e}")
+    end
+
+    a = Cumo::Bit.new(8, 9).fill(0)
+    a[true, 0.step(8, 3)].store(Array.new(8) { [1, 0, 1] })
+    assert_equal(bits_set(72, (0...8).flat_map { |r| [r * 9, r * 9 + 6] }), bit_list(a), "column slice")
+
+    rows = [3, 0, 5]
+    a = Cumo::Bit.new(8, 9).fill(0)
+    a[rows, true].store(rows.map { Array.new(9, 1) })
+    assert_equal(bits_set(72, rows.flat_map { |r| (0...9).map { |j| r * 9 + j } }), bit_list(a), "index view")
+
+    # a reversed view whose first bit is past the first word
+    [10, 33, 70, 200].each do |n|
+      vals = Array.new(n) { |i| i % 4 == 0 ? 1 : 0 }
+      a = Cumo::Bit.new(n).fill(0)
+      a[(n - 1).step(0, -1)].store(vals)
+      want = Array.new(n)
+      vals.each_with_index { |v, i| want[n - 1 - i] = v }
+      assert_equal(want, bit_list(a), "reversed #{n}")
+    end
+
+    a = Cumo::Bit.new(70).fill(0)
+    a[69.step(0, -3)].store(Array.new(24) { |i| i % 2 })
+    want = Array.new(70, 0)
+    24.times { |i| want[69 - i * 3] = i % 2 }
+    assert_equal(want, bit_list(a), "reversed with a step")
+
+    # a Range element expands, and what is left of the row is zeroed
+    a = Cumo::Bit.new(8).fill(1)
+    a.store([(0..3)])
+    assert_equal([0, 1, 1, 1, 0, 0, 0, 0], bit_list(a), "Range")
+
+    a = Cumo::Bit.new(6).fill(1)
+    a.store([1, nil, 1])
+    assert_equal([1, 0, 1, 0, 0, 0], bit_list(a), "nil")
+
+    a = Cumo::Bit.new(8).fill(1)
+    a.store([])
+    assert_equal(Array.new(8, 0), bit_list(a), "empty")
+
+    # an element of the Array that is a narray of its own
+    a = Cumo::Bit.new(2, 10).fill(1)
+    a.store([Cumo::Bit.cast([1, 0, 1]), Cumo::Bit.cast([0, 1])])
+    assert_equal([1, 0, 1] + Array.new(7, 0) + [0, 1] + Array.new(8, 0), bit_list(a), "sub-narray")
+
+    # an index array on the innermost dimension, which the loop hands to the
+    # store itself rather than walking outside it
+    order = [7, 2, 5, 0, 8]
+    a = Cumo::Bit.new(3, 9).fill(0)
+    a[true, order].store(Array.new(3) { |r| Array.new(order.size) { |j| (r + j) % 2 } })
+    want = Array.new(27, 0)
+    3.times { |r| order.each_with_index { |col, j| want[r * 9 + col] = (r + j) % 2 } }
+    assert_equal(want, bit_list(a), "index on the innermost axis")
+
+    a = Cumo::Bit.new(3, 9).fill(1)
+    a[true, order].store(Array.new(3) { [1, 0] })
+    want = Array.new(27, 1)
+    3.times { |r| order.each_with_index { |col, j| want[r * 9 + col] = (j < 2 ? [1, 0][j] : 0) } }
+    assert_equal(want, bit_list(a), "index on the innermost axis, rows shorter than it")
+
+    # the zero fill of a row shorter than the destination goes through the
+    # index array as well
+    a = Cumo::Bit.new(8, 9).fill(1)
+    a[[3, 0], true].store([[1, 0, 1], [0, 1]])
+    want = Array.new(72, 1)
+    [1, 0, 1, 0, 0, 0, 0, 0, 0].each_with_index { |v, j| want[3 * 9 + j] = v }
+    [0, 1, 0, 0, 0, 0, 0, 0, 0].each_with_index { |v, j| want[j] = v }
+    assert_equal(want, bit_list(a), "index view with rows shorter than the destination")
+  end
+
   test "Bit#fill reaches the bits of a view and no others" do
     # fill was the last host loop that a plain Cumo::Bit.new(n).fill(1) ran
     # into. It synchronized with the device and wrote the words from the CPU,
