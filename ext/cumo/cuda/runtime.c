@@ -20,7 +20,7 @@ cumo_cuda_runtime_check_kernel_launch(void)
 }
 
 int*
-cumo_cuda_runtime_error_flag_new(void)
+cumo_cuda_runtime_error_flag_ptr(void)
 {
     static int *flag = NULL;
 
@@ -28,6 +28,13 @@ cumo_cuda_runtime_error_flag_new(void)
         check_status(cudaHostAlloc((void**)&flag, sizeof(int),
                                    cudaHostAllocMapped | cudaHostAllocPortable));
     }
+    return flag;
+}
+
+int*
+cumo_cuda_runtime_error_flag_new(void)
+{
+    int *flag = cumo_cuda_runtime_error_flag_ptr();
     *flag = 0;
     return flag;
 }
@@ -37,6 +44,28 @@ cumo_cuda_runtime_error_flag_get(int *flag)
 {
     check_status(cudaDeviceSynchronize());
     return (*flag != 0);
+}
+
+// The value a kernel is rejecting, so the message the caller raises can name it.
+// Read it only once the flag says there was one; the flag's read synchronizes.
+size_t*
+cumo_cuda_runtime_error_item_ptr(void)
+{
+    static size_t *item = NULL;
+
+    if (item == NULL) {
+        check_status(cudaHostAlloc((void**)&item, sizeof(size_t),
+                                   cudaHostAllocMapped | cudaHostAllocPortable));
+    }
+    return item;
+}
+
+size_t*
+cumo_cuda_runtime_error_item_new(void)
+{
+    size_t *item = cumo_cuda_runtime_error_item_ptr();
+    *item = 0;
+    return item;
 }
 
 ///////////////////////////////////////////
