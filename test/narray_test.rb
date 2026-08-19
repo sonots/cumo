@@ -3395,6 +3395,18 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  def bit_list(narray)
+    narray.to_a.flatten.map(&:to_i)
+  end
+
+  # An array of length total with the named positions set, so a fill can be
+  # checked without asking another cumo call what it should be
+  def bits_set(total, positions, value = 1)
+    a = Array.new(total, value ^ 1)
+    positions.each { |i| a[i] = value }
+    a
+  end
+
   test "Bit results reach every element of a view they cannot flatten" do
     # A Bit element is one bit, so its position and steps are bit counts and
     # the byte indexer cannot address it. Comparisons, the isnan family and the
@@ -3499,6 +3511,54 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(a.transpose.copy.gt(0).to_a.flatten, a.transpose.gt(0).to_a.flatten)
     bd = Cumo::Int32.cast(Array.new(n) { |i| i % 3 }).reshape(*deep).gt(1)
     assert_equal(bd.transpose.to_a.flatten.map { |u| u ^ 1 }, (~bd.transpose).to_a.flatten)
+  end
+
+  test "Bit#fill reaches the bits of a view and no others" do
+    # fill was the last host loop that a plain Cumo::Bit.new(n).fill(1) ran
+    # into. It synchronized with the device and wrote the words from the CPU,
+    # which left the pages there for the next kernel to fault back.
+    [1, 31, 32, 33, 70, 200].each do |n|
+      a = Cumo::Bit.new(n).fill(0)
+      a.fill(1)
+      assert_equal(Array.new(n, 1), bit_list(a), "whole #{n}")
+      a.fill(0)
+      assert_equal(Array.new(n, 0), bit_list(a), "whole #{n} back to zero")
+    end
+
+    # a run that starts and ends inside a word, so the words at either end are
+    # shared with elements the fill must not touch
+    [[3, 40], [31, 33], [32, 64], [0, 99], [63, 65]].each do |b, e|
+      a = Cumo::Bit.new(100).fill(0)
+      a[b..e].fill(1)
+      assert_equal(bits_set(100, (b..e).to_a), bit_list(a), "#{b}..#{e}")
+
+      a = Cumo::Bit.new(100).fill(1)
+      a[b..e].fill(0)
+      assert_equal(bits_set(100, (b..e).to_a, 0), bit_list(a), "#{b}..#{e} to zero")
+    end
+
+    a = Cumo::Bit.new(8, 9).fill(0)
+    a[true, 0.step(8, 3)].fill(1)
+    assert_equal(bits_set(72, (0...8).flat_map { |r| [0, 3, 6].map { |c| r * 9 + c } }),
+                 bit_list(a), "column slice")
+
+    # rows of an index view share a word with rows outside it
+    rows = [3, 0, 5]
+    a = Cumo::Bit.new(8, 9).fill(0)
+    a[rows, true].fill(1)
+    assert_equal(bits_set(72, rows.flat_map { |r| (0...9).map { |c| r * 9 + c } }),
+                 bit_list(a), "index view")
+
+    a = Cumo::Bit.new(70).fill(0)
+    a[60.step(10, -1)].fill(1)
+    assert_equal(bits_set(70, (10..60).to_a), bit_list(a), "reversed")
+
+    a = Cumo::Bit.new(3, 5, 7).fill(0)
+    a[true, 2, true].fill(1)
+    assert_equal(bits_set(105, (0...3).flat_map { |p| (0...7).map { |c| p * 35 + 14 + c } }),
+                 bit_list(a), "3-d row of every plane")
+
+    assert_raise(ArgumentError) { Cumo::Bit.new(4).fill(2) }
   end
 
   test "storing an Array of narrays zeroes the rest of each row" do
