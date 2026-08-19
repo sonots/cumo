@@ -141,6 +141,21 @@ cumo_na_make_iarray(cumo_na_loop_args_t* arg)
     return cumo_na_make_iarray_given_ndim(arg, arg->ndim);
 }
 
+static cumo_na_iarray_stridx_t
+cumo_na_make_iarray_stridx(cumo_na_loop_args_t* arg)
+{
+    cumo_na_iarray_stridx_t iarray;
+    iarray.ptr = arg->ptr + arg->iter[0].pos;
+    for (int idim = 0; idim < arg->ndim; ++idim) {
+        if (arg->iter[idim].idx) {
+            CUMO_SDX_SET_INDEX(iarray.stridx[idim], arg->iter[idim].idx);
+        } else {
+            CUMO_SDX_SET_STRIDE(iarray.stridx[idim], arg->iter[idim].step);
+        }
+    }
+    return iarray;
+}
+
 static cumo_na_bit_iarray_stridx_t
 cumo_na_make_bit_iarray_stridx(cumo_na_loop_args_t* arg)
 {

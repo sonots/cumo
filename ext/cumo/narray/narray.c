@@ -1524,9 +1524,6 @@ cumo_na_to_binary(VALUE self)
     cumo_narray_t *na;
     int offset_in_bits;
 
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
     CumoGetNArray(self,na);
     if (na->type == CUMO_NARRAY_VIEW_T) {
         // Cumo::Bit measures the offset in bits, so it cannot be added to a
@@ -1539,6 +1536,12 @@ cumo_na_to_binary(VALUE self)
         }
     }
     len = NUM2SIZET(cumo_na_byte_size(self));
+
+    // After the dup above, not before it: the copy is a kernel and the string
+    // is built by reading its result from the host.
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     ptr = cumo_na_get_pointer_for_read(self);
     str = rb_usascii_str_new(ptr+offset,len);
     RB_GC_GUARD(self);
