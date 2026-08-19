@@ -1,3 +1,27 @@
+void cumo_<%=type_name%>_median_kernel_launch(cumo_na_reduction_arg_t* arg, int flat);
+
+// The rows are sorted with one cub call and the middle of each is picked by a
+// kernel of its own. nan:true keeps the host path, as sort does: its comparator
+// leaves NaN unordered, so there is no sorted array to take a middle of.
+static void
+<%=c_iter%>_kernel(cumo_na_loop_t *const lp)
+{
+    cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 1);
+    ssize_t expect = sizeof(dtype);
+    int i, flat = 1;
+
+    // Rows have to be laid out end to end for a segmented sort to address them.
+    for (i = arg.in_indexer.ndim; --i >= 0;) {
+        if (arg.in.step[i] != expect) {
+            flat = 0;
+            break;
+        }
+        expect *= (ssize_t)arg.in_indexer.shape[i];
+    }
+
+    cumo_<%=type_name%>_median_kernel_launch(&arg, flat);
+}
+
 <% (is_float ? ["_ignan","_prnan"] : [""]).each do |j| %>
 static void
 <%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
@@ -58,9 +82,17 @@ static VALUE
   <% if is_float %>
     ndf.func = <%=c_iter%>_ignan;
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_prnan);
+    if (ndf.func == <%=c_iter%>_ignan) {
+        ndf.func = <%=c_iter%>_kernel;
+        // or rather than assign: cumo_na_reduce_dimension may have set
+        // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
+        ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
+    }
   <% else %>
     ndf.func = <%=c_iter%>;
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    ndf.func = <%=c_iter%>_kernel;
+    ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
   <% end %>
     v = cumo_na_ndloop(&ndf, 2, self, reduce);
     return <%=type_name%>_extract(v);
