@@ -3420,6 +3420,118 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(bd.transpose.to_a.flatten.map { |u| u ^ 1 }, (~bd.transpose).to_a.flatten)
   end
 
+  test "stores between Bit and another dtype reach every element of a view" do
+    # A Bit element is one bit, so the byte iarray cannot address it and ndloop
+    # cannot stage it into a buffer either. Both directions ran once per row of
+    # a view, and the Bit destination ran on the host. Expectations are built in
+    # Ruby, not read off a contiguous copy, which shares the templates here.
+    rows = 9
+    cols = 7
+    n = rows * cols
+    xs = Array.new(n) { |i| ((i * 5) % 17) - 8 }
+    src = Cumo::Int32.cast(xs).reshape(rows, cols)
+    bits = src.gt(0)
+    idx = [5, 0, 3, 8, 1]
+
+    views = {
+      "contiguous" => ->(a) { a },
+      "column slice" => ->(a) { a[true, 1...(cols - 1)] },
+      "reversed" => ->(a) { a[true, (cols - 1).step(0, -1)] },
+      "row stride" => ->(a) { a[0.step(rows - 1, 2), true] },
+      "index view" => ->(a) { a[idx, true] },
+      "transpose" => ->(a) { a.transpose },
+    }
+
+    views.each do |what, take|
+      iv = take.call(src)
+      bv = take.call(bits)
+      want_bit = map_deep(iv.to_a) { |x| x.positive? ? 1 : 0 }
+      cells = take.call(Cumo::Int32.cast((0...n).to_a).reshape(rows, cols)).to_a.flatten
+
+      assert_equal(want_bit, bv.to_a, "bit view #{what}")
+
+      [Cumo::Int32, Cumo::DFloat].each do |k|
+        assert_equal(want_bit, k.cast(bv).to_a.then { |a| map_deep(a, &:to_i) }, "#{k}.cast of #{what}")
+        dst = k.zeros(*bv.shape)
+        dst.store(bv)
+        assert_equal(want_bit, map_deep(dst.to_a, &:to_i), "#{k}.store bit of #{what}")
+
+        whole = k.zeros(rows, cols)
+        take.call(whole).store(bv)
+        want = Array.new(n, 0)
+        cells.each_with_index { |cell, i| want[cell] = want_bit.flatten[i] }
+        assert_equal(want, map_deep(whole.to_a, &:to_i).flatten, "#{k} view <- bit of #{what}")
+      end
+
+      [iv, Cumo::DFloat.cast(iv)].each do |source|
+        dst = Cumo::Bit.new(*source.shape)
+        dst.store(source)
+        assert_equal(map_deep(source.to_a) { |x| x.zero? ? 0 : 1 }, dst.to_a,
+                     "bit.store #{source.class} of #{what}")
+
+        whole = Cumo::Bit.new(rows, cols).fill(1)
+        take.call(whole).store(source)
+        want = Array.new(n, 1)
+        flat = map_deep(source.to_a) { |x| x.zero? ? 0 : 1 }.flatten
+        cells.each_with_index { |cell, i| want[cell] = flat[i] }
+        assert_equal(want, whole.to_a.flatten, "bit view <- #{source.class} of #{what}")
+      end
+
+      dst = Cumo::Bit.new(*bv.shape)
+      dst.store(bv)
+      assert_equal(want_bit, dst.to_a, "bit.store bit of #{what}")
+
+      whole = Cumo::Bit.new(rows, cols).fill(0)
+      take.call(whole).store(bv)
+      want = Array.new(n, 0)
+      cells.each_with_index { |cell, i| want[cell] = want_bit.flatten[i] }
+      assert_equal(want, whole.to_a.flatten, "bit view <- bit of #{what}")
+    end
+
+    # a Bit view whose first element is not the first bit of its word
+    flat = Array.new(200) { |i| ((i * 7) % 3).zero? ? 1 : 0 }
+    long = Cumo::Bit.cast(flat)
+    [0, 1, 8, 31, 32, 33, 63, 64, 65, 100, 127, 128].each do |i|
+      v = long[i..(i + 20)]
+      want = flat[i, 21]
+      assert_equal(want, v.to_a, "offset #{i}")
+      assert_equal(want, Cumo::Int32.cast(v).to_a, "Int32.cast at offset #{i}")
+
+      d = Cumo::Bit.new(200).fill(0)
+      d[i..(i + 20)] = v
+      assert_equal(Array.new(200) { |k| (k >= i && k <= i + 20) ? flat[k] : 0 }, d.to_a,
+                   "bit aset at offset #{i}")
+
+      e = Cumo::Bit.new(200).fill(1)
+      e[i..(i + 20)] = Cumo::Int32.new(21).seq % 2
+      assert_equal(Array.new(200) { |k| (k >= i && k <= i + 20) ? (k - i) % 2 : 1 }, e.to_a,
+                   "int aset at offset #{i}")
+    end
+
+    # a 5-d shape runs past the dimension-specialised accessors
+    deep = [2, 2, 3, 2, 5]
+    m = deep.inject(:*)
+    a = Cumo::Int32.cast((0...m).to_a).reshape(*deep)
+    b = a.gt(m / 2).transpose
+    assert_equal(map_deep(a.transpose.to_a) { |x| x > (m / 2) ? 1 : 0 }, b.to_a, "5-d bit view")
+    assert_equal(b.to_a, map_deep(Cumo::Int32.cast(b).to_a, &:to_i), "5-d Int32.cast")
+    dst = Cumo::Bit.new(*b.shape)
+    dst.store(a.transpose)
+    assert_equal(map_deep(a.transpose.to_a) { |x| x.zero? ? 0 : 1 }, dst.to_a, "5-d bit.store int")
+    dst2 = Cumo::Bit.new(*b.shape)
+    dst2.store(b)
+    assert_equal(b.to_a, dst2.to_a, "5-d bit.store bit")
+
+    # a sub-array shorter than the row it is stored into is zero-filled, and the
+    # kernel must not read past its end
+    short = Cumo::Bit.new(3, 5).fill(1)
+    short.store([Cumo::Bit.cast([1, 0, 1]), Cumo::Bit.cast([0, 1]), Cumo::Bit.cast([1, 1, 0, 1, 0])])
+    assert_equal([[1, 0, 1, 0, 0], [0, 1, 0, 0, 0], [1, 1, 0, 1, 0]], short.to_a)
+    short2 = Cumo::Bit.new(3, 5).fill(1)
+    short2.store([Cumo::Int32.cast([1, 0, 5]), Cumo::Int32.cast([0, 2]), Cumo::Int32.cast([1, 1, 0, 3, 0])])
+    assert_equal([[1, 0, 1, 0, 0], [0, 1, 0, 0, 0], [1, 1, 0, 1, 0]], short2.to_a)
+  end
+
   test "reductions reach every element of an axis that is not the innermost" do
     # Reducing over anything but the last axis went through the indexer and put
     # every thread of a block on a different row of the input. The expectations

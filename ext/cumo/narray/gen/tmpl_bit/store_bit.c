@@ -1,80 +1,30 @@
-#include <stdio.h>
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_iarray_stridx_t* a1, cumo_na_bit_iarray_stridx_t* a3, cumo_na_indexer_t* indexer);
+void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, CUMO_BIT_DIGIT *a3, size_t p3, uint64_t n);
+
+static int
+<%=c_iter%>_is_flat(cumo_na_bit_iarray_stridx_t* a, cumo_na_indexer_t* indexer)
+{
+    return indexer->ndim == 1 &&
+        CUMO_SDX_IS_STRIDE(a->stridx[0]) && CUMO_SDX_GET_STRIDE(a->stridx[0]) == 1;
+}
+
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
-    size_t  n;
-    ssize_t p1, p3;
-    ssize_t s1, s3;
-    size_t *idx1, *idx3;
-    int     o1, l1, r1, len;
-    CUMO_BIT_DIGIT *a1, *a3;
-    CUMO_BIT_DIGIT  x;
+    cumo_na_bit_iarray_stridx_t a3 = cumo_na_make_bit_iarray_stridx(&lp->args[0]);
+    cumo_na_bit_iarray_stridx_t a1 = cumo_na_make_bit_iarray_stridx(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    // TODO(sonots): CUDA kernelize
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-    CUMO_INIT_COUNTER(lp, n);
-    CUMO_INIT_PTR_BIT_IDX(lp, 0, a3, p3, s3, idx3);
-    CUMO_INIT_PTR_BIT_IDX(lp, 1, a1, p1, s1, idx1);
-    if (s1!=1 || s3!=1 || idx1 || idx3) {
-        for (; n--;) {
-            CUMO_LOAD_BIT_STEP(a1, p1, s1, idx1, x);
-            CUMO_STORE_BIT_STEP(a3, p3, s3, idx3, x);
-        }
+    // A word at a time is worth a separate kernel, but it needs both operands
+    // laid out end to end, which after the loop is contracted means one
+    // dimension of step one.
+    if (<%=c_iter%>_is_flat(&a1,&indexer) && <%=c_iter%>_is_flat(&a3,&indexer)) {
+        <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(
+            a1.ptr + a1.pos / CUMO_NB, a1.pos % CUMO_NB,
+            a3.ptr + a3.pos / CUMO_NB, a3.pos % CUMO_NB,
+            indexer.total_size);
     } else {
-        a1 += p1/CUMO_NB;
-        p1 %= CUMO_NB;
-        a3 += p3/CUMO_NB;
-        p3 %= CUMO_NB;
-        o1 =  p1-p3;
-        l1 =  CUMO_NB+o1;
-        r1 =  CUMO_NB-o1;
-        if (p3>0 || n<CUMO_NB) {
-            len = CUMO_NB - p3;
-            if ((int)n<len) len=n;
-            if (o1>=0) x = *a1>>o1;
-            else       x = *a1<<-o1;
-            if (p1+len>(ssize_t)CUMO_NB)  x |= *(a1+1)<<r1;
-            a1++;
-            *a3 = (x & (CUMO_SLB(len)<<p3)) | (*a3 & ~(CUMO_SLB(len)<<p3));
-            a3++;
-            n -= len;
-        }
-        if (o1==0) {
-            for (; n>=CUMO_NB; n-=CUMO_NB) {
-                x = *(a1++);
-                *(a3++) = x;
-            }
-        } else {
-            for (; n>=CUMO_NB; n-=CUMO_NB) {
-                if (o1==0) {
-                    x = *a1;
-                } else if (o1>0) {
-                    x = *a1>>o1  | *(a1+1)<<r1;
-                } else {
-                    x = *a1<<-o1 | *(a1-1)>>l1;
-                }
-                a1++;
-                *(a3++) = x;
-            }
-        }
-        if (n>0) {
-            if (o1==0) {
-                x = *a1;
-            } else if (o1>0) {
-                x = *a1>>o1;
-                if ((int)n>r1) {
-                    x |= *(a1+1)<<r1;
-                }
-            } else {
-                x = *(a1-1)>>l1;
-                if ((int)n>-o1) {
-                    x |= *a1<<-o1;
-                }
-            }
-            *a3 = (x & CUMO_SLB(n)) | (*a3 & CUMO_BALL<<n);
-        }
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a3,&indexer);
     }
 }
 
@@ -82,7 +32,10 @@ static VALUE
 <%=c_func(:nodef)%>(VALUE self, VALUE obj)
 {
     cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{Qnil,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 2,0, ain,0};
+    // ndloop cannot stage a Bit operand into a buffer — a buffer copy moves
+    // whole bytes — so INDEX_LOOP stays on and the kernel walks both operands'
+    // own indices.
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 2,0, ain,0};
 
     cumo_na_ndloop(&ndf, 2, self, obj);
     return self;
