@@ -11,6 +11,30 @@ __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cum
 }
 <% end %>
 
+<% if type_name == class_name %>
+// store_array runs this iterator inside its own loop, which keeps
+// CUMO_NDF_INDEX_LOOP on, so either operand can arrive carrying an index array
+// even though this method's own ndfunc drops it. Only the same-type store is
+// reachable that way, and the path is not hot, so one generic kernel is enough.
+__global__ void <%="cumo_#{c_iter}_stridx_kernel"%>(cumo_na_iarray_stridx_t a1, cumo_na_iarray_stridx_t a2, cumo_na_indexer_t indexer)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim(&indexer, i);
+        char* p1 = cumo_na_iarray_stridx_at_dim(&a1, &indexer);
+        char* p2 = cumo_na_iarray_stridx_at_dim(&a2, &indexer);
+        *(dtype*)(p1) = <%=macro%>(*(<%=dtype%>*)(p2));
+    }
+}
+
+void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_iarray_stridx_t* a2, cumo_na_indexer_t* indexer)
+{
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    <%="cumo_#{c_iter}_stridx_kernel"%><<<grid_dim, block_dim>>>(*a1,*a2,*indexer);
+    cumo_cuda_runtime_check_kernel_launch();
+}
+<% end %>
+
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer)
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
