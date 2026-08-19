@@ -16,6 +16,9 @@ static void
     {
         dtype x;
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        // The index arrays are filled by a kernel; wait for it before reading
+        // them from here.
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         if (idx1) {
             if (idx2) {
                 for (; i--;) {

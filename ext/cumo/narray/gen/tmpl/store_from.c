@@ -32,6 +32,11 @@ static void
     CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
     CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    // An index array is filled by a kernel, so the loop below cannot read one
+    // until that has finished. Cumo::RObject is the only dtype whose loop runs
+    // on the host and still sees the index; every other one hands it to a
+    // kernel of its own, which the stream already orders.
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     {
         <%=dtype%> x;
         dtype y;

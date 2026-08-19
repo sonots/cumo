@@ -3547,6 +3547,57 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "an RObject loop waits for the kernel that fills an index array" do
+    # Index arrays are filled by a kernel. Every dtype but RObject hands the
+    # index on to a kernel of its own, which the stream already orders, but
+    # RObject keeps its data on the host and reads the index there. Without a
+    # wait the second such store onwards read an index the kernel had not
+    # written yet: zeroes, then whatever the chunk held before, and a bus error
+    # when that was not a valid address.
+    cols = 7
+    order = [6, 0, 5, 1, 4, 2, 3]
+    rows = [[0, 1, 1, 0, 1, 1, 0], [1, 0, 1], [0, 1]]
+    scatter = lambda do |vals|
+      out = Array.new(cols, 0)
+      cols.times { |p| out[order[p]] = vals[p] || 0 }
+      out
+    end
+    want = rows.map(&scatter)
+
+    # A fresh view every time, so the index array comes back out of the pool
+    # rather than being allocated once and reused. Nothing may run between
+    # taking the view and the store, or the kernel finishes on its own and the
+    # window closes.
+    4.times do |i|
+      srcs = rows.map { |v| Cumo::RObject.cast(v) }
+      dst = Cumo::RObject.new(rows.size, cols).fill(0)
+      dst[true, order].store(srcs)
+      assert_equal(want, ints_of(dst), "Array of narrays (#{i})")
+    end
+
+    src = Cumo::Int32.new(3, cols).seq
+    want_src = src.to_a.map(&scatter)
+    4.times do |i|
+      dst = Cumo::RObject.new(3, cols).fill(0)
+      dst[true, order].store(src)
+      assert_equal(want_src, ints_of(dst), "RObject <- Int32 (#{i})")
+    end
+
+    bits = src.gt(9)
+    want_bits = bits.to_a.map(&scatter)
+    4.times do |i|
+      dst = Cumo::RObject.new(3, cols).fill(0)
+      dst[true, order].store(bits)
+      assert_equal(want_bits, ints_of(dst), "RObject <- Bit (#{i})")
+    end
+
+    4.times do |i|
+      dst = Cumo::RObject.new(3, cols).fill(0)
+      dst[true, order].fill(9)
+      assert_equal(Array.new(3) { Array.new(cols, 9) }, ints_of(dst), "RObject fill (#{i})")
+    end
+  end
+
   test "an index array reaches the store an Array of narrays runs" do
     # store_array runs the same-type store inside a loop of its own, which keeps
     # CUMO_NDF_INDEX_LOOP on, so an index array reaches a kernel whose iarray
