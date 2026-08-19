@@ -54,6 +54,7 @@ narray/ndloop
 narray/ndloop_kernel
 narray/data
 narray/data_kernel
+narray/sort_kernel
 narray/types/bit
 narray/types/int8
 narray/types/int16
