@@ -3655,6 +3655,14 @@ class NArrayTest < Test::Unit::TestCase
       idx = src[[7, 0, 4, 11, 2], true]
       assert_equal(idx.to_a.map { |r| r.map(&:to_i).sort }, ints_of(idx.sort(axis: 1)), "#{dtype} index view")
 
+      # sorted in place there is nowhere but the index array to put the answer
+      fresh = dtype.cast(vals).reshape(rows, cols)
+      fresh[[7, 0, 4, 11, 2], true].inplace.sort(axis: 1)
+      assert_equal(idx.to_a.map { |r| r.map(&:to_i).sort },
+                   ints_of(fresh[[7, 0, 4, 11, 2], true]), "#{dtype} index view in place")
+      assert_equal(ints_of(src[[1, 3, 5, 6, 8, 9, 10], true]),
+                   ints_of(fresh[[1, 3, 5, 6, 8, 9, 10], true]), "#{dtype} rows outside the index view")
+
       # a 3-d shape, and an axis that is neither the first nor the last
       cube = dtype.cast(vals[0, 2 * 5 * 3]).reshape(2, 5, 3)
       want = map_deep(cube.to_a, &:to_i).map { |plane| plane.transpose.map(&:sort).transpose }
