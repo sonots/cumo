@@ -3844,6 +3844,48 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([17], Cumo::Int32[2].poly(1, 2, 3).to_a, "smallest case")
   end
 
+  test "a store from a Ruby Array waits for the kernel that fills an index array" do
+    # ndloop finds each row of an index-backed view by reading its index array
+    # on the host, and a kernel writes that array. Without the wait the store
+    # read whatever the memory pool had left there, and every row of
+    # a[[2, 1], true] landed on row 0.
+    rows = 3
+    cols = 5
+    warm = lambda do
+      3.times do
+        x = Cumo::Int32.zeros(rows, cols)
+        x[[0], true].store([[9] * cols])
+      end
+    end
+    values = [[1] * cols, [2] * cols]
+    want = [[0] * cols, [2] * cols, [1] * cols]
+
+    warm.call
+    a = Cumo::Int32.zeros(rows, cols)
+    a[[2, 1], true].store(values)
+    assert_equal(want, a.to_a, "store")
+
+    warm.call
+    a = Cumo::Int32.zeros(rows, cols)
+    a[[2, 1], true] = values
+    assert_equal(want, a.to_a, "assignment")
+
+    warm.call
+    b = Cumo::Bit.new(rows, cols).fill(0)
+    b[[2, 1], true].store([[1] * cols, [0] * cols])
+    assert_equal([[0] * cols, [0] * cols, [1] * cols], b.to_a.map { |r| r.map(&:to_i) }, "Bit")
+
+    # a sub-narray of the Array binds its own index array inside the loop,
+    # after the entry point has already looked for one
+    n = 40
+    warm.call
+    m = Cumo::Int32.new(4, n).seq
+    d = Cumo::Int32.zeros(2, 2, n)
+    d.store([m[[3, 1], true], m[[0, 2], true]])
+    row = ->(k) { (k * n...(k + 1) * n).to_a }
+    assert_equal([[row.call(3), row.call(1)], [row.call(0), row.call(2)]], d.to_a, "sub-narray")
+  end
+
   test "an RObject loop waits for the kernel that fills an index array" do
     # Index arrays are filled by a kernel. Every dtype but RObject hands the
     # index on to a kernel of its own, which the stream already orders, but

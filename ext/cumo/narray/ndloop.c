@@ -1439,6 +1439,20 @@ loop_is_using_idx(cumo_na_md_loop_t *lp)
     return false;
 }
 
+// The md-loops below find each position by reading an index array on the host,
+// whatever memory the data it indexes lives in, and a kernel filled that array.
+// ndloop_sync_user_index covers the dimensions the user function walks; these
+// are the ones ndloop walks itself.
+static void
+ndloop_sync_md_index(cumo_na_md_loop_t *lp)
+{
+    if (!loop_is_using_idx(lp)) {
+        return;
+    }
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("ndloop", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+}
+
 static void
 loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp);
 
@@ -1532,6 +1546,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
     }
 
+    ndloop_sync_md_index(lp);
     ndloop_sync_user_index(lp);
 
     if (nd==0 || CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP)) {
@@ -1741,6 +1756,8 @@ loop_inspect(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     cumo_na_text_func_t func = (cumo_na_text_func_t)(nf->func);
     VALUE buf, opt;
 
+    ndloop_sync_md_index(lp);
+
     nd = lp->ndim;
     buf = lp->loop_opt;
     //opt = *(VALUE*)(lp->user.opt_ptr);
@@ -1872,6 +1889,10 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     ndloop_set_stepidx(lp, 1, a, dim_map, CUMO_NDL_READ);
     LARG(lp,1).shape = &(na->shape[na->ndim-1]);
 
+    // The sub-narray binds its own index array here, after the entry point
+    // looked, so the wait for the kernel that filled it belongs here too.
+    ndloop_sync_md_index(lp);
+
     // loop body
     for (i=i0;;) {
         LARG(lp,1).value = Qtrue;
@@ -1909,6 +1930,8 @@ loop_store_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     int     i;
     VALUE  *a;
     int nd = lp->ndim;
+
+    ndloop_sync_md_index(lp);
 
     // counter
     c = ALLOCA_N(size_t, nd+1);
@@ -2023,6 +2046,8 @@ loop_narray_to_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     VALUE *a;
     volatile VALUE a0;
 
+    ndloop_sync_md_index(lp);
+
     // alloc counter
     c = ALLOCA_N(size_t, nd+1);
     for (i=0; i<=nd; i++) c[i]=0;
@@ -2099,6 +2124,8 @@ loop_narray_with_index(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     if (lp->n[0] == 0) { // empty array
         return;
     }
+
+    ndloop_sync_md_index(lp);
 
     // pass total ndim to iterator
     lp->user.ndim += nd;
