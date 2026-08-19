@@ -3241,12 +3241,76 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(ZeroDivisionError) { ints[true, 1..-2].divmod(0) }
   end
 
-  # Combines two nested Bit arrays element by element, whatever their depth
-  def zip_bits(a, b, &blk)
+  # Combines two nested arrays element by element, whatever their depth
+  def zip_deep(a, b, &blk)
     if a.first.is_a?(Array)
-      a.zip(b).map { |x, y| zip_bits(x, y, &blk) }
+      a.zip(b).map { |x, y| zip_deep(x, y, &blk) }
     else
       a.zip(b).map { |x, y| blk.call(x, y) }
+    end
+  end
+
+  def map_deep(x, &blk)
+    x.is_a?(Array) ? x.map { |y| map_deep(y, &blk) } : blk.call(x)
+  end
+
+  # Folds a nested array along one axis, so that a reduction can be checked
+  # without asking another kernel for the answer
+  def fold_axis(nested, axis, &blk)
+    return nested.map { |sub| fold_axis(sub, axis - 1, &blk) } if axis.positive?
+    nested.reduce { |a, b| a.is_a?(Array) ? zip_deep(a, b, &blk) : blk.call(a, b) }
+  end
+
+  def fold_axes(nested, axes, &blk)
+    Array(axes).sort.reverse.inject(nested) { |acc, axis| fold_axis(acc, axis, &blk) }
+  end
+
+  # The same nesting with each leaf replaced by its place in the flattened
+  # array, which is the index max_index and min_index answer with
+  def deep_positions(nested, counter = [0])
+    nested.map { |x| x.is_a?(Array) ? deep_positions(x, counter) : (counter[0] += 1) - 1 }
+  end
+
+  def flat_list(x)
+    x.is_a?(Array) ? x.flatten : [x]
+  end
+
+  def assert_reductions(view, what, axes: nil)
+    nested = view.to_a
+    flat = nested.flatten
+    shape = view.shape
+    strides = shape.each_index.map { |i| shape[(i + 1)..].inject(1, :*) }
+    positions = deep_positions(nested)
+    axes ||= (0...view.ndim).map { |i| [i] } + [(0...view.ndim).to_a]
+
+    axes.each do |ax|
+      tag = "#{what} axis #{ax.inspect}"
+      lo = fold_axes(nested, ax) { |x, y| x < y ? x : y }
+      hi = fold_axes(nested, ax) { |x, y| x < y ? y : x }
+      ptp = lo.is_a?(Array) ? zip_deep(hi, lo) { |x, y| x - y } : hi - lo
+
+      assert_equal(flat_list(fold_axes(nested, ax) { |x, y| x + y }),
+                   view.sum(axis: ax).to_a.flatten, "sum of #{tag}")
+      assert_equal(flat_list(lo), view.min(axis: ax).to_a.flatten, "min of #{tag}")
+      assert_equal(flat_list(hi), view.max(axis: ax).to_a.flatten, "max of #{tag}")
+      assert_equal(flat_list(ptp), view.ptp(axis: ax).to_a.flatten, "ptp of #{tag}")
+
+      got_lo, got_hi = view.minmax(axis: ax)
+      assert_equal(flat_list(lo), got_lo.to_a.flatten, "minmax low of #{tag}")
+      assert_equal(flat_list(hi), got_hi.to_a.flatten, "minmax high of #{tag}")
+
+      at_hi = fold_axes(positions, ax) { |p, q| flat[p] < flat[q] ? q : p }
+      at_lo = fold_axes(positions, ax) { |p, q| flat[q] < flat[p] ? q : p }
+      assert_equal(flat_list(at_hi), view.max_index(axis: ax).to_a.flatten, "max_index of #{tag}")
+      assert_equal(flat_list(at_lo), view.min_index(axis: ax).to_a.flatten, "min_index of #{tag}")
+
+      next unless ax.size == 1
+
+      along = ->(p) { (p / strides[ax.first]) % shape[ax.first] }
+      assert_equal(flat_list(map_deep(at_hi, &along)),
+                   view.argmax(axis: ax.first).to_a.flatten, "argmax of #{tag}")
+      assert_equal(flat_list(map_deep(at_lo, &along)),
+                   view.argmin(axis: ax.first).to_a.flatten, "argmin of #{tag}")
     end
   end
 
@@ -3292,10 +3356,10 @@ class NArrayTest < Test::Unit::TestCase
       # wrong way would agree with an operator taken the wrong way
       w1 = p1.to_a
       w2 = p2.to_a
-      assert_equal(zip_bits(w1, w2) { |u, v| u & v }, (p1 & p2).to_a, "and of #{what}")
-      assert_equal(zip_bits(w1, w2) { |u, v| u | v }, (p1 | p2).to_a, "or of #{what}")
-      assert_equal(zip_bits(w1, w2) { |u, v| u ^ v }, (p1 ^ p2).to_a, "xor of #{what}")
-      assert_equal(zip_bits(w1, w1) { |u, _| u ^ 1 }, (~p1).to_a, "not of #{what}")
+      assert_equal(zip_deep(w1, w2) { |u, v| u & v }, (p1 & p2).to_a, "and of #{what}")
+      assert_equal(zip_deep(w1, w2) { |u, v| u | v }, (p1 | p2).to_a, "or of #{what}")
+      assert_equal(zip_deep(w1, w2) { |u, v| u ^ v }, (p1 ^ p2).to_a, "xor of #{what}")
+      assert_equal(zip_deep(w1, w1) { |u, _| u ^ 1 }, (~p1).to_a, "not of #{what}")
       assert_equal(w1.flatten.count(1), p1.count_true, "count_true of #{what}")
       assert_equal(w1, f1.to_a, "copy of #{what}")
 
@@ -3354,6 +3418,42 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(a.transpose.copy.gt(0).to_a.flatten, a.transpose.gt(0).to_a.flatten)
     bd = Cumo::Int32.cast(Array.new(n) { |i| i % 3 }).reshape(*deep).gt(1)
     assert_equal(bd.transpose.to_a.flatten.map { |u| u ^ 1 }, (~bd.transpose).to_a.flatten)
+  end
+
+  test "reductions reach every element of an axis that is not the innermost" do
+    # Reducing over anything but the last axis went through the indexer and put
+    # every thread of a block on a different row of the input. The expectations
+    # are folded in Ruby rather than read off a contiguous copy, so a wrong
+    # address cannot cancel out between the two sides.
+    rows = 9
+    cols = 7
+    xs = (1..(rows * cols)).to_a.shuffle(random: Random.new(4649))
+    src = Cumo::Int32.cast(xs).reshape(rows, cols)
+    idx = [5, 0, 3, 8, 1]
+
+    views = {
+      "contiguous" => ->(a) { a },
+      "column slice" => ->(a) { a[true, 1...(cols - 1)] },
+      "reversed" => ->(a) { a[true, (cols - 1).step(0, -1)] },
+      "row stride" => ->(a) { a[0.step(rows - 1, 2), true] },
+      "index view" => ->(a) { a[idx, true] },
+      "transpose" => ->(a) { a.transpose },
+    }
+    views.each { |what, take| assert_reductions(take.call(src), what) }
+
+    # a 5-d shape runs past the dimension-specialised accessors
+    deep = [2, 3, 2, 2, 3]
+    n = deep.inject(:*)
+    a = Cumo::Int32.cast((1..n).to_a.shuffle(random: Random.new(57))).reshape(*deep)
+    assert_reductions(a, "5-d")
+    assert_reductions(a.transpose, "5-d transpose")
+    assert_reductions(a[true, [2, 0], true, true, true], "5-d index view")
+
+    # long enough for the reduce axis to be split across a second launch
+    big = Cumo::Int32.new(3000, 33).seq
+    assert_reductions(big, "3000x33", axes: [[0], [1]])
+    assert_reductions(big[true, 0.step(32, 2)], "3000x33 column slice", axes: [[0], [1]])
+    assert_reductions(big.transpose, "3000x33 transpose", axes: [[0], [1]])
   end
 
   test "copy of an RObject view stays on the host" do
