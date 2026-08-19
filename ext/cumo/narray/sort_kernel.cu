@@ -229,6 +229,74 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat) {
     if (gathered) cumo_cuda_runtime_free((char*)gathered);
 }
 
+// sort_index answers where each element came from, so the sort carries the
+// position along and the values it sorts are thrown away.
+template <typename I>
+__global__ void iota_kernel(I* out, int64_t n) {
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (uint64_t)n; i += blockDim.x * gridDim.x) {
+        out[i] = (I)i;
+    }
+}
+
+// perm[i] is the position the i-th smallest element sat at, and the index
+// array holds the number to answer for that position.
+template <typename I>
+__global__ void sort_index_scatter_kernel(cumo_na_iarray_t idx, cumo_na_iarray_t out,
+                                          cumo_na_indexer_t indexer, const I* perm) {
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim(&indexer, (uint64_t)perm[i]);
+        I v = *(I*)cumo_na_iarray_at_dim(&idx, &indexer);
+        cumo_na_indexer_set_dim(&indexer, i);
+        *(I*)cumo_na_iarray_at_dim(&out, &indexer) = v;
+    }
+}
+
+template <typename T, bool IS_FLOAT, typename I>
+void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_iarray_t* idx,
+                     cumo_na_iarray_t* out, int64_t n_rows, int64_t row_len, int flat) {
+    int64_t total = (int64_t)indexer->total_size;
+    if (total == 0) return;
+
+    size_t grid_dim = cumo_get_grid_dim(total);
+    size_t block_dim = cumo_get_block_dim(total);
+
+    T* data = (T*)a->ptr;
+    T* gathered = 0;
+    if (!flat) {
+        gathered = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
+        gather_kernel<T><<<grid_dim, block_dim>>>(*a, *indexer, gathered);
+        cumo_cuda_runtime_check_kernel_launch();
+        data = gathered;
+    }
+
+    I* pin = (I*)cumo_cuda_runtime_malloc(sizeof(I) * total);
+    I* pout = (I*)cumo_cuda_runtime_malloc(sizeof(I) * total);
+    iota_kernel<I><<<grid_dim, block_dim>>>(pin, total);
+    cumo_cuda_runtime_check_kernel_launch();
+
+    if constexpr (IS_FLOAT) {
+        typedef typename float_key<T>::type key_t;
+        key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
+        key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
+        float_key_kernel<T><<<grid_dim, block_dim>>>(data, kin, total);
+        cumo_cuda_runtime_check_kernel_launch();
+        sort_pairs(kin, kout, pin, pout, total, n_rows, row_len);
+        cumo_cuda_runtime_free((char*)kout);
+        cumo_cuda_runtime_free((char*)kin);
+    } else {
+        T* kout = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
+        sort_pairs(data, kout, pin, pout, total, n_rows, row_len);
+        cumo_cuda_runtime_free((char*)kout);
+    }
+
+    sort_index_scatter_kernel<I><<<grid_dim, block_dim>>>(*idx, *out, *indexer, pout);
+    cumo_cuda_runtime_check_kernel_launch();
+
+    cumo_cuda_runtime_free((char*)pout);
+    cumo_cuda_runtime_free((char*)pin);
+    if (gathered) cumo_cuda_runtime_free((char*)gathered);
+}
+
 } // namespace
 
 // float_key is only defined for the two float types, so the integer entry
@@ -242,6 +310,16 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat) {
     extern "C" void cumo_##name##_median_kernel_launch(cumo_na_reduction_arg_t* arg, int flat)  \
     {                                                                                           \
         median_rows<type, is_float>(arg, flat);                                                 \
+    }                                                                                           \
+    extern "C" void cumo_##name##_sort_index_kernel_launch(                                     \
+        cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_iarray_t* idx,                 \
+        cumo_na_iarray_t* out, int64_t n_rows, int64_t row_len, int flat, int idx_bytes)        \
+    {                                                                                           \
+        if (idx_bytes == 4) {                                                                   \
+            sort_index_rows<type, is_float, int32_t>(a, indexer, idx, out, n_rows, row_len, flat); \
+        } else {                                                                                \
+            sort_index_rows<type, is_float, int64_t>(a, indexer, idx, out, n_rows, row_len, flat); \
+        }                                                                                       \
     }
 
 CUMO_DEF_SORT(int8, int8_t, false)
