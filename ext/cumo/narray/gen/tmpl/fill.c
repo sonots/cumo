@@ -17,6 +17,9 @@ static void
         CUMO_INIT_COUNTER(lp, i);
         CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+        // The index array is filled by a kernel; wait for it before reading it
+        // from here.
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         if (idx1) {
             for (; i--;) {
                 CUMO_SET_DATA_INDEX(p1,idx1,dtype,y);
