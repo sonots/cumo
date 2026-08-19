@@ -11,35 +11,30 @@ typedef double seq_count_t;
 <% end %>
 
 <% unless is_object %>
-__global__ void <%="cumo_#{c_iter}_index_kernel"%>(char *p1, size_t* idx1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n)
+<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+__global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cumo_na_indexer_t indexer, seq_data_t beg, seq_data_t step, seq_count_t c)
 {
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
-        dtype x = f_seq(beg,step,c+i);
-        *(dtype*)(p1+idx1[i]) = x;
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
+        *(dtype*)cumo_na_iarray_at_dim<%=idim%>(&a1, &indexer) = f_seq(beg,step,c+i);
     }
 }
+<% end %>
 
-__global__ void <%="cumo_#{c_iter}_stride_kernel"%>(char *p1, size_t s1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n)
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, seq_data_t beg, seq_data_t step, seq_count_t c)
 {
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
-        dtype x = f_seq(beg,step,c+i);
-        *(dtype*)(p1+(i*s1)) = x;
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+    <% (0..opt_indexer_ndim).each do |idim| %>
+    case <%=idim%>:
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*indexer,beg,step,c);
+        break;
+    <% end %>
+    default:
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*indexer,beg,step,c);
+        break;
     }
-}
-
-void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t* idx1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n)
-{
-    size_t grid_dim = cumo_get_grid_dim(n);
-    size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_index_kernel"%><<<grid_dim, block_dim>>>(p1,idx1,beg,step,c,n);
-    cumo_cuda_runtime_check_kernel_launch();
-}
-
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, seq_data_t beg, seq_data_t step, seq_count_t c, uint64_t n)
-{
-    size_t grid_dim = cumo_get_grid_dim(n);
-    size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim>>>(p1,s1,beg,step,c,n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

@@ -1,18 +1,32 @@
-__global__ void <%="cumo_#{c_iter}_stride_kernel"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
+<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+__global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_iarray_t a3, cumo_na_indexer_t indexer)
 {
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
-        dtype x = *(dtype*)(p1+(i*s1));
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
+        char* p1 = cumo_na_iarray_at_dim<%=idim%>(&a1, &indexer);
+        char* p2 = cumo_na_iarray_at_dim<%=idim%>(&a2, &indexer);
+        char* p3 = cumo_na_iarray_at_dim<%=idim%>(&a3, &indexer);
         dtype y, z;
-        m_<%=name%>(x,y,z);
-        *(dtype*)(p2+(i*s2)) = y;
-        *(dtype*)(p3+(i*s3)) = z;
+        m_<%=name%>(*(dtype*)(p1),y,z);
+        *(dtype*)(p2) = y;
+        *(dtype*)(p3) = z;
     }
 }
+<% end %>
 
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n)
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer)
 {
-    size_t grid_dim = cumo_get_grid_dim(n);
-    size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim>>>(p1,p2,p3,s1,s2,s3,n);
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+    <% (0..opt_indexer_ndim).each do |idim| %>
+    case <%=idim%>:
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
+        break;
+    <% end %>
+    default:
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer);
+        break;
+    }
     cumo_cuda_runtime_check_kernel_launch();
 }
