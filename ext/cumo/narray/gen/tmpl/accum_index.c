@@ -9,8 +9,7 @@ void cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(cumo_na_reduc
 static void
 <%=c_iter%>_index<%=i%><%=nan%>(cumo_na_loop_t *const lp)
 {
-    // TODO(sonots): Support nan in CUDA
-    <% if type_name == 'robject' || nan == '_nan' %>
+    <% if type_name == 'robject' %>
     {
         size_t   n, idx;
         char    *d_ptr, *i_ptr, *o_ptr;
@@ -94,7 +93,7 @@ static VALUE
         <% if is_float %>
         cumo_na_iter_func_t iter_nan;
         <% end %>
-        cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_reduce,0},{Qnil,0}};
+        cumo_ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_reduce,0}};
         cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
         cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EXTRACT|CUMO_NDF_INDEXER_LOOP, 2,1, ain,aout};
 
@@ -118,27 +117,6 @@ static VALUE
             reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
             <% end %>
         }
-
-        <% if is_float %>
-        if (ndf.func == iter_nan) {
-            // The nan-aware path has no kernel and reads the index out of a seq
-            // array, the way robject does. Only that path takes a third argument.
-            VALUE idx = cumo_na_new(aout[0].type, na->ndim, na->shape);
-            rb_funcall(idx, rb_intern("seq"), 0);
-            ain[1].type = Qnil;
-            ain[2].type = cumo_sym_reduce;
-            ndf.nin = 3;
-            ndf.flag &= ~CUMO_NDF_INDEXER_LOOP;
-            if (cumo_na_has_idx_p(self)) {
-                self = cumo_na_copy(self);
-            }
-            ret = cumo_na_ndloop(&ndf, 3, self, idx, reduce);
-            if (cumo_compatible_mode_enabled_p()) {
-                return rb_funcall(ret, rb_intern("extract_cpu"), 0);
-            }
-            return ret;
-        }
-        <% end %>
 
         if (cumo_na_has_idx_p(self)) {
             VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous

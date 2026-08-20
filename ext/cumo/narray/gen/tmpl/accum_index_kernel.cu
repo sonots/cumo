@@ -13,36 +13,104 @@
 #endif
 
 struct cumo_<%=type_name%>_min_index_int<%=i%>_impl {
-    struct MinAndArgMin {
-        dtype min;
-        idx_t argmin;
+    struct ValueAndIndex {
+        dtype value;
+        idx_t index;
     };
-    __device__ MinAndArgMin Identity(idx_t index) { return {DATA_MAX, index}; }
-    __device__ MinAndArgMin MapIn(dtype in, idx_t index) { return {in, index}; }
-    // A tie keeps the earlier element, whichever thread found it: the blocks
-    // and the shared-memory tree fold in an order unrelated to the input.
-    __device__ void Reduce(MinAndArgMin next, MinAndArgMin& accum) {
-        if (accum.min > next.min || (accum.min == next.min && next.argmin < accum.argmin)) {
-            accum = next;
+    // The identity has to lose to any element, including a NaN, and it
+    // carries the largest index so that a tie goes to the earlier one.
+    // NaN is the identity for the float types, the way it is for min and
+    // max, so that every element being NaN answers the first index as
+    // numo does.
+    __device__ ValueAndIndex Identity(idx_t /*index*/) { return {<% if is_float %>(dtype)nan("")<% else %>DATA_MAX<% end %>, INT<%=i%>_MAX}; }
+    __device__ ValueAndIndex MapIn(dtype in, idx_t index) { return {in, index}; }
+    __device__ void Reduce(ValueAndIndex next, ValueAndIndex& accum) {
+<% if is_float %>
+        bool accum_nan = !not_nan(accum.value);
+        bool next_nan = !not_nan(next.value);
+        if (accum_nan || next_nan) {
+            if (accum_nan && (!next_nan || next.index < accum.index)) { accum = next; }
+            return;
         }
+<% end %>
+        if (accum.value > next.value || (accum.value == next.value && next.index < accum.index)) { accum = next; }
     }
-    __device__ idx_t MapOut(MinAndArgMin accum) { return accum.argmin; }
+    __device__ idx_t MapOut(ValueAndIndex accum) { return accum.index; }
 };
 
-struct cumo_<%=type_name%>_max_index_int<%=i%>_impl {
-    struct MaxAndArgMax {
-        dtype max;
-        idx_t argmax;
+<% if is_float %>
+// numo answers the index of the first NaN as soon as one element is NaN,
+// so a NaN wins outright here and the earliest of them wins among
+// themselves. The identity cannot be NaN for that reason.
+struct cumo_<%=type_name%>_min_index_nan_int<%=i%>_impl {
+    struct ValueAndIndex {
+        dtype value;
+        idx_t index;
     };
-    __device__ MaxAndArgMax Identity(idx_t index) { return {DATA_MIN, index}; }
-    __device__ MaxAndArgMax MapIn(dtype in, idx_t index) { return {in, index}; }
-    __device__ void Reduce(MaxAndArgMax next, MaxAndArgMax& accum) {
-        if (accum.max < next.max || (accum.max == next.max && next.argmax < accum.argmax)) {
-            accum = next;
+    __device__ ValueAndIndex Identity(idx_t /*index*/) { return {(dtype)INFINITY, INT<%=i%>_MAX}; }
+    __device__ ValueAndIndex MapIn(dtype in, idx_t index) { return {in, index}; }
+    __device__ void Reduce(ValueAndIndex next, ValueAndIndex& accum) {
+        bool accum_nan = !not_nan(accum.value);
+        bool next_nan = !not_nan(next.value);
+        if (accum_nan || next_nan) {
+            if (next_nan && (!accum_nan || next.index < accum.index)) { accum = next; }
+            return;
         }
+        if (accum.value > next.value || (accum.value == next.value && next.index < accum.index)) { accum = next; }
     }
-    __device__ idx_t MapOut(MaxAndArgMax accum) { return accum.argmax; }
+    __device__ idx_t MapOut(ValueAndIndex accum) { return accum.index; }
 };
+<% end %>
+
+struct cumo_<%=type_name%>_max_index_int<%=i%>_impl {
+    struct ValueAndIndex {
+        dtype value;
+        idx_t index;
+    };
+    // The identity has to lose to any element, including a NaN, and it
+    // carries the largest index so that a tie goes to the earlier one.
+    // NaN is the identity for the float types, the way it is for min and
+    // max, so that every element being NaN answers the first index as
+    // numo does.
+    __device__ ValueAndIndex Identity(idx_t /*index*/) { return {<% if is_float %>(dtype)nan("")<% else %>DATA_MIN<% end %>, INT<%=i%>_MAX}; }
+    __device__ ValueAndIndex MapIn(dtype in, idx_t index) { return {in, index}; }
+    __device__ void Reduce(ValueAndIndex next, ValueAndIndex& accum) {
+<% if is_float %>
+        bool accum_nan = !not_nan(accum.value);
+        bool next_nan = !not_nan(next.value);
+        if (accum_nan || next_nan) {
+            if (accum_nan && (!next_nan || next.index < accum.index)) { accum = next; }
+            return;
+        }
+<% end %>
+        if (accum.value < next.value || (accum.value == next.value && next.index < accum.index)) { accum = next; }
+    }
+    __device__ idx_t MapOut(ValueAndIndex accum) { return accum.index; }
+};
+
+<% if is_float %>
+// numo answers the index of the first NaN as soon as one element is NaN,
+// so a NaN wins outright here and the earliest of them wins among
+// themselves. The identity cannot be NaN for that reason.
+struct cumo_<%=type_name%>_max_index_nan_int<%=i%>_impl {
+    struct ValueAndIndex {
+        dtype value;
+        idx_t index;
+    };
+    __device__ ValueAndIndex Identity(idx_t /*index*/) { return {-(dtype)INFINITY, INT<%=i%>_MAX}; }
+    __device__ ValueAndIndex MapIn(dtype in, idx_t index) { return {in, index}; }
+    __device__ void Reduce(ValueAndIndex next, ValueAndIndex& accum) {
+        bool accum_nan = !not_nan(accum.value);
+        bool next_nan = !not_nan(next.value);
+        if (accum_nan || next_nan) {
+            if (next_nan && (!accum_nan || next.index < accum.index)) { accum = next; }
+            return;
+        }
+        if (accum.value < next.value || (accum.value == next.value && next.index < accum.index)) { accum = next; }
+    }
+    __device__ idx_t MapOut(ValueAndIndex accum) { return accum.index; }
+};
+<% end %>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -53,13 +121,27 @@ extern "C" {
 
 void cumo_<%=type_name%>_min_index_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, idx_t, cumo_<%=type_name%>_min_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_min_index_int<%=i%>_impl{});
+    cumo_reduce_split<dtype, idx_t, cumo_<%=type_name%>_min_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_min_index_int<%=i%>_impl{});
 }
+<% if is_float %>
+
+void cumo_<%=type_name%>_min_index_nan_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, idx_t, cumo_<%=type_name%>_min_index_nan_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_min_index_nan_int<%=i%>_impl{});
+}
+<% end %>
 
 void cumo_<%=type_name%>_max_index_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
-    cumo_reduce<dtype, idx_t, cumo_<%=type_name%>_max_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_max_index_int<%=i%>_impl{});
+    cumo_reduce_split<dtype, idx_t, cumo_<%=type_name%>_max_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_max_index_int<%=i%>_impl{});
 }
+<% if is_float %>
+
+void cumo_<%=type_name%>_max_index_nan_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, idx_t, cumo_<%=type_name%>_max_index_nan_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_max_index_nan_int<%=i%>_impl{});
+}
+<% end %>
 
 #undef idx_t
 <% end %>

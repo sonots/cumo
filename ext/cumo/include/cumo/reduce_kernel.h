@@ -350,7 +350,7 @@ __global__ static void reduction_pair_kernel(cumo_na_reduction_arg_t arg, cumo_n
 // The scratch is laid out by output so the combine pass can read it flat, but
 // threads are handed out by output first, so a block still covers consecutive
 // outputs when those are the ones running along memory.
-template <bool FLAT, typename TypeIn, typename TypeReduce, typename ReductionImpl>
+template <bool FLAT, bool ARG, typename TypeIn, typename TypeReduce, typename ReductionImpl>
 __global__ static void reduction_partial_kernel(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t ad, TypeReduce* partial, int64_t n_split, int64_t chunk, int out_block_size, int reduce_block_size, ReductionImpl impl) {
     extern __shared__ __align__(8) char sdata_raw[];
     TypeReduce* sdata = reinterpret_cast<TypeReduce*>(sdata_raw);
@@ -374,7 +374,7 @@ __global__ static void reduction_partial_kernel(cumo_na_reduction_arg_t arg, cum
         ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg, ad, i_out);
         int64_t i_in = i_out * reduce_total_size + begin + reduce_offset;
 
-        TypeReduce accum = reduce_axis<FLAT,false,TypeIn>(arg, ad, impl, in_out_off, i_in, begin, end, reduce_offset, reduce_block_size);
+        TypeReduce accum = reduce_axis<FLAT,ARG,TypeIn>(arg, ad, impl, in_out_off, i_in, begin, end, reduce_offset, reduce_block_size);
 
         accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
         if (reduce_offset == 0) {
@@ -410,7 +410,7 @@ struct reduce_combine {
 // Allocates the scratch and runs the first pass, then points arg2's input at
 // the partials so the caller can combine them with its own second pass. The
 // caller frees the returned buffer.
-template <typename TypeIn, typename TypeReduce, typename ReductionImpl>
+template <typename TypeIn, typename TypeReduce, typename ReductionImpl, bool ARG = false>
 TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t ad, int64_t n_split, int64_t reduce_total_size, cumo_na_reduction_arg_t* arg2, ReductionImpl& impl) {
     int64_t chunk = (reduce_total_size + n_split - 1) / n_split;
     int64_t partial_total_size = arg.out_indexer.total_size * n_split;
@@ -423,9 +423,9 @@ TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t 
     int64_t shared_mem_size = sizeof(TypeReduce) * max_block_size;
 
     if (ad.in_out_flat && ad.in_reduce_flat) {
-        reduction_partial_kernel<true,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+        reduction_partial_kernel<true,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     } else {
-        reduction_partial_kernel<false,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+        reduction_partial_kernel<false,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     }
     cumo_cuda_runtime_check_kernel_launch();
 
@@ -578,6 +578,36 @@ void cumo_reduce_arg(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
         cumo_detail::reduction_arg_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, ad, out_block_size, reduce_block_size, impl);
     }
     cumo_cuda_runtime_check_kernel_launch();
+}
+
+// cumo_reduce_split for the arg form. The partials already carry indices along
+// the reduce axis, so the second pass combines them with the plain kernel.
+// Only for an impl whose Identity ignores its index argument.
+template <typename TypeIn, typename TypeOut, typename ReductionImpl>
+void cumo_reduce_arg_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
+    using TypeReduce = decltype(impl.Identity(0));
+
+    if (arg.out_indexer.total_size == 0) {
+        return;
+    }
+
+    int64_t reduce_total_size = arg.in_indexer.total_size / arg.out_indexer.total_size;
+    cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
+
+    int64_t out_block_size, reduce_block_size;
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
+
+    int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
+    if (n_split < 2) {
+        cumo_reduce_arg<TypeIn, TypeOut, ReductionImpl>(arg, std::forward<ReductionImpl>(impl));
+        return;
+    }
+
+    cumo_na_reduction_arg_t arg2 = arg;
+    TypeReduce* partial = cumo_detail::reduce_partial_pass<TypeIn, TypeReduce, ReductionImpl, true>(arg, ad, n_split, reduce_total_size, &arg2, impl);
+    cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(arg2, cumo_detail::reduce_combine<ReductionImpl>{impl});
+    cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
 }
 
 #endif // CUMO_REDUCE_KERNEL_H
