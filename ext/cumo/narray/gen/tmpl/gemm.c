@@ -152,6 +152,41 @@ is_c_contiguous(VALUE a)
     return cumo_na_check_contiguous(a) == Qtrue;
 }
 
+// True when the last two axes make a column-major matrix and the axes before
+// them advance by whole matrices, which is what transposing a batch of matrices
+// produces. cuBLAS takes it with CUBLAS_OP_T, where is_f_contiguous only covers
+// the single-matrix case and everything else pays for a transposed copy.
+static bool
+is_batched_f_contiguous(VALUE a)
+{
+    int i, ndim;
+    ssize_t stride;
+    cumo_narray_t *na;
+
+    if (CUMO_RNARRAY_TYPE(a) != CUMO_NARRAY_VIEW_T) return false;
+
+    CumoGetNArray(a, na);
+    ndim = CUMO_NA_NDIM(na);
+    if (ndim < 3) return false;
+
+    for (i = 0; i < ndim; ++i) {
+        if (CUMO_NA_IS_INDEX_AT(na, i)) return false;
+    }
+
+    stride = cumo_na_element_stride(a);
+    for (i = ndim - 2; i < ndim; ++i) {
+        if (CUMO_NA_SHAPE(na)[i] == 1) continue;
+        if (CUMO_NA_STRIDE_AT(na, i) != stride) return false;
+        stride *= CUMO_NA_SHAPE(na)[i];
+    }
+    for (i = ndim - 3; i >= 0; --i) {
+        if (CUMO_NA_SHAPE(na)[i] == 1) continue;
+        if (CUMO_NA_STRIDE_AT(na, i) != stride) return false;
+        stride *= CUMO_NA_SHAPE(na)[i];
+    }
+    return true;
+}
+
 // How many matrices the operand holds, i.e. the product of its batch dimensions.
 static int
 gemm_batch_count(cumo_narray_t *na)
@@ -169,11 +204,12 @@ make_gemm_layout(VALUE a)
     CumoGetNArray(a, na);
 
     if (cumo_na_debug_flag) {
-        printf("ndim==2 && f_contiguous:%d, c_contiguous:%d\n",
-                CUMO_NA_NDIM(na) == 2 && is_f_contiguous(a), is_c_contiguous(a));
+        printf("f_contiguous:%d, batched_f_contiguous:%d, c_contiguous:%d\n",
+                CUMO_NA_NDIM(na) == 2 && is_f_contiguous(a),
+                is_batched_f_contiguous(a), is_c_contiguous(a));
     }
 
-    if (CUMO_NA_NDIM(na) == 2 && is_f_contiguous(a)) {
+    if ((CUMO_NA_NDIM(na) == 2 && is_f_contiguous(a)) || is_batched_f_contiguous(a)) {
         layout.ld = ROW_SIZE(na);
         layout.trans = CUBLAS_OP_T;
         layout.a = a;

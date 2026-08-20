@@ -927,6 +927,25 @@ class NArrayTest < Test::Unit::TestCase
           assert_raise(Cumo::NArray::ShapeError) { dtype.new(0, 3).gemm(dtype.new(3, 4).seq) }
           assert_raise(Cumo::NArray::ShapeError) { dtype.new(2, 0).gemm(dtype.new(0, 4)) }
         end
+        test "matrix.gemm(matrix) takes a transposed batch without a copy" do
+          a = dtype.new(2, 3, 2, 4).seq
+          b = dtype.new(2, 3, 5, 4).seq.transpose(0, 1, 3, 2)
+          assert { a.gemm(b) == a.gemm(b.dup) }
+          c = dtype.new(3, 2, 4).seq
+          d = dtype.new(3, 5, 4).seq.transpose(0, 2, 1)
+          assert { c.gemm(d) == c.gemm(d.dup) }
+        end
+        test "matrix.gemm(matrix) copies a batch that is not a matrix transpose" do
+          a = dtype.new(3, 2, 4).seq
+          # every axis reversed, so the batch axis is the innermost one
+          b = dtype.new(5, 4, 3).seq.transpose
+          assert { a.gemm(b) == a.gemm(b.dup) }
+          # rows dropped from each matrix, so the batch no longer advances by
+          # whole matrices
+          c = dtype.new(2, 2, 3, 4).seq
+          d = dtype.new(2, 2, 5, 4).seq[true, true, 0..3, true].transpose(0, 1, 3, 2)
+          assert { c.gemm(d) == c.gemm(d.dup) }
+        end
         test "matrix.gemm(matrix, c) rejects a c whose batch count differs" do
           a = dtype.new(4, 2, 3).seq
           b = dtype.new(3, 4).seq
