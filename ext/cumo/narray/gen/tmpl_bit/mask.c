@@ -1,3 +1,5 @@
+void cumo_bit_mask_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, size_t *out, size_t p2, ssize_t s2, size_t *idx2, char *scratch);
+
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
@@ -10,9 +12,6 @@ static void
     size_t  count;
     where_opt_t *g;
 
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
     g = (where_opt_t*)(lp->opt_ptr);
     count = g->count;
     pidx  = (size_t*)(g->idx1);
@@ -22,6 +21,16 @@ static void
     p2 = lp->args[1].iter[0].pos;
     s2 = lp->args[1].iter[0].step;
     idx2 = lp->args[1].iter[0].idx;
+
+    if (i >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
+        // pidx stays put: the device-side cursor in the scratch orders the
+        // writes of successive calls instead.
+        cumo_bit_mask_kernel_launch(a,p1,s1,idx1,i,pidx,p2,s2,idx2,g->scratch);
+        return;
+    }
+
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (idx1) {
         if (idx2) {
@@ -118,14 +127,20 @@ static VALUE
         }
     }
 
-    // TODO(sonots): bit_count_true synchronizes with CPU. Avoid.
-    n_1 = NUM2SIZET(<%=find_tmpl("count_true_cpu").c_func%>(0, NULL, mask));
+    n_1 = bit_where_count_true(mask);
     idx_1 = cumo_na_new(cIndex, 1, &n_1);
     g.count = 0;
     g.elmsz = SIZEOF_VOIDP;
     g.idx1 = cumo_na_get_pointer_for_write(idx_1);
     g.idx0 = NULL;
+    g.scratch = NULL;
+    if (CUMO_RNARRAY_SIZE(mask) >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
+        g.scratch = cumo_bit_where_scratch_new();
+    }
     cumo_na_ndloop3(&ndf, &g, 2, mask, val);
+    if (g.scratch) {
+        cumo_cuda_runtime_free(g.scratch);
+    }
 
     view = cumo_na_s_allocate_view(rb_obj_class(val));
     CumoGetNArrayView(view, nv);
