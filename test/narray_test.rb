@@ -4329,6 +4329,55 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(view.size, base.flatten.eq(9.0).count_true)
   end
 
+  test "kahan_sum keeps what a plain sum loses, in parallel" do
+    nan = Float::NAN
+    flat = lambda do |v|
+      v = v.to_a if v.respond_to?(:ndim)
+      v = v.first while v.is_a?(Array) && v.size == 1
+      v
+    end
+    rel_err = lambda do |v, exact|
+      ((Rational(flat.call(v)) - exact) / exact).abs
+    end
+
+    # one huge term and many tiny ones, which a sequential plain sum drops
+    n = 100_000
+    src = [1e16] + Array.new(n - 1) { 1.0 }
+    exact = Rational(10**16) + (n - 1)
+    a = Cumo::DFloat.cast(src)
+    assert(rel_err.call(a.kahan_sum, exact) < 1e-15,
+           "kahan_sum error #{rel_err.call(a.kahan_sum, exact).to_f}")
+
+    # values spread widely enough that the tree a plain sum walks loses digits
+    spread = Array.new(n) { |i| ((i * 2_654_435_761) % 1_000_003) / 1_000_003.0 - 0.5 }
+    b = Cumo::DFloat.cast(spread)
+    exact_spread = spread.map { |v| Rational(v) }.sum
+    assert(rel_err.call(b.kahan_sum, exact_spread) < rel_err.call(b.sum, exact_spread),
+           "kahan_sum #{rel_err.call(b.kahan_sum, exact_spread).to_f} should beat " \
+           "the plain sum #{rel_err.call(b.sum, exact_spread).to_f}")
+
+    # skipping NaN, and answering what the plain form does when there is none
+    with_nan = Cumo::DFloat.cast([1e16, nan, 1.0, 2.0, nan, 3.0])
+    kept = Cumo::DFloat.cast([1e16, 1.0, 2.0, 3.0])
+    assert_equal(flat.call(kept.kahan_sum), flat.call(with_nan.kahan_sum(nan: true)))
+    assert_equal(flat.call(kept.kahan_sum), flat.call(kept.kahan_sum(nan: true)))
+    assert_equal(0.0, flat.call(Cumo::DFloat.cast([nan] * 8).kahan_sum(nan: true)))
+
+    # a reduce axis long enough to be split across blocks, over a view
+    base = Cumo::DFloat.new(4, 30_000).seq + 1
+    [base, base[true, 29_999.step(0, -1)], base.transpose].each_with_index do |v, i|
+      [0, 1].each do |ax|
+        assert_in_delta(0, (v.kahan_sum(axis: ax) - v.sum(axis: ax)).abs.max, 1e-3,
+                        "view #{i} axis #{ax}")
+      end
+    end
+
+    c = Cumo::DComplex.cast(src.map { |x| Complex(x, -x) })
+    got = flat.call(c.kahan_sum)
+    assert(((Rational(got.real) - exact) / exact).abs < 1e-15, "complex real part")
+    assert(((Rational(got.imag) + exact) / exact).abs < 1e-15, "complex imaginary part")
+  end
+
   test "the index reductions answer the earliest extreme, and the first NaN with nan" do
     nan = Float::NAN
     inf = Float::INFINITY

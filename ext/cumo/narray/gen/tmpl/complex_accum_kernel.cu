@@ -139,6 +139,39 @@ struct cumo_<%=type_name%>_rms_nan_impl {
     __device__ rtype MapOut(SumAndCount accum) { return r_sqrt(accum.sum / accum.n); }
 };
 
+<% if is_double_precision %>
+// Kahan-Babuska-Neumaier per component. See the real version for why the
+// compensation term is what lets a tree combine partials at all.
+struct cumo_<%=type_name%>_kahan_sum_impl {
+    struct SumAndComp {
+        dtype sum;
+        dtype comp;
+    };
+    __device__ SumAndComp Identity(int64_t /*index*/) { return {m_zero, m_zero}; }
+    __device__ SumAndComp MapIn(dtype in, int64_t /*index*/) { return {in, m_zero}; }
+    __device__ void Reduce(SumAndComp next, SumAndComp& accum) {
+        dtype t = c_add(accum.sum, next.sum);
+        rtype cr = (fabs(CUMO_REAL(accum.sum)) >= fabs(CUMO_REAL(next.sum)))
+                 ? (CUMO_REAL(accum.sum) - CUMO_REAL(t)) + CUMO_REAL(next.sum)
+                 : (CUMO_REAL(next.sum) - CUMO_REAL(t)) + CUMO_REAL(accum.sum);
+        rtype ci = (fabs(CUMO_IMAG(accum.sum)) >= fabs(CUMO_IMAG(next.sum)))
+                 ? (CUMO_IMAG(accum.sum) - CUMO_IMAG(t)) + CUMO_IMAG(next.sum)
+                 : (CUMO_IMAG(next.sum) - CUMO_IMAG(t)) + CUMO_IMAG(accum.sum);
+        CUMO_REAL(accum.comp) += CUMO_REAL(next.comp) + cr;
+        CUMO_IMAG(accum.comp) += CUMO_IMAG(next.comp) + ci;
+        accum.sum = t;
+    }
+    __device__ dtype MapOut(SumAndComp accum) { return c_add(accum.sum, accum.comp); }
+};
+
+struct cumo_<%=type_name%>_kahan_sum_nan_impl : cumo_<%=type_name%>_kahan_sum_impl {
+    __device__ SumAndComp MapIn(dtype in, int64_t /*index*/) {
+        if (!not_nan(in)) { return {m_zero, m_zero}; }
+        return {in, m_zero};
+    }
+};
+<% end %>
+
 #if defined(__cplusplus)
 extern "C" {
 #if 0
@@ -207,3 +240,15 @@ void cumo_<%=type_name%>_rms_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_rms_nan_impl>(*arg, cumo_<%=type_name%>_rms_nan_impl{});
 }
+<% if is_double_precision %>
+
+void cumo_<%=type_name%>_kahan_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_kahan_sum_impl>(*arg, cumo_<%=type_name%>_kahan_sum_impl{});
+}
+
+void cumo_<%=type_name%>_kahan_sum_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_kahan_sum_nan_impl>(*arg, cumo_<%=type_name%>_kahan_sum_nan_impl{});
+}
+<% end %>
