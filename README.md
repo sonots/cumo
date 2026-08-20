@@ -141,9 +141,12 @@ You can also use the following methods which behave like Numo's NArray methods. 
 * `count_false_cpu`
 
 ```ruby
-a.aref_cpu(0) < 1.0         #=> false
-(a[0] < 1.0).extract_cpu    #=> 0
+a.aref_cpu(0) < 1.0   #=> false in either mode
+Float(a.sum)          #=> 7.0 in either mode
 ```
+
+They are methods on an NArray, so chaining one onto a result that `compatible_mode` has already turned into a Ruby object, as in `a.sum.extract_cpu`, raises `NoMethodError` while the mode is on.
+`Kernel#Float` and `Kernel#Integer` read either representation, so they are what code meant to run in both modes wants.
 
 ### Select a GPU device ID
 

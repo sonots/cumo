@@ -82,6 +82,18 @@ class CumoTest < Test::Unit::TestCase
     end
   end
 
+  def test_kernel_conversions_read_a_result_in_either_mode
+    [true, false].each do |compatible|
+      compatible ? Cumo.enable_compatible_mode : Cumo.disable_compatible_mode
+      a = Cumo::DFloat[5, 2]
+      assert_equal(7.0, Float(a.sum))
+      assert_equal(0, Integer(a.max_index))
+      assert_equal(false, a.aref_cpu(0) < 1.0)
+      assert_equal(2, (a > 1).count_true_cpu)
+      assert_equal(5.0, Cumo::DFloat.cast(5.0).extract_cpu)
+    end
+  end
+
   def test_minmax_returns_zero_dimensional_narrays_without_compatible_mode
     Cumo.disable_compatible_mode
     min, max = Cumo::DFloat[3, 1, 7].minmax
