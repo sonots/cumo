@@ -223,7 +223,14 @@ ln -sf "$HOME/opt/ccache/bin/ccache" "$HOME/opt/ccache/bin/nvcc"
 bundle exec env CUMO_NVCC_GENERATE_CODE=arch=compute_60,code=sm_60 rake compile
 ```
 
+Separate the entries with a space to build for more than one architecture:
+
+```
+bundle exec env CUMO_NVCC_GENERATE_CODE="arch=compute_75,code=sm_75 arch=compute_121,code=sm_121" rake compile
+```
+
 This is useful even on development because it makes it possible to skip JIT compilation of PTX to cubin during runtime.
+Without it, and without an `nvidia-smi` to read the local compute capability from, the build covers every architecture the CUDA version supports.
 
 ### Run tests with gdb
 
