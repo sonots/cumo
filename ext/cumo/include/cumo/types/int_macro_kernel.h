@@ -6,10 +6,6 @@
 #define m_sign(x)    (((x)==0) ? 0 : (((x)>0) ? 1 : -1))
 
 __host__ __device__ static inline dtype m_abs(dtype x) {
-    // TODO(sonots): How to handle in CUDA kernel?
-    // if (x==DATA_MIN) {
-    //     rb_raise(cumo_na_eValueError, "cannot convert the minimum integer");
-    // }
     return (x<0)?-x:x;
 }
 

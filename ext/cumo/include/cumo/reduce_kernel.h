@@ -439,7 +439,6 @@ TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t 
 
 }  // cumo_detail
 
-// TODO(sonots): Optimize indexer by squashing (or reducing) dimensions
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
 void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
     if (arg.out_indexer.total_size == 0) {

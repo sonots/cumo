@@ -1479,7 +1479,6 @@ ndloop_run(VALUE vlp)
     // contract loop (compact dimessions)
     if (CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP) && CUMO_NDF_TEST(nf,CUMO_NDF_FLAT_REDUCE)) {
         // do nothing
-        // TODO(sonots): support compacting dimensions in reduction indexer loop if it allows speed up.
     } else {
         if (lp->loop_func == loop_narray) {
             cumo_ndfunc_contract_loop(lp);
