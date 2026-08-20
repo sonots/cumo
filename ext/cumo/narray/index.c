@@ -951,6 +951,15 @@ cumo_na_aref_md(int argc, VALUE *argv, VALUE self, int keep_dim, int result_nd, 
             if (argv[i] == cumo_sym_new || argv[i] == cumo_sym_minus) {
                 rb_raise(rb_eIndexError,":new is not allowed for at()");
             }
+            // A scalar subscript contributes no entry to the index array that
+            // at() walks. With every subscript scalar the result keeps no
+            // dimension, and the 1-d view built for at() is left with the
+            // zeroed stridx[0] that cumo_na_index_at_nadata() never reaches;
+            // a zero stridx reads as an index array at NULL.
+            if (FIXNUM_P(argv[i]) || RB_TYPE_P(argv[i], T_BIGNUM) ||
+                    RB_TYPE_P(argv[i], T_FLOAT)) {
+                rb_raise(rb_eIndexError,"not allowed type");
+            }
         }
     }
 
