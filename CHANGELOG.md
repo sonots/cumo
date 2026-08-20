@@ -1,3 +1,39 @@
+# 0.5.9 (2026/08/20)
+
+Breaking changes:
+
+* `sort_index` resolves ties to the lowest index, the GPU sort being stable, where the host quicksort left them in whatever order it produced (PR #261)
+
+Fixes:
+
+* Fix `a[[2, 1], true].store(array)` writing every row onto row 0, on every dtype: ndloop read the index array on the host before the kernel that fills it had run (PR #265)
+* Fix a segmentation fault storing a Ruby Array into a reversed `Cumo::Bit` view that starts past the first word (PR #266)
+* Fix `sort` in place of a view backed by an index array reading row 0 for every row (PR #262)
+* Fix a `Cumo::RObject` store reading an index array before the kernel writes it, which answered zeroes from the second store onwards (PR #258)
+* Fix a store of an Array of narrays into an indexed destination writing one element per row (PR #257)
+* Fix the zero fill of a row stored from a shorter narray starting one element too far (PR #256)
+* Fix grid-stride kernels hanging from about 2**32 elements, the step wrapping to zero (PR #240)
+* Fix `Cumo::Bit` views with a negative step reading out of bounds (PR #238)
+* Fix index reductions answering a later index on ties, where `Numo::NArray` answers the first (PR #236)
+* Fix wrong values from reductions with `nan: true` (PR #234)
+
+Changes:
+
+* Run `sort`, `sort_index` and `median` on the GPU with `cub::DeviceSegmentedRadixSort`; 1M `SFloat` `sort` 115.7 -> 0.47 ms, `median` 107.8 -> 0.13 ms, `sort_index` 115.8 -> 1.69 ms (PR #259, PR #260, PR #261)
+* Run `poly` on the GPU, which had called its iterator once per element behind a synchronization; 2^20 `DFloat` 163.8 -> 0.021 ms (PR #263)
+* Run `bincount` on the GPU; 1M `Int32` 1.62 -> 0.05 ms (PR #255)
+* Run `cumsum` and `cumprod` on the GPU (PR #242)
+* Run `minmax`, `abs`, `isnan` and the rest of `cond_unary`, `modf` and `frexp` on the GPU (PR #230, PR #231, PR #232, PR #233)
+* Run the `Cumo::Bit` operators, reductions, `where`, `where2`, `fill` and the stores on the GPU (PR #237, PR #239, PR #241, PR #252, PR #254, PR #264, PR #266)
+* Run complex `real=` and `imag=` on the GPU; 2^22 `DComplex` 4.63 -> 0.45 ms (PR #267)
+* Run the accumulating reductions and `mulsum` on more than one GPU thread, where they had been running device-side thrust in a single thread (PR #243, PR #244)
+* Address a whole non-contiguous view in one kernel launch instead of one per row, in the elementwise templates, the stores, the copies and the Bit operands (PR #245, PR #246, PR #249, PR #251, PR #252)
+* Read a flat reduction operand without the indexer, and reduce over an outer axis with host-side addressing; `sum(axis: 0)` on 4096x4096 2.01 -> 0.017 ms (PR #248, PR #253)
+* Split a reduction with too few outputs across more blocks (PR #235)
+* Build the C++ and CUDA sources with optimization: mkmf leaves `$(optflags)` out of `CXXFLAGS`, so every `.cpp` and the host half of every `.cu` had been built at `-O0`; `a + b` 2.86 -> 2.00 us (PR #250)
+* Warn about the synchronization `a[idx]` and `inspect` perform (PR #247)
+* Add benchmark scripts under `bench/` for a transformer block, k-means, a 2D Ising model, conjugate gradient, a particle simulation and the CPU/GPU crossover, and two probes for calls that synchronize or launch one kernel per row
+
 # 0.5.8 (2026/08/17)
 
 Breaking changes:
