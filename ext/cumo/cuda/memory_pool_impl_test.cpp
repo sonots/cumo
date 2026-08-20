@@ -137,6 +137,8 @@ public:
 
     void Run() {
         TearDown(); SetUp(); TestGetRoundedSize();
+        TearDown(); SetUp(); TestMallocCompactsEmptiedBin();
+        TearDown(); SetUp(); TestMallocCompactsLastBin();
         TearDown(); SetUp(); TestGetBinIndex();
         TearDown(); SetUp(); TestGetArenaIndexWithHugeSize();
         TearDown(); SetUp(); TestMallocOnAnotherStream();
@@ -288,6 +290,51 @@ public:
         assert(arena_index_map[0] == 2);
         assert(arena_index_map[1] == 3);
         assert(arena_index_map[2] == 4);
+    }
+
+    // Malloc drops a bin it just emptied, so a later search does not walk it.
+    void TestMallocCompactsEmptiedBin() {
+        Arena& arena = pool_->GetArena(stream_ptr_);
+        ArenaIndexMap& arena_index_map = pool_->GetArenaIndexMap(stream_ptr_);
+
+        // three bins, one chunk each, none of them adjacent in memory
+        for (int k = 2; k <= 4; ++k) {
+            auto mem = std::make_shared<Memory>(kRoundSize * k);
+            auto chunk = std::make_shared<Chunk>(mem, 0, mem->size(), stream_ptr_);
+            pool_->AppendToFreeList(chunk->size(), chunk, stream_ptr_);
+        }
+        assert(arena.size() == 3);
+        assert(arena_index_map.size() == 3);
+
+        // takes the whole chunk of the middle bin, which then has nothing left
+        intptr_t ptr = pool_->Malloc(kRoundSize * 3, stream_ptr_);
+        assert(ptr != 0);
+        assert(arena.size() == 2);
+        assert(arena_index_map.size() == 2);
+        assert(arena_index_map[0] == 1);
+        assert(arena_index_map[1] == 3);
+
+        pool_->Free(ptr);
+        assert(arena.size() == 3);
+    }
+
+    // Emptying the last bin leaves no arena at all, and the pool has to carry
+    // on: the split remainder of that very allocation goes back into a new one.
+    void TestMallocCompactsLastBin() {
+        auto mem = std::make_shared<Memory>(kRoundSize * 8);
+        auto chunk = std::make_shared<Chunk>(mem, 0, mem->size(), stream_ptr_);
+        pool_->AppendToFreeList(chunk->size(), chunk, stream_ptr_);
+        assert(pool_->GetArena(stream_ptr_).size() == 1);
+
+        intptr_t ptr = pool_->Malloc(kRoundSize * 2, stream_ptr_);
+        assert(ptr != 0);
+        // the remaining 6 units are back in a free list
+        assert(pool_->GetNumFreeBlocks() == 1);
+        assert(pool_->GetFreeBytes() == kRoundSize * 6);
+
+        pool_->Free(ptr);
+        assert(pool_->GetNumFreeBlocks() == 1);
+        assert(pool_->GetFreeBytes() == kRoundSize * 8);
     }
 
     // TODO(sonots): Fix after implementing compaction
