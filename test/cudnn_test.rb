@@ -494,5 +494,64 @@ class CUDNNTest < Test::Unit::TestCase
         # TODO: assert values
       end
     end
+
+    sub_test_case "given output arrays" do
+      setup do
+        @x_shape = [2, 3, 5, 3]
+        @reduced_shape = [1].concat(@x_shape[1..-1])
+        @w_shape = [2, 3, 2, 3]
+        @ksize = [3, 3]
+        @x = dtype.ones(*@x_shape) * 3
+        @gamma = dtype.ones(*@reduced_shape) * 2
+        @beta = dtype.ones(*@reduced_shape)
+        @mean = dtype.ones(*@reduced_shape)
+        @var = dtype.ones(*@reduced_shape)
+        @gy = dtype.ones(*@x_shape)
+        @w = dtype.ones(*@w_shape)
+      end
+
+      test "batch_norm(y:) #{dtype}" do
+        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm(@gamma, @beta, y: dtype.zeros(1)) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm(@gamma, @beta, y: dtype.zeros(2, 3, 5, 6)[true, true, true, 0..2]) }
+        y = dtype.zeros(*@x_shape)
+        assert { @x.batch_norm(@gamma, @beta, y: y).equal?(y) }
+        assert { y == @x.batch_norm(@gamma, @beta) }
+      end
+
+      test "fixed_batch_norm(y:) #{dtype}" do
+        assert_raise(Cumo::NArray::ShapeError) { @x.fixed_batch_norm(@gamma, @beta, @mean, @var, y: dtype.zeros(1)) }
+        y = dtype.zeros(*@x_shape)
+        assert { y == @x.fixed_batch_norm(@gamma, @beta, @mean, @var, y: y) }
+      end
+
+      test "batch_norm_backward(gx:, ggamma:, gbeta:) #{dtype}" do
+        @x.batch_norm(@gamma, @beta)
+        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm_backward(@gamma, @gy, gx: dtype.zeros(1)) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm_backward(@gamma, @gy, ggamma: dtype.zeros(1)) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm_backward(@gamma, @gy, gbeta: dtype.zeros(1)) }
+        gx = dtype.zeros(*@x_shape)
+        ggamma = dtype.zeros(*@reduced_shape)
+        gbeta = dtype.zeros(*@reduced_shape)
+        assert { @x.batch_norm_backward(@gamma, @gy, gx: gx, ggamma: ggamma, gbeta: gbeta) == [gx, ggamma, gbeta] }
+      end
+
+      test "max_pool(y:) and max_pool_backward(gx:) #{dtype}" do
+        assert_raise(Cumo::NArray::ShapeError) { @x.max_pool(@ksize, y: dtype.zeros(1)) }
+        y = @x.max_pool(@ksize)
+        gy = dtype.ones(*y.shape)
+        assert_raise(Cumo::NArray::ShapeError) { @x.max_pool_backward(y, gy, @ksize, gx: dtype.zeros(1)) }
+        gx = dtype.zeros(*@x_shape)
+        assert { @x.max_pool_backward(y, gy, @ksize, gx: gx).equal?(gx) }
+      end
+
+      test "conv(y:), conv_transpose(y:) and conv_grad_w(gw:) #{dtype}" do
+        assert_raise(Cumo::NArray::ShapeError) { @x.conv(@w, y: dtype.zeros(1)) }
+        y = @x.conv(@w)
+        assert_raise(Cumo::NArray::ShapeError) { @x.conv_grad_w(y, @w_shape, gw: dtype.zeros(1)) }
+        gw = dtype.zeros(*@w_shape)
+        assert { @x.conv_grad_w(y, @w_shape, gw: gw).equal?(gw) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.conv_transpose(@w, y: dtype.zeros(1)) }
+      end
+    end
   end
 end

@@ -77,11 +77,11 @@ static VALUE
 
     x_shape = nx->shape;
 
-    if (gx != Qnil) {
-        CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(gx, cT);
+    if (gx == Qnil) {
+        gx = cumo_na_new(cT, ndim + 2, x_shape);
     }
     else {
-        gx = cumo_na_new(cT, ndim + 2, x_shape);
+        cumo_cuda_cudnn_check_output(gx, cT, ndim + 2, x_shape);
     }
 
     x_cont = cumo_na_as_contiguous_array(x);

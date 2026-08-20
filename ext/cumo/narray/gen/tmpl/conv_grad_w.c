@@ -81,12 +81,11 @@ static VALUE
     cumo_cuda_cudnn_get_int_ary(int_stride, stride, ndim, 1);
     cumo_cuda_cudnn_get_int_ary(int_pad, pad, ndim, 0);
 
-    if (gw != Qnil) {
-        CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(gw, cT);
-        assert(cumo_na_check_contiguous(gw) == Qtrue);
+    if (gw == Qnil) {
+        gw = cumo_na_new(cT, ndim + 2, sizet_w_shape);
     }
     else {
-        gw = cumo_na_new(cT, ndim + 2, sizet_w_shape);
+        cumo_cuda_cudnn_check_output(gw, cT, ndim + 2, sizet_w_shape);
     }
     // w_shape = (out_channels, in_channels, k_1, k_2, ..., k_N)
     // x_shape = (batch_size, in_channels, d_1, d_2, ..., d_N)

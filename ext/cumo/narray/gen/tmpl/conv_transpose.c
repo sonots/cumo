@@ -79,7 +79,7 @@ static VALUE
     int int_out_size[CUMO_NA_MAX_DIMENSION];
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
-    rb_get_kwargs(kw_hash, kw_table, 0, 4, opts);
+    rb_get_kwargs(kw_hash, kw_table, 0, 5, opts);
     b = cumo_cuda_cudnn_option_value(opts[0], Qnil);
     stride = cumo_cuda_cudnn_option_value(opts[1], Qnil);
     pad = cumo_cuda_cudnn_option_value(opts[2], Qnil);
@@ -112,18 +112,19 @@ static VALUE
     get_int_out_size(int_out_size, out_size, ndim, x_shape, w_shape, int_stride, int_pad);
 
     // out_shape = (batch_size, out_channels, out_1, out_2, ..., out_N)
-    if (y != Qnil) {
-        CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(y, cT);
-        // TODO: shape check
-    }
-    else {
+    {
         size_t *y_shape = ALLOCA_N(size_t, ndim + 2);
         y_shape[0] = batch_size;
         y_shape[1] = out_channels;
         for (size_t i = 0; i < ndim; ++i) {
             y_shape[i + 2] = int_out_size[i];
         }
-        y = cumo_na_new(cT, ndim + 2, y_shape);
+        if (y == Qnil) {
+            y = cumo_na_new(cT, ndim + 2, y_shape);
+        }
+        else {
+            cumo_cuda_cudnn_check_output(y, cT, ndim + 2, y_shape);
+        }
     }
 
     x_cont = cumo_na_as_contiguous_array(x);

@@ -123,12 +123,23 @@ static VALUE
     gamma_cont_ptr = cumo_na_get_offset_pointer_for_read(gamma_cont);
     gy_cont_ptr = cumo_na_get_offset_pointer_for_read(gy_cont);
 
-    // TODO: type and shape check
-    if (gx == Qnil) gx = cumo_na_new(cT, x_ndim, x_shape);
+    if (gx == Qnil) {
+        gx = cumo_na_new(cT, x_ndim, x_shape);
+    } else {
+        cumo_cuda_cudnn_check_output(gx, cT, x_ndim, x_shape);
+    }
     gx_ptr = cumo_na_get_offset_pointer_for_write(gx);
-    if (ggamma == Qnil) ggamma = cumo_na_new(cT, gamma_ndim, gamma_shape);
+    if (ggamma == Qnil) {
+        ggamma = cumo_na_new(cT, gamma_ndim, gamma_shape);
+    } else {
+        cumo_cuda_cudnn_check_output(ggamma, cT, gamma_ndim, gamma_shape);
+    }
     ggamma_ptr = cumo_na_get_offset_pointer_for_write(ggamma);
-    if (gbeta == Qnil) gbeta = cumo_na_new(cT, gamma_ndim, gamma_shape);
+    if (gbeta == Qnil) {
+        gbeta = cumo_na_new(cT, gamma_ndim, gamma_shape);
+    } else {
+        cumo_cuda_cudnn_check_output(gbeta, cT, gamma_ndim, gamma_shape);
+    }
     gbeta_ptr = cumo_na_get_offset_pointer_for_write(gbeta);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
