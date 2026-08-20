@@ -152,6 +152,14 @@ is_c_contiguous(VALUE a)
     return cumo_na_check_contiguous(a) == Qtrue;
 }
 
+// How many matrices the operand holds, i.e. the product of its batch dimensions.
+static int
+gemm_batch_count(cumo_narray_t *na)
+{
+    size_t matrix_size = ROW_SIZE(na) * COL_SIZE(na);
+    return matrix_size == 0 ? 0 : (int)(CUMO_NA_SIZE(na) / matrix_size);
+}
+
 static gemm_layout_t
 make_gemm_layout(VALUE a)
 {
@@ -175,7 +183,9 @@ make_gemm_layout(VALUE a)
         // force c-contiguous
         layout.a = is_c_contiguous(a) ? a : rb_funcall(a, rb_intern("dup"), 0);
     }
-    layout.stride = ROW_SIZE(na) * COL_SIZE(na);
+    // cuBLAS walks the operand by this stride once per batch, so an operand that
+    // holds a single matrix has to be re-read rather than advanced past its end.
+    layout.stride = gemm_batch_count(na) == 1 ? 0 : ROW_SIZE(na) * COL_SIZE(na);
     return layout;
 }
 
@@ -294,6 +304,7 @@ static VALUE
 {
     VALUE a=self, b, c=Qnil, alpha, beta;
     cumo_narray_t *na, *nb;
+    int a_batch, b_batch, batch;
 
     gemm_args_t g;
     VALUE kw_hash = Qnil;
@@ -317,6 +328,8 @@ static VALUE
     CumoGetNArray(b, nb);
     CHECK_DIM_GE(na, 2);
     CHECK_DIM_GE(nb, 2);
+    CHECK_NON_EMPTY(na);
+    CHECK_NON_EMPTY(nb);
 
     if (ROW_SIZE(nb) != COL_SIZE(na)) {
         rb_raise(cumo_na_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d",
@@ -327,11 +340,25 @@ static VALUE
     g.k = COL_SIZE(na);
     g.n = COL_SIZE(nb);
 
+    // The batch dimensions reach cuBLAS as one stride per operand, so both
+    // operands must hold the same number of matrices. An operand holding a
+    // single matrix is broadcast over the batch; anything else cannot be
+    // expressed with a single stride and would read past the shorter operand.
+    a_batch = gemm_batch_count(na);
+    b_batch = gemm_batch_count(nb);
+    if (a_batch != b_batch && a_batch != 1 && b_batch != 1) {
+        rb_raise(cumo_na_eShapeError,"batch count of a=%d must equal to batch count of b=%d",
+                a_batch, b_batch);
+    }
+    batch = a_batch > b_batch ? a_batch : b_batch;
+
     if (c == Qnil) { // c is not given.
-        int ndim = CUMO_NA_NDIM(na);
+        cumo_narray_t *nbase = a_batch >= b_batch ? na : nb;
+        int ndim = CUMO_NA_NDIM(nbase);
         size_t *shape = ALLOCA_N(size_t, ndim);
-        memcpy(shape, CUMO_NA_SHAPE(na), sizeof(size_t) * (ndim - 1)); // ... x m x k
-        shape[ndim - 1] = g.n; // ... x m x n
+        memcpy(shape, CUMO_NA_SHAPE(nbase), sizeof(size_t) * (ndim - 2)); // batch dimensions
+        shape[ndim - 2] = g.m; // ... x m x n
+        shape[ndim - 1] = g.n;
         c = cumo_na_new(cT, ndim, shape);
     } else {
         cumo_narray_t *nc;
@@ -344,7 +371,11 @@ static VALUE
         }
         if (COL_SIZE(nc) != COL_SIZE(nb)) {
             rb_raise(cumo_na_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d",
-                    (int)COL_SIZE(nc), (int)COL_SIZE(nc));
+                    (int)COL_SIZE(nc), (int)COL_SIZE(nb));
+        }
+        if (gemm_batch_count(nc) != batch) {
+            rb_raise(cumo_na_eShapeError,"batch count of c=%d must equal to %d",
+                    gemm_batch_count(nc), batch);
         }
     }
 
