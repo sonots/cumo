@@ -103,7 +103,7 @@ cumo_na_copy(VALUE self)
     // Everything else goes through the indexer so that ndloop hands the whole
     // view over at once: walking the outer dimensions itself costs a
     // synchronization per step when an operand carries an index array.
-    if (rb_obj_class(self) != cumo_cRObject) {
+    if (!rb_obj_is_kind_of(self, cumo_cRObject)) {
         ndf.func = iter_copy_bytes_indexer;
         ndf.flag = CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
     }

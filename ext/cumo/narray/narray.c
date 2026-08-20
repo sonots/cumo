@@ -615,7 +615,7 @@ cumo_na_data_byte_size(VALUE self)
 static void
 cumo_na_free_owned_ptr(VALUE self, void *ptr)
 {
-    if (rb_obj_class(self) == cumo_cRObject) {
+    if (rb_obj_is_kind_of(self, cumo_cRObject)) {
         xfree(ptr);
     } else {
         cumo_cuda_runtime_free(ptr);

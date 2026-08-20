@@ -4340,4 +4340,14 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([5.0], a.at([0], [1], [2]).to_a)
     assert_equal([5.0], a.at(Cumo::Int32[0], Cumo::Int32[1], Cumo::Int32[2]).to_a)
   end
+
+  test "a subclass of RObject keeps its data on the host too" do
+    klass = Class.new(Cumo::RObject)
+    a = klass.new(6)
+    a.allocate
+    a.store([1, 2, 3, 4, 5, 6])
+    assert_equal([1, 2, 3, 4, 5, 6], a.copy.to_a)
+    assert_equal([5, 1, 3], a[[4, 0, 2]].copy.to_a)
+    assert_equal(true, a.free)
+  end
 end
