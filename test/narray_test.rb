@@ -4329,6 +4329,81 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(view.size, base.flatten.eq(9.0).count_true)
   end
 
+  test "the nan-aware reductions skip NaN, and min and max answer NaN" do
+    nan = Float::NAN
+    flat = ->(v) { v.respond_to?(:ndim) ? v.to_a.flatten : [v] }
+    nan_p = lambda do |v|
+      return v.real.nan? || v.imag.nan? if v.is_a?(Complex)
+      v.respond_to?(:nan?) && v.nan?
+    end
+    close = lambda do |got, want, label|
+      g = flat.call(got)
+      w = flat.call(want)
+      assert_equal(w.size, g.size, label)
+      g.zip(w).each_with_index do |(x, y), i|
+        if nan_p.call(y)
+          assert(nan_p.call(x), "#{label}[#{i}]: expected NaN, got #{x.inspect}")
+        else
+          assert_in_delta(0, (x - y).abs, (y.abs * 1e-5) + 1e-5, "#{label}[#{i}]")
+        end
+      end
+    end
+
+    [Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      with = dtype.cast([3.0, -1.0, nan, 1.0, 5.0])
+      kept = dtype.cast([3.0, -1.0, 1.0, 5.0])
+      %i[sum prod mean var stddev rms].each do |op|
+        close.call(with.send(op, nan: true), kept.send(op), "#{dtype} #{op}")
+      end
+      %i[min max ptp].each { |op| close.call(with.send(op, nan: true), nan, "#{dtype} #{op}") }
+      close.call(with.minmax(nan: true)[0], nan, "#{dtype} minmax min")
+      close.call(with.minmax(nan: true)[1], nan, "#{dtype} minmax max")
+
+      none = dtype.cast([nan] * 4)
+      close.call(none.sum(nan: true), 0, "#{dtype} sum of all NaN")
+      close.call(none.prod(nan: true), 1, "#{dtype} prod of all NaN")
+      close.call(none.var(nan: true), 0, "#{dtype} var of all NaN")
+      close.call(none.stddev(nan: true), 0, "#{dtype} stddev of all NaN")
+      %i[mean rms min max ptp].each do |op|
+        close.call(none.send(op, nan: true), nan, "#{dtype} #{op} of all NaN")
+      end
+    end
+
+    # whole rows are NaN, so the answer is the plain reduction over the rows
+    # that are left
+    [Cumo::DFloat, Cumo::DComplex].each do |dtype|
+      base = dtype.new(6, 40).seq + 1
+      nan_rows = [1, 4]
+      kept_rows = (0...6).to_a - nan_rows
+      a = base.copy
+      a[nan_rows, true] = nan
+      kept = base[kept_rows, true]
+      %i[sum mean var stddev rms].each do |op|
+        close.call(a.send(op, axis: 0, nan: true), kept.send(op, axis: 0), "#{dtype} #{op} axis 0")
+        close.call(a.send(op, nan: true), kept.send(op), "#{dtype} #{op} flat")
+        close.call(a.transpose.send(op, axis: 1, nan: true), kept.transpose.send(op, axis: 1),
+                   "#{dtype} #{op} transposed")
+      end
+      next if dtype == Cumo::DComplex
+
+      # every column meets a NaN row, so every one of these is NaN
+      all_nan = Cumo::DFloat.new(40).fill(nan)
+      %i[min max ptp].each do |op|
+        close.call(a.send(op, axis: 0, nan: true), all_nan, "#{dtype} #{op} axis 0")
+        close.call(a.transpose.send(op, axis: 1, nan: true), all_nan, "#{dtype} #{op} transposed")
+      end
+      got = a.minmax(axis: 0, nan: true)
+      close.call(got[0], all_nan, "#{dtype} minmax axis 0 min")
+      close.call(got[1], all_nan, "#{dtype} minmax axis 0 max")
+      # a column with no NaN keeps the plain answer
+      clean = base[kept_rows, true]
+      %i[min max ptp].each do |op|
+        close.call(clean.send(op, axis: 0, nan: true), clean.send(op, axis: 0),
+                   "#{dtype} #{op} axis 0 without nan")
+      end
+    end
+  end
+
   test "a boolean mask reaches every element of a view and no others" do
     mask_expect = lambda do |a, m|
       flat = a.flatten.to_a

@@ -69,6 +69,76 @@ struct cumo_<%=type_name%>_rms_impl {
     __device__ rtype MapOut(rtype accum) { return r_sqrt(accum / n); }
 };
 
+// The nan-aware forms. An element with a NaN in either component maps to an
+// accumulator that contributes nothing: Reduce above already returns early on
+// a zero count, and mean and rms carry the count of what was left rather than
+// the length of the reduce axis.
+struct cumo_<%=type_name%>_sum_nan_impl {
+    __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_zero; }
+    __device__ <%=dtype%> MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? in : m_zero; }
+    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum = m_add(next, accum); }
+    __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
+};
+
+struct cumo_<%=type_name%>_prod_nan_impl {
+    __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_one; }
+    __device__ <%=dtype%> MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? in : m_one; }
+    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum = m_mul(next, accum); }
+    __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
+};
+
+struct cumo_<%=type_name%>_moments_nan_impl : cumo_<%=type_name%>_moments_impl {
+    __device__ Moments MapIn(dtype in, int64_t /*index*/) {
+        if (!not_nan(in)) { return {0, m_zero, 0}; }
+        return {1, in, 0};
+    }
+};
+
+struct cumo_<%=type_name%>_var_nan_impl : cumo_<%=type_name%>_moments_nan_impl {
+    // Every element being NaN leaves no count. numo divides by count-1 in
+    // unsigned arithmetic there, so it answers +0 rather than the -0 that
+    // dividing by -1 would give.
+    __device__ rtype MapOut(Moments accum) { return accum.n == 0 ? 0 : accum.m2 / (accum.n - 1); }
+};
+
+struct cumo_<%=type_name%>_stddev_nan_impl : cumo_<%=type_name%>_moments_nan_impl {
+    __device__ rtype MapOut(Moments accum) { return accum.n == 0 ? 0 : r_sqrt(accum.m2 / (accum.n - 1)); }
+};
+
+struct cumo_<%=type_name%>_mean_nan_impl {
+    struct SumAndCount {
+        dtype sum;
+        rtype n;
+    };
+    __device__ SumAndCount Identity(int64_t /*index*/) { return {m_zero, 0}; }
+    __device__ SumAndCount MapIn(dtype in, int64_t /*index*/) {
+        if (!not_nan(in)) { return {m_zero, 0}; }
+        return {in, 1};
+    }
+    __device__ void Reduce(SumAndCount next, SumAndCount& accum) {
+        accum.sum = m_add(next.sum, accum.sum);
+        accum.n += next.n;
+    }
+    __device__ dtype MapOut(SumAndCount accum) { return c_div_r(accum.sum, accum.n); }
+};
+
+struct cumo_<%=type_name%>_rms_nan_impl {
+    struct SumAndCount {
+        rtype sum;
+        rtype n;
+    };
+    __device__ SumAndCount Identity(int64_t /*index*/) { return {0, 0}; }
+    __device__ SumAndCount MapIn(dtype in, int64_t /*index*/) {
+        if (!not_nan(in)) { return {0, 0}; }
+        return {c_abs_square(in), 1};
+    }
+    __device__ void Reduce(SumAndCount next, SumAndCount& accum) {
+        accum.sum += next.sum;
+        accum.n += next.n;
+    }
+    __device__ rtype MapOut(SumAndCount accum) { return r_sqrt(accum.sum / accum.n); }
+};
+
 #if defined(__cplusplus)
 extern "C" {
 #if 0
@@ -106,4 +176,34 @@ void cumo_<%=type_name%>_rms_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     rtype n = (rtype)(arg->in_indexer.total_size / arg->out_indexer.total_size);
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_rms_impl>(*arg, cumo_<%=type_name%>_rms_impl{n});
+}
+
+void cumo_<%=type_name%>_sum_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, <%=dtype%>, cumo_<%=type_name%>_sum_nan_impl>(*arg, cumo_<%=type_name%>_sum_nan_impl{});
+}
+
+void cumo_<%=type_name%>_prod_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, <%=dtype%>, cumo_<%=type_name%>_prod_nan_impl>(*arg, cumo_<%=type_name%>_prod_nan_impl{});
+}
+
+void cumo_<%=type_name%>_mean_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_mean_nan_impl>(*arg, cumo_<%=type_name%>_mean_nan_impl{});
+}
+
+void cumo_<%=type_name%>_var_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_var_nan_impl>(*arg, cumo_<%=type_name%>_var_nan_impl{});
+}
+
+void cumo_<%=type_name%>_stddev_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_stddev_nan_impl>(*arg, cumo_<%=type_name%>_stddev_nan_impl{});
+}
+
+void cumo_<%=type_name%>_rms_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_rms_nan_impl>(*arg, cumo_<%=type_name%>_rms_nan_impl{});
 }
