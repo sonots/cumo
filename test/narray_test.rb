@@ -4329,6 +4329,43 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(view.size, base.flatten.eq(9.0).count_true)
   end
 
+  test "a boolean mask reaches every element of a view and no others" do
+    mask_expect = lambda do |a, m|
+      flat = a.flatten.to_a
+      bits = m.flatten.to_a
+      flat.each_with_index.select { |_, i| bits[i] == 1 }.map(&:first)
+    end
+    check = lambda do |label, a, m|
+      assert_equal(mask_expect.call(a, m), a[m].to_a, label)
+    end
+    # around a word of bits, and around the size the loop is split at
+    [7, 31, 32, 33, 1000, 8191, 8192, 8193, 40_000].each do |n|
+      a = Cumo::DFloat.new(n).seq
+      check.call("1d n=#{n} half", a, a.gt(n / 2))
+      check.call("1d n=#{n} none", a, a.gt(n * 2))
+      check.call("1d n=#{n} all", a, a.ge(0))
+      check.call("1d n=#{n} alternating", a, (a % 2).eq(0))
+    end
+    # rows long enough that the loop reaches the kernel; the transpose below is
+    # the short-row case, and only an index on the innermost axis reaches the
+    # loop as an index array
+    base = Cumo::DFloat.new(8, 20_000).seq
+    order = (0...20_000).to_a.shuffle(random: Random.new(3))
+    views = {
+      "contiguous" => base,
+      "column slice" => base[true, 0.step(19_999, 2)],
+      "reversed" => base[true, 19_999.step(0, -1)],
+      "index array on the outer axis" => base[[7, 0, 3, 5, 1], true],
+      "index array on the innermost axis" => base[true, order],
+      "index array on both axes" => base[[7, 0, 3, 5, 1], order],
+      "transposed" => base.transpose,
+    }
+    views.each do |label, v|
+      check.call(label, v, v.gt(80_000))
+      check.call("#{label} on a reversed mask", v, v.reverse.gt(80_000))
+    end
+  end
+
   test "at() rejects a scalar subscript" do
     a = Cumo::DFloat.new(3, 3, 3).seq
     assert_raise(IndexError) { a.at(0, 1, 2) }
