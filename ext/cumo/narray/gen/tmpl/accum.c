@@ -1,4 +1,4 @@
-<% indexer_ops = %w[sum prod min max ptp var stddev mean rms] %>
+<% indexer_ops = %w[sum prod min max ptp var stddev mean rms kahan_sum] %>
 <% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>
@@ -12,7 +12,7 @@ void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(cumo_na_reduction_arg_t
 static void
 <%=c_iter%><%=nan%>(cumo_na_loop_t *const lp)
 {
-    <% if type_name == 'robject' || name == 'kahan_sum' %>
+    <% if type_name == 'robject' %>
     {
         size_t   n;
         char    *p1, *p2;
@@ -40,8 +40,6 @@ static void
     }
     <% else %>
     {
-        // TODO(sonots): How to compute Kahan summation algorithm in parallel?
-        // TODO(sonots): Implement nan CUDA version
         cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 1);
         cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(&arg);
     }
