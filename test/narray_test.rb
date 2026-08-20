@@ -4328,4 +4328,16 @@ class NArrayTest < Test::Unit::TestCase
     view.fill(9.0)
     assert_equal(view.size, base.flatten.eq(9.0).count_true)
   end
+
+  test "at() rejects a scalar subscript" do
+    a = Cumo::DFloat.new(3, 3, 3).seq
+    assert_raise(IndexError) { a.at(0, 1, 2) }
+    assert_raise(IndexError) { a.at([0, 1], 1, 2) }
+    assert_raise(IndexError) { a.at(0.0, 1, 2) }
+    assert_raise(IndexError) { Cumo::DFloat.new(4).seq.at(1) }
+    assert_equal([2.0, 13.0, 24.0], a.at([0, 1, 2], [0, 1, 2], [-1, -2, -3]).to_a)
+    assert_equal([0.0, 13.0], a.at(0..1, 0..1, 0..1).to_a)
+    assert_equal([5.0], a.at([0], [1], [2]).to_a)
+    assert_equal([5.0], a.at(Cumo::Int32[0], Cumo::Int32[1], Cumo::Int32[2]).to_a)
+  end
 end
