@@ -495,6 +495,28 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
+    sub_test_case "conv_grad_w gy shape" do
+      setup do
+        @x = dtype.ones(2, 3, 10, 7)
+        @w_shape = [2, 3, 2, 3]
+      end
+
+      test "the spatial size of gy has to be the convolution output size #{dtype}" do
+        assert { @x.conv_grad_w(dtype.ones(2, 2, 9, 5), @w_shape).shape == @w_shape }
+        [[2, 2, 8, 5], [2, 2, 12, 5], [2, 2, 9, 4]].each do |shape|
+          e = assert_raise(Cumo::NArray::ShapeError) { @x.conv_grad_w(dtype.ones(*shape), @w_shape) }
+          assert { e.message.include?("does not match with the convolution output size") }
+        end
+      end
+
+      test "a stride that does not divide evenly takes the floor #{dtype}" do
+        x = dtype.ones(2, 3, 10, 10)
+        w_shape = [2, 3, 2, 2]
+        assert { x.conv_grad_w(dtype.ones(2, 2, 3, 3), w_shape, stride: 3).shape == w_shape }
+        assert_raise(Cumo::NArray::ShapeError) { x.conv_grad_w(dtype.ones(2, 2, 4, 4), w_shape, stride: 3) }
+      end
+    end
+
     sub_test_case "given output arrays" do
       setup do
         @x_shape = [2, 3, 5, 3]

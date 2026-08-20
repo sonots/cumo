@@ -94,18 +94,22 @@ static VALUE
     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(sizet_w_shape[0], ngy->shape[1]);
     CUMO_CUDA_CUDNN_CHECK_DIM_EQ(sizet_w_shape[1], nx->shape[1]);
 
-#if !defined(NDEBUG)
     {
-        // shape check of gy
+        // cuDNN rejects a gy of the wrong spatial size with CUDNN_STATUS_BAD_PARAM,
+        // which does not say which dimension is wrong. This check was an assert,
+        // so a release build said nothing at all.
         size_t *y_shape = ngy->shape;
         size_t *x_shape = nx->shape;
         for (size_t i = 0; i < ndim; ++i) {
-            // TODO: raise
-            assert(y_shape[i + 2] == cumo_cuda_cudnn_GetConvOutDim(
-                    x_shape[i + 2], sizet_w_shape[i + 2], int_stride[i], int_pad[i]));
+            size_t out_dim = cumo_cuda_cudnn_GetConvOutDim(
+                    x_shape[i + 2], sizet_w_shape[i + 2], int_stride[i], int_pad[i]);
+            if (y_shape[i + 2] != out_dim) {
+                rb_raise(cumo_na_eShapeError,
+                        "gy_shape[%d]:%d does not match with the convolution output size %d",
+                        (int)(i + 2), (int)y_shape[i + 2], (int)out_dim);
+            }
         }
     }
-#endif
 
     x_cont = cumo_na_as_contiguous_array(x);
     gy_cont = cumo_na_as_contiguous_array(gy);
