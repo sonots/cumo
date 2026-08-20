@@ -164,7 +164,36 @@ have_library('nvrtc')
 have_library('cublas')
 # have_library('cusolver')
 # have_library('curand')
-if have_library('cudnn') # TODO(sonots): cuDNN version check
+
+# cuDNN 8 is the first release that supports CUDA 11, which cumo requires.
+CUDNN_MIN_MAJOR = 8
+
+def have_cudnn?
+  unless have_header('cudnn.h')
+    message("cuDNN header not found; building without cuDNN features\n")
+    return false
+  end
+  ok = checking_for("cuDNN #{CUDNN_MIN_MAJOR} or later") do
+    try_compile(<<-SRC)
+#include <cudnn.h>
+#if CUDNN_MAJOR < #{CUDNN_MIN_MAJOR}
+#error "cuDNN is too old"
+#endif
+int main(void) { return 0; }
+    SRC
+  end
+  unless ok
+    message("cuDNN is older than #{CUDNN_MIN_MAJOR}.0; building without cuDNN features\n")
+    return false
+  end
+  unless have_library('cudnn')
+    message("cuDNN library not found; building without cuDNN features\n")
+    return false
+  end
+  true
+end
+
+if have_cudnn?
   $CFLAGS << " -DCUDNN_FOUND"
   $CXXFLAGS << " -DCUDNN_FOUND"
 end
