@@ -140,7 +140,12 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
                 continue;
             }
             chunk = PopFromFreeList(free_list);
-            // TODO(sonots): compact_index
+            if (free_list.empty()) {
+                // An emptied bin stays in the arena otherwise, and every later
+                // search walks it. Dropping it here invalidates arena and
+                // free_list, so nothing below this loop may touch them.
+                CompactIndex(stream_ptr, false);
+            }
             break;
         }
 
