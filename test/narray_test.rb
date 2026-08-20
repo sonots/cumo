@@ -3895,6 +3895,59 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([1, 2, 0], Cumo::Int32[3, 1, 2].sort_index.to_a, "smallest case")
   end
 
+  test "real= and imag= reach every element of a view" do
+    # The two ran on the host, one element at a time, behind a device
+    # synchronization; they were the last of gen/tmpl to do so.
+    rows = 6
+    cols = 10
+    n = rows * cols
+    re = Array.new(n) { |i| (i % 7) - 3.0 }
+    im = Array.new(n) { |i| (i % 5) - 2.0 }
+    fresh = Array.new(n) { |i| (i % 11) - 5.0 }
+
+    [[Cumo::DComplex, Cumo::DFloat], [Cumo::SComplex, Cumo::SFloat]].each do |ct, rt|
+      src = -> { ct.cast(re.each_index.map { |i| Complex(re[i], im[i]) }).reshape(rows, cols) }
+
+      a = src.call
+      a.real = rt.cast(fresh).reshape(rows, cols)
+      assert_equal(fresh.each_index.map { |i| Complex(fresh[i], im[i]) }, a.to_a.flatten, "#{ct} real= array")
+
+      a = src.call
+      a.imag = rt.cast(fresh).reshape(rows, cols)
+      assert_equal(fresh.each_index.map { |i| Complex(re[i], fresh[i]) }, a.to_a.flatten, "#{ct} imag= array")
+
+      a = src.call
+      a.real = 7.0
+      assert_equal(re.each_index.map { |i| Complex(7.0, im[i]) }, a.to_a.flatten, "#{ct} real= scalar")
+
+      # a view whose elements are not laid out end to end
+      picked = (0...cols).step(3).to_a
+      a = src.call
+      a[true, 0.step(cols - 1, 3)].imag = 9.0
+      want = re.each_index.map { |i| Complex(re[i], picked.include?(i % cols) ? 9.0 : im[i]) }
+      assert_equal(want, a.to_a.flatten, "#{ct} imag= of a column slice")
+
+      order = [3, 0, 5]
+      a = src.call
+      a[order, true].real = 4.0
+      want = re.each_index.map { |i| Complex(order.include?(i / cols) ? 4.0 : re[i], im[i]) }
+      assert_equal(want, a.to_a.flatten, "#{ct} real= of an index view")
+
+      a = src.call
+      a[(rows - 1).step(0, -1), true].imag = 2.5
+      assert_equal(re.each_index.map { |i| Complex(re[i], 2.5) }, a.to_a.flatten, "#{ct} imag= of a reversed view")
+
+      # a shape past the rank the indexer has a specialized accessor for
+      deep = ct.cast((0...32).map { |i| Complex(re[i], im[i]) }).reshape(2, 2, 2, 2, 2)
+      deep.real = rt.cast(fresh[0, 32]).reshape(2, 2, 2, 2, 2)
+      assert_equal((0...32).map { |i| Complex(fresh[i], im[i]) }, deep.to_a.flatten, "#{ct} real= 5-d")
+
+      one = ct.cast([Complex(1, 2)])
+      one.imag = 8.0
+      assert_equal([Complex(1, 8)], one.to_a, "#{ct} smallest case")
+    end
+  end
+
   test "poly evaluates every element, whatever the coefficients and the layout" do
     # poly ran with CUMO_NO_LOOP, so ndloop called the iterator once per
     # element and each call synchronized with the device.
