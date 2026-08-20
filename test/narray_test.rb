@@ -4338,6 +4338,40 @@ class NArrayTest < Test::Unit::TestCase
     assert_reductions(big.transpose, "3000x33 transpose", axes: [[0], [1]])
   end
 
+  test "a reduction over a strided view does not copy the operand" do
+    # In a child, or blocks another test left in the pool serve the copy and it
+    # does not show up in total_bytes.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      pool = Cumo::CUDA::MemoryPool
+      unless pool.enabled?
+        print "no-pool"
+        exit
+      end
+      a = Cumo::SFloat.new(1024, 1024).seq
+      a.transpose.sum(axis: -1)
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      pool.free_all_blocks
+      before = pool.total_bytes
+      a.transpose.sum(axis: -1)
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      print pool.total_bytes - before
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+    omit("memory pool is disabled") if out == "no-pool"
+    assert_operator(Integer(out), :<, 1024 * 1024 * 4)
+  end
+
+  test "a reduction answering an index copies a strided view" do
+    # The index the kernel answers counts along memory, so a strided operand
+    # would answer an index into the base rather than into the view.
+    a = Cumo::Int32.new(6, 5).seq
+    v = a[true, 1..3]
+    assert_equal([15, 16, 17], v.max_index(axis: 0).to_a)
+    assert_equal([2, 5, 8, 11, 14, 17], v.max_index(axis: 1).to_a)
+  end
+
   test "copy of an RObject view stays on the host" do
     # RObject data is host memory, so it must not take the kernel path
     a = Cumo::RObject.cast([[1, 2, 3], [4, 5, 6], [7, 8, 9]])

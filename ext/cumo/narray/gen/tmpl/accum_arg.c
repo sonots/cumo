@@ -109,8 +109,11 @@ static VALUE
             <% end %>
         }
 
-        if (cumo_na_has_idx_p(self)) {
-            VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous
+        // The index the kernel answers counts along the operand's memory, so
+        // it only means the same thing as the logical index when the operand is
+        // contiguous.
+        if (cumo_na_check_contiguous(self) != Qtrue) {
+            VALUE copy = cumo_na_copy(self);
             ret = cumo_na_ndloop(&ndf, 2, copy, reduce);
         } else {
             ret = cumo_na_ndloop(&ndf, 2, self, reduce);

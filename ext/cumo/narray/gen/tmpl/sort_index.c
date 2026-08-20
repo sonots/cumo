@@ -141,8 +141,11 @@ static VALUE
     if (kernel) {
         ndf.func = <%=c_iter%>_kernel;
         ndf.flag |= CUMO_NDF_INDEXER_LOOP;
-        if (cumo_na_has_idx_p(self)) {
-            self = cumo_na_copy(self); // the indexer loop does not support idx, make contiguous
+        // The index the kernel writes counts along the operand's memory, so it
+        // only means the same thing as the logical index when the operand is
+        // contiguous.
+        if (cumo_na_check_contiguous(self) != Qtrue) {
+            self = cumo_na_copy(self);
         }
         return cumo_na_ndloop3(&ndf, 0, 3, self, idx, reduce);
     }
