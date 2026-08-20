@@ -900,6 +900,39 @@ class NArrayTest < Test::Unit::TestCase
           a = dtype[1..6].reshape(2, 3)
           assert { a.gemm([[1, 2], [3, 4], [5, 6]]) == [[22, 28], [49, 64]] }
         end
+        test "matrix.gemm(matrix) broadcasts an operand that holds one matrix" do
+          b = dtype.new(3, 4).seq
+          # fills the pool next to b, so a read past b shows up as 7
+          neighbour = Array.new(2) { dtype.new(200).fill(7) }
+          a = dtype.new(10, 2, 3).seq
+          c = a.gemm(b)
+          assert { c.shape == [10, 2, 4] }
+          10.times { |i| assert { c[i, true, true] == a[i, true, true].gemm(b) } }
+          assert { neighbour.all? { |n| n == dtype.new(200).fill(7) } }
+        end
+        test "matrix.gemm(matrix) takes the batch dimensions from either operand" do
+          a = dtype.new(2, 3).seq
+          b = dtype.new(4, 3, 4).seq
+          c = a.gemm(b)
+          assert { c.shape == [4, 2, 4] }
+          4.times { |i| assert { c[i, true, true] == a.gemm(b[i, true, true]) } }
+        end
+        test "matrix.gemm(matrix) rejects batch counts that differ" do
+          a = dtype.new(4, 2, 3).seq
+          b = dtype.new(3, 3, 4).seq
+          assert_raise(Cumo::NArray::ShapeError) { a.gemm(b) }
+        end
+        test "matrix.gemm(matrix) rejects an empty operand" do
+          assert_raise(Cumo::NArray::ShapeError) { dtype.new(2, 3).seq.gemm(dtype.new(3, 0)) }
+          assert_raise(Cumo::NArray::ShapeError) { dtype.new(0, 3).gemm(dtype.new(3, 4).seq) }
+          assert_raise(Cumo::NArray::ShapeError) { dtype.new(2, 0).gemm(dtype.new(0, 4)) }
+        end
+        test "matrix.gemm(matrix, c) rejects a c whose batch count differs" do
+          a = dtype.new(4, 2, 3).seq
+          b = dtype.new(3, 4).seq
+          assert_raise(Cumo::NArray::ShapeError) { a.gemm(b, dtype.zeros(2, 4)) }
+          assert { a.gemm(b, dtype.zeros(4, 2, 4)) == a.gemm(b) }
+        end
       end
     end
 
