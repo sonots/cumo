@@ -98,17 +98,30 @@ a = xm::DFloat.new(3,5).seq
 
 ### Incompatibility With Numo
 
-The following methods behave incompatibly with Numo by default for performance reasons:
-
-* `extract`
-* `[]`
-* `count_true`
-* `count_false`
-
-Numo returns a Ruby numeric object for 0-dimensional NArray, while Cumo returns the 0-dimensional NArray instead of a Ruby numeric object.
+Numo returns a Ruby numeric object wherever a result is 0-dimensional, while Cumo returns the 0-dimensional NArray itself.
 Cumo differs in this way to avoid synchronization and minimize CPU ⇄ GPU data transfer.
 
+The methods affected are:
+
+* `[]` and `extract`
+* `count_true` and `count_false`
+* reductions down to a single value: `sum`, `prod`, `mean`, `stddev`, `var`, `rms`, `min`, `max`, `ptp`, `minmax`, `median`, `mulsum`, `dot`, `inner`
+* index reductions: `max_index`, `min_index`, `argmax`, `argmin`
+
+A 0-dimensional `Cumo::Bit` is truthy even when it holds 0, because Ruby treats every object but `nil` and `false` as true.
+Comparing two scalars therefore takes the wrong branch without raising anything:
+
+```ruby
+a = Cumo::SFloat[5.0]
+a[0] < 1.0                  #=> Cumo::Bit#shape=[] holding 0
+(a[0] < 1.0) ? :yes : :no   #=> :yes, where Numo gives :no
+```
+
+`assert_operator(a[0], :<, 1.0)` passes for the same reason, so a test suite written for Numo can stay green against Cumo while asserting nothing.
+Read the value back to the host before branching on it, or run under `compatible_mode`.
+
 Set the `CUMO_COMPATIBLE_MODE` environment variable to `ON` to force Numo NArray compatibility (for worse performance).
+Running a Numo test suite that way keeps its assertions meaningful.
 
 You may enable or disable `compatible_mode` as:
 
@@ -126,6 +139,11 @@ You can also use the following methods which behave like Numo's NArray methods. 
 * `aref_cpu(*idx)`
 * `count_true_cpu`
 * `count_false_cpu`
+
+```ruby
+a.aref_cpu(0) < 1.0         #=> false
+(a[0] < 1.0).extract_cpu    #=> 0
+```
 
 ### Select a GPU device ID
 
