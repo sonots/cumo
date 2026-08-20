@@ -471,7 +471,10 @@ cumo_na_has_idx_p(VALUE obj)
     if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
         CumoGetNArrayView(obj, nv);
         for (; i < nv->base.ndim; ++i) {
-            if (nv->stridx[i].index) {
+            // A stride is tagged with its low bit set, so the raw union is
+            // non-null for every dimension a view has and reading it as a
+            // pointer answers true for all of them.
+            if (CUMO_SDX_IS_INDEX(nv->stridx[i])) {
                 return true;
             }
         }
