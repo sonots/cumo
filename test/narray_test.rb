@@ -4329,6 +4329,80 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(view.size, base.flatten.eq(9.0).count_true)
   end
 
+  test "the index reductions answer the earliest extreme, and the first NaN with nan" do
+    nan = Float::NAN
+    inf = Float::INFINITY
+    got = lambda do |a, op, nan_aware = false|
+      v = nan_aware ? a.send(op, nan: true) : a.send(op)
+      v = v.to_a if v.respond_to?(:ndim)
+      v = v.first while v.is_a?(Array) && v.size == 1
+      v
+    end
+    check = lambda do |label, a, want|
+      %i[max_index min_index argmax argmin].each_with_index do |op, i|
+        assert_equal(want[i], got.call(a, op), "#{label} #{op}")
+      end
+    end
+    [Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      # long enough that the reduce axis is split across blocks
+      n = 20_000
+      body = (0...n).map { |i| (i * 7 % 101) - 50.0 }
+      want = [body.each_with_index.max_by { |v, i| [v, -i] }[1],
+              body.each_with_index.min_by { |v, i| [v, i] }[1]]
+      check.call("#{dtype} plain", dtype.cast(body), [want[0], want[1], want[0], want[1]])
+
+      # -inf must not lose to the identity, and every element being NaN or the
+      # same value answers 0 as numo does
+      check.call("#{dtype} all -inf", dtype.cast([-inf] * n), [0, 0, 0, 0])
+      check.call("#{dtype} all +inf", dtype.cast([inf] * n), [0, 0, 0, 0])
+      check.call("#{dtype} all NaN", dtype.cast([nan] * n), [0, 0, 0, 0])
+      check.call("#{dtype} -inf 0 1 inf", dtype.cast([-inf, 0.0, 1.0, inf]), [3, 0, 3, 0])
+      check.call("#{dtype} ties", dtype.cast([1.0, 2.0, 2.0, 1.0]), [1, 0, 1, 0])
+
+      # without a NaN anywhere, nan: true has to answer what the plain form does
+      clean = dtype.cast(body)
+      %i[max_index min_index argmax argmin].each do |op|
+        assert_equal(got.call(clean, op), got.call(clean, op, true), "#{dtype} #{op} nan: true, no NaN")
+      end
+
+      with_nan = dtype.cast([3.0, -1.0, nan, 1.0, nan])
+      %i[max_index min_index argmax argmin].each do |op|
+        assert_equal(2, got.call(with_nan, op, true), "#{dtype} #{op} takes the first NaN")
+        assert_equal(op.to_s.include?("max") ? 0 : 1, got.call(with_nan, op),
+                     "#{dtype} #{op} without nan skips NaN")
+      end
+    end
+
+    [Cumo::Int32, Cumo::Int64].each do |dtype|
+      lo = dtype == Cumo::Int32 ? -(2**31) : -(2**63)
+      check.call("#{dtype} all min", dtype.cast([lo] * 100), [0, 0, 0, 0])
+      check.call("#{dtype} ties", dtype.cast([1, 2, 2, 1]), [1, 0, 1, 0])
+    end
+
+    # a column whose every element is the identity's own value: the identity
+    # has to lose to it, or the answer is the identity's index rather than the
+    # first element of that column
+    {
+      "column of -inf" => [[[5.0, -inf], [6.0, -inf]], [[2, 1], [0, 1]]],
+      "column of +inf" => [[[5.0, inf], [6.0, inf]], [[2, 1], [0, 1]]],
+      "column of NaN" => [[[5.0, nan], [6.0, nan]], [[2, 1], [0, 1]]],
+    }.each do |label, (src, want)|
+      a = Cumo::DFloat.cast(src)
+      assert_equal(want[0], a.max_index(axis: 0).to_a, "#{label} max_index")
+      assert_equal(want[1], a.min_index(axis: 0).to_a, "#{label} min_index")
+    end
+
+    b = Cumo::DFloat.new(5, 24).seq
+    [b, b.transpose, b[true, 23.step(0, -1)]].each_with_index do |v, vi|
+      [0, 1].each do |ax|
+        %i[max_index min_index argmax argmin].each do |op|
+          assert_equal(v.send(op, axis: ax).to_a, v.send(op, axis: ax, nan: true).to_a,
+                       "view #{vi} axis #{ax} #{op} over a view with no NaN")
+        end
+      end
+    end
+  end
+
   test "the nan-aware reductions skip NaN, and min and max answer NaN" do
     nan = Float::NAN
     flat = ->(v) { v.respond_to?(:ndim) ? v.to_a.flatten : [v] }

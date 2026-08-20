@@ -2,15 +2,14 @@
 
 <%   [64,32].each do |i| %>
 <% unless type_name == 'robject' %>
-void cumo_<%=type_name%>_<%=name%>_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg);
+void cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg);
 <% end %>
 
 #define idx_t int<%=i%>_t
 static void
 <%=c_iter%>_arg<%=i%><%=nan%>(cumo_na_loop_t *const lp)
 {
-    // TODO(sonots): Support nan in CUDA
-    <% if type_name == 'robject' || nan == '_nan' %>
+    <% if type_name == 'robject' %>
     {
         size_t   n, idx;
         char    *d_ptr, *o_ptr;
@@ -28,7 +27,7 @@ static void
     <% else %>
     {
         cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 1);
-        cumo_<%=type_name%>_<%=name%>_int<%=i%>_kernel_launch(&arg);
+        cumo_<%=type_name%>_<%=name%><%=nan%>_int<%=i%>_kernel_launch(&arg);
     }
     <% end %>
 }
@@ -109,14 +108,6 @@ static VALUE
             reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
             <% end %>
         }
-
-        <% if is_float %>
-        // Only the kernel reads the indexer. The nan iterator just selected is a
-        // host loop over lp->args[0].iter[0], which the indexer path does not set up.
-        if (ndf.func == iter_nan) {
-            ndf.flag &= ~CUMO_NDF_INDEXER_LOOP;
-        }
-        <% end %>
 
         if (cumo_na_has_idx_p(self)) {
             VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous
