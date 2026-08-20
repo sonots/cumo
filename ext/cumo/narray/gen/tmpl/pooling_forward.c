@@ -77,10 +77,7 @@ static VALUE
 
     x_shape = nx->shape;
 
-    if (y != Qnil) {
-        CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(y, cT);
-    }
-    else {
+    {
         size_t *y_shape = ALLOCA_N(size_t, ndim + 2);
         // out_shape = (batch_size, num_channels, out_1, out_2, ..., out_N)
         y_shape[0] = x_shape[0];
@@ -89,7 +86,12 @@ static VALUE
             y_shape[i + 2] = cumo_cuda_cudnn_GetConvOutDim(
                     x_shape[i + 2], int_kernel_size[i], int_stride[i], int_pad[i]);
         }
-        y = cumo_na_new(cT, ndim + 2, y_shape);
+        if (y == Qnil) {
+            y = cumo_na_new(cT, ndim + 2, y_shape);
+        }
+        else {
+            cumo_cuda_cudnn_check_output(y, cT, ndim + 2, y_shape);
+        }
     }
 
     x_cont = cumo_na_as_contiguous_array(x);

@@ -44,6 +44,25 @@ extern VALUE cumo_na_eShapeError;
                  (int)(nd1), (int)(nd2));            \
     }
 
+// An output array given by the caller is written through a descriptor built
+// from another operand, or as if it were contiguous, so cuDNN never learns how
+// long it really is. It has to be checked here instead.
+static inline void
+cumo_cuda_cudnn_check_output(VALUE out, VALUE type, size_t ndim, size_t *shape)
+{
+    cumo_narray_t *na;
+
+    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(out, type);
+    CumoGetNArray(out, na);
+    CUMO_CUDA_CUDNN_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
+    for (size_t idim = 0; idim < ndim; ++idim) {
+        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(na->shape[idim], shape[idim]);
+    }
+    if (cumo_na_check_contiguous(out) != Qtrue) {
+        rb_raise(cumo_na_eShapeError, "output NArray must be contiguous");
+    }
+}
+
 void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status);
 

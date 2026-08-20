@@ -99,8 +99,11 @@ static VALUE
     mean_cont_ptr = cumo_na_get_offset_pointer_for_read(mean_cont);
     var_cont_ptr = cumo_na_get_offset_pointer_for_read(var_cont);
 
-    // TODO: type and shape check
-    if (y == Qnil) y = cumo_na_new(cT, x_ndim, x_shape);
+    if (y == Qnil) {
+        y = cumo_na_new(cT, x_ndim, x_shape);
+    } else {
+        cumo_cuda_cudnn_check_output(y, cT, x_ndim, x_shape);
+    }
     y_ptr = cumo_na_get_offset_pointer_for_write(y);
 
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
