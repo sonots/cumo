@@ -18,14 +18,17 @@ jobs:
           - cuda_version: "11.8.0"
             cudnn_suffix: "cudnn8"
             ubuntu_version: "ubuntu22.04"
+            cuda_arch: "arch=compute_35,code=sm_35 arch=compute_90,code=sm_90"
 
           - cuda_version: "12.6.3"
             cudnn_suffix: "cudnn"
             ubuntu_version: "ubuntu24.04"
+            cuda_arch: "arch=compute_50,code=sm_50 arch=compute_90,code=sm_90"
 
           - cuda_version: "12.8.1"
             cudnn_suffix: "cudnn"
             ubuntu_version: "ubuntu24.04"
+            cuda_arch: "arch=compute_50,code=sm_50 arch=compute_120,code=sm_120"
 
           # Disable CUDA 12.9.x it causes build error in CUDA macros
           # Ref. https://github.com/NVIDIA/cccl/issues/4967
@@ -36,6 +39,7 @@ jobs:
           - cuda_version: "13.2.1"
             cudnn_suffix: "cudnn"
             ubuntu_version: "ubuntu24.04"
+            cuda_arch: "arch=compute_75,code=sm_75 arch=compute_121,code=sm_121"
 
     container:
       image: nvidia/cuda:${{ matrix.cuda_version }}-${{ matrix.cudnn_suffix }}-devel-${{ matrix.ubuntu_version }}
@@ -74,6 +78,11 @@ jobs:
         run: bundle install
 
       - name: Compile Cumo (Build check)
+        env:
+          # Two architectures, the oldest and the newest the CUDA version
+          # supports. Without this, mkmf-cu finds no nvidia-smi and builds every
+          # architecture in its list, which is minutes of nvcc per job.
+          CUMO_NVCC_GENERATE_CODE: ${{ matrix.cuda_arch }}
         run: |
           export CUDA_PATH=/usr/local/cuda
           export CPATH=/usr/local/cuda/include:${CPATH}
