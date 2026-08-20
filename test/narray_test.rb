@@ -4311,4 +4311,21 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([[7, 8, 9], [1, 2, 3]], a[[2, 0], true].copy.to_a)
     assert_equal([[1, 4, 7], [2, 5, 8], [3, 6, 9]], a.transpose.copy.to_a)
   end
+
+  test "expand_dims stops at the maximum number of dimensions" do
+    max = 12 # CUMO_NA_MAX_DIMENSION
+    a = Cumo::DFloat.zeros(*([2] * (max - 1)))
+    assert_equal(max, a.expand_dims(0).ndim)
+    assert_equal(max, a.expand_dims(max - 1).ndim)
+    b = Cumo::DFloat.zeros(*([2] * max))
+    assert_raise(Cumo::NArray::DimensionError) { b.expand_dims(0) }
+    assert_raise(Cumo::NArray::DimensionError) { b.expand_dims(max) }
+    # dimensions no adjacent pair of which ndloop can contract, so the loop
+    # reaches the kernel with every one of them
+    base = Cumo::DFloat.zeros(*([3] * max))
+    view = base[*([0..1] * max)]
+    assert_raise(Cumo::NArray::DimensionError) { view.expand_dims(max / 2) }
+    view.fill(9.0)
+    assert_equal(view.size, base.flatten.eq(9.0).count_true)
+  end
 end

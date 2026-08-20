@@ -1158,6 +1158,10 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
 
     CumoGetNArray(self,na);
     nd = na->ndim;
+    // The indexer and the iarray a kernel receives carry
+    // CUMO_NA_MAX_DIMENSION entries, so a view past that limit is written and
+    // read outside those structures.
+    cumo_na_check_ndim(nd+1);
 
     dim = NUM2INT(vdim);
     if (dim < -nd-1 || dim > nd) {
