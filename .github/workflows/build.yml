@@ -49,6 +49,7 @@ jobs:
             curl \
             git \
             build-essential \
+            libffi-dev \
             ruby-full \
             ruby-dev \
             ccache
