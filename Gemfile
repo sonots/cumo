@@ -5,6 +5,7 @@ source "https://rubygems.org"
 gemspec
 
 gem 'extconf_compile_commands_json'
+gem 'fiddle'
 gem 'rake-compiler'
 gem 'test-unit'
 gem 'yard'
