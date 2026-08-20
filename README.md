@@ -146,7 +146,7 @@ Float(a.sum)          #=> 7.0 in either mode
 ```
 
 They are methods on an NArray, so chaining one onto a result that `compatible_mode` has already turned into a Ruby object, as in `a.sum.extract_cpu`, raises `NoMethodError` while the mode is on.
-`Kernel#Float` and `Kernel#Integer` read either representation, so they are what code meant to run in both modes wants.
+`Kernel#Float` and `Kernel#Integer` read either representation, and read Numo's too, so they are what code that runs against both libraries wants.
 
 ### Select a GPU device ID
 
