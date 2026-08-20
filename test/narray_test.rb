@@ -36,6 +36,20 @@ class NArrayTest < Test::Unit::TestCase
       assert { dtype < Cumo::NArray }
     end
 
+    # A permutation that leaves no pair of axes ndloop can merge, so the kernel
+    # sees the full ndim and picks the accessor for it.
+    test "#{dtype}, a view permuted past the optimized indexer ndim" do
+      (5..8).each do |nd|
+        shape = Array.new(nd) { |i| i.even? ? 2 : 3 }
+        perm = (1...nd).step(2).to_a + (0...nd).step(2).to_a
+        v = dtype.new(*shape).seq.transpose(*perm)
+        assert { !v.contiguous? }
+        assert { v.dup.to_a == v.to_a }
+        assert { (v + v).to_a == (v.dup + v.dup).to_a }
+        assert { (-v).to_a == (-v.dup).to_a }
+      end
+    end
+
     test "#{dtype}[]" do
       a = dtype[]
 

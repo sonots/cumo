@@ -221,7 +221,7 @@ cumo_na_make_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
 
 #endif  // #ifndef __CUDACC__
 
-#define CUMO_NA_INDEXER_OPTIMIZED_NDIM 4
+#define CUMO_NA_INDEXER_OPTIMIZED_NDIM 8
 
 #ifdef __CUDACC__
 
@@ -247,6 +247,10 @@ cumo_na_indexer_set_dim##NDIM(cumo_na_indexer_t* indexer, uint64_t i) { \
     } \
 }
 
+CUMO_NA_INDEXER_SET(8)
+CUMO_NA_INDEXER_SET(7)
+CUMO_NA_INDEXER_SET(6)
+CUMO_NA_INDEXER_SET(5)
 CUMO_NA_INDEXER_SET(4)
 CUMO_NA_INDEXER_SET(3)
 CUMO_NA_INDEXER_SET(2)
@@ -280,6 +284,10 @@ cumo_na_iarray_at_dim##NDIM(cumo_na_iarray_t* iarray, cumo_na_indexer_t* indexer
     return ptr; \
 }
 
+CUMO_NA_IARRAY_AT(8)
+CUMO_NA_IARRAY_AT(7)
+CUMO_NA_IARRAY_AT(6)
+CUMO_NA_IARRAY_AT(5)
 CUMO_NA_IARRAY_AT(4)
 CUMO_NA_IARRAY_AT(3)
 CUMO_NA_IARRAY_AT(2)
@@ -313,6 +321,10 @@ cumo_na_bit_iarray_at_dim##NDIM(cumo_na_bit_iarray_t* iarray, cumo_na_indexer_t*
     return pos; \
 }
 
+CUMO_NA_BIT_IARRAY_AT(8)
+CUMO_NA_BIT_IARRAY_AT(7)
+CUMO_NA_BIT_IARRAY_AT(6)
+CUMO_NA_BIT_IARRAY_AT(5)
 CUMO_NA_BIT_IARRAY_AT(4)
 CUMO_NA_BIT_IARRAY_AT(3)
 CUMO_NA_BIT_IARRAY_AT(2)
@@ -354,6 +366,10 @@ cumo_na_bit_iarray_stridx_at_dim##NDIM(cumo_na_bit_iarray_stridx_t* iarray, cumo
     return pos; \
 }
 
+CUMO_NA_BIT_IARRAY_STRIDX_AT(8)
+CUMO_NA_BIT_IARRAY_STRIDX_AT(7)
+CUMO_NA_BIT_IARRAY_STRIDX_AT(6)
+CUMO_NA_BIT_IARRAY_STRIDX_AT(5)
 CUMO_NA_BIT_IARRAY_STRIDX_AT(4)
 CUMO_NA_BIT_IARRAY_STRIDX_AT(3)
 CUMO_NA_BIT_IARRAY_STRIDX_AT(2)
@@ -401,6 +417,10 @@ cumo_na_iarray_stridx_at_dim##NDIM(cumo_na_iarray_stridx_t* iarray, cumo_na_inde
     return ptr; \
 }
 
+CUMO_NA_IARRAY_STRIDX_AT(8)
+CUMO_NA_IARRAY_STRIDX_AT(7)
+CUMO_NA_IARRAY_STRIDX_AT(6)
+CUMO_NA_IARRAY_STRIDX_AT(5)
 CUMO_NA_IARRAY_STRIDX_AT(4)
 CUMO_NA_IARRAY_STRIDX_AT(3)
 CUMO_NA_IARRAY_STRIDX_AT(2)
