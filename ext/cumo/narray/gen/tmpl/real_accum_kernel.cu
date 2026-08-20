@@ -101,6 +101,61 @@ struct cumo_<%=type_name%>_ptp_impl {
     }
 };
 
+<% if is_float %>
+// The nan-aware forms of the reductions above. sum, prod and their kin skip a
+// NaN, so it maps to the identity and the tree never sees it. min and max go
+// the other way: numo answers NaN as soon as one element is NaN, and a NaN
+// absorbs in Reduce because it loses every comparison.
+struct cumo_<%=type_name%>_sum_nan_impl {
+    __device__ dtype Identity(int64_t /*index*/) { return m_zero; }
+    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? in : m_zero; }
+    __device__ void Reduce(dtype next, dtype& accum) { accum = m_add(next, accum); }
+    __device__ dtype MapOut(dtype accum) { return accum; }
+};
+
+struct cumo_<%=type_name%>_prod_nan_impl {
+    __device__ dtype Identity(int64_t /*index*/) { return m_one; }
+    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? in : m_one; }
+    __device__ void Reduce(dtype next, dtype& accum) { accum = m_mul(next, accum); }
+    __device__ dtype MapOut(dtype accum) { return accum; }
+};
+
+struct cumo_<%=type_name%>_min_nan_impl {
+    __device__ dtype Identity(int64_t /*index*/) { return DATA_MAX; }
+    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
+    __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || next < accum) { accum = next; } }
+    __device__ dtype MapOut(dtype accum) { return accum; }
+};
+
+struct cumo_<%=type_name%>_max_nan_impl {
+    __device__ dtype Identity(int64_t /*index*/) { return DATA_MIN; }
+    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
+    __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || accum < next) { accum = next; } }
+    __device__ dtype MapOut(dtype accum) { return accum; }
+};
+
+struct cumo_<%=type_name%>_minmax_nan_impl {
+    struct MinAndMax {
+        dtype min;
+        dtype max;
+    };
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
+    __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
+    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
+        if (!not_nan(next.min) || next.min < accum.min) { accum.min = next.min; }
+        if (!not_nan(next.max) || accum.max < next.max) { accum.max = next.max; }
+    }
+    __device__ void MapOut(MinAndMax accum, dtype* out_min, dtype* out_max) {
+        *out_min = accum.min;
+        *out_max = accum.max;
+    }
+};
+
+struct cumo_<%=type_name%>_ptp_nan_impl : cumo_<%=type_name%>_minmax_nan_impl {
+    __device__ dtype MapOut(MinAndMax accum) { return m_sub(accum.max, accum.min); }
+};
+<% end %>
+
 #if defined(__cplusplus)
 extern "C" {
 #if 0
@@ -137,3 +192,35 @@ void cumo_<%=type_name%>_minmax_kernel_launch(cumo_na_reduction_arg_t* arg, cumo
 {
     cumo_reduce_pair_split<dtype, dtype, cumo_<%=type_name%>_minmax_impl>(*arg, *out2, cumo_<%=type_name%>_minmax_impl{});
 }
+<% if is_float %>
+
+void cumo_<%=type_name%>_sum_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_sum_nan_impl>(*arg, cumo_<%=type_name%>_sum_nan_impl{});
+}
+
+void cumo_<%=type_name%>_prod_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_prod_nan_impl>(*arg, cumo_<%=type_name%>_prod_nan_impl{});
+}
+
+void cumo_<%=type_name%>_min_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_min_nan_impl>(*arg, cumo_<%=type_name%>_min_nan_impl{});
+}
+
+void cumo_<%=type_name%>_max_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_max_nan_impl>(*arg, cumo_<%=type_name%>_max_nan_impl{});
+}
+
+void cumo_<%=type_name%>_ptp_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_ptp_nan_impl>(*arg, cumo_<%=type_name%>_ptp_nan_impl{});
+}
+
+void cumo_<%=type_name%>_minmax_nan_kernel_launch(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* out2)
+{
+    cumo_reduce_pair_split<dtype, dtype, cumo_<%=type_name%>_minmax_nan_impl>(*arg, *out2, cumo_<%=type_name%>_minmax_nan_impl{});
+}
+<% end %>

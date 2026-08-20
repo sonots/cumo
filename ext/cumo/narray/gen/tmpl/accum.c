@@ -12,7 +12,7 @@ void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(cumo_na_reduction_arg_t
 static void
 <%=c_iter%><%=nan%>(cumo_na_loop_t *const lp)
 {
-    <% if type_name == 'robject' || name == 'kahan_sum' || nan == '_nan' %>
+    <% if type_name == 'robject' || name == 'kahan_sum' %>
     {
         size_t   n;
         char    *p1, *p2;
@@ -78,13 +78,6 @@ static VALUE
   <% else %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    //<% if is_float && indexer_ops.include?(name) && type_name != 'robject' %>
-    // Only the kernel reads the indexer. The nan iterator just selected is a
-    // host loop over lp->args[0].iter[0], which the indexer path does not set up.
-    if (ndf.func == <%=c_iter%>_nan) {
-        ndf.flag &= ~CUMO_NDF_INDEXER_LOOP;
-    }
-    //<% end %>
     if (cumo_na_has_idx_p(self)) {
         VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous
         v =  cumo_na_ndloop(&ndf, 2, copy, reduce);

@@ -1,12 +1,15 @@
 <% unless type_name == 'robject' %>
 void cumo_<%=type_name%>_minmax_kernel_launch(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* out2);
+<% if is_float %>
+void cumo_<%=type_name%>_minmax_nan_kernel_launch(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* out2);
+<% end %>
 <% end %>
 
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
 static void
 <%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
 {
-    <% if type_name == 'robject' || j == '_nan' %>
+    <% if type_name == 'robject' %>
     {
         size_t   n;
         char    *p1;
@@ -27,7 +30,7 @@ static void
     {
         cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 1);
         cumo_na_iarray_t out2 = cumo_na_make_iarray_given_ndim(&lp->args[2], arg.out_indexer.ndim);
-        cumo_<%=type_name%>_minmax_kernel_launch(&arg, &out2);
+        cumo_<%=type_name%>_minmax<%=j%>_kernel_launch(&arg, &out2);
     }
     <% end %>
 }
@@ -59,11 +62,7 @@ static VALUE
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
     //<% unless type_name == 'robject' %>
-    // Only the kernel reads the indexer. The nan iterator above is a host loop
-    // over lp->args[0].iter[0], which CUMO_NDF_INDEXER_LOOP does not set up.
-    if (ndf.func == <%=c_iter%>) {
-        ndf.flag |= CUMO_NDF_INDEXER_LOOP;
-    }
+    ndf.flag |= CUMO_NDF_INDEXER_LOOP;
     //<% end %>
     if (cumo_na_has_idx_p(self)) {
         VALUE copy = cumo_na_copy(self); // reduction does not support idx, make contiguous
