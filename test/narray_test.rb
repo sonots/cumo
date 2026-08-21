@@ -4338,6 +4338,59 @@ class NArrayTest < Test::Unit::TestCase
     assert_reductions(big.transpose, "3000x33 transpose", axes: [[0], [1]])
   end
 
+  test "an arithmetic operator with a numeric operand allocates only its result" do
+    # A numeric operand used to be cast to a 0-dimensional array, which took a
+    # whole kernel launch to fill. Measured in a child, or blocks another test
+    # left in the pool serve the allocation and total_bytes does not move.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      pool = Cumo::CUDA::MemoryPool
+      unless pool.enabled?
+        print "no-pool"
+        exit
+      end
+      a = Cumo::SFloat.new(256).seq
+      keep = []
+      100.times { keep << a + 1.5 }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      pool.free_all_blocks
+      keep.clear
+      GC.start
+      pool.free_all_blocks
+      before = pool.total_bytes
+      keep = []
+      100.times { keep << a + 1.5 }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      print pool.total_bytes - before
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+    omit("memory pool is disabled") if out == "no-pool"
+    # 100 results of 1 KiB each, rounded up to the pool's 512 byte bins. A
+    # 0-dimensional operand per operation would add another 100 bins.
+    assert_operator(Integer(out), :<, 100 * (1024 + 512))
+  end
+
+  test "an integer divided or reduced by a numeric zero still raises" do
+    assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
+    assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }
+    assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] % 0 }
+    assert_equal([0, 1, 1], (Cumo::Int32[1, 2, 3] / 2).to_a)
+    assert_equal([1, 0, 1], (Cumo::Int32[1, 2, 3] % 2).to_a)
+  end
+
+  test "the operators that take a numeric operand answer what Numo answers" do
+    ints = Cumo::Int32[7, 3, 100]
+    assert_equal([5, 1, 4], (ints & 5).to_a)
+    assert_equal([7, 7, 101], (ints | 5).to_a)
+    assert_equal([2, 6, 97], (ints ^ 5).to_a)
+    assert_equal([28, 12, 400], (ints << 2).to_a)
+    assert_equal([1, 0, 25], (ints >> 2).to_a)
+    floats = Cumo::SFloat[7, -3, 100]
+    assert_equal([-7, -3, -100], floats.copysign(-1).to_a)
+    assert_equal([7, 3, 100], floats.copysign(1).to_a)
+  end
+
   test "a reduction over a strided view does not copy the operand" do
     # In a child, or blocks another test left in the pool serve the copy and it
     # does not show up in total_bytes.

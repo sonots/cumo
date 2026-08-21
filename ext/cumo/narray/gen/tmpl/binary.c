@@ -10,6 +10,9 @@
 
 <% unless type_name == 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* divzero);
+//<% if %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
+void <%="cumo_#{c_iter}_s_kernel_launch"%>(cumo_na_iarray_t* a1, dtype sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* divzero);
+//<% end %>
 <% end %>
 
 static void
@@ -127,11 +130,44 @@ static void
     }
     <% end %>
 }
+
+//<% if !is_object and %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
+// The operand is a Ruby numeric, so it rides in through opt_ptr instead of
+// being cast to a 0-dimensional array, which costs a kernel launch to fill.
+static void
+<%=c_iter%>_s(cumo_na_loop_t *const lp)
+{
+    dtype y = *(dtype*)(lp->opt_ptr);
+    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+    //<% if is_int and %w[div mod].include? name %>
+    int *divzero = cumo_cuda_runtime_error_flag_new();
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,y,&a3,&indexer,divzero);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    if (cumo_cuda_runtime_error_flag_get(divzero)) {
+        lp->err_type = rb_eZeroDivError;
+    }
+    //<% else %>
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,y,&a3,&indexer,0);
+    //<% end %>
+}
+//<% end %>
 #undef check_intdivzero
 
 static VALUE
 <%=c_func%>_self(VALUE self, VALUE other)
 {
+    //<% if !is_object and %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
+    if (rb_obj_is_kind_of(other, rb_cNumeric)) {
+        dtype y = m_num_to_data(other);
+        cumo_ndfunc_arg_in_t ain_s[1] = {{cT,0}};
+        cumo_ndfunc_arg_out_t aout_s[1] = {{cT,0}};
+        cumo_ndfunc_t ndf_s = { <%=c_iter%>_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout_s };
+        return cumo_na_ndloop3(&ndf_s, &y, 1, self);
+    }
+    //<% end %>
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
     <% if type_name == 'robject' %>
