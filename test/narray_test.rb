@@ -722,6 +722,30 @@ class NArrayTest < Test::Unit::TestCase
           assert_raise(Cumo::NArray::OperationError) { a.inplace.clip(6, 3) }
           assert { a == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
         end
+
+        # A numeric bound is now converted by the caller and handed to the
+        # kernel, where it used to be cast to a 0-dimensional array.
+        test "a numeric bound answers what the same bound as an array answers" do
+          a = dtype[0..9]
+          assert { a.clip(1.5, 7.5) == a.clip(dtype.new(10).fill(1.5), dtype.new(10).fill(7.5)) }
+          assert { a.clip(1.5, nil) == a.clip(dtype.new(10).fill(1.5), nil) }
+          assert { a.clip(nil, 7.5) == a.clip(nil, dtype.new(10).fill(7.5)) }
+        end
+
+        test "a numeric bound reaches a shape past the optimized indexer ndim" do
+          a = dtype.new(*([2] * 9)).seq
+          assert { a.clip(1, 2) == a.clip(dtype.new(*([2] * 9)).fill(1), dtype.new(*([2] * 9)).fill(2)) }
+          assert { a.clip(1, nil) == a.clip(dtype.new(*([2] * 9)).fill(1), nil) }
+        end
+
+        if [Cumo::SFloat, Cumo::DFloat].include?(dtype)
+          test "a NaN bound answers what the same bound as an array answers" do
+            a = dtype[0..5]
+            nan = dtype.new(6).fill(Float::NAN)
+            assert { a.clip(Float::NAN, 4) == a.clip(nan, 4) }
+            assert { a.clip(1, Float::NAN) == a.clip(1, nan) }
+          end
+        end
       end
     end
 
@@ -4368,6 +4392,40 @@ class NArrayTest < Test::Unit::TestCase
     omit("memory pool is disabled") if out == "no-pool"
     # 100 results of 1 KiB each, rounded up to the pool's 512 byte bins. A
     # 0-dimensional operand per operation would add another 100 bins.
+    assert_operator(Integer(out), :<, 100 * (1024 + 512))
+  end
+
+  test "clip with numeric bounds allocates only its result" do
+    # Each numeric bound used to be cast to a 0-dimensional array, and reading
+    # the flag that reported min > max synchronized with the device on top of
+    # that. Measured in a child, or blocks another test left in the pool serve
+    # the allocation and total_bytes does not move.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      pool = Cumo::CUDA::MemoryPool
+      unless pool.enabled?
+        print "no-pool"
+        exit
+      end
+      a = Cumo::SFloat.new(256).seq
+      keep = []
+      100.times { keep << a.clip(1.0, 200.0) }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      pool.free_all_blocks
+      keep.clear
+      GC.start
+      pool.free_all_blocks
+      before = pool.total_bytes
+      keep = []
+      100.times { keep << a.clip(1.0, 200.0) }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      print pool.total_bytes - before
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+    omit("memory pool is disabled") if out == "no-pool"
+    # 100 results of 1 KiB each, rounded up to the pool's 512 byte bins. Two
+    # 0-dimensional bounds per call would add another 200 bins.
     assert_operator(Integer(out), :<, 100 * (1024 + 512))
   end
 
