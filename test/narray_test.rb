@@ -4638,6 +4638,52 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(Cumo::NArray::CastError) { Cumo::DFloat::Math.atan2("x", Cumo::DFloat[1.0]) }
   end
 
+  test "NMath binary functions on views that ndloop cannot flatten" do
+    # same shape of view the unary tests use: before the indexer loop each of
+    # these ran one kernel per row of the view
+    rows = 40
+    cols = 12
+    xs = Array.new(rows * cols) { |i| ((i % 9) - 4).to_f }
+    a = Cumo::DFloat.cast(xs).reshape(rows, cols)
+    grid = (0...rows).map { |r| xs[r * cols, cols] }
+    idx = Array.new(rows) { |i| ((i * 7) + 3) % rows }
+
+    views = [
+      [:flat, ->(m) { m }, grid],
+      [:colslice, ->(m) { m[true, 2...(cols - 1)] }, grid.map { |row| row[2...(cols - 1)] }],
+      [:transpose, :transpose.to_proc, grid.transpose],
+      [:idxview, ->(m) { m[idx, true] }, idx.map { |i| grid[i] }]
+    ]
+
+    fm = Cumo::DFloat::Math
+    views.each do |label, slice, want|
+      v = slice.call(a)
+      spread = Cumo::DFloat.new(*v.shape).fill(1.5)
+      # the scalar operand reads the same elements the array one does
+      assert_equal(fm.atan2(v, spread).to_a, fm.atan2(v, 1.5).to_a, "atan2 #{label}, numeric right")
+      assert_equal(fm.atan2(spread, v).to_a, fm.atan2(1.5, v).to_a, "atan2 #{label}, numeric left")
+      assert_equal(fm.hypot(spread, v).to_a, fm.hypot(1.5, v).to_a, "hypot #{label}, numeric left")
+
+      got = fm.atan2(v, 1.5).to_a
+      back = fm.atan2(1.5, v).to_a
+      hyp = fm.hypot(v, 1.5).to_a
+      want.each_with_index do |row, r|
+        row.each_with_index do |x, c|
+          assert_in_delta(Math.atan2(x, 1.5), got[r][c], 1e-12, "atan2 #{label} #{r},#{c}")
+          assert_in_delta(Math.atan2(1.5, x), back[r][c], 1e-12, "atan2 reversed #{label} #{r},#{c}")
+          assert_in_delta(Math.hypot(x, 1.5), hyp[r][c], 1e-12, "hypot #{label} #{r},#{c}")
+        end
+      end
+    end
+
+    # a 9-d shape runs past the dimension-specialised kernels
+    ys = Array.new(512) { |i| ((i % 7) - 3).to_f }
+    b = Cumo::DFloat.cast(ys).reshape(*([2] * 9))
+    got = fm.atan2(b, 1.5).to_a.flatten
+    ys.each_with_index { |x, i| assert_in_delta(Math.atan2(x, 1.5), got[i], 1e-12, "atan2 9-d #{i}") }
+    assert_equal(fm.atan2(b, Cumo::DFloat.new(*([2] * 9)).fill(1.5)).to_a.flatten, got, "atan2 9-d, numeric right")
+  end
+
   test "an integer divided or reduced by a numeric zero still raises" do
     assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
     assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }
