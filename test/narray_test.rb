@@ -4753,6 +4753,15 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    # UInt64 holds everything from 2**63 up exactly, and fill and cast answer
+    # those starts exactly, so seq has to as well
+    [2**63, 2**63 + 2**53, 2**64 - 2048].each do |beg|
+      assert_equal(Cumo::UInt64.new(1).fill(beg).to_a, Cumo::UInt64.new(1).seq(beg).to_a,
+                   "UInt64 seq(#{beg})")
+      assert_equal(Cumo::UInt64.cast(beg).to_a, Cumo::UInt64.new(1).seq(beg).to_a,
+                   "UInt64 seq(#{beg}) vs cast")
+    end
+
     # a view and a 9-d shape run the other dimension-specialised kernels
     assert_equal([254, 0], Cumo::UInt8.new(2, 2).seq(-2)[true, 0].to_a)
     assert_equal([254, 255, 0, 1], Cumo::UInt8.new(*([2] * 9)).seq(-2).to_a.flatten.first(4))
