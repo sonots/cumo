@@ -4684,6 +4684,55 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(fm.atan2(b, Cumo::DFloat.new(*([2] * 9)).fill(1.5)).to_a.flatten, got, "atan2 9-d, numeric right")
   end
 
+  test "an unsigned array raised to a negative power answers instead of spinning" do
+    # The unsigned pow_int had no p < 0 guard, and p >>= 1 sticks at -1, so the
+    # kernel never finished. Every negative power runs in a child: without the
+    # guard the device spins and the process stops only for SIGKILL, which
+    # would hang the suite here rather than fail it.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      unsigned = [Cumo::UInt8[1, 2, 3, 4]**-2,
+                  Cumo::UInt16[1, 2, 3, 4]**-1,
+                  Cumo::UInt32[1, 2, 3, 4]**-3,
+                  Cumo::UInt64[1, 2, 3, 4]**(-2**31)]
+      signed = [Cumo::Int8[1, 2, 3, 4]**-2,
+                Cumo::Int16[1, 2, 3, 4]**-1,
+                Cumo::Int32[1, 2, 3, 4]**-3,
+                Cumo::Int64[1, 2, 3, 4]**(-2**31)]
+      print (unsigned + signed).map { |v| v.to_a.join(",") }.join("|")
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    r, w = IO.pipe
+    pid = Process.spawn(RbConfig.ruby, "-I#{lib}", "-e", script, out: w, err: File::NULL)
+    w.close
+    reader = Thread.new { r.read }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
+    until Process.waitpid(pid, Process::WNOHANG)
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        Process.kill("KILL", pid)
+        Process.waitpid(pid)
+        reader.kill
+        flunk("a negative power of an unsigned array did not finish in 60 seconds")
+      end
+      sleep 0.05
+    end
+    # unsigned now answers what signed has always answered
+    assert_equal((["0,0,0,0"] * 8).join("|"), reader.value)
+  end
+
+  test "the exponents around the negative-power guard are unchanged" do
+    %w[UInt8 UInt16 UInt32 UInt64].each do |name|
+      u = Cumo.const_get(name)[1, 2, 3, 4]
+      assert_equal([1, 1, 1, 1], (u**0).to_a, "#{name} ** 0")
+      assert_equal([1, 2, 3, 4], (u**1).to_a, "#{name} ** 1")
+      assert_equal([1, 8, 27, 64], (u**3).to_a, "#{name} ** 3")
+      assert_equal([1, 16, 81, 256 % (1 << 8)], (Cumo::UInt8[1, 2, 3, 4]**4).to_a) if name == "UInt8"
+    end
+    # an Int32 array operand upcasts, so a negative exponent there took the
+    # signed path all along
+    assert_equal([0, 0, 9, 64], (Cumo::UInt8[1, 2, 3, 4]**Cumo::Int32[-2, -1, 2, 3]).to_a)
+  end
+
   test "an integer divided or reduced by a numeric zero still raises" do
     assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
     assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }
