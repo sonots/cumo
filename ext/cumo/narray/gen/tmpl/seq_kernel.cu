@@ -16,7 +16,11 @@ __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cum
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
         cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
-        *(dtype*)cumo_na_iarray_at_dim<%=idim%>(&a1, &indexer) = f_seq(beg,step,c+i);
+        // f_seq answers a double for the integer types, and the device
+        // saturates an out-of-range double where fill and cast wrap, so a
+        // negative start collapsed to zero. A signed 64-bit step in between
+        // keeps seq answering what they answer.
+        *(dtype*)cumo_na_iarray_at_dim<%=idim%>(&a1, &indexer) = <% if is_int %>(dtype)(int64_t)<% end %>f_seq(beg,step,c+i);
     }
 }
 <% end %>
