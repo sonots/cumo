@@ -24,6 +24,7 @@ static ID cumo_id_logseq;
 static ID cumo_id_eye;
 static ID cumo_id_UPCAST;
 static ID cumo_id_cast;
+static ID cumo_id_pending_scalar;
 static ID cumo_id_dup;
 static ID cumo_id_to_host;
 static ID cumo_id_bracket;
@@ -726,10 +727,12 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
         }
         ptr = CUMO_NA_DATA_PTR(na);
         if (CUMO_NA_SIZE(na) > 0 && ptr == NULL) {
-            if (flag & READ) {
+            // A scalar cast lazily holds its value on the Ruby side, so it can
+            // still be read: allocating it is what puts the value on the device.
+            if ((flag & READ) && NIL_P(rb_attr_get(self, cumo_id_pending_scalar))) {
                 rb_raise(rb_eRuntimeError,"cannot read unallocated NArray");
             }
-            if (flag & WRITE) {
+            if (flag & (READ|WRITE)) {
                 rb_funcall(self, cumo_id_allocate, 0);
                 ptr = CUMO_NA_DATA_PTR(na);
             }
@@ -749,7 +752,11 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
             ptr = CUMO_NA_DATA_PTR(na);
             if (flag & (READ|WRITE)) {
                 if (CUMO_NA_SIZE(na) > 0 && ptr == NULL) {
-                    rb_raise(rb_eRuntimeError,"cannot read/write unallocated NArray");
+                    if (NIL_P(rb_attr_get(obj, cumo_id_pending_scalar))) {
+                        rb_raise(rb_eRuntimeError,"cannot read/write unallocated NArray");
+                    }
+                    rb_funcall(obj, cumo_id_allocate, 0);
+                    ptr = CUMO_NA_DATA_PTR(na);
                 }
             }
             return ptr;
@@ -2191,6 +2198,7 @@ Init_cumo_narray()
     cumo_id_eye             = rb_intern("eye");
     cumo_id_UPCAST          = rb_intern("UPCAST");
     cumo_id_cast            = rb_intern("cast");
+    cumo_id_pending_scalar  = rb_intern("_pending_scalar");
     cumo_id_dup             = rb_intern("dup");
     cumo_id_to_host         = rb_intern("to_host");
     cumo_id_bracket         = rb_intern("[]");

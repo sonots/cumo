@@ -2,6 +2,23 @@
 void <%="cumo_#{c_func(:nodef)}_kernel_launch"%>(dtype *ptr, dtype x);
 <% end %>
 
+<% if !is_object && !is_bit %>
+// The value stays a Ruby numeric until something reads the array, because
+// filling one element on the device costs a whole kernel launch. An operand
+// cast this way is usually consumed by the very next operator, which takes the
+// value from here instead and never makes it reach the device at all.
+static VALUE
+<%=c_func(:nodef)%>_lazy(VALUE num)
+{
+    VALUE v;
+
+    m_num_to_data(num); // raises for a value the element cannot hold, as filling it did
+    v = cumo_na_new(cT, 0, NULL);
+    rb_ivar_set(v, cumo_id_pending_scalar, num);
+    return v;
+}
+<% end %>
+
 static VALUE
 <%=c_func(:nodef)%>(dtype x)
 {

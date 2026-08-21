@@ -4775,6 +4775,93 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([-2.5, -1.5, -0.5], Cumo::SFloat.new(3).seq(-2.5).to_a)
   end
 
+  test "a numeric on the left of an operator allocates only its result" do
+    # coerce cast the numeric to a 0-dimensional array, which took a whole
+    # kernel launch to fill. Measured in a child, or blocks another test left
+    # in the pool serve the allocation and total_bytes does not move.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      pool = Cumo::CUDA::MemoryPool
+      unless pool.enabled?
+        print "no-pool"
+        exit
+      end
+      a = Cumo::SFloat.new(256).seq
+      keep = []
+      100.times { keep << 0.5 * a }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      pool.free_all_blocks
+      keep.clear
+      GC.start
+      pool.free_all_blocks
+      before = pool.total_bytes
+      keep = []
+      100.times { keep << 0.5 * a }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      print pool.total_bytes - before
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+    omit("memory pool is disabled") if out == "no-pool"
+    # 100 results of 1 KiB each. The 0-dimensional operand coerce built would
+    # add another 100 of the pool's 512 byte bins.
+    assert_operator(Integer(out), :<, 100 * (1024 + 512))
+  end
+
+  test "a numeric on the left answers what the same value as an array answers" do
+    [Cumo::SFloat, Cumo::DFloat, Cumo::Int32, Cumo::Int64].each do |dtype|
+      a = dtype[1, 2, 3, 4]
+      spread = dtype.new(4).fill(2)
+      assert_equal((spread + a).to_a, (2 + a).to_a, "#{dtype} 2 + a")
+      assert_equal((spread - a).to_a, (2 - a).to_a, "#{dtype} 2 - a")
+      assert_equal((spread * a).to_a, (2 * a).to_a, "#{dtype} 2 * a")
+      assert_equal((spread / a).to_a, (2 / a).to_a, "#{dtype} 2 / a")
+      assert_equal((spread % a).to_a, (2 % a).to_a, "#{dtype} 2 % a")
+      assert_equal((spread**a).to_a, (2**a).to_a, "#{dtype} 2 ** a")
+      assert_equal((spread < a).to_a, (2 < a).to_a, "#{dtype} 2 < a")
+      assert_equal((spread <= a).to_a, (2 <= a).to_a, "#{dtype} 2 <= a")
+    end
+
+    # the operand order is not commuted: a view, a 9-d shape and an index-backed
+    # view all reach the same elements
+    view = Cumo::SFloat.new(2, 3).seq(1).transpose
+    assert_equal((Cumo::SFloat.new(3, 2).fill(2.0) - view).to_a, (2.0 - view).to_a, "view")
+    idx = Cumo::SFloat.new(6).seq(1)[[3, 1, 2]]
+    assert_equal((Cumo::SFloat.new(3).fill(2.0) - idx).to_a, (2.0 - idx).to_a, "index view")
+    deep = Cumo::SFloat.new(*([2] * 9)).seq(1)
+    assert_equal((Cumo::SFloat.new(*([2] * 9)).fill(2.0) / deep).to_a.flatten,
+                 (2.0 / deep).to_a.flatten, "9-d")
+    assert_equal([], (0.5 * Cumo::SFloat.new(0)).to_a, "empty")
+
+    # dividing by an element that is zero still raises from the left
+    assert_raise(ZeroDivisionError) { 3 / Cumo::Int32[1, 0, 2] }
+    assert_raise(ZeroDivisionError) { 3 % Cumo::Int32[1, 0, 2] }
+    # and an out-of-range numeric still raises where casting it raised
+    assert_raise(RangeError) { 2**40 * Cumo::Int32[1, 2] }
+  end
+
+  test "a numeric cast to a 0-dimensional array still reads back" do
+    # the value stays a Ruby numeric until something asks for the element
+    [Cumo::SFloat, Cumo::DFloat, Cumo::Int32, Cumo::UInt8, Cumo::DComplex].each do |dtype|
+      assert_equal([3], dtype.cast(3).to_a, "#{dtype} cast(3).to_a")
+      assert_equal([3], dtype.cast(3).dup.to_a, "#{dtype} cast(3).dup")
+      assert_equal([3], Marshal.load(Marshal.dump(dtype.cast(3))).to_a, "#{dtype} marshal")
+      assert_equal([9], (dtype.cast(3) * dtype[3]).to_a, "#{dtype} cast * array")
+      assert_equal([6], (dtype.cast(3) + dtype.cast(3)).to_a, "#{dtype} cast + cast")
+      w = dtype.cast(3)
+      w.store(5)
+      assert_equal([5], w.to_a, "#{dtype} cast then store")
+      assert_not_equal("", dtype.cast(3).inspect, "#{dtype} cast.inspect")
+    end
+    assert_equal([1], Cumo::Bit.cast(1).to_a)
+    assert_equal([1.5], Cumo::RObject.cast(1.5).to_a)
+    # the range check still happens where casting it happened
+    assert_raise(RangeError) { Cumo::Int32.cast(2**40) }
+    assert_raise(RangeError) { Cumo::Int32[1, 2].coerce(2**40) }
+    assert_equal([Cumo::SFloat, Cumo::SFloat],
+                 Cumo::SFloat[1, 2].coerce(1.0).map(&:class))
+  end
+
   test "an integer divided or reduced by a numeric zero still raises" do
     assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
     assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }
