@@ -4494,6 +4494,76 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(RangeError) { Cumo::Int32[1, 2]**(2**70) }
   end
 
+  test "a numeric operand compared against allocates only its result" do
+    # The operand used to be cast to a 0-dimensional array, which took a whole
+    # kernel launch to fill. Measured in a child, or blocks another test left
+    # in the pool serve the allocation and total_bytes does not move.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      pool = Cumo::CUDA::MemoryPool
+      unless pool.enabled?
+        print "no-pool"
+        exit
+      end
+      a = Cumo::SFloat.new(8192).seq
+      keep = []
+      100.times { keep << (a > 1.5) }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      pool.free_all_blocks
+      keep.clear
+      GC.start
+      pool.free_all_blocks
+      before = pool.total_bytes
+      keep = []
+      100.times { keep << (a > 1.5) }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      print pool.total_bytes - before
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+    omit("memory pool is disabled") if out == "no-pool"
+    # 100 Bit results of 1 KiB each. A 0-dimensional operand per comparison
+    # would add another 100 of the pool's 512 byte bins.
+    assert_operator(Integer(out), :<, 100 * (1024 + 512))
+  end
+
+  test "a numeric operand answers what the same operand as an array answers" do
+    # The operand keeps the receiver's dtype either way, so the array one is a
+    # fair reference for the value the scalar one is handed.
+    comparable = [Cumo::Int8, Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::UInt32,
+                  Cumo::SFloat, Cumo::DFloat]
+    (comparable + [Cumo::SComplex, Cumo::DComplex]).each do |dtype|
+      ops = comparable.include?(dtype) ? %i[eq ne gt ge lt le] : %i[eq ne]
+      a = dtype[1, 2, 3, 4]
+      ops.each do |op|
+        assert_equal(a.send(op, dtype.new(4).fill(3)).to_a, a.send(op, 3).to_a,
+                     "#{dtype} #{op} 3")
+      end
+      # a 9-d shape runs past the dimension-specialised kernels
+      deep = dtype.new(*([2] * 9)).seq(1)
+      assert_equal(deep.eq(dtype.new(*([2] * 9)).fill(7)).to_a.flatten,
+                   deep.eq(7).to_a.flatten, "#{dtype} 9-d eq 7")
+    end
+
+    [Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      a = dtype[-1, 0, 1, Float::NAN, Float::INFINITY]
+      %i[eq ne gt ge lt le nearly_eq].each do |op|
+        [1.0, Float::NAN, Float::INFINITY].each do |v|
+          assert_equal(a.send(op, dtype.new(5).fill(v)).to_a, a.send(op, v).to_a,
+                       "#{dtype} #{op} #{v}")
+        end
+      end
+    end
+
+    view = Cumo::Int32.new(3, 4).seq.transpose
+    assert_equal(view.gt(Cumo::Int32.new(4, 3).fill(5)).to_a, view.gt(5).to_a)
+
+    # the operand is converted the way casting it converts it
+    assert_equal([0, 0, 0, 1], Cumo::UInt8[1, 2, 16, 255].eq(-1).to_a)
+    assert_equal([1, 1, 1, 1], Cumo::UInt8[1, 2, 16, 255].gt(256).to_a)
+    assert_raise(RangeError) { Cumo::Int32[1, 2].gt(2**40) }
+  end
+
   test "an integer divided or reduced by a numeric zero still raises" do
     assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
     assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }
