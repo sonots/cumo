@@ -4564,6 +4564,80 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(RangeError) { Cumo::Int32[1, 2].gt(2**40) }
   end
 
+  test "a numeric NMath operand allocates only its result" do
+    # The operand used to be cast to a 0-dimensional array, which took a whole
+    # kernel launch to fill. Measured in a child, or blocks another test left
+    # in the pool serve the allocation and total_bytes does not move.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      pool = Cumo::CUDA::MemoryPool
+      unless pool.enabled?
+        print "no-pool"
+        exit
+      end
+      m = Cumo::DFloat::Math
+      a = Cumo::DFloat.new(128).seq(1)
+      keep = []
+      100.times { keep << m.atan2(a, 1.5) }
+      100.times { keep << m.atan2(1.5, a) }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      pool.free_all_blocks
+      keep.clear
+      GC.start
+      pool.free_all_blocks
+      before = pool.total_bytes
+      keep = []
+      100.times { keep << m.atan2(a, 1.5) }
+      100.times { keep << m.atan2(1.5, a) }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      print pool.total_bytes - before
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+    omit("memory pool is disabled") if out == "no-pool"
+    # 200 results of 1 KiB each. A 0-dimensional operand per call would add
+    # another 200 of the pool's 512 byte bins.
+    assert_operator(Integer(out), :<, 200 * (1024 + 512))
+  end
+
+  test "a numeric NMath operand answers what the same operand as an array answers" do
+    # Either side of a module function can be the numeric one, so both are
+    # compared against the same value spread over an array.
+    [Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      m = dtype::Math
+      a = dtype[1.0, -2.0, 0.5, 3.5]
+      spread = dtype.new(4).fill(1.5)
+      %i[atan2 hypot ldexp].each do |op|
+        assert_equal(m.send(op, a, spread).to_a, m.send(op, a, 1.5).to_a, "#{dtype} #{op}(arr, 1.5)")
+        assert_equal(m.send(op, spread, a).to_a, m.send(op, 1.5, a).to_a, "#{dtype} #{op}(1.5, arr)")
+      end
+
+      view = dtype.new(3, 4).seq(1).transpose
+      assert_equal(m.atan2(view, dtype.new(4, 3).fill(1.5)).to_a, m.atan2(view, 1.5).to_a, "#{dtype} view")
+      assert_equal(m.atan2(dtype.new(4, 3).fill(1.5), view).to_a, m.atan2(1.5, view).to_a, "#{dtype} view, reversed")
+
+      deep = dtype.new(*([2] * 9)).seq(1)
+      assert_equal(m.hypot(deep, dtype.new(*([2] * 9)).fill(1.5)).to_a.flatten,
+                   m.hypot(deep, 1.5).to_a.flatten, "#{dtype} 9-d")
+    end
+
+    # nan and the infinities reach the kernel as themselves
+    a = Cumo::DFloat[1.0, -2.0, Float::NAN, Float::INFINITY]
+    [Float::NAN, Float::INFINITY, -Float::INFINITY, 0.0].each do |v|
+      spread = Cumo::DFloat.new(4).fill(v)
+      assert_equal(Cumo::DFloat::Math.atan2(a, spread).to_a.map(&:to_s),
+                   Cumo::DFloat::Math.atan2(a, v).to_a.map(&:to_s), "atan2(arr, #{v})")
+      assert_equal(Cumo::DFloat::Math.atan2(spread, a).to_a.map(&:to_s),
+                   Cumo::DFloat::Math.atan2(v, a).to_a.map(&:to_s), "atan2(#{v}, arr)")
+    end
+
+    # two numerics still take the two-operand path
+    assert_equal(Cumo::DFloat, Cumo::DFloat::Math.atan2(1.0, 2.0).class)
+    assert_in_delta(Math.atan2(1.0, 2.0), Cumo::DFloat::Math.atan2(1.0, 2.0).to_a[0], 1e-15)
+    assert_raise(Cumo::NArray::CastError) { Cumo::DFloat::Math.atan2(Cumo::DFloat[1.0], "x") }
+    assert_raise(Cumo::NArray::CastError) { Cumo::DFloat::Math.atan2("x", Cumo::DFloat[1.0]) }
+  end
+
   test "an integer divided or reduced by a numeric zero still raises" do
     assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
     assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }
