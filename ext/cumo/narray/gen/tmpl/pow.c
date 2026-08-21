@@ -1,7 +1,8 @@
 <% unless type_name == 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
 void <%="cumo_#{c_iter}_int32_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
-void <%="cumo_#{c_iter}_s_kernel_launch"%>(cumo_na_iarray_t* a1, dtype sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
+void <%="cumo_#{c_iter}_s_kernel_launch"%>(cumo_na_iarray_t* a1, dtype sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int scalar_is_left);
+void <%="cumo_#{c_iter}_int32_s_left_kernel_launch"%>(dtype sv_base, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
 void <%="cumo_#{c_iter}_int32_s_kernel_launch"%>(cumo_na_iarray_t* a1, int32_t sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
 <% end %>
 
@@ -86,7 +87,30 @@ static void
     cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,sv,&a3,&indexer);
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,sv,&a3,&indexer,0);
+}
+
+// The base is the numeric one when it came in through coerce.
+static void
+<%=c_iter%>_s_left(cumo_na_loop_t *const lp)
+{
+    dtype sv = *(dtype*)(lp->opt_ptr);
+    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,sv,&a3,&indexer,1);
+}
+
+static void
+<%=c_iter%>_int32_s_left(cumo_na_loop_t *const lp)
+{
+    dtype sv = *(dtype*)(lp->opt_ptr);
+    cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+    <%="cumo_#{c_iter}_int32_s_left_kernel_launch"%>(sv,&a2,&a3,&indexer);
 }
 
 static void
@@ -118,7 +142,29 @@ static VALUE
     //<% if type_name != 'robject' %>
     {
         cumo_ndfunc_arg_in_t ain_s[1] = {{cT,0}};
+        cumo_ndfunc_arg_in_t ain_i_s[1] = {{cumo_cInt32,0}};
+        // coerce hands a numeric base over as a 0-dimensional array that has
+        // not reached the device yet, so its value is still here to be read.
+        // Only such an operand carries it, and looking for it on every array is
+        // more than the lookup is worth.
+        cumo_narray_t *na_self;
+        VALUE num = Qnil;
+        CumoGetNArray(self, na_self);
+        if (CUMO_NA_NDIM(na_self) == 0) {
+            num = rb_attr_get(self, cumo_id_pending_scalar);
+        }
 
+        if (!NIL_P(num) && CumoIsNArray(other)) {
+            dtype sv = m_num_to_data(num);
+            if (rb_obj_is_kind_of(other, cumo_cInt32)) {
+                cumo_ndfunc_t ndf_i_s = { <%=c_iter%>_int32_s_left, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_i_s, aout };
+                return cumo_na_ndloop3(&ndf_i_s, &sv, 1, other);
+            }
+            {
+                cumo_ndfunc_t ndf_s = { <%=c_iter%>_s_left, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };
+                return cumo_na_ndloop3(&ndf_s, &sv, 1, other);
+            }
+        }
         if (FIXNUM_P(other)) {
             int32_t sv = NUM2INT32(other);
             cumo_ndfunc_t ndf_i_s = { <%=c_iter%>_int32_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };

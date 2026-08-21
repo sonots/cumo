@@ -11,7 +11,7 @@
 <% unless type_name == 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* divzero);
 //<% if %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
-void <%="cumo_#{c_iter}_s_kernel_launch"%>(cumo_na_iarray_t* a1, dtype sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* divzero);
+void <%="cumo_#{c_iter}_s_kernel_launch"%>(cumo_na_iarray_t* a1, dtype sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* divzero, int scalar_is_left);
 //<% end %>
 <% end %>
 
@@ -134,6 +134,27 @@ static void
 //<% if !is_object and %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
 // The operand is a Ruby numeric, so it rides in through opt_ptr instead of
 // being cast to a 0-dimensional array, which costs a kernel launch to fill.
+// A numeric on the left arrives the same way, by way of coerce.
+static void
+<%=c_iter%>_s_left(cumo_na_loop_t *const lp)
+{
+    dtype x = *(dtype*)(lp->opt_ptr);
+    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+    //<% if is_int and %w[div mod].include? name %>
+    int *divzero = cumo_cuda_runtime_error_flag_new();
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,x,&a3,&indexer,divzero,1);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    if (cumo_cuda_runtime_error_flag_get(divzero)) {
+        lp->err_type = rb_eZeroDivError;
+    }
+    //<% else %>
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,x,&a3,&indexer,0,1);
+    //<% end %>
+}
+
 static void
 <%=c_iter%>_s(cumo_na_loop_t *const lp)
 {
@@ -144,13 +165,13 @@ static void
 
     //<% if is_int and %w[div mod].include? name %>
     int *divzero = cumo_cuda_runtime_error_flag_new();
-    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,y,&a3,&indexer,divzero);
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,y,&a3,&indexer,divzero,0);
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     if (cumo_cuda_runtime_error_flag_get(divzero)) {
         lp->err_type = rb_eZeroDivError;
     }
     //<% else %>
-    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,y,&a3,&indexer,0);
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,y,&a3,&indexer,0,0);
     //<% end %>
 }
 //<% end %>
@@ -160,6 +181,25 @@ static VALUE
 <%=c_func%>_self(VALUE self, VALUE other)
 {
     //<% if !is_object and %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
+    {
+        // coerce hands a numeric on the left over as a 0-dimensional array that
+        // has not reached the device yet, so its value is still here to be read.
+        // Only such an operand carries it, and looking for it on every array is
+        // more than the lookup is worth.
+        cumo_narray_t *na_self;
+        VALUE num = Qnil;
+        CumoGetNArray(self, na_self);
+        if (CUMO_NA_NDIM(na_self) == 0) {
+            num = rb_attr_get(self, cumo_id_pending_scalar);
+        }
+        if (!NIL_P(num) && CumoIsNArray(other)) {
+            dtype x = m_num_to_data(num);
+            cumo_ndfunc_arg_in_t ain_s[1] = {{cT,0}};
+            cumo_ndfunc_arg_out_t aout_s[1] = {{cT,0}};
+            cumo_ndfunc_t ndf_s = { <%=c_iter%>_s_left, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout_s };
+            return cumo_na_ndloop3(&ndf_s, &x, 1, other);
+        }
+    }
     if (rb_obj_is_kind_of(other, rb_cNumeric)) {
         dtype y = m_num_to_data(other);
         cumo_ndfunc_arg_in_t ain_s[1] = {{cT,0}};

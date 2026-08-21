@@ -15,14 +15,20 @@ static VALUE
 {
     VALUE v;
     cumo_narray_t *na;
+    //<% if is_object || is_bit %>
     dtype x;
+    //<% end %>
 
     if (rb_obj_class(obj)==cT) {
         return obj;
     }
     if (RTEST(rb_obj_is_kind_of(obj,rb_cNumeric))) {
+        //<% if is_object || is_bit %>
         x = m_num_to_data(obj);
         return <%=type_name%>_new_dim0(x);
+        //<% else %>
+        return <%=type_name%>_new_dim0_lazy(obj);
+        //<% end %>
     }
     if (RTEST(rb_obj_is_kind_of(obj,rb_cArray))) {
         return <%=find_tmpl("cast_array").c_func%>(obj);

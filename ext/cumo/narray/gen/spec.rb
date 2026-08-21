@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 def_id "cast"
+def_id "_pending_scalar", "pending_scalar"
 def_id "mulsum"
 def_id "to_a"
 if is_complex
