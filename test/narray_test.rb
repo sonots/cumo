@@ -4429,6 +4429,71 @@ class NArrayTest < Test::Unit::TestCase
     assert_operator(Integer(out), :<, 100 * (1024 + 512))
   end
 
+  test "a numeric exponent allocates only its result" do
+    # The exponent used to be cast to a 0-dimensional array, an Int32 one for
+    # an Integer. Measured in a child, or blocks another test left in the pool
+    # serve the allocation and total_bytes does not move.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      pool = Cumo::CUDA::MemoryPool
+      unless pool.enabled?
+        print "no-pool"
+        exit
+      end
+      a = Cumo::SFloat.new(256).seq
+      keep = []
+      100.times { keep << a**2 }
+      100.times { keep << a**2.5 }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      pool.free_all_blocks
+      keep.clear
+      GC.start
+      pool.free_all_blocks
+      before = pool.total_bytes
+      keep = []
+      100.times { keep << a**2 }
+      100.times { keep << a**2.5 }
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      print pool.total_bytes - before
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+    omit("memory pool is disabled") if out == "no-pool"
+    # 200 results of 1 KiB each, rounded up to the pool's 512 byte bins. A
+    # 0-dimensional exponent per call would add another 200 bins.
+    assert_operator(Integer(out), :<, 200 * (1024 + 512))
+  end
+
+  test "a numeric exponent answers what the same exponent as an array answers" do
+    # Int32 as the exponent does not widen any of these, so the array operand
+    # is a fair reference for the value the scalar one is handed.
+    [Cumo::SFloat, Cumo::DFloat, Cumo::Int32, Cumo::Int64, Cumo::DComplex].each do |dtype|
+      a = dtype[1, 2, 3, 4]
+      assert_equal((a**Cumo::Int32.new(4).fill(3)).to_a, (a**3).to_a, "#{dtype} ** 3")
+      # a 9-d shape runs past the dimension-specialised kernels
+      deep = dtype.new(*([2] * 9)).seq(1)
+      assert_equal((deep**Cumo::Int32.new(*([2] * 9)).fill(2)).to_a.flatten,
+                   (deep**2).to_a.flatten, "#{dtype} 9-d ** 2")
+    end
+
+    [Cumo::SFloat, Cumo::DFloat, Cumo::DComplex].each do |dtype|
+      a = dtype[1, 2, 3, 4]
+      assert_equal((a**dtype.new(4).fill(2.5)).to_a, (a**2.5).to_a, "#{dtype} ** 2.5")
+      deep = dtype.new(*([2] * 9)).seq(1)
+      assert_equal((deep**dtype.new(*([2] * 9)).fill(0.5)).to_a.flatten,
+                   (deep**0.5).to_a.flatten, "#{dtype} 9-d ** 0.5")
+    end
+
+    # a narrower dtype keeps its own width, where an Int32 array operand widens it
+    assert_equal(Cumo::UInt8, (Cumo::UInt8[1, 2, 16, 17]**2).class)
+    assert_equal([1, 4, 0, 33], (Cumo::UInt8[1, 2, 16, 17]**2).to_a)
+    assert_equal(Complex, (Cumo::DComplex[2]**Complex(0, 1)).to_a[0].class)
+    # a Bignum exponent still falls through to the wider path
+    assert_equal([1.0, Float::INFINITY], (Cumo::SFloat[1, 2]**(2**70)).to_a)
+    assert_raise(RangeError) { Cumo::SFloat[1, 2]**(2**40) }
+    assert_raise(RangeError) { Cumo::Int32[1, 2]**(2**70) }
+  end
+
   test "an integer divided or reduced by a numeric zero still raises" do
     assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
     assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }
