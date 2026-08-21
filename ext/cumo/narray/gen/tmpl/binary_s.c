@@ -1,5 +1,6 @@
 <% unless type_name == 'robject' %>
 void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
+void <%="cumo_#{c_iter}_s_stride_kernel_launch"%>(char *p1, char *p3, ssize_t s1, ssize_t s3, uint64_t n, dtype sv, int scalar_is_left);
 <% end %>
 
 static void
@@ -28,6 +29,39 @@ static void
     <% end %>
 }
 
+<% unless type_name == 'robject' %>
+// A Ruby numeric operand rides in through opt_ptr instead of being cast to a
+// 0-dimensional array, which costs a kernel launch to fill. Either side of a
+// module function can be the numeric one, so there is an iterator for each.
+static void
+<%=c_iter%>_s(cumo_na_loop_t *const lp)
+{
+    size_t  i;
+    char    *p1, *p3;
+    ssize_t s1, s3;
+    dtype sv = *(dtype*)(lp->opt_ptr);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p3, s3);
+
+    <%="cumo_#{c_iter}_s_stride_kernel_launch"%>(p1,p3,s1,s3,i,sv,0);
+}
+
+static void
+<%=c_iter%>_s_left(cumo_na_loop_t *const lp)
+{
+    size_t  i;
+    char    *p1, *p3;
+    ssize_t s1, s3;
+    dtype sv = *(dtype*)(lp->opt_ptr);
+    CUMO_INIT_COUNTER(lp, i);
+    CUMO_INIT_PTR(lp, 0, p1, s1);
+    CUMO_INIT_PTR(lp, 1, p3, s3);
+
+    <%="cumo_#{c_iter}_s_stride_kernel_launch"%>(p1,p3,s1,s3,i,sv,1);
+}
+<% end %>
+
 /*
   Calculate <%=name%>(a1,a2).
   @overload <%=name%>(a1,a2)
@@ -41,5 +75,24 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
+    //<% if type_name != 'robject' %>
+    {
+        cumo_ndfunc_arg_in_t ain_s[1] = {{cT,0}};
+        int n1 = RTEST(rb_obj_is_kind_of(a1, rb_cNumeric));
+        int n2 = RTEST(rb_obj_is_kind_of(a2, rb_cNumeric));
+
+        if (!n1 && n2) {
+            dtype sv = m_num_to_data(a2);
+            cumo_ndfunc_t ndf_s = { <%=c_iter%>_s, CUMO_STRIDE_LOOP, 1, 1, ain_s, aout };
+            return cumo_na_ndloop3(&ndf_s, &sv, 1, a1);
+        }
+        if (n1 && !n2) {
+            dtype sv = m_num_to_data(a1);
+            cumo_ndfunc_t ndf_s = { <%=c_iter%>_s_left, CUMO_STRIDE_LOOP, 1, 1, ain_s, aout };
+            return cumo_na_ndloop3(&ndf_s, &sv, 1, a2);
+        }
+    }
+    //<% end %>
     return cumo_na_ndloop(&ndf, 2, a1, a2);
 }
+
