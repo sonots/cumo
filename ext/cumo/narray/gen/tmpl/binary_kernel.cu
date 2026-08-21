@@ -10,7 +10,7 @@
 #define cumo_check_intdivzero(y) {}
 //<% end %>
 
-//<% has_scalar = %w[add sub mul div].include?(name) %>
+//<% has_scalar = %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
 <% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
 //<% if has_scalar %>
 // A Ruby numeric operand rides in as sv rather than as a 0-dimensional array,
