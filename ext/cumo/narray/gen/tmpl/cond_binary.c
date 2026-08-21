@@ -1,5 +1,6 @@
 <% unless type_name == 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_bit_iarray_t* a3, cumo_na_indexer_t* indexer);
+void <%="cumo_#{c_iter}_s_kernel_launch"%>(cumo_na_iarray_t* a1, dtype sv, cumo_na_bit_iarray_t* a3, cumo_na_indexer_t* indexer);
 <% end %>
 
 static void
@@ -40,6 +41,21 @@ static void
     <% end %>
 }
 
+<% unless type_name == 'robject' %>
+// A Ruby numeric operand rides in through opt_ptr instead of being cast to a
+// 0-dimensional array, which costs a kernel launch to fill.
+static void
+<%=c_iter%>_s(cumo_na_loop_t *const lp)
+{
+    dtype sv = *(dtype*)(lp->opt_ptr);
+    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_bit_iarray_t a3 = cumo_na_make_bit_iarray(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,sv,&a3,&indexer);
+}
+<% end %>
+
 static VALUE
 <%=c_func%>_self(VALUE self, VALUE other)
 {
@@ -49,6 +65,13 @@ static VALUE
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
     <% else %>
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
+
+    if (rb_obj_is_kind_of(other, rb_cNumeric)) {
+        dtype sv = m_num_to_data(other);
+        cumo_ndfunc_arg_in_t ain_s[1] = {{cT,0}};
+        cumo_ndfunc_t ndf_s = { <%=c_iter%>_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };
+        return cumo_na_ndloop3(&ndf_s, &sv, 1, self);
+    }
     <% end %>
 
     return cumo_na_ndloop(&ndf, 2, self, other);
