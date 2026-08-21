@@ -4733,6 +4733,39 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([0, 0, 9, 64], (Cumo::UInt8[1, 2, 3, 4]**Cumo::Int32[-2, -1, 2, 3]).to_a)
   end
 
+  test "seq wraps an out-of-range start the way fill and cast do" do
+    # f_seq answers a double for the integer types, and the device saturates an
+    # out-of-range double, so a negative start collapsed to zero.
+    assert_equal([254, 255, 0, 1], Cumo::UInt8.new(4).seq(-2).to_a)
+    assert_equal([65534, 65535, 0, 1], Cumo::UInt16.new(4).seq(-2).to_a)
+    assert_equal([4294967294, 4294967295, 0, 1], Cumo::UInt32.new(4).seq(-2).to_a)
+    assert_equal([18446744073709551614, 18446744073709551615, 0, 1], Cumo::UInt64.new(4).seq(-2).to_a)
+    assert_equal([56, 57, 58], Cumo::UInt8.new(3).seq(-200).to_a)
+    # a negative step walks the same way
+    assert_equal([0, 255, 254, 253], Cumo::UInt8.new(4).seq(0, -1).to_a)
+
+    # every start seq accepts answers what fill and cast answer for it
+    [Cumo::UInt8, Cumo::UInt16, Cumo::UInt32, Cumo::UInt64,
+     Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64].each do |dtype|
+      [-2, -1, 0, 1, 3].each do |beg|
+        assert_equal(dtype.new(1).fill(beg).to_a, dtype.new(1).seq(beg).to_a, "#{dtype} seq(#{beg})")
+        assert_equal(dtype.cast(beg).to_a, dtype.new(1).seq(beg).to_a, "#{dtype} seq(#{beg}) vs cast")
+      end
+    end
+
+    # a view and a 9-d shape run the other dimension-specialised kernels
+    assert_equal([254, 0], Cumo::UInt8.new(2, 2).seq(-2)[true, 0].to_a)
+    assert_equal([254, 255, 0, 1], Cumo::UInt8.new(*([2] * 9)).seq(-2).to_a.flatten.first(4))
+
+    # the signed types and the positive overflows are unchanged
+    assert_equal([-56, -55, -54], Cumo::Int8.new(3).seq(200).to_a)
+    assert_equal([44, 45, 46], Cumo::UInt8.new(3).seq(300).to_a)
+    assert_equal([25536, 25537, 25538], Cumo::Int16.new(3).seq(-40000).to_a)
+    # the floats never go through the integer conversion
+    assert_equal([-2.5, -1.5, -0.5], Cumo::DFloat.new(3).seq(-2.5).to_a)
+    assert_equal([-2.5, -1.5, -0.5], Cumo::SFloat.new(3).seq(-2.5).to_a)
+  end
+
   test "an integer divided or reduced by a numeric zero still raises" do
     assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
     assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }
