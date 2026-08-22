@@ -4862,6 +4862,28 @@ class NArrayTest < Test::Unit::TestCase
                  Cumo::SFloat[1, 2].coerce(1.0).map(&:class))
   end
 
+  test "every subscript form still answers after the null free was dropped" do
+    # aref_md handed every dimension to the device free, even the ones whose
+    # subscript is a range or true and never allocated an index array. Freeing
+    # NULL costs a pool lookup and a driver call per dimension per subscript.
+    # There is no Ruby-visible signal for the call itself, so this only pins
+    # that each form of subscript still reaches the elements it should.
+    a = Cumo::SFloat.new(4, 4).seq(1)
+    assert_equal([[1.0, 2.0], [5.0, 6.0]], a[0..1, 0..1].to_a, "range, range")
+    assert_equal(a.to_a, a[true, true].to_a, "true, true")
+    assert_equal([[6.0, 8.0], [14.0, 16.0]], a[[1, 3], [1, 3]].to_a, "index, index")
+    assert_equal([[5.0, 6.0, 7.0, 8.0], [13.0, 14.0, 15.0, 16.0]], a[[1, 3], true].to_a, "index, true")
+    assert_equal([[2.0, 4.0], [10.0, 12.0]], a[[0, 2], [1, 3]].to_a, "index, index again")
+    assert_equal([2.0, 6.0, 10.0, 14.0], a[true, 1].to_a, "true, scalar")
+    assert_equal([[1.0, 3.0], [9.0, 11.0]], a[(0..3).step(2), (0..3).step(2)].to_a, "step, step")
+    assert_equal(6.0, a[1, 1].to_a[0], "scalar, scalar")
+    deep = Cumo::SFloat.new(2, 2, 2, 2).seq(1)
+    assert_equal(deep.to_a, deep[true, true, true, true].to_a, "4-d all true")
+    assert_equal([[2.0, 4.0], [6.0, 8.0]], deep[0, true, true, 1].to_a, "4-d mixed")
+    assert_equal(deep[[1, 0], true, true, true].to_a.flatten.sort,
+                 deep.to_a.flatten.sort, "4-d index on the outer axis")
+  end
+
   test "an integer divided or reduced by a numeric zero still raises" do
     assert_raise(ZeroDivisionError) { Cumo::Int32[1, 2, 3] / 0 }
     assert_raise(ZeroDivisionError) { Cumo::Int32[[1, 2], [3, 4]][true, 0] / 0 }

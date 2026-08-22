@@ -919,7 +919,12 @@ cumo_na_aref_md_ensure(VALUE data_value)
     cumo_na_aref_md_data_t *data = (cumo_na_aref_md_data_t*)(data_value);
     int i;
     for (i=0; i<data->ndim; i++) {
-        cumo_cuda_runtime_free((char*)(data->q[i].idx));
+        // Only a subscript that is a list of indices allocates one. The rest
+        // leave it NULL, and handing NULL over still costs a pool lookup and a
+        // driver call for every dimension of every subscript.
+        if (data->q[i].idx) {
+            cumo_cuda_runtime_free((char*)(data->q[i].idx));
+        }
     }
     if (data->q) xfree(data->q);
     return Qnil;
