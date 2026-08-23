@@ -206,6 +206,52 @@ class BitTest < Test::Unit::TestCase
     assert_equal(0, a[64].to_a.first)
   end
 
+  bits = proc { |n| (0...n).map { |i| (i * 7 + 3) % 5 == 0 ? 1 : 0 } }
+
+  [31, 32, 33, 63, 64, 65, 1000].each do |n|
+    test "count_true counts a whole array of #{n}" do
+      src = bits.call(n)
+      a = Cumo::Bit.cast(src)
+      assert { a.count_true == src.count(1) }
+      assert { a.count_false == src.count(0) }
+    end
+
+    test "count_true counts a view of #{n} that starts mid-word" do
+      src = bits.call(n)
+      a = Cumo::Bit.cast(src)
+      [1, 5, 30].each do |off|
+        assert { a[off..-1].count_true == src[off..-1].count(1) }
+        assert { a[off..-1].count_false == src[off..-1].count(0) }
+      end
+    end
+
+    test "count_true counts a view of #{n} that is not contiguous" do
+      src = bits.call(n)
+      a = Cumo::Bit.cast(src)
+      [2, 3, 7].each do |step|
+        want = (0...n).step(step).map { |i| src[i] }
+        assert { a[(0...n).step(step)].count_true == want.count(1) }
+        assert { a[(0...n).step(step)].count_false == want.count(0) }
+      end
+      assert { a[(n - 1).step(0, -1)].count_true == src[1..-1].count(1) }
+      idx = (0...n).select { |i| i % 11 == 4 }
+      assert { a[idx].count_true == idx.count { |i| src[i] == 1 } }
+      assert { a[idx].count_false == idx.count { |i| src[i] == 0 } }
+    end
+  end
+
+  test "count_true reduces along an axis across word boundaries" do
+    rows = 5
+    cols = 70
+    src = (0...rows).map { |r| bits.call(cols).rotate(r) }
+    a = Cumo::Bit.cast(src)
+    assert_equal(src.map { |row| row.count(1) }, a.count_true(axis: 1).to_a)
+    assert_equal(src.map { |row| row.count(0) }, a.count_false(axis: 1).to_a)
+    assert_equal(src.transpose.map { |col| col.count(1) }, a.count_true(axis: 0).to_a)
+    assert_equal(src.transpose.map { |col| col.count(1) }, a.transpose.count_true(axis: 1).to_a)
+    assert { a.count_true == src.flatten.count(1) }
+  end
+
   test "[]= on a frozen view raises whatever the subscript is" do
     # the store goes to a view derived from self, whose data object is the
     # root, so the check inside get_pointer_for_rw never reaches self

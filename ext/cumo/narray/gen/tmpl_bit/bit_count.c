@@ -1,8 +1,7 @@
 #undef int_t
 #define int_t uint64_t
 
-void <%="cumo_#{c_iter}_index_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, size_t *idx1, uint64_t n);
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, ssize_t s1, uint64_t n);
+void <%="cumo_#{c_iter}_chunk_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, ssize_t s1, size_t *idx1, char *p2, uint64_t n);
 void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, size_t *idx1, ssize_t s2, uint64_t n);
 void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, ssize_t s1, ssize_t s2, uint64_t n);
 
@@ -21,11 +20,7 @@ static void
     CUMO_INIT_PTR(lp, 1, p2, s2);
 
     if (s2==0) {
-        if (idx1) {
-            <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,p2,a1,idx1,i);
-        } else {
-            <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,p2,a1,s1,i);
-        }
+        <%="cumo_#{c_iter}_chunk_kernel_launch"%>(a1,p1,s1,idx1,p2,i);
     } else {
         if (idx1) {
             <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(p1,p2,a1,idx1,s2,i);
