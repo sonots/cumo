@@ -4733,6 +4733,59 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([0, 0, 9, 64], (Cumo::UInt8[1, 2, 3, 4]**Cumo::Int32[-2, -1, 2, 3]).to_a)
   end
 
+  test "a float or complex array raised to the INT_MIN power answers instead of spinning" do
+    # -p overflows for INT32_MIN and the wrapped negative shifts down to -1, so
+    # pow_positive_int would never leave its loop. pow_int takes the magnitude
+    # in unsigned now. This runs in a child for the same reason as the unsigned
+    # test above: a spinning kernel only stops for SIGKILL.
+    script = <<~'RUBY'
+      require "cumo/narray"
+      out = [Cumo::SFloat[0.5, 1.0, 2.0]**(-2**31),
+             Cumo::DFloat[0.5, 1.0, 2.0]**(-2**31),
+             Cumo::SFloat[0.5, 1.0, 2.0]**(-2**31 + 1),
+             Cumo::DFloat[0.5, 1.0, 2.0]**(-2**31 + 1)].map { |v| v.to_a.join(",") }
+      # the complex path overflows the same way and only has to finish
+      (Cumo::SComplex[Complex(0.5, 0)]**(-2**31)).to_a
+      (Cumo::DComplex[Complex(0.5, 0)]**(-2**31)).to_a
+      print out.join("|")
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    r, w = IO.pipe
+    pid = Process.spawn(RbConfig.ruby, "-I#{lib}", "-e", script, out: w, err: File::NULL)
+    w.close
+    reader = Thread.new { r.read }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
+    until Process.waitpid(pid, Process::WNOHANG)
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        Process.kill("KILL", pid)
+        Process.waitpid(pid)
+        reader.kill
+        flunk("a float power of INT_MIN did not finish in 60 seconds")
+      end
+      sleep 0.05
+    end
+    # 0.5 ** -2**31 overflows to infinity and 2.0 ** -2**31 underflows to zero
+    assert_equal((["Infinity,1.0,0.0"] * 4).join("|"), reader.value)
+  end
+
+  test "the exponents around the INT_MIN power are unchanged" do
+    [Cumo::SFloat, Cumo::DFloat].each do |klass|
+      a = klass[0.5, 1.0, 2.0]
+      assert_equal([1.0, 1.0, 1.0], (a**0).to_a, "#{klass} ** 0")
+      assert_equal([0.5, 1.0, 2.0], (a**1).to_a, "#{klass} ** 1")
+      assert_equal([0.25, 1.0, 4.0], (a**2).to_a, "#{klass} ** 2")
+      assert_equal([0.125, 1.0, 8.0], (a**3).to_a, "#{klass} ** 3")
+      assert_equal([0.0625, 1.0, 16.0], (a**4).to_a, "#{klass} ** 4")
+      assert_equal([32.0, 1.0, 0.03125], (a**-5).to_a, "#{klass} ** -5")
+      # past 64 the exponent reaches pow() as a double either way
+      assert_equal([2.0**-100, 1.0, 2.0**100], (a**100).to_a, "#{klass} ** 100")
+      assert_equal([2.0**100, 1.0, 2.0**-100], (a**-100).to_a, "#{klass} ** -100")
+    end
+    assert_in_delta(1.1**100, (Cumo::SFloat[1.1]**100).to_a[0], 1.0, "SFloat ** 100")
+    assert_in_delta(1.1**100, (Cumo::DFloat[1.1]**100).to_a[0], 1e-9, "DFloat ** 100")
+    assert_equal(2.0**-100, (Cumo::DComplex[Complex(0.5, 0)]**100).to_a[0].real, "DComplex ** 100")
+  end
+
   test "seq wraps an out-of-range start the way fill and cast do" do
     # f_seq answers a double for the integer types, and the device saturates an
     # out-of-range double, so a negative start collapsed to zero.

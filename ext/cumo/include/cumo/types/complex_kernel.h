@@ -363,7 +363,7 @@ __host__ __device__ static inline dtype c_pow(dtype x, dtype y)
 }
 
 /* only internal use (called by c_pow_int) */
-__host__ __device__ static inline dtype c_pow_positive_int(dtype x, int p)
+__host__ __device__ static inline dtype c_pow_positive_int(dtype x, unsigned int p)
 {
     dtype z = c_one();
     if (p==2) {return c_square(x);}
@@ -377,13 +377,15 @@ __host__ __device__ static inline dtype c_pow_positive_int(dtype x, int p)
     return z;
 }
 
+// The magnitude is taken in unsigned, since -p overflows for INT_MIN and the
+// wrapped negative would shift down to -1 and loop for ever.
 __host__ __device__ static inline dtype c_pow_int(dtype x, int p)
 {
     if (p<0) {
-        x = c_pow_positive_int(x,-p);
+        x = c_pow_positive_int(x,-(unsigned int)p);
         return c_reciprocal(x);
     } else {
-        return c_pow_positive_int(x,p);
+        return c_pow_positive_int(x,(unsigned int)p);
     }
 }
 

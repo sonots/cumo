@@ -123,7 +123,7 @@ extern double pow(double, double);
 #define m_frexp(x,exp) frexp(x,exp)
 
 /* only internal use (called by pow_int) */
-__host__ __device__ static inline dtype pow_positive_int(dtype x, int p)
+__host__ __device__ static inline dtype pow_positive_int(dtype x, unsigned int p)
 {
     dtype r=1;
     switch(p) {
@@ -133,7 +133,7 @@ __host__ __device__ static inline dtype pow_positive_int(dtype x, int p)
     case 3: return x*x*x;
     case 4: x=x*x; return x*x;
     }
-    if (p>64) return pow(x,p);
+    if (p>64) return pow(x,(double)p);
     while (p) {
         if (p&1) r *= x;
         x *= x;
@@ -142,10 +142,12 @@ __host__ __device__ static inline dtype pow_positive_int(dtype x, int p)
     return r;
 }
 
+// The magnitude is taken in unsigned, since -p overflows for INT_MIN and the
+// wrapped negative would shift down to -1 and loop for ever.
 __host__ __device__ static inline dtype pow_int(dtype x, int p)
 {
-    if (p<0) return 1/pow_positive_int(x, -p);
-    return pow_positive_int(x, p);
+    if (p<0) return 1/pow_positive_int(x, -(unsigned int)p);
+    return pow_positive_int(x, (unsigned int)p);
 }
 
 __host__ __device__ static inline dtype f_seq(dtype x, dtype y, double c)
