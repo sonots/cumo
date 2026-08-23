@@ -270,6 +270,63 @@ class BitTest < Test::Unit::TestCase
     assert_equal([0, 1, 1, 1, 0], a.to_a)
   end
 
+  # The word at a time store needs only the output contiguous, so these check
+  # the operand shapes that used to fall back to one atomic per element.
+  [1, 31, 32, 33, 64, 65, 1000].each do |n|
+    make = proc { Cumo::Bit.cast((0...(2 * n)).map { |i| (i * 5 + 1) % 3 == 0 ? 1 : 0 }) }
+
+    test "a bit operation on a strided operand of #{n}" do
+      a = make.call
+      [2, 3, 7].each do |st|
+        v = a[(0...(2 * n)).step(st)]
+        rows = v.to_a
+        assert_equal(rows.map { |x| 1 - x }, (~v).to_a)
+        assert_equal(rows, (v & v).to_a)
+        assert_equal([0] * v.size, (v ^ v).to_a)
+        assert_equal(rows, Cumo::Bit.new(v.size).store(v).to_a)
+      end
+      rev = a[(2 * n - 1).step(0, -1)]
+      assert_equal(rev.to_a.map { |x| 1 - x }, (~rev).to_a)
+      idx = (0...(2 * n)).select { |i| i % 13 == 2 }
+      assert_equal(a[idx].to_a.map { |x| 1 - x }, (~a[idx]).to_a)
+      assert_equal(a[idx].to_a, Cumo::Bit.new(idx.size).store(a[idx]).to_a)
+    end
+
+    test "a bit operation on an operand of #{n} that starts mid-word" do
+      a = make.call
+      [1, 5, 31, 33].each do |off|
+        next if off + n > 2 * n
+        v = a[off...(off + n)]
+        assert_equal(v.to_a.map { |x| 1 - x }, (~v).to_a)
+        assert_equal(v.to_a, Cumo::Bit.new(n).store(v).to_a)
+      end
+    end
+
+    # The destination is not contiguous here, so the atomic has to stay: the
+    # elements it does not own belong to the rest of the array.
+    test "a bit operation writing into a view of #{n} leaves the rest alone" do
+      a = make.call[0...n]
+      want = a.to_a.map { |x| 1 - x }
+      [0, 1, 5, 32, 33, 64].each do |off|
+        d = Cumo::Bit.ones(n + 128)
+        d[off...(off + n)] = ~a
+        assert_equal([1] * off + want + [1] * (128 - off), d.to_a)
+      end
+      d = Cumo::Bit.ones(2 * n)
+      d[(0...(2 * n)).step(2)] = ~a
+      assert_equal((0...(2 * n)).map { |i| i.odd? ? 1 : want[i / 2] }, d.to_a)
+    end
+  end
+
+  test "a bit operation on a transposed operand" do
+    r, c = 33, 65
+    a = Cumo::Bit.cast((0...r).map { |i| (0...c).map { |j| (i + j) % 3 == 0 ? 1 : 0 } })
+    t = a.transpose
+    assert_equal(t.to_a.map { |row| row.map { |x| 1 - x } }, (~t).to_a)
+    assert_equal(t.to_a, (t & t).to_a)
+    assert_equal(t.to_a, Cumo::Bit.new(c, r).store(t).to_a)
+  end
+
   # A contiguous bit output is built a word at a time by a whole warp, so the
   # sizes that matter are the ones around a word and the operands whose output
   # is not contiguous and has to fall back.
