@@ -165,6 +165,47 @@ typedef unsigned int CUMO_BIT_DIGIT;
 #define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
 #define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
 
+#ifdef __CUDACC__
+
+// The bits of word w that belong to a loop covering bits [p, p+n). The words at
+// either end are shared with elements the loop must not read or write.
+__device__ static inline CUMO_BIT_DIGIT
+cumo_bit_word_mask(size_t p, uint64_t n, uint64_t w)
+{
+    size_t lb = (w == 0) ? p : 0;
+    size_t hb = ((w + 1) * CUMO_NB <= p + n) ? CUMO_NB : (p + n - w * CUMO_NB);
+    return CUMO_SLB(hb) & ~CUMO_SLB(lb);
+}
+
+// Stores z as word w of a loop covering bits [p, p+n) of a. Only one thread
+// owns a word, so the partial words at either end need no atomic.
+__device__ static inline void
+cumo_bit_store_word(CUMO_BIT_DIGIT *a, uint64_t w, CUMO_BIT_DIGIT z, size_t p, uint64_t n)
+{
+    CUMO_BIT_DIGIT mask = cumo_bit_word_mask(p, n, w);
+    if (mask == CUMO_BALL) {
+        a[w] = z;
+    } else {
+        a[w] = (z & mask) | (a[w] & ~mask);
+    }
+}
+
+// Element i of a loop writing bits end to end from a word boundary, where a
+// warp's lanes hold one whole word of the output. The warp builds the word and
+// stores it once instead of every lane taking the word with an atomic. Every
+// lane must reach this, so a lane past the end of the loop passes zero.
+__device__ static inline void
+cumo_bit_store_ballot(CUMO_BIT_DIGIT *a, uint64_t i, CUMO_BIT_DIGIT b, uint64_t n)
+{
+    static_assert(CUMO_NB == 32, "a warp holds one bit digit");
+    CUMO_BIT_DIGIT z = __ballot_sync(0xffffffffu, b != 0);
+    if ((threadIdx.x & 31u) == 0) {
+        cumo_bit_store_word(a, i / CUMO_NB, z, 0, n);
+    }
+}
+
+#endif // __CUDACC__
+
 typedef union {
     ssize_t stride;
     size_t *index;
