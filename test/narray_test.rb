@@ -1113,6 +1113,38 @@ class NArrayTest < Test::Unit::TestCase
       assert { at == [[0, 2, 3], [4, 4, 6]] }
     end
 
+    sub_test_case "#{dtype}, frozen" do
+      test "[]= on a frozen view raises whatever the subscript is" do
+        # the store goes to a view derived from self, whose data object is the
+        # root, so the check inside get_pointer_for_rw never reaches self
+        a = dtype.new(5).seq
+        v = a[1..3]
+        v.freeze
+        assert_raise(RuntimeError) { v[0] = 9 }
+        assert_raise(RuntimeError) { v[0..1] = 9 }
+        assert_raise(RuntimeError) { v[[0, 1]] = 9 }
+        assert_raise(RuntimeError) { v[true] = 9 }
+        assert_raise(RuntimeError) { v.store(9) }
+        assert { a == dtype.new(5).seq }
+      end
+
+      test "[]= on a frozen array raises too" do
+        a = dtype.new(5).seq
+        a.freeze
+        assert_raise(RuntimeError) { a[0] = 9 }
+        assert_raise(RuntimeError) { a[0..1] = 9 }
+        assert { a == dtype.new(5).seq }
+      end
+
+      test "[]= still writes when nothing is frozen" do
+        a = dtype.new(5).seq
+        v = a[1..3]
+        v[0] = 9
+        v[1..2] = 8
+        assert { a == dtype[0, 9, 8, 8, 4] }
+      end
+    end
+
     sub_test_case "#{dtype}.from_binary" do
       test "frozen string" do
         shape = [2, 5]

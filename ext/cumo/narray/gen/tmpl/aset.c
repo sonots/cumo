@@ -48,6 +48,14 @@ static VALUE
     if (argc==0) {
         <%=c_func.sub(/_aset/,"_store")%>(self, argv[argc]);
     } else {
+        // The store goes to a view derived by cumo_na_aref_main, whose data
+        // object is the root rather than self, so the frozen check inside
+        // cumo_na_get_pointer_for_rw never reaches self. Numo has a scalar
+        // subscript path that writes through self and raises there; cumo has
+        // none, since the element write has to happen on the device.
+        if (OBJ_FROZEN(self)) {
+            rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
+        }
         nd = cumo_na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);
         a = cumo_na_aref_main(argc, argv, self, 0, nd, pos);
         <%=c_func.sub(/_aset/,"_store")%>(a, argv[argc]);
