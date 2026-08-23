@@ -69,6 +69,12 @@ end
 
 F32 = 4.0
 
+# A Bit element is a thirty-second of a word, so a bit probe takes that many
+# more columns and moves the same bytes as the rest of the table. Reporting a
+# bit array of COLS columns in GB/s put it 32x below every other row, where no
+# verdict could reach BAND_OK however fast the kernel ran.
+BITCOLS = COLS * 32
+
 # --- store and copy --------------------------------------------------------
 
 probe('store', 'store contig') do |rows, cols|
@@ -224,9 +230,16 @@ probe('reduce', 'cumsum contig') do |rows, cols|
   [-> { src.cumsum }, 2 * rows * cols * F32, 'GB']
 end
 
-probe('reduce', 'count_true') do |rows, cols|
-  bit = (XM::SFloat.new(rows, cols).seq > 0.5)
-  [-> { bit.count_true }, rows * cols / 8.0, 'GB']
+probe('reduce', 'count_true') do |rows, _cols|
+  bit = XM::UInt8.new(rows, BITCOLS).seq > 127
+  [-> { bit.count_true }, rows * BITCOLS / 8.0, 'GB']
+end
+
+# The peer for the row above: a reduction over the same bytes of the same dtype.
+# An all-ones array never lets all? stop early, so it reads every word.
+probe('reduce', 'all? contig') do |rows, _cols|
+  bit = XM::Bit.ones(rows, BITCOLS)
+  [-> { bit.all? }, rows * BITCOLS / 8.0, 'GB']
 end
 
 # --- GEMM ------------------------------------------------------------------
@@ -289,7 +302,7 @@ end
 
 puts "ruby      : #{RUBY_VERSION} (#{RUBY_PLATFORM})"
 puts "backend   : #{XM} #{version}"
-puts "params    : COLS=#{COLS} ROWS=#{ROWS.join(',')} REPS=#{REPS}"
+puts "params    : COLS=#{COLS} ROWS=#{ROWS.join(',')} REPS=#{REPS} (bit probes use #{BITCOLS} columns)"
 
 tiny = XM::SFloat.new(1).seq
 launch = measure(-> { tiny * 2.0 })
