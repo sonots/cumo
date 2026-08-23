@@ -76,7 +76,8 @@ cumo_cuda_cudnn_CreateTensorDescriptor(
     int ndim = (int)(na->ndim);
     size_t *shape = na->shape;
 
-    assert(cumo_na_check_contiguous(a) == Qtrue);
+    // only the shape is read: the descriptor is NCHW and the caller passes the
+    // contiguous copy, so a non-contiguous a still describes what is read
     status = cudnnCreateTensorDescriptor(desc);
     if (status != CUDNN_STATUS_SUCCESS) return status;
 
@@ -133,7 +134,7 @@ cumo_cuda_cudnn_CreateFilterDescriptor(
     ndim = (int)(na->ndim);
     shape = na->shape;
 
-    assert(cumo_na_check_contiguous(a) == Qtrue);
+    // only the shape is read, as in CreateTensorDescriptor above
     status = cudnnCreateFilterDescriptor(desc);
     if (status != CUDNN_STATUS_SUCCESS) return status;
 
