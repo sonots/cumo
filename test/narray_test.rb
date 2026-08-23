@@ -133,6 +133,19 @@ class NArrayTest < Test::Unit::TestCase
         assert { a.at([-1]) == [11] }
         assert { a.view.at([-1]) == [11] }
 
+        # a reversed view takes the negative-stride path, where the accumulator
+        # was read in place of the subscript for every dimension but the last
+        b = dtype.new(4, 5).seq
+        [b, b.reverse(0), b.reverse(1), b.reverse, b.transpose.reverse(0)].each_with_index do |v, i|
+          rows = v.to_a
+          assert(v.at([1, 2], [0, 1]).to_a == [rows[1][0], rows[2][1]], "at on view #{i}")
+        end
+        c = b.reverse(0)
+        c.at([1, 2], [0, 1]).store(99)
+        assert { c.to_a[1][0] == 99 }
+        assert { c.to_a[2][1] == 99 }
+        assert { b.to_a.flatten.count(99) == 2 }
+
         assert { a[(0..-1).each] == [1, 2, 3, 5, 7, 11] }
         assert { a[(0...-1).each] == [1, 2, 3, 5, 7] }
 

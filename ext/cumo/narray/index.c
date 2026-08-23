@@ -682,7 +682,7 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
 
 void cumo_na_index_at_naview_index_index_index_add_kernel_launch(size_t *idx, size_t *idx1, size_t *idx2, uint64_t n);
 void cumo_na_index_at_naview_index_index_beg_step_add_kernel_launch(size_t *idx, size_t *idx1, size_t beg, ssize_t step, uint64_t n);
-void cumo_na_index_at_naview_index_stride_last_add_kernel_launch(size_t *idx, ssize_t s1, size_t last, uint64_t n);
+void cumo_na_index_at_naview_index_stride_last_add_kernel_launch(size_t *idx, size_t *idx1, ssize_t s1, size_t last, uint64_t n);
 
 static void
 cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
@@ -747,10 +747,12 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
                 }
                 na2->offset -= last * stride1;
                 if (i==ndim-1) {
+                    // index aliases q[ndim-1].idx, so the accumulator still
+                    // holds the subscript here and is the right thing to read
                     cumo_na_index_aref_naview_index_stride_last_kernel_launch(index, stride1, last, size);
                     q[i].idx = NULL;
                 } else {
-                    cumo_na_index_at_naview_index_stride_last_add_kernel_launch(index, stride1, last, size);
+                    cumo_na_index_at_naview_index_stride_last_add_kernel_launch(index, q[i].idx, stride1, last, size);
                 }
             } else {
                 if (i==ndim-1) {
