@@ -77,6 +77,21 @@ static VALUE
 
     x_shape = nx->shape;
 
+    {
+        // y and gy are both read through y_desc, which is built from y's shape
+        // and this class's dtype, so neither one's own length ever reaches
+        // cuDNN. Require both to be the pooling output of x.
+        size_t *y_shape = ALLOCA_N(size_t, ndim + 2);
+        y_shape[0] = x_shape[0];
+        y_shape[1] = x_shape[1];
+        for (size_t i = 0; i < ndim; ++i) {
+            y_shape[i + 2] = cumo_cuda_cudnn_GetConvOutDim(
+                    x_shape[i + 2], int_kernel_size[i], int_stride[i], int_pad[i]);
+        }
+        cumo_cuda_cudnn_check_input(y, cT, ndim + 2, y_shape);
+        cumo_cuda_cudnn_check_input(gy, cT, ndim + 2, y_shape);
+    }
+
     if (gx == Qnil) {
         gx = cumo_na_new(cT, ndim + 2, x_shape);
     }

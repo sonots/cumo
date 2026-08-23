@@ -63,6 +63,23 @@ cumo_cuda_cudnn_check_output(VALUE out, VALUE type, size_t ndim, size_t *shape)
     }
 }
 
+// An input array is read through a descriptor built from another operand, so
+// cuDNN reads whatever length that descriptor claims rather than the length the
+// array really has. A non-contiguous one is copied before it is read, so unlike
+// an output it does not have to be contiguous here.
+static inline void
+cumo_cuda_cudnn_check_input(VALUE in, VALUE type, size_t ndim, size_t *shape)
+{
+    cumo_narray_t *na;
+
+    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(in, type);
+    CumoGetNArray(in, na);
+    CUMO_CUDA_CUDNN_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
+    for (size_t idim = 0; idim < ndim; ++idim) {
+        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(na->shape[idim], shape[idim]);
+    }
+}
+
 void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status);
 
