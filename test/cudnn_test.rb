@@ -566,6 +566,22 @@ class CUDNNTest < Test::Unit::TestCase
         assert { @x.max_pool_backward(y, gy, @ksize, gx: gx).equal?(gx) }
       end
 
+      test "max_pool_backward checks y and gy #{dtype}" do
+        # both are read through a descriptor built from y's shape and this
+        # class's dtype, so cuDNN never learns how long either one is
+        other = dtype == Cumo::SFloat ? Cumo::DFloat : Cumo::SFloat
+        y = @x.max_pool(@ksize)
+        gy = dtype.ones(*y.shape)
+        assert_raise(Cumo::NArray::ShapeError) { @x.max_pool_backward(y, dtype.ones(1), @ksize) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.max_pool_backward(dtype.ones(1), gy, @ksize) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.max_pool_backward(dtype.ones(*@x_shape), dtype.ones(*@x_shape), @ksize) }
+        assert_raise(TypeError) { @x.max_pool_backward(y, other.ones(*y.shape), @ksize) }
+        assert_raise(TypeError) { @x.max_pool_backward(other.ones(*y.shape), gy, @ksize) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.avg_pool_backward(y, dtype.ones(1), @ksize) }
+        # a y and gy of the pooling output shape still go through
+        assert { @x.max_pool_backward(y, gy, @ksize).sum.to_f == y.size }
+      end
+
       test "conv(y:), conv_transpose(y:) and conv_grad_w(gw:) #{dtype}" do
         assert_raise(Cumo::NArray::ShapeError) { @x.conv(@w, y: dtype.zeros(1)) }
         y = @x.conv(@w)
