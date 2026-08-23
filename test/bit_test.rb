@@ -205,4 +205,22 @@ class BitTest < Test::Unit::TestCase
     a[0...64].store([(0...64)])
     assert_equal(0, a[64].to_a.first)
   end
+
+  test "[]= on a frozen view raises whatever the subscript is" do
+    # the store goes to a view derived from self, whose data object is the
+    # root, so the check inside get_pointer_for_rw never reaches self
+    a = Cumo::Bit.new(5).fill(0)
+    v = a[1..3]
+    v.freeze
+    assert_raise(RuntimeError) { v[0] = 1 }
+    assert_raise(RuntimeError) { v[0..1] = 1 }
+    assert_raise(RuntimeError) { v[[0, 1]] = 1 }
+    assert_raise(RuntimeError) { v.store(1) }
+    assert_equal([0, 0, 0, 0, 0], a.to_a)
+    # and still writes when nothing is frozen
+    w = a[1..3]
+    w[0] = 1
+    w[1..2] = 1
+    assert_equal([0, 1, 1, 1, 0], a.to_a)
+  end
 end
