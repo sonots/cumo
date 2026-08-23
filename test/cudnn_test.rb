@@ -554,6 +554,37 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
+    sub_test_case "a stride of zero" do
+      setup do
+        @x = dtype.new(1, 1, 8, 8).seq
+        @w = dtype.new(1, 1, 2, 2).seq
+        @max = Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX
+      end
+
+      # ruby.h defines NDEBUG, so the assert that used to guard the division in
+      # GetConvOutDim never ran and the process took a SIGFPE instead
+      test "the conv entry points reject it #{dtype}" do
+        assert_raise(ArgumentError) { @x.conv(@w, stride: 0) }
+        assert_raise(ArgumentError) { @x.conv_transpose(@w, stride: 0) }
+        assert_raise(ArgumentError) { @x.conv_grad_w(@x.conv(@w), @w.shape, stride: 0) }
+      end
+
+      test "the pooling entry points reject it #{dtype}" do
+        assert_raise(ArgumentError) { @x.pooling_forward(@max, 0) }
+        assert_raise(ArgumentError) { @x.pooling_forward(@max, 2, stride: 0) }
+        assert_raise(ArgumentError) { @x.max_pool(0) }
+        assert_raise(ArgumentError) { @x.avg_pool(0) }
+        y = @x.pooling_forward(@max, 2)
+        assert_raise(ArgumentError) { @x.pooling_backward(@max, y, dtype.ones(*y.shape), 2, stride: 0) }
+      end
+
+      test "a positive stride still goes through #{dtype}" do
+        assert { @x.conv(@w, stride: 2).shape == [1, 1, 4, 4] }
+        assert { @x.conv_transpose(@w, stride: 2).shape == [1, 1, 16, 16] }
+        assert { @x.pooling_forward(@max, 2).shape == [1, 1, 4, 4] }
+      end
+    end
+
     sub_test_case "given output arrays" do
       setup do
         @x_shape = [2, 3, 5, 3]

@@ -27,7 +27,12 @@ cumo_cuda_cudnn_GetConvOutDim(
         size_t stride,
         size_t pad) {
     int64_t numerator;
-    assert(stride > 0);
+
+    // ruby.h defines NDEBUG, so the assert this used to carry never ran and a
+    // stride of zero reached the division below as a SIGFPE
+    if (stride == 0) {
+        rb_raise(rb_eArgError, "stride must be positive");
+    }
     // if (cover_all) {
     //     numerator = in_dim + pad * 2 - kernel_size + stride - 1;
     // } else {
@@ -49,7 +54,12 @@ cumo_cuda_cudnn_GetConvTransposeOutDim(
     // if (cover_all) {
     //     return stride * (in_dim - 1) + kernel_size - stride + 1 - 2 * pad;
     // }
-    int64_t out_size = stride * (in_dim - 1) + kernel_size - 2 * pad;
+    int64_t out_size;
+
+    if (stride == 0) {
+        rb_raise(rb_eArgError, "stride must be positive");
+    }
+    out_size = stride * (in_dim - 1) + kernel_size - 2 * pad;
     if (out_size < 0) {
         rb_raise(rb_eRuntimeError, "Output size should be positive.");
     }
