@@ -63,6 +63,23 @@ cumo_cuda_cudnn_check_output(VALUE out, VALUE type, size_t ndim, size_t *shape)
     }
 }
 
+// cuDNN derives the batch-norm parameter descriptor from x with a SPATIAL mode,
+// so it reaches x's channel count in gamma, beta and the rest however the axis
+// reduced them. Normally the reduced size is the larger of the two and only
+// part of each buffer is used, but an axis that folds the channel away makes it
+// smaller, and cuDNN has no way to know.
+static inline void
+cumo_cuda_cudnn_check_reduced_size(size_t reduced_total_size, size_t x_ndim, size_t *x_shape)
+{
+    size_t channel_size = (x_ndim == 1) ? x_shape[0] : x_shape[1];
+
+    if (reduced_total_size < channel_size) {
+        rb_raise(cumo_na_eShapeError,
+                 "the axis reduces to %d, fewer than the %d channels cuDNN accesses",
+                 (int)reduced_total_size, (int)channel_size);
+    }
+}
+
 // An input array is read through a descriptor built from another operand, so
 // cuDNN reads whatever length that descriptor claims rather than the length the
 // array really has. A non-contiguous one is copied before it is read, so unlike

@@ -70,6 +70,8 @@ static VALUE
         cumo_cuda_cudnn_shape_t reduced_shape = cumo_cuda_cudnn_ReduceShape(x_ndim, x_shape, axis_ndim, int_axis, 1);
         size_t reduced_total_size = cumo_cuda_cudnn_GetTotalSize(&reduced_shape);
 
+        cumo_cuda_cudnn_check_reduced_size(reduced_total_size, x_ndim, x_shape);
+
         CumoGetNArray(gamma, ngamma);
         CumoGetNArray(beta, nbeta);
         CumoGetNArray(mean, nmean);
