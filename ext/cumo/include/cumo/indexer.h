@@ -375,6 +375,36 @@ CUMO_NA_BIT_IARRAY_STRIDX_AT(3)
 CUMO_NA_BIT_IARRAY_STRIDX_AT(2)
 CUMO_NA_BIT_IARRAY_STRIDX_AT(0)
 
+// True when the loop writes the operand's bits end to end from a word boundary,
+// so element i of the loop is bit i of the operand and a warp of thirty-two
+// lanes owns one whole word of it.
+__host__ __device__
+static inline int
+cumo_na_bit_iarray_is_flat(cumo_na_bit_iarray_t* iarray, cumo_na_indexer_t* indexer) {
+    ssize_t acc = 1;
+    if (iarray->pos % CUMO_NB != 0) return 0;
+    for (int idim = indexer->ndim; --idim >= 0;) {
+        if (iarray->step[idim] != acc) return 0;
+        acc *= (ssize_t)indexer->shape[idim];
+    }
+    return 1;
+}
+
+// The same for an operand that may be backed by an index array, which is never
+// flat: it says nothing about where in the operand the next element lands.
+__host__ __device__
+static inline int
+cumo_na_bit_iarray_stridx_is_flat(cumo_na_bit_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer) {
+    ssize_t acc = 1;
+    if (iarray->pos % CUMO_NB != 0) return 0;
+    for (int idim = indexer->ndim; --idim >= 0;) {
+        if (!CUMO_SDX_IS_STRIDE(iarray->stridx[idim])) return 0;
+        if (CUMO_SDX_GET_STRIDE(iarray->stridx[idim]) != acc) return 0;
+        acc *= (ssize_t)indexer->shape[idim];
+    }
+    return 1;
+}
+
 // cumo_na_indexer_set_dim1 leaves index[] alone, so one dimension has to be
 // addressed through raw_index
 __host__ __device__

@@ -269,4 +269,62 @@ class BitTest < Test::Unit::TestCase
     w[1..2] = 1
     assert_equal([0, 1, 1, 1, 0], a.to_a)
   end
+
+  # A contiguous bit output is built a word at a time by a whole warp, so the
+  # sizes that matter are the ones around a word and the operands whose output
+  # is not contiguous and has to fall back.
+  [1, 31, 32, 33, 63, 64, 65, 129, 1000].each do |n|
+    src = proc { (0...n).map { |i| (i % 7) - 3 } }
+
+    test "a comparison fills #{n} bits" do
+      want = src.call.map { |x| x > 0 ? 1 : 0 }
+      a = Cumo::Int32.cast(src.call)
+      assert_equal(want, (a > 0).to_a)
+      assert_equal(want.map { |x| 1 - x }, (a <= 0).to_a)
+      assert_equal(want, Cumo::SFloat.cast(src.call).gt(0).to_a)
+      assert_equal(src.call.map { |x| x == 1 ? 1 : 0 }, a.eq(1).to_a)
+      assert_equal(want, (0 < a).to_a)
+    end
+
+    test "a cast to Bit fills #{n} bits" do
+      assert_equal(src.call.map { |x| x.zero? ? 0 : 1 }, Cumo::Bit.cast(Cumo::Int32.cast(src.call)).to_a)
+    end
+
+    test "a comparison of a non-contiguous operand fills #{n} bits" do
+      wide = (0...(2 * n)).map { |i| (i % 7) - 3 }
+      a = Cumo::Int32.cast(wide).reshape(n, 2)
+      assert_equal((0...n).map { |i| wide[2 * i] > 0 ? 1 : 0 }, (a[true, 0] > 0).to_a)
+      assert_equal((0...n).map { |i| wide[2 * i + 1] > 0 ? 1 : 0 }, (a[true, 1] > 0).to_a)
+      assert_equal(wide.map { |x| x > 0 ? 1 : 0 }, (a.transpose > 0).transpose.flatten.to_a)
+    end
+
+    test "a comparison writing into a bit view fills #{n} bits" do
+      a = Cumo::Int32.cast(src.call)
+      [0, 1, 5, 32].each do |off|
+        b = Cumo::Bit.zeros(n + 64)
+        b[off...(off + n)] = (a > 0)
+        want = [0] * off + src.call.map { |x| x > 0 ? 1 : 0 } + [0] * (64 - off)
+        assert_equal(want, b.to_a)
+      end
+      b = Cumo::Bit.zeros(2 * n)
+      b[(0...(2 * n)).step(2)] = (a > 0)
+      assert_equal((0...(2 * n)).map { |i| i.odd? ? 0 : (src.call[i / 2] > 0 ? 1 : 0) }, b.to_a)
+    end
+
+    # The elements past the end of the last word belong to the rest of the
+    # array, so filling that word must leave them as they were. A destination
+    # of ones is what makes an unmasked store show up.
+    test "a store into a bit view of #{n} leaves the rest of it alone" do
+      a = Cumo::Int32.cast(src.call)
+      want = src.call.map { |x| x.zero? ? 0 : 1 }
+      [0, 1, 5, 31, 32, 33, 64].each do |off|
+        b = Cumo::Bit.ones(n + 128)
+        b[off...(off + n)] = a
+        assert_equal([1] * off + want + [1] * (128 - off), b.to_a)
+        b = Cumo::Bit.ones(n + 128)
+        b[off...(off + n)].store(a)
+        assert_equal([1] * off + want + [1] * (128 - off), b.to_a)
+      end
+    end
+  end
 end
