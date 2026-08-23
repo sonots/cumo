@@ -413,6 +413,13 @@ static VALUE
             rb_raise(cumo_na_eShapeError,"batch count of c=%d must equal to %d",
                     gemm_batch_count(nc), batch);
         }
+        // a and b are duplicated when they are not contiguous, but c is written
+        // in place, and cuBLAS writes it as ldc=n stridec=m*n from its offset
+        // whatever strides it really has. Only an inplace c reaches here
+        // uncopied, so this is the one operand that has to be turned away.
+        if (!is_c_contiguous(c)) {
+            rb_raise(cumo_na_eShapeError, "c must be contiguous");
+        }
     }
 
     <%=c_iter%>(a, b, c, &g);

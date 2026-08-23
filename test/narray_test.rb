@@ -965,6 +965,27 @@ class NArrayTest < Test::Unit::TestCase
           assert_raise(Cumo::NArray::ShapeError) { dtype.new(0, 3).gemm(dtype.new(3, 4).seq) }
           assert_raise(Cumo::NArray::ShapeError) { dtype.new(2, 0).gemm(dtype.new(0, 4)) }
         end
+        test "matrix.gemm(matrix) rejects an inplace c that is not contiguous" do
+          a = dtype.new(4, 4).seq
+          b = dtype.new(4, 4).seq
+          # cuBLAS writes c as ldc=n stridec=m*n from its offset whatever
+          # strides it really has, so a non-contiguous one runs off the end of
+          # the allocation and over whatever the pool put next to it
+          assert_raise(Cumo::NArray::ShapeError) { a.gemm(b, dtype.new(4, 4).seq.reverse.inplace) }
+          assert_raise(Cumo::NArray::ShapeError) { a.gemm(b, dtype.new(4, 4).seq.transpose.inplace) }
+          base = dtype.new(4, 2).seq
+          assert_raise(Cumo::NArray::ShapeError) do
+            dtype.new(8, 3).seq.gemm(dtype.new(3, 2).seq, base[[0] * 8, true].inplace!)
+          end
+          # a contiguous c goes through, inplace or not, and a non-contiguous
+          # one that is not inplace is copied before it is written
+          c = dtype.zeros(4, 4).inplace
+          assert { a.gemm(b, c).equal?(c) }
+          assert { c == a.gemm(b) }
+          assert { a.gemm(b, dtype.zeros(4, 4)) == a.gemm(b) }
+          assert { a.gemm(b, dtype.new(4, 4).seq.reverse) == a.gemm(b) }
+        end
+
         test "matrix.gemm(matrix) takes a transposed batch without a copy" do
           a = dtype.new(2, 3, 2, 4).seq
           b = dtype.new(2, 3, 5, 4).seq.transpose(0, 1, 3, 2)
