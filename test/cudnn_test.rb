@@ -288,6 +288,43 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
+    sub_test_case "batch_norm with an axis that folds the channel away" do
+      setup do
+        @x = dtype.new(8, 256).seq
+        @one = dtype.ones(1)
+        @zero = dtype.zeros(1)
+      end
+
+      # cuDNN derives its parameter descriptor from x with a SPATIAL mode and
+      # reaches 256 channels in each buffer, whatever the axis reduced them to
+      test "batch_norm rejects it #{dtype}" do
+        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm(@one, @zero, axis: [0, 1]) }
+        assert_raise(Cumo::NArray::ShapeError) do
+          @x.batch_norm(@one, @zero, axis: [0, 1], running_mean: @zero, running_var: @one)
+        end
+        assert_raise(Cumo::NArray::ShapeError) do
+          @x.batch_norm(@one, @zero, axis: [0, 1], mean: @zero, inv_std: @zero)
+        end
+      end
+
+      test "fixed_batch_norm and batch_norm_backward reject it #{dtype}" do
+        assert_raise(Cumo::NArray::ShapeError) do
+          @x.fixed_batch_norm(@one, @zero, @zero, @one, axis: [0, 1])
+        end
+        assert_raise(Cumo::NArray::ShapeError) do
+          @x.batch_norm_backward(@one, dtype.ones(8, 256), axis: [0, 1])
+        end
+      end
+
+      test "the same shapes with the default axis still go through #{dtype}" do
+        gamma = dtype.ones(1, 256)
+        beta = dtype.zeros(1, 256)
+        assert { @x.batch_norm(gamma, beta).shape == [8, 256] }
+        assert { @x.fixed_batch_norm(gamma, beta, beta, gamma).shape == [8, 256] }
+        assert { @x.batch_norm_backward(gamma, dtype.ones(8, 256)).first.shape == [8, 256] }
+      end
+    end
+
     sub_test_case "batch_norm_backward" do
       setup do
         @batch_size = 2
