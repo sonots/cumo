@@ -100,6 +100,7 @@ a = xm::DFloat.new(3,5).seq
 
 Numo returns a Ruby numeric object wherever a result is 0-dimensional, while Cumo returns the 0-dimensional NArray itself.
 Cumo differs in this way to avoid synchronization and minimize CPU ⇄ GPU data transfer.
+That is not only a cost of the port; see [Keeping Scalars On The Device](#keeping-scalars-on-the-device) for what it buys.
 
 The methods affected are:
 
@@ -147,6 +148,35 @@ Float(a.sum)          #=> 7.0 in either mode
 
 They are methods on an NArray, so chaining one onto a result that `compatible_mode` has already turned into a Ruby object, as in `a.sum.extract_cpu`, raises `NoMethodError` while the mode is on.
 `Kernel#Float` and `Kernel#Integer` read either representation, and read Numo's too, so they are what code that runs against both libraries wants.
+
+### Keeping Scalars On The Device
+
+The 0-dimensional return is what lets an iterative loop stay on the GPU.
+Reading a scalar back to the host waits for everything queued behind it, so every read caps how far ahead the GPU is allowed to run.
+What a read costs is not a fixed price either: it is however much work happens to be queued when it is taken.
+
+`bench/cg_bench.rb` prices this with a conjugate gradient solve, 200 iterations over a 512x512 grid on an RTX 5070 Ti Laptop:
+
+```
+scalars        convergence test    us/iter    readbacks/iter
+Ruby Floats    every iteration       136.7        2.02
+Ruby Floats    never                 134.4        2.02
+0-dim NArray   every iteration       142.6        1.02
+0-dim NArray   every 20th             65.6        0.06
+0-dim NArray   never                  60.3        0.02
+```
+
+Written with Ruby Floats the loop reads back twice an iteration whatever the convergence test does, since `alpha` needs `pap` and `beta` needs `rs_new` as Floats.
+Thinning the test cannot get under that floor, and keeping the scalars as 0-dimensional NArrays buys nothing on its own.
+The two only pay together, and together they are worth 2.1x.
+The relative residual is identical in every row.
+
+```ruby
+alpha = rs_old / pap   # a 0-dimensional NArray, divided on the device
+x += p_dir * alpha     # and consumed there, without crossing the bus
+```
+
+Read the value back once the loop is done, or every k iterations if it has to test something.
 
 ### Select a GPU device ID
 
