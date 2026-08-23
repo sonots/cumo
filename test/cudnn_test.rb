@@ -554,6 +554,39 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
+    sub_test_case "a non-contiguous input" do
+      setup do
+        @x = dtype.new(1, 1, 8, 8).seq
+        @max = Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX
+      end
+
+      # y and gy are copied before they are read, so a strided one is allowed;
+      # this pins that, not the copy itself. cuDNN recomputes the argmax from x
+      # and never reads y's values, so no assertion here can see a wrong y.
+      test "pooling_backward takes a strided y #{dtype}" do
+        y = @x.pooling_forward(@max, 2)
+        pad = dtype.zeros(1, 1, 4, 8)
+        pad[true, true, true, 0...4] = y
+        y_strided = pad[true, true, true, 0...4]
+        assert { !y_strided.contiguous? }
+        gy = dtype.new(1, 1, 4, 4).seq(1)
+        gx = @x.pooling_backward(@max, y_strided, gy, 2)
+        assert { gx == @x.pooling_backward(@max, y, gy, 2) }
+        assert { gx.to_a.flatten.count { |v| v != 0 } == y.size }
+      end
+
+      test "pooling_backward takes a strided gy #{dtype}" do
+        y = @x.pooling_forward(@max, 2)
+        pad = dtype.zeros(1, 1, 4, 8)
+        pad[true, true, true, 0...4] = dtype.new(1, 1, 4, 4).seq(1)
+        gy_strided = pad[true, true, true, 0...4]
+        assert { !gy_strided.contiguous? }
+        gx = @x.pooling_backward(@max, y, gy_strided, 2)
+        assert { gx == @x.pooling_backward(@max, y, dtype.new(1, 1, 4, 4).seq(1), 2) }
+        assert { gx.to_a.flatten.count { |v| v != 0 } == y.size }
+      end
+    end
+
     sub_test_case "a stride of zero" do
       setup do
         @x = dtype.new(1, 1, 8, 8).seq
