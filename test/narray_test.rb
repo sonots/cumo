@@ -4736,17 +4736,24 @@ class NArrayTest < Test::Unit::TestCase
   test "a float or complex array raised to the INT_MIN power answers instead of spinning" do
     # -p overflows for INT32_MIN and the wrapped negative shifts down to -1, so
     # pow_positive_int would never leave its loop. pow_int takes the magnitude
-    # in unsigned now. This runs in a child for the same reason as the unsigned
-    # test above: a spinning kernel only stops for SIGKILL.
+    # in unsigned now. The exponent reaches it three ways: as a Fixnum, as an
+    # Int32 array, and as an Int32 array against a numeric base through coerce.
+    # This runs in a child for the same reason as the unsigned test above: a
+    # spinning kernel only stops for SIGKILL.
     script = <<~'RUBY'
       require "cumo/narray"
+      int_min = Cumo::Int32[-2**31, -2**31, -2**31]
       out = [Cumo::SFloat[0.5, 1.0, 2.0]**(-2**31),
              Cumo::DFloat[0.5, 1.0, 2.0]**(-2**31),
              Cumo::SFloat[0.5, 1.0, 2.0]**(-2**31 + 1),
-             Cumo::DFloat[0.5, 1.0, 2.0]**(-2**31 + 1)].map { |v| v.to_a.join(",") }
+             Cumo::DFloat[0.5, 1.0, 2.0]**(-2**31 + 1),
+             Cumo::SFloat[0.5, 1.0, 2.0]**int_min,
+             Cumo::DFloat[0.5, 1.0, 2.0]**int_min].map { |v| v.to_a.join(",") }
+      out << (0.5**Cumo::Int32[-2**31, 1, 2]).to_a.join(",")
       # the complex path overflows the same way and only has to finish
       (Cumo::SComplex[Complex(0.5, 0)]**(-2**31)).to_a
       (Cumo::DComplex[Complex(0.5, 0)]**(-2**31)).to_a
+      (Cumo::DComplex[Complex(0.5, 0)]**Cumo::Int32[-2**31]).to_a
       print out.join("|")
     RUBY
     lib = File.expand_path("../lib", __dir__)
@@ -4765,7 +4772,7 @@ class NArrayTest < Test::Unit::TestCase
       sleep 0.05
     end
     # 0.5 ** -2**31 overflows to infinity and 2.0 ** -2**31 underflows to zero
-    assert_equal((["Infinity,1.0,0.0"] * 4).join("|"), reader.value)
+    assert_equal(((["Infinity,1.0,0.0"] * 6) << "Infinity,0.5,0.25").join("|"), reader.value)
   end
 
   test "the exponents around the INT_MIN power are unchanged" do
