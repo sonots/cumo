@@ -1,3 +1,43 @@
+# 0.5.10 (2026/08/23)
+
+Breaking changes:
+
+* An indexed assignment to a frozen view raises instead of writing through it; `store` and `fill` already raised (PR #306)
+* The cuDNN and cuBLAS entry points turn away arguments they used to read or write out of bounds: `pooling_backward` requires `y` and `gy` to carry its own dtype and the pooling output shape of `x`, `gemm` requires a contiguous `c`, `batch_norm` requires the reduced size to cover x's channels, and `conv_grad_w` raises on a mismatched `gy` rather than asserting (PR #303, PR #302, PR #300, PR #278)
+* `seq` on the unsigned types wraps a negative start and a start past 2**63 the way `fill` and `cast` do, where they collapsed to zero and clamped to INT64_MAX (PR #295, PR #294)
+* A negative power of an unsigned array answers zero instead of spinning the device until SIGKILL (PR #293)
+* A subscript that is a Cumo::RObject subclass, and an `expand_dims` past `CUMO_NA_MAX_DIMENSION`, raise instead of being taken (PR #272, PR #270)
+
+Fixes:
+
+* Fix `[]=` writing through a frozen view, the store going to a derived view whose data object is the root rather than the receiver (PR #306)
+* Fix `at()` reading the accumulator in place of the subscript on a reversed view, which addressed far in front of the buffer (PR #305)
+* Fix `cumo_cuda_cudnn_CreateBNTensorDescriptor` returning before it derived the descriptor, an inverted status check that no caller reached (PR #304)
+* Fix `batch_norm`, `fixed_batch_norm` and `batch_norm_backward` reading and writing past their parameters, the sizes being checked against the reduced shape while cuDNN reaches x's channel count (PR #303)
+* Fix `gemm` writing past its allocation when `c` is a non-contiguous inplace view, and over whatever the pool put next to it (PR #302)
+* Fix `pooling_backward` reading past `y` and `gy`, and returning what it read in `gx` (PR #300)
+* Fix `pow_int` negating INT32_MIN, which overflows and leaves the loop unbounded (PR #299)
+* Fix the device free running for a subscript that allocated no index array (PR #297)
+* Fix a NULL dereference from `at()` given a scalar subscript (PR #271)
+* Fix an out-of-bounds write through an unchecked cuDNN output array (PR #269)
+* Fix `gemm` reading past an operand that carries fewer batch dimensions (PR #268)
+
+Changes:
+
+* Pass a numeric operand to the kernel instead of casting it to a 0-dimensional array first, in the operators, `clip`, `pow`, the comparisons, the NMath functions and the coerced left-hand side; GPT-2 124M decode drops from 787 to 677 kernel launches a token (PR #296, PR #291, PR #290, PR #289, PR #288, PR #287)
+* Run the NMath binary functions through the indexer loop instead of one kernel launch per row; 11x on a transposed operand and up to 60x on the cheap kernels (PR #292)
+* Copy a reduction operand only when it carries an index array, where any non-contiguous view was copied whole (PR #286)
+* Run the nan-aware reductions, the nan-aware index reductions, `kahan_sum` and `Bit#mask` on the GPU (PR #277, PR #276, PR #275, PR #273)
+* Take a transposed batch of matrices with the cuBLAS transpose flag rather than duplicating it, which saves a temporary the size of the operand (PR #283)
+* Emit indexer accessors up to eight dimensions (PR #284)
+* Drop a free-list bin from the pool arena when `Malloc` empties it (PR #279)
+* Check the cuDNN header and version, not just the library (PR #280)
+* Document every method that returns a 0-dimensional NArray, and what keeping scalars on the device buys (PR #298, PR #282)
+* Build two GPU architectures in CI instead of every one (PR #285)
+* Add `fiddle` to the Gemfile (PR #281)
+* Remove TODO comments whose questions have been answered (PR #274)
+* Cover the Int32 array exponent in the INT_MIN power test (PR #301)
+
 # 0.5.9 (2026/08/20)
 
 Breaking changes:
