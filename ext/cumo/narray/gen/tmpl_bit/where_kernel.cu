@@ -50,30 +50,32 @@ __global__ void cumo_bit_where_scan_kernel(uint64_t *block_sums, uint64_t nblock
     }
 }
 
+// The scatter takes an element per lane rather than a chunk, so that the lanes
+// that do write land next to each other. A thread that owned a whole chunk wrote
+// a run of its own, which put the lanes of a warp a run apart.
 __global__ void cumo_bit_where_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, uint64_t nw, int contiguous, int invert, uint64_t nchunks, uint64_t cpb, char *out, size_t elmsz, uint64_t count, uint64_t *block_sums)
 {
-    uint64_t start = blockIdx.x * cpb;
-    uint64_t end = (nchunks - start < cpb) ? nchunks : start + cpb;
+    uint64_t startc = blockIdx.x * cpb;
+    uint64_t endc = (nchunks - startc < cpb) ? nchunks : startc + cpb;
     uint64_t off = block_sums[blockIdx.x];
-    uint64_t c0;
+    uint64_t start, end, i0;
 
-    if (start > nchunks) { start = end = nchunks; }
-    for (c0 = start; c0 < end; c0 += blockDim.x) {
-        uint64_t c = c0 + threadIdx.x;
-        CUMO_BIT_DIGIT z = 0;
+    if (startc > nchunks) { startc = endc = nchunks; }
+    start = startc * CUMO_NB;
+    end = (endc * CUMO_NB < n) ? endc * CUMO_NB : n;
+    for (i0 = start; i0 < end; i0 += blockDim.x) {
+        uint64_t i = i0 + threadIdx.x;
+        CUMO_BIT_DIGIT x = 0;
         uint64_t total;
         uint64_t pre;
-        uint64_t o;
 
-        if (c < end) {
-            z = cumo_bit_chunk(a, p, s, idx, n, nw, c, contiguous, invert);
+        if (i < end) {
+            CUMO_LOAD_BIT(a, cumo_bit_pos(p, s, idx, i), x);
+            if (invert) x = !x;
         }
-        pre = cumo_bit_block_exscan((uint64_t)__popc(z), &total);
-        o = off + pre;
-        while (z) {
-            int k = __ffs(z) - 1;
-            cumo_bit_store_index(out, elmsz, o++, count + c * CUMO_NB + k);
-            z &= z - 1;
+        pre = cumo_bit_block_exscan(x, &total);
+        if (x) {
+            cumo_bit_store_index(out, elmsz, off + pre, count + i);
         }
         off += total;
         __syncthreads();

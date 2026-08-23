@@ -252,6 +252,66 @@ class BitTest < Test::Unit::TestCase
     assert { a.count_true == src.flatten.count(1) }
   end
 
+  # where, where2 and mask only reach the device below
+  # CUMO_BIT_WHERE_MIN_KERNEL_SIZE, which is 8192, so these are the sizes that
+  # exercise the compaction rather than the host loop. 4096 elements is one
+  # block's range, so the sizes straddle that too.
+  [8192, 8193, 12_289, 100_003].each do |n|
+    patterns = {
+      "all true" => proc { |i| 1 },
+      "all false" => proc { |i| 0 },
+      "sparse" => proc { |i| i % 97 == 3 ? 1 : 0 },
+      "mixed" => proc { |i| (i * 7 + i / 13) % 3 == 0 ? 1 : 0 }
+    }
+    patterns.each do |kind, gen|
+      test "where and mask over #{n} #{kind} bits" do
+        src = (0...n).map { |i| gen.call(i) }
+        a = Cumo::Bit.cast(src)
+        f = Cumo::SFloat.new(n).seq
+        ones = (0...n).select { |i| src[i] == 1 }
+        zeros = (0...n).select { |i| src[i].zero? }
+        assert_equal(ones, a.where.to_a)
+        assert_equal([ones, zeros], a.where2.map(&:to_a))
+        assert_equal(ones.map(&:to_f), f[a].to_a)
+        assert_equal(ones.size, a.count_true[0])
+      end
+    end
+
+    test "where and mask over a view of #{n} bits" do
+      src = (0...(2 * n)).map { |i| (i * 5 + 2) % 4 == 0 ? 1 : 0 }
+      a = Cumo::Bit.cast(src)
+      f = Cumo::SFloat.new(2 * n).seq
+      [2, 3].each do |st|
+        r = (0...(2 * n)).step(st)
+        want = r.each_with_index.select { |j, _| src[j] == 1 }.map { |_, k| k }
+        assert_equal(want, a[r].where.to_a)
+        assert_equal(want.map { |k| (k * st).to_f }, f[r][a[r]].to_a)
+      end
+      [1, 5, 33].each do |off|
+        want = (0...n).select { |i| src[off + i] == 1 }
+        assert_equal(want, a[off...(off + n)].where.to_a)
+        assert_equal(want.map { |i| (off + i).to_f }, f[off...(off + n)][a[off...(off + n)]].to_a)
+      end
+      rev = (2 * n - 1).step(0, -1)
+      assert_equal((0...(2 * n)).select { |k| src[2 * n - 1 - k] == 1 }, a[rev].where.to_a)
+    end
+  end
+
+  # The cursor that orders one loop segment after the next lives on the device,
+  # so a shape that ndloop walks in more than one segment is its own case.
+  test "where and mask over a multi-dimensional mask" do
+    r, c = 70, 1000
+    src = (0...(r * c)).map { |i| (i * 3 + 1) % 5 == 0 ? 1 : 0 }
+    a = Cumo::Bit.cast(src).reshape(r, c)
+    f = Cumo::DFloat.new(r * c).seq.reshape(r, c)
+    ones = (0...(r * c)).select { |i| src[i] == 1 }
+    assert_equal(ones, a.where.to_a)
+    assert_equal(ones.map(&:to_f), f[a].to_a)
+    t = (0...(r * c)).select { |k| src[(k % r) * c + k / r] == 1 }
+    assert_equal(t, a.transpose.where.to_a)
+    assert_equal(t.map { |k| ((k % r) * c + k / r).to_f }, f.transpose[a.transpose].to_a)
+  end
+
   test "[]= on a frozen view raises whatever the subscript is" do
     # the store goes to a view derived from self, whose data object is the
     # root, so the check inside get_pointer_for_rw never reaches self
