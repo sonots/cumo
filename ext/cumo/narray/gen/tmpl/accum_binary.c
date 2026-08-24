@@ -1,25 +1,24 @@
 //<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>
-void <%="cumo_#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, uint64_t n);
-void <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(char *p1, char *p2, char *p3, ssize_t s1, ssize_t s2, ssize_t s3, uint64_t n);
+void <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* in2);
 <% end %>
 
 static void
 <%=c_iter%><%=nan%>(cumo_na_loop_t *const lp)
 {
-    size_t   n;
-    char    *p1, *p2, *p3;
-    ssize_t  s1, s2, s3;
-
-    CUMO_INIT_COUNTER(lp, n);
-    CUMO_INIT_PTR(lp, 0, p1, s1);
-    CUMO_INIT_PTR(lp, 1, p2, s2);
-    CUMO_INIT_PTR(lp, 2, p3, s3);
-
     <% if type_name == 'robject' %>
     {
+        size_t   n;
+        char    *p1, *p2, *p3;
+        ssize_t  s1, s2, s3;
         size_t i;
+
+        CUMO_INIT_COUNTER(lp, n);
+        CUMO_INIT_PTR(lp, 0, p1, s1);
+        CUMO_INIT_PTR(lp, 1, p2, s2);
+        CUMO_INIT_PTR(lp, 2, p3, s3);
+
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=nan%>", "<%=type_name%>");
         if (s3==0) {
             dtype z;
@@ -46,12 +45,11 @@ static void
     }
     <% else %>
     {
-        if (s3==0) {
-            <%="cumo_#{type_name}_#{name}#{nan}_reduce_kernel_launch"%>(p1,p2,p3,s1,s2,n);
-            return;
-        } else {
-            <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(p1,p2,p3,s1,s2,s3,n);
-        }
+        // The two operands come out of one broadcast, so the reduction arg's
+        // indexer addresses both and the second only has to carry its steps.
+        cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 2);
+        cumo_na_iarray_t in2 = cumo_na_make_iarray_given_ndim(&lp->args[1], lp->args[0].ndim);
+        <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(&arg, &in2);
     }
     <% end %>
 }
@@ -62,9 +60,16 @@ static VALUE
 {
     VALUE v, reduce;
     VALUE naryv[2];
+    //<% if type_name == 'robject' %>
     cumo_ndfunc_arg_in_t ain[4] = {{cT,0},{cT,0},{cumo_sym_reduce,0},{cumo_sym_init,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP, 4, 1, ain, aout };
+    <% else %>
+    VALUE a1, a2;
+    cumo_ndfunc_arg_in_t ain[3] = {{cT,0},{cT,0},{cumo_sym_reduce,0}};
+    cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP, 3, 1, ain, aout };
+    <% end %>
 
     if (argc < 1) {
         rb_raise(rb_eArgError,"wrong number of arguments (%d for >=1)",argc);
@@ -78,7 +83,18 @@ static VALUE
     reduce = cumo_na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, 0);
     //<% end %>
 
+    //<% if type_name == 'robject' %>
     v =  cumo_na_ndloop(&ndf, 4, self, argv[0], reduce, m_<%=name%>_init);
+    <% else %>
+    // The reduction addresses its operands itself and cannot follow an index
+    // array, so a view backed by one is made contiguous first.
+    a1 = cumo_na_has_idx_p(self) ? cumo_na_copy(self) : self;
+    a2 = argv[0];
+    if (CumoIsNArray(a2) && cumo_na_has_idx_p(a2)) {
+        a2 = cumo_na_copy(a2);
+    }
+    v =  cumo_na_ndloop(&ndf, 3, a1, a2, reduce);
+    <% end %>
     return <%=type_name%>_extract(v);
 }
 
