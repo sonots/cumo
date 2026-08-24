@@ -78,24 +78,37 @@ def clock
   Process.clock_gettime(Process::CLOCK_MONOTONIC)
 end
 
-# Take the minimum. A laptop throttles, which lifts the mean but not the floor,
-# and the pool occasionally grows mid-run, which shows up as a single rep two
-# orders out. Deliberately no collection anywhere near this: cumo hands device
-# memory back to the driver on a collection, so the next allocation faults in
-# fresh managed pages and every case reads an order slower than it is. What the
-# pool needs is warming, not emptying -- see warm_pool below.
+# Take the minimum, and report how far the reps spread while doing it. A laptop
+# throttles, which lifts the mean but not the floor, and the pool occasionally
+# grows mid-run, which shows up as a single rep two orders out.
+#
+# The spread is what says whether the floor is the kernel or a lucky draw. A
+# case that allocates its own result reads bimodally: a rep that finds a block
+# of the right size in the pool runs at memory bandwidth, and one that has to
+# grow the pool pays for fresh managed pages an order or two more. DFloat.cast
+# of a 4MB operand gave 723, 18, 17, 586, 641 microseconds in one run of five,
+# and its floor works out at 745 GB/s, above what the card can do. Reporting the
+# median instead is worse, not better -- it makes every allocating case read at
+# its pool luck rather than its kernel, and took a sweep from 39 flags to 109,
+# including a plain add at 36x. So keep the floor and refuse to let a row that
+# spread like that be the reference its neighbours are read against.
+#
+# Deliberately no collection anywhere near this. A collection hands the pool's
+# blocks back to its own free list rather than to the driver -- total_bytes does
+# not fall across GC.start -- but it costs more than the reuse it buys: one
+# between the warm-up and the reps took a plain store from 11.9 microseconds to
+# 18.3, and two took it to 154.6. What the pool needs is warming, not emptying
+# -- see warm_pool below.
 def measure(reps = REPS)
   3.times { yield }
   sync
-  best = Float::INFINITY
-  reps.times do
+  ts = Array.new(reps) do
     t0 = clock
     yield
     sync
-    dt = clock - t0
-    best = dt if dt < best
+    clock - t0
   end
-  best
+  [ts.min, ts.max / [ts.min, 1e-15].max]
 end
 
 # Leaves a handful of results of the sizes the sweep produces in flight, so the
@@ -386,12 +399,12 @@ def case_rows(group, name, dtype, layout)
       # one paid per launch or per row hardly moves. Comparing the times rather
       # than the times per element is what keeps the smaller run's own launch
       # overhead from answering the question.
-      t = measure { kase[:body].call(ctx) }
+      t, spread = measure { kase[:body].call(ctx) }
       quarter = context(dtype, layout, [ROWS / 4, 1].max)
-      tq = measure(3) { kase[:body].call(quarter) }
+      tq, = measure(3) { kase[:body].call(quarter) }
       work = (kase[:work] || WORK[kase[:group]]).call(ctx)
       shape = t / [tq, 1e-15].max > 2.0 ? 'per element' : 'per launch or per row'
-      out << ['ROW', group, kase[:name], dtype, layout, t, work, shape].join("\t")
+      out << ['ROW', group, kase[:name], dtype, layout, t, work, shape, spread].join("\t")
     rescue StandardError, NotImplementedError => e
       out << ['SKIP', group, kase[:name], dtype, layout,
               "#{e.class}: #{e.message.to_s.split("\n").first.to_s[0, 40]}"].join("\t")
@@ -404,7 +417,7 @@ if CHILD
   group, name, dtype, layout = CHILD.split('|')
   begin
     tiny = XM.const_get(dtype == 'Bit' ? 'SFloat' : dtype).new(1).seq(1)
-    puts ['LAUNCH', measure(9) { tiny * 2 }].join("\t")
+    puts ['LAUNCH', measure(9) { tiny * 2 }.first].join("\t")
     puts case_rows(group, name, dtype, layout.to_sym)
   rescue StandardError => e
     puts ['CELL', group, name, dtype, layout, "#{e.class}: #{e.message.to_s.split("\n").first.to_s[0, 40]}"].join("\t")
@@ -454,7 +467,7 @@ cells.each_with_index do |(group, name, dtype, layout), i|
     when 'ROW'
       t = f[5].to_f
       rows << { group: f[1].to_sym, name: f[2], dtype: f[3], layout: f[4].to_sym,
-                time: t, rate: f[6].to_f / t / 1e9, shape: f[7] }
+                time: t, rate: f[6].to_f / t / 1e9, shape: f[7], spread: f[8].to_f }
     when 'SKIP' then skipped[f[5]] << "#{f[1]}/#{f[2]}/#{f[3]}"
     when 'CELL' then skipped[f[5]] << "#{f[1]}/#{f[2]}/#{f[3]} raised before it could be measured"
     end
@@ -471,8 +484,16 @@ puts
 
 # Within one group, one dtype and one layout, the fastest member is what the
 # hardware can do for that kind of work, so the others are read against it.
+#
+# A row whose reps spread this far did not measure a kernel, it measured whether
+# the pool happened to hold a block of the size it wanted, so its floor is not
+# what the hardware can do and it cannot stand as the reference. It still gets a
+# ratio of its own -- it is only barred from setting one.
+STEADY = 10.0
+
 rows.group_by { |r| [r[:group], r[:dtype], r[:layout]] }.each_value do |cell|
-  ref = cell.max_by { |r| r[:rate] }
+  steady = cell.reject { |r| r[:spread] >= STEADY }
+  ref = (steady.empty? ? cell : steady).max_by { |r| r[:rate] }
   cell.each { |r| r[:ref] = ref[:rate]; r[:ratio] = ref[:rate] / r[:rate] }
 end
 
@@ -504,4 +525,6 @@ puts '  layout, never against a fixed number of GB/s: a Bit operand moves a'
 puts '  thirty-second of what a float one does, and a reduction writes nothing.'
 puts '  alloc, host, compact, scan and sort have no peer to be read against and'
 puts '  are never flagged, nor is a row within ten launches of the floor above;'
-puts '  ALL=1 prints them with the rest.'
+puts '  ALL=1 prints them with the rest. A row whose own reps spread more than'
+puts format('  %.0fx is read like any other but cannot be the reference, since its', STEADY)
+puts '  floor is pool luck rather than what the hardware can do.'
