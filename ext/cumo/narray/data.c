@@ -516,15 +516,15 @@ cumo_na_reshape(int argc, VALUE *argv, VALUE self)
 
 //----------------------------------------------------------------------
 
+void cumo_na_flatten_index_kernel_launch(size_t *idx, cumo_na_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer);
+
 VALUE
 cumo_na_flatten_dim(VALUE self, int sd)
 {
     int i, nd, fd;
-    size_t j, ofs;
-    size_t *c, *pos, *idx1, *idx2;
+    size_t *idx1, *idx2;
     size_t stride;
     size_t  *shape, size;
-    cumo_stridx_t sdx;
     cumo_narray_t *na;
     cumo_narray_view_t *na1, *na2;
     volatile VALUE view;
@@ -577,10 +577,6 @@ cumo_na_flatten_dim(VALUE self, int sd)
         for (i=0; i<sd; i++) {
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                // idx2 = ALLOC_N(size_t, shape[i]);
-                // for (j=0; j<shape[i]; j++) {
-                //     idx2[j] = idx1[j];
-                // }
                 idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*shape[i]);
                 cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*shape[i],cudaMemcpyDeviceToDevice,0));
                 CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
@@ -592,44 +588,20 @@ cumo_na_flatten_dim(VALUE self, int sd)
         if (RTEST(cumo_na_check_ladder(self,sd))) {
             na2->stridx[sd] = na1->stridx[nd-1];
         } else {
-            // set index
-            // idx2 = ALLOC_N(size_t, (shape[sd]==0) ? 1 : shape[sd]);
+            cumo_na_iarray_stridx_t iarray;
+            cumo_na_indexer_t indexer;
+
             idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*((shape[sd]==0) ? 1 : shape[sd]));
             CUMO_SDX_SET_INDEX(na2->stridx[sd],idx2);
-            // init for md-loop
             fd = nd-sd;
-            c = ALLOCA_N(size_t, fd);
-            for (i=0; i<fd; i++) c[i]=0;
-            pos = ALLOCA_N(size_t, fd+1);
-            pos[0] = 0;
-            // md-loop
-            CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("na_flatten_dim", "any");
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-            for (i=j=0;;) {
-                for (; i<fd; i++) {
-                    sdx = na1->stridx[i+sd];
-                    if (CUMO_SDX_IS_INDEX(sdx)) {
-                        if (CUMO_SDX_GET_INDEX(sdx)) {
-                            ofs = CUMO_SDX_GET_INDEX(sdx)[c[i]];
-                        } else {
-                            ofs = 0;
-                        }
-                    } else {
-                        ofs = CUMO_SDX_GET_STRIDE(sdx)*c[i];
-                    }
-                    pos[i+1] = pos[i] + ofs;
-                }
-                idx2[j++] = pos[i];
-                for (;;) {
-                    if (i==0) goto loop_end;
-                    i--;
-                    c[i]++;
-                    if (c[i] < na1->base.shape[i+sd]) break;
-                    c[i] = 0;
-                }
+            iarray.ptr = NULL;
+            indexer.ndim = fd;
+            indexer.total_size = shape[sd];
+            for (i=0; i<fd; i++) {
+                indexer.shape[i] = na1->base.shape[i+sd];
+                iarray.stridx[i] = na1->stridx[i+sd];
             }
-        loop_end:
-            ;
+            cumo_na_flatten_index_kernel_launch(idx2, &iarray, &indexer);
         }
         break;
     }

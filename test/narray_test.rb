@@ -3174,6 +3174,43 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # A view whose dimensions do not collapse into one stride cannot be flattened
+  # by adjusting the strides, so flatten builds an index array for it. That path
+  # is the one worth pinning down; the ladder path is a metadata change.
+  test "flatten lists a non-contiguous view in row-major order" do
+    [[6], [6, 5], [4, 3, 2], [3, 2, 2, 2], [2, 2, 2, 2, 2]].each do |shape|
+      n = shape.reduce(:*)
+      wide = Cumo::Int32.new(*shape.each_with_index.map { |s, i| i.zero? ? s : s * 2 }).seq(1)
+      rotate = shape.each_with_index.map { |s, i| i.zero? ? (0...s).to_a.rotate(1) : true }
+      views = {
+        contig: Cumo::Int32.new(*shape).seq(1),
+        slice: wide[*shape.each_with_index.map { |s, i| i.zero? ? true : (0...s) }],
+        step2: wide[*shape.each_with_index.map { |s, i| i.zero? ? true : (0...(s * 2)).step(2) }],
+        reverse: Cumo::Int32.new(*shape).seq(1).reverse(0),
+        index: Cumo::Int32.new(*shape).seq(1)[*rotate]
+      }
+      views[:transpose] = Cumo::Int32.new(*shape.reverse).seq(1).transpose if shape.size > 1
+      views.each do |name, v|
+        want = v.to_a
+        want = want.flatten while want.first.is_a?(Array)
+        at = "#{shape.inspect} #{name}"
+        assert_equal([n], v.flatten.shape, at)
+        assert_equal(want, v.flatten.to_a, at)
+        assert_equal(want, v.flatten.copy.to_a, "#{at} copy")
+        assert_equal(want, v[(0...n).to_a].to_a, "#{at} flat aref")
+      end
+    end
+  end
+
+  test "flatten of a view writes through to its source" do
+    a = Cumo::Int32.new(4, 6).seq(1)
+    f = a[true, 0...3].flatten
+    f[0] = 999
+    f[7] = 888
+    assert_equal(999, a.to_a[0][0])
+    assert_equal(888, a.to_a[2][1])
+  end
+
   test "mulsum over long axes, views and broadcasts" do
     rows = 5
     cols = 40_000

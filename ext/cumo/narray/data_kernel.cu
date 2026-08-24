@@ -40,6 +40,55 @@ __global__ void cumo_na_diagonal_stride_index_kernel(size_t *idx, ssize_t s0, si
     }
 }
 
+// flatten builds an index array whenever the dimensions it collapses do not
+// come out as one stride. Filling it on the host meant a size_t store per
+// element into memory the device owns, which faults a page at a time: a
+// 512x2048 column slice took 2.4 ms, and the copy that follows faults every
+// page back. The offsets are the same mixed-radix walk the host loop did.
+#define CUMO_NA_FLATTEN_INDEX_KERNEL(NDIM) \
+__global__ void cumo_na_flatten_index_kernel_dim##NDIM(size_t *idx, cumo_na_iarray_stridx_t iarray, cumo_na_indexer_t indexer) \
+{ \
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) { \
+        uint64_t rest = i; \
+        size_t pos = 0; \
+        for (int idim = NDIM; --idim >= 0;) { \
+            uint64_t c = rest % indexer.shape[idim]; \
+            rest /= indexer.shape[idim]; \
+            if (CUMO_SDX_IS_INDEX(iarray.stridx[idim])) { \
+                size_t *idim_idx = CUMO_SDX_GET_INDEX(iarray.stridx[idim]); \
+                if (idim_idx) pos += idim_idx[c]; \
+            } else { \
+                pos += (size_t)(CUMO_SDX_GET_STRIDE(iarray.stridx[idim]) * (ssize_t)c); \
+            } \
+        } \
+        idx[i] = pos; \
+    } \
+}
+
+CUMO_NA_FLATTEN_INDEX_KERNEL(1)
+CUMO_NA_FLATTEN_INDEX_KERNEL(2)
+CUMO_NA_FLATTEN_INDEX_KERNEL(3)
+CUMO_NA_FLATTEN_INDEX_KERNEL(4)
+
+__global__ void cumo_na_flatten_index_kernel_dim(size_t *idx, cumo_na_iarray_stridx_t iarray, cumo_na_indexer_t indexer)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        uint64_t rest = i;
+        size_t pos = 0;
+        for (int idim = indexer.ndim; --idim >= 0;) {
+            uint64_t c = rest % indexer.shape[idim];
+            rest /= indexer.shape[idim];
+            if (CUMO_SDX_IS_INDEX(iarray.stridx[idim])) {
+                size_t *idim_idx = CUMO_SDX_GET_INDEX(iarray.stridx[idim]);
+                if (idim_idx) pos += idim_idx[c];
+            } else {
+                pos += (size_t)(CUMO_SDX_GET_STRIDE(iarray.stridx[idim]) * (ssize_t)c);
+            }
+        }
+        idx[i] = pos;
+    }
+}
+
 // Copying a whole view in one launch, so that ndloop does not have to walk the
 // outer dimensions itself. It synchronizes once per outer step when an operand
 // carries an index array, which for a gathered view costs far more than the
@@ -126,6 +175,32 @@ void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_ia
         break;
     default:
         cumo_iter_copy_bytes_indexer_kernel_dim<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        break;
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+}
+
+void cumo_na_flatten_index_kernel_launch(size_t *idx, cumo_na_iarray_stridx_t* iarray, cumo_na_indexer_t* indexer)
+{
+    size_t grid_dim, block_dim;
+    if (indexer->total_size == 0) return;
+    grid_dim = cumo_get_grid_dim(indexer->total_size);
+    block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+    case 1:
+        cumo_na_flatten_index_kernel_dim1<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        break;
+    case 2:
+        cumo_na_flatten_index_kernel_dim2<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        break;
+    case 3:
+        cumo_na_flatten_index_kernel_dim3<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        break;
+    case 4:
+        cumo_na_flatten_index_kernel_dim4<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        break;
+    default:
+        cumo_na_flatten_index_kernel_dim<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();
