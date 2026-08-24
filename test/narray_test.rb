@@ -813,6 +813,47 @@ class NArrayTest < Test::Unit::TestCase
         c = a[(0..5).step(2)].reverse(0)
         assert { c.mulsum(c, axis: 0) == (c * c).sum(axis: 0) }
       end
+
+      # The reduction addresses each operand with a step set of its own, so the
+      # two do not have to be laid out alike. The reference is the same call
+      # with both made contiguous, which holds for every dtype: comparing
+      # against an elementwise product would widen where mulsum does not.
+      test "mulsum where the two operands have different layouts" do
+        a = small.call([4, 3])
+        b = small.call([4, 3])
+        [[a, b.reverse(0)],
+         [a.reverse(1), b],
+         [a[(0..3).step(2), true], b[(0..3).step(2), true]],
+         [a[[3, 1, 0, 2], true], b],
+         [a, b[[2, 0, 1, 3], true]],
+         [a.transpose, b.transpose],
+         [a.transpose, b.transpose.copy]].each do |x, y|
+          [0, 1].each do |axis|
+            assert { x.mulsum(y, axis: axis) == x.copy.mulsum(y.copy, axis: axis) }
+          end
+        end
+      end
+
+      # A thread walks the reduce axis by a stride of its own only once the axis
+      # outruns the threads a block hands it, so a short one never gets there.
+      test "mulsum walks a long reduce axis on both operands" do
+        n = 1100
+        a = small.call([n, 2])
+        b = small.call([n, 2])
+        [[a, b.reverse(0)],
+         [a.reverse(0), b],
+         [a.reverse(0), b.reverse(0)],
+         [a[(0...n).step(3), true], b[(0...n).step(3), true]],
+         [a[(0...n).step(3), true], b[(0...n).step(3), true].copy]].each do |x, y|
+          assert { x.mulsum(y, axis: 0) == x.copy.mulsum(y.copy, axis: 0) }
+        end
+      end
+
+      test "mulsum keeps the reduced axes when asked" do
+        a = small.call([2, 3, 4])
+        assert { a.mulsum(a, axis: 1, keepdims: true) == (a * a).sum(axis: 1, keepdims: true) }
+        assert { a.mulsum(a, axis: [0, 1], keepdims: true) == (a * a).sum(axis: [0, 1], keepdims: true) }
+      end
     end
 
     sub_test_case "#{dtype}, #dot" do
@@ -3161,6 +3202,12 @@ class NArrayTest < Test::Unit::TestCase
     v = Array.new(cols) { |i| ((i % 5) - 2).to_f }
     assert_equal((0...rows).map { |r| (0...cols).sum { |c| xs[r * cols + c] * v[c] } },
                  g.mulsum(Cumo::DFloat.cast(v), axis: 1).to_a)
+
+    # transposed, the reduce axis is the outer one and neither operand walks by
+    # a single stride
+    want = (0...rows).map { |r| (0...cols).sum { |c| xs[r * cols + c] * ys[r * cols + c] } }
+    assert_equal(want, g.transpose.mulsum(h.transpose, axis: 0).to_a)
+    assert_equal(want, g.transpose.mulsum(h.transpose.copy, axis: 0).to_a)
   end
 
   # the multi-dimensional index of the i-th element of a C-contiguous shape

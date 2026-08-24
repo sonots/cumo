@@ -162,18 +162,21 @@ __device__ static inline ssize_t axes_offset(const cumo_na_iarray_t& iarray, con
     return off;
 }
 
+// The input side takes the iarray and the indexer rather than the whole
+// reduction arg, so that mulsum can address its second operand with the same
+// indexer and a step set of its own.
 template <bool FLAT>
-__device__ static inline ssize_t reduce_in_out_offset(const cumo_na_reduction_arg_t& arg, const cumo_reduce_addr_t& ad, int64_t i_out) {
+__device__ static inline ssize_t reduce_in_out_offset(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, int64_t i_out) {
     if (FLAT || ad.in_out_flat) return i_out * ad.in_out_step;
     if (ad.split < 0) return 0;
-    return axes_offset(arg.in, arg.in_indexer, 0, ad.split, i_out);
+    return axes_offset(in, in_indexer, 0, ad.split, i_out);
 }
 
 template <bool FLAT>
-__device__ static inline ssize_t reduce_in_offset(const cumo_na_reduction_arg_t& arg, const cumo_reduce_addr_t& ad, ssize_t in_out_off, int64_t i_reduce, int64_t i_in) {
+__device__ static inline ssize_t reduce_in_offset(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, ssize_t in_out_off, int64_t i_reduce, int64_t i_in) {
     if (FLAT || ad.in_reduce_flat) return in_out_off + i_reduce * ad.in_reduce_step;
-    if (ad.split < 0) return axes_offset(arg.in, arg.in_indexer, 0, arg.in_indexer.ndim, i_in);
-    return in_out_off + axes_offset(arg.in, arg.in_indexer, ad.split, arg.in_indexer.ndim, i_reduce);
+    if (ad.split < 0) return axes_offset(in, in_indexer, 0, in_indexer.ndim, i_in);
+    return in_out_off + axes_offset(in, in_indexer, ad.split, in_indexer.ndim, i_reduce);
 }
 
 template <bool FLAT>
@@ -221,14 +224,14 @@ __device__ static inline TypeReduce reduce_in_block(TypeReduce accum, TypeReduce
 // the offset of the element from the start of the input, which is the index
 // (min|max)_index answers with.
 template <bool FLAT, bool ARG_INDEX, typename TypeIn, typename ReductionImpl>
-__device__ static inline auto reduce_axis(const cumo_na_reduction_arg_t& arg, const cumo_reduce_addr_t& ad, ReductionImpl& impl,
+__device__ static inline auto reduce_axis(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, ReductionImpl& impl,
         ssize_t in_out_off, int64_t i_in, int64_t begin, int64_t end, int64_t reduce_offset, int64_t reduce_block_size) -> decltype(impl.Identity(0)) {
     using TypeReduce = decltype(impl.Identity(0));
 
-    char* in_base = arg.in.ptr;
+    char* in_base = in.ptr;
     TypeIn* in_head = reinterpret_cast<TypeIn*>(in_base);
     int64_t i_reduce = begin + reduce_offset;
-    char* p = in_base + reduce_in_offset<FLAT>(arg, ad, in_out_off, i_reduce, i_in);
+    char* p = in_base + reduce_in_offset<FLAT>(in, in_indexer, ad, in_out_off, i_reduce, i_in);
     ssize_t advance = ad.in_reduce_step * reduce_block_size;
 
     TypeReduce accum = ARG_INDEX ? impl.Identity(reduce_offset)
@@ -239,7 +242,38 @@ __device__ static inline auto reduce_axis(const cumo_na_reduction_arg_t& arg, co
         impl.Reduce(impl.MapIn(*in_ptr, ARG_INDEX ? i_reduce : static_cast<int64_t>(in_ptr - in_head)), accum);
         p = (FLAT || ad.in_reduce_flat)
             ? p + advance
-            : in_base + reduce_in_offset<FLAT>(arg, ad, in_out_off, i_reduce + reduce_block_size, i_in + reduce_block_size);
+            : in_base + reduce_in_offset<FLAT>(in, in_indexer, ad, in_out_off, i_reduce + reduce_block_size, i_in + reduce_block_size);
+    }
+    return accum;
+}
+
+// Reduces one output element's slice of the reduce axis over two inputs at
+// once, which is what mulsum wants: the product it accumulates never exists as
+// an array. The pair comes out of one broadcast, so arg.in_indexer addresses
+// both and only the steps differ, which is what in2 and ad2 carry.
+template <bool FLAT, typename TypeIn, typename ReductionImpl>
+__device__ static inline auto reduce_axis_zip(const cumo_na_reduction_arg_t& arg, const cumo_na_iarray_t& in2,
+        const cumo_reduce_addr_t& ad, const cumo_reduce_addr_t& ad2, ReductionImpl& impl,
+        ssize_t in_out_off, ssize_t in_out_off2, int64_t i_in, int64_t begin, int64_t end,
+        int64_t reduce_offset, int64_t reduce_block_size) -> decltype(impl.Identity(0)) {
+    using TypeReduce = decltype(impl.Identity(0));
+
+    int64_t i_reduce = begin + reduce_offset;
+    char* p = arg.in.ptr + reduce_in_offset<FLAT>(arg.in, arg.in_indexer, ad, in_out_off, i_reduce, i_in);
+    char* q = in2.ptr + reduce_in_offset<FLAT>(in2, arg.in_indexer, ad2, in_out_off2, i_reduce, i_in);
+    ssize_t advance = ad.in_reduce_step * reduce_block_size;
+    ssize_t advance2 = ad2.in_reduce_step * reduce_block_size;
+
+    TypeReduce accum = impl.Identity(0);
+
+    for (; i_reduce < end; i_reduce += reduce_block_size, i_in += reduce_block_size) {
+        impl.Reduce(impl.MapIn(*reinterpret_cast<TypeIn*>(p), *reinterpret_cast<TypeIn*>(q), i_reduce), accum);
+        p = (FLAT || ad.in_reduce_flat)
+            ? p + advance
+            : arg.in.ptr + reduce_in_offset<FLAT>(arg.in, arg.in_indexer, ad, in_out_off, i_reduce + reduce_block_size, i_in + reduce_block_size);
+        q = (FLAT || ad2.in_reduce_flat)
+            ? q + advance2
+            : in2.ptr + reduce_in_offset<FLAT>(in2, arg.in_indexer, ad2, in_out_off2, i_reduce + reduce_block_size, i_in + reduce_block_size);
     }
     return accum;
 }
@@ -264,10 +298,43 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, cumo_reduce
     int64_t out_stride = gridDim.x * out_block_size;
 
     for (int64_t i_out = out_base + out_offset; i_out < out_total_size; i_out += out_stride) {
-        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg, ad, i_out);
+        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg.in, arg.in_indexer, ad, i_out);
         int64_t i_in = i_out * reduce_total_size + reduce_offset;
 
-        TypeReduce accum = reduce_axis<FLAT,false,TypeIn>(arg, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
+        TypeReduce accum = reduce_axis<FLAT,false,TypeIn>(arg.in, arg.in_indexer, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
+
+        accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        if (reduce_offset == 0) {
+            TypeOut* out_ptr = reinterpret_cast<TypeOut*>(arg.out.ptr + reduce_out_offset<FLAT>(arg, ad, i_out));
+            *out_ptr = impl.MapOut(accum);
+        }
+    }
+}
+
+// Variant of reduction_kernel reading two inputs, for mulsum. See
+// reduce_axis_zip above.
+template <bool FLAT, typename TypeIn, typename TypeOut, typename ReductionImpl>
+__global__ static void reduction_zip_kernel(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, cumo_reduce_addr_t ad, cumo_reduce_addr_t ad2, int out_block_size, int reduce_block_size, ReductionImpl impl) {
+    using TypeReduce = decltype(impl.Identity(0));
+
+    extern __shared__ __align__(8) char sdata_raw[];
+    TypeReduce* sdata = reinterpret_cast<TypeReduce*>(sdata_raw);
+    unsigned int tid = threadIdx.x;
+
+    int64_t out_total_size = arg.out_indexer.total_size;
+    int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
+
+    int64_t reduce_offset = tid / out_block_size;
+    int64_t out_offset = tid % out_block_size;
+    int64_t out_base = blockIdx.x * out_block_size;
+    int64_t out_stride = gridDim.x * out_block_size;
+
+    for (int64_t i_out = out_base + out_offset; i_out < out_total_size; i_out += out_stride) {
+        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg.in, arg.in_indexer, ad, i_out);
+        ssize_t in_out_off2 = reduce_in_out_offset<FLAT>(in2, arg.in_indexer, ad2, i_out);
+        int64_t i_in = i_out * reduce_total_size + reduce_offset;
+
+        TypeReduce accum = reduce_axis_zip<FLAT,TypeIn>(arg, in2, ad, ad2, impl, in_out_off, in_out_off2, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
 
         accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
         if (reduce_offset == 0) {
@@ -296,10 +363,10 @@ __global__ static void reduction_arg_kernel(cumo_na_reduction_arg_t arg, cumo_re
     int64_t out_stride = gridDim.x * out_block_size;
 
     for (int64_t i_out = out_base + out_offset; i_out < out_total_size; i_out += out_stride) {
-        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg, ad, i_out);
+        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg.in, arg.in_indexer, ad, i_out);
         int64_t i_in = i_out * reduce_total_size + reduce_offset;
 
-        TypeReduce accum = reduce_axis<FLAT,true,TypeIn>(arg, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
+        TypeReduce accum = reduce_axis<FLAT,true,TypeIn>(arg.in, arg.in_indexer, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
 
         accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
         if (reduce_offset == 0) {
@@ -329,10 +396,10 @@ __global__ static void reduction_pair_kernel(cumo_na_reduction_arg_t arg, cumo_n
     int64_t out_stride = gridDim.x * out_block_size;
 
     for (int64_t i_out = out_base + out_offset; i_out < out_total_size; i_out += out_stride) {
-        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg, ad, i_out);
+        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg.in, arg.in_indexer, ad, i_out);
         int64_t i_in = i_out * reduce_total_size + reduce_offset;
 
-        TypeReduce accum = reduce_axis<FLAT,false,TypeIn>(arg, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
+        TypeReduce accum = reduce_axis<FLAT,false,TypeIn>(arg.in, arg.in_indexer, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
 
         accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
         if (reduce_offset == 0) {
@@ -371,10 +438,45 @@ __global__ static void reduction_partial_kernel(cumo_na_reduction_arg_t arg, cum
         int64_t begin = i_split * chunk;
         int64_t end = begin + chunk;
         if (end > reduce_total_size) end = reduce_total_size;
-        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg, ad, i_out);
+        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg.in, arg.in_indexer, ad, i_out);
         int64_t i_in = i_out * reduce_total_size + begin + reduce_offset;
 
-        TypeReduce accum = reduce_axis<FLAT,ARG,TypeIn>(arg, ad, impl, in_out_off, i_in, begin, end, reduce_offset, reduce_block_size);
+        TypeReduce accum = reduce_axis<FLAT,ARG,TypeIn>(arg.in, arg.in_indexer, ad, impl, in_out_off, i_in, begin, end, reduce_offset, reduce_block_size);
+
+        accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        if (reduce_offset == 0) {
+            partial[i_out * n_split + i_split] = accum;
+        }
+    }
+}
+
+// First pass of a split zip reduction. See reduction_partial_kernel above.
+template <bool FLAT, typename TypeIn, typename TypeReduce, typename ReductionImpl>
+__global__ static void reduction_zip_partial_kernel(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, cumo_reduce_addr_t ad, cumo_reduce_addr_t ad2, TypeReduce* partial, int64_t n_split, int64_t chunk, int out_block_size, int reduce_block_size, ReductionImpl impl) {
+    extern __shared__ __align__(8) char sdata_raw[];
+    TypeReduce* sdata = reinterpret_cast<TypeReduce*>(sdata_raw);
+    unsigned int tid = threadIdx.x;
+
+    int64_t out_total_size = arg.out_indexer.total_size;
+    int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
+    int64_t partial_total_size = out_total_size * n_split;
+
+    int64_t reduce_offset = tid / out_block_size;
+    int64_t out_offset = tid % out_block_size;
+    int64_t out_base = blockIdx.x * out_block_size;
+    int64_t out_stride = gridDim.x * out_block_size;
+
+    for (int64_t i = out_base + out_offset; i < partial_total_size; i += out_stride) {
+        int64_t i_out = i % out_total_size;
+        int64_t i_split = i / out_total_size;
+        int64_t begin = i_split * chunk;
+        int64_t end = begin + chunk;
+        if (end > reduce_total_size) end = reduce_total_size;
+        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg.in, arg.in_indexer, ad, i_out);
+        ssize_t in_out_off2 = reduce_in_out_offset<FLAT>(in2, arg.in_indexer, ad2, i_out);
+        int64_t i_in = i_out * reduce_total_size + begin + reduce_offset;
+
+        TypeReduce accum = reduce_axis_zip<FLAT,TypeIn>(arg, in2, ad, ad2, impl, in_out_off, in_out_off2, i_in, begin, end, reduce_offset, reduce_block_size);
 
         accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
         if (reduce_offset == 0) {
@@ -426,6 +528,40 @@ TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t 
         reduction_partial_kernel<true,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     } else {
         reduction_partial_kernel<false,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+
+    arg2->in.ptr = reinterpret_cast<char*>(partial);
+    arg2->in.step[0] = sizeof(TypeReduce);
+    arg2->in_indexer.ndim = 1;
+    arg2->in_indexer.shape[0] = partial_total_size;
+    arg2->in_indexer.total_size = partial_total_size;
+    return partial;
+}
+
+// True when both operands of a zip reduction walk by a single stride, which is
+// what lets the offset helpers drop their decomposition.
+static inline bool zip_axes_are_flat(const cumo_reduce_addr_t& ad, const cumo_reduce_addr_t& ad2) {
+    return ad.in_out_flat && ad.in_reduce_flat && ad2.in_out_flat && ad2.in_reduce_flat;
+}
+
+// First pass of a split zip reduction. See reduce_partial_pass above.
+template <typename TypeIn, typename TypeReduce, typename ReductionImpl>
+TypeReduce* reduce_zip_partial_pass(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, cumo_reduce_addr_t ad, cumo_reduce_addr_t ad2, int64_t n_split, int64_t reduce_total_size, cumo_na_reduction_arg_t* arg2, ReductionImpl& impl) {
+    int64_t chunk = (reduce_total_size + n_split - 1) / n_split;
+    int64_t partial_total_size = arg.out_indexer.total_size * n_split;
+    TypeReduce* partial = reinterpret_cast<TypeReduce*>(cumo_cuda_runtime_malloc(sizeof(TypeReduce) * partial_total_size));
+
+    int64_t out_block_size, reduce_block_size;
+    reduce_block_split(ad, chunk, &out_block_size, &reduce_block_size);
+    int64_t out_block_num = (partial_total_size + out_block_size - 1) / out_block_size;
+    int64_t grid_size = std::min(max_grid_size, out_block_num);
+    int64_t shared_mem_size = sizeof(TypeReduce) * max_block_size;
+
+    if (zip_axes_are_flat(ad, ad2)) {
+        reduction_zip_partial_kernel<true,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+    } else {
+        reduction_zip_partial_kernel<false,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     }
     cumo_cuda_runtime_check_kernel_launch();
 
@@ -493,6 +629,68 @@ void cumo_reduce_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl) {
     cumo_na_reduction_arg_t arg2 = arg;
     TypeReduce* partial = cumo_detail::reduce_partial_pass<TypeIn, TypeReduce, ReductionImpl>(arg, ad, n_split, reduce_total_size, &arg2, impl);
     cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(arg2, cumo_detail::reduce_combine<ReductionImpl>{impl});
+    cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
+}
+
+// Variant of cumo_reduce reading two inputs, for mulsum. in2 describes the same
+// shape as arg.in, since the one in_indexer addresses both.
+template <typename TypeIn, typename TypeOut, typename ReductionImpl>
+void cumo_reduce_zip(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, ReductionImpl&& impl) {
+    if (arg.out_indexer.total_size == 0) {
+        return;
+    }
+
+    int64_t reduce_total_size = arg.in_indexer.total_size / arg.out_indexer.total_size;
+    cumo_na_reduction_arg_t arg2 = arg;
+    arg2.in = in2;
+    cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
+    cumo_detail::cumo_reduce_addr_t ad2 = cumo_detail::make_reduce_addr(arg2, reduce_total_size);
+
+    int64_t out_block_size, reduce_block_size;
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
+
+    int64_t block_size = cumo_detail::max_block_size;
+    int64_t grid_size = std::min(cumo_detail::max_grid_size, out_block_num);
+    int64_t shared_mem_size = sizeof(decltype(impl.Identity(0))) * block_size;
+
+    if (cumo_detail::zip_axes_are_flat(ad, ad2) && ad.out_flat) {
+        cumo_detail::reduction_zip_kernel<true,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
+    } else {
+        cumo_detail::reduction_zip_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+}
+
+// cumo_reduce_split for a zip reduction. The first pass reads both operands and
+// the combine pass has only accumulators left, so it is the plain one.
+template <typename TypeIn, typename TypeOut, typename ReductionImpl>
+void cumo_reduce_zip_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, ReductionImpl&& impl) {
+    using TypeReduce = decltype(impl.Identity(0));
+
+    if (arg.out_indexer.total_size == 0) {
+        return;
+    }
+
+    int64_t reduce_total_size = arg.in_indexer.total_size / arg.out_indexer.total_size;
+    cumo_na_reduction_arg_t arg2 = arg;
+    arg2.in = in2;
+    cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
+    cumo_detail::cumo_reduce_addr_t ad2 = cumo_detail::make_reduce_addr(arg2, reduce_total_size);
+
+    int64_t out_block_size, reduce_block_size;
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
+
+    int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
+    if (n_split < 2) {
+        cumo_reduce_zip<TypeIn, TypeOut, ReductionImpl>(arg, in2, std::forward<ReductionImpl>(impl));
+        return;
+    }
+
+    cumo_na_reduction_arg_t combine = arg;
+    TypeReduce* partial = cumo_detail::reduce_zip_partial_pass<TypeIn, TypeReduce, ReductionImpl>(arg, in2, ad, ad2, n_split, reduce_total_size, &combine, impl);
+    cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(combine, cumo_detail::reduce_combine<ReductionImpl>{impl});
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
 }
 
