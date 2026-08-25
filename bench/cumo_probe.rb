@@ -385,11 +385,15 @@ op(:compact, 'where', :bit) { |c| c.a.where }
 op(:compact, 'where2', :bit) { |c| c.a.where2 }
 op(:compact, 'mask') { |c| c.a[c.mask] }
 
-# subscripting
-op(:index, 'aref index', :num, peer: false) { |c| c.a[c.idx, true] }
-op(:index, 'aset scalar') { |c| c.dst[0...(c.rows / 2), true] = c.scalar }
+# Subscripting, where the group's own work is wrong for three of the five: a
+# subscript that returns a view writes one index array and never reads the
+# array it indexes, and a scalar assignment to half the rows writes half the
+# array and reads nothing. Left at 2*n*elmsz the scalar assignment reports
+# what the card cannot do and becomes the reference the rest are read against.
+op(:index, 'aref index', :num, peer: false, work: ->(c) { c.rows * 8 }) { |c| c.a[c.idx, true] }
+op(:index, 'aset scalar', work: ->(c) { (c.rows / 2) * c.cols * c.elmsz }) { |c| c.dst[0...(c.rows / 2), true] = c.scalar }
 op(:index, 'aset array') { |c| c.dst[c.idx, true] = c.b }
-op(:index, 'at', :num) { |c| c.a.at(c.idx, c.idx) }
+op(:index, 'at', :num, peer: false, work: ->(c) { c.rows * 8 }) { |c| c.a.at(c.idx, c.idx) }
 op(:index, 'diagonal', :num, work: ->(c) { 2 * Math.sqrt(c.n) * c.elmsz }) { |c| c.sq.diagonal.copy }
 
 # store and cast, each into a destination the context already allocated
