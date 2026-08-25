@@ -32,12 +32,20 @@ CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL(1)
 CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL(2)
 CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL(3)
 CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL(4)
+CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL(5)
+CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL(6)
+CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL(7)
+CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL(8)
 CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL()
 
 CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL(1)
 CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL(2)
 CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL(3)
 CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL(4)
+CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL(5)
+CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL(6)
+CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL(7)
+CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL(8)
 CUMO_NDLOOP_COPY_TO_BUFFER_KERNEL()
 
 #undef CUMO_NDLOOP_COPY_FROM_BUFFER_KERNEL
@@ -59,6 +67,18 @@ void cumo_ndloop_copy_from_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo
             break;
         case 4:
             cumo_ndloop_copy_from_buffer_kernel_dim4<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            break;
+        case 5:
+            cumo_ndloop_copy_from_buffer_kernel_dim5<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            break;
+        case 6:
+            cumo_ndloop_copy_from_buffer_kernel_dim6<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            break;
+        case 7:
+            cumo_ndloop_copy_from_buffer_kernel_dim7<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            break;
+        case 8:
+            cumo_ndloop_copy_from_buffer_kernel_dim8<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
             break;
         default:
             cumo_ndloop_copy_from_buffer_kernel_dim<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
@@ -83,6 +103,18 @@ void cumo_ndloop_copy_to_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_n
             break;
         case 4:
             cumo_ndloop_copy_to_buffer_kernel_dim4<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            break;
+        case 5:
+            cumo_ndloop_copy_to_buffer_kernel_dim5<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            break;
+        case 6:
+            cumo_ndloop_copy_to_buffer_kernel_dim6<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            break;
+        case 7:
+            cumo_ndloop_copy_to_buffer_kernel_dim7<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            break;
+        case 8:
+            cumo_ndloop_copy_to_buffer_kernel_dim8<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
             break;
         default:
             cumo_ndloop_copy_to_buffer_kernel_dim<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
