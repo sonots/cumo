@@ -149,14 +149,27 @@ def operand(klass, rows, cols, layout)
   end
 end
 
-Ctx = Struct.new(:klass, :dtype, :layout, :rows, :cols, :n, :elmsz, :a, :b, :scalar, :mask, :idx, :sq, :unit, :dst)
+Ctx = Struct.new(:klass, :dtype, :layout, :rows, :cols, :n, :elmsz, :a, :b, :scalar, :mask, :idx, :sq,
+                 :unit, :dst, :sc, :usc, :wide, :int, :tdst, :fdst, :bdst)
 
+# A case that allocates its own result does not measure a kernel in cumo, it
+# measures whether the pool happened to hold a block of the size it wanted --
+# which is an order or two either way and swamps everything else in its group.
+# So the elementwise cases write in place, into sc rather than into a, and the
+# stores write into a destination made here. Measured that way every one of
+# them lands at 11 to 13 microseconds, where allocating forms of the same
+# expressions read anywhere between 20 and 800.
+#
+# Letting sc drift as the reps run it up to infinity costs nothing: exp of it
+# stays at 11 microseconds on the device and 720 on the host once every element
+# is Inf, so there is nothing to restore between reps.
 def context(dtype, layout, rows = ROWS)
   klass = XM.const_get(dtype)
   cols = COLS
   n = rows * cols
   a = operand(klass, rows, cols, layout)
   b = operand(klass, rows, cols, layout)
+  sc = operand(klass, rows, cols, layout)
   elmsz = dtype == 'Bit' ? 0.125 : klass.new(1).byte_size.to_f
   scalar = case dtype
            when 'Bit' then 1
@@ -171,8 +184,18 @@ def context(dtype, layout, rows = ROWS)
   # the domain most of NMath wants, built once: a case that makes its own input
   # times that input too, which for a cheap kernel is most of what it reports
   unit = klass == XM::Bit ? nil : (a.abs % 1.0 rescue nil)
-  dst = klass == XM::Bit ? nil : klass.new(rows, cols)
-  Ctx.new(klass, dtype, layout, rows, cols, n, elmsz, a, b, scalar, mask, idx, sq, unit, dst)
+  usc = unit&.copy
+  # The destinations the store group writes into, allocated here rather than in
+  # the timed body. fill(0) is what makes the pages exist: new() alone does not
+  # allocate until something touches the array.
+  dst = klass.new(rows, cols).fill(dtype == 'Bit' ? 1 : 0)
+  bdst = XM::Bit.new(rows, cols).fill(1)
+  wide = klass == XM::Bit ? nil : (klass == XM::DFloat ? XM::SFloat : XM::DFloat).new(rows, cols).fill(0)
+  int = (klass == XM::Int64 ? XM::Int32 : XM::Int64).new(rows, cols).fill(0)
+  tdst = klass.new(cols, rows).fill(dtype == 'Bit' ? 1 : 0)
+  fdst = klass.new(n).fill(dtype == 'Bit' ? 1 : 0)
+  Ctx.new(klass, dtype, layout, rows, cols, n, elmsz, a, b, scalar, mask, idx, sq,
+          unit, dst, sc, usc, wide, int, tdst, fdst, bdst)
 end
 
 # --- the case table --------------------------------------------------------
@@ -202,8 +225,13 @@ CASES = []
 
 # dt names which dtypes a case applies to: :float, :int, :complex, :real, :bit,
 # :num (anything but Bit), or :any.
-def op(group, name, dt = :num, work: nil, &body)
-  CASES << { group: group, name: name, dt: dt, work: work, body: body }
+#
+# peer: false marks a case that has to allocate its result and has no in-place
+# form -- two outputs, or a subscript that builds its own array. Its number is
+# still printed, but it is neither flagged nor allowed to be a reference, since
+# what separates it from its group is the allocation and not the kernel.
+def op(group, name, dt = :num, work: nil, peer: true, &body)
+  CASES << { group: group, name: name, dt: dt, work: work, peer: peer, body: body }
 end
 
 def applies?(dt, dtype)
@@ -221,59 +249,69 @@ def applies?(dt, dtype)
 end
 
 # elementwise, one operand
-op(:unary, 'abs') { |c| c.a.abs }
-op(:unary, 'sign', :real) { |c| c.a.sign }
-op(:unary, 'square') { |c| c.a.square }
-op(:unary, 'reciprocal') { |c| c.a.reciprocal }
-op(:unary, '-@') { |c| -c.a }
-op(:unary, 'floor', :float) { |c| c.a.floor }
-op(:unary, 'ceil', :float) { |c| c.a.ceil }
-op(:unary, 'round', :float) { |c| c.a.round }
-op(:unary, 'rint', :float) { |c| c.a.rint }
-op(:unary, 'trunc', :float) { |c| c.a.trunc }
-op(:unary, 'conj', :complex) { |c| c.a.conj }
+op(:unary, 'abs') { |c| c.sc.inplace.abs }
+op(:unary, 'sign', :real) { |c| c.sc.inplace.sign }
+op(:unary, 'square') { |c| c.sc.inplace.square }
+# 1/x truncates to zero on the integer types, so a second pass over the scratch
+# would divide by it. Those keep the allocating form, and are read for coverage
+# rather than against their peers.
+op(:unary, 'reciprocal', :float) { |c| c.sc.inplace.reciprocal }
+op(:unary, 'reciprocal', :complex) { |c| c.sc.inplace.reciprocal }
+op(:unary, 'reciprocal', :int, peer: false) { |c| c.a.reciprocal }
+op(:unary, '-@') { |c| -c.sc.inplace }
+op(:unary, 'floor', :float) { |c| c.sc.inplace.floor }
+op(:unary, 'ceil', :float) { |c| c.sc.inplace.ceil }
+op(:unary, 'round', :float) { |c| c.sc.inplace.round }
+op(:unary, 'rint', :float) { |c| c.sc.inplace.rint }
+op(:unary, 'trunc', :float) { |c| c.sc.inplace.trunc }
+op(:unary, 'conj', :complex) { |c| c.sc.inplace.conj }
 op(:unary, 'real', :complex) { |c| c.a.real }
 op(:unary, 'imag', :complex) { |c| c.a.imag }
-op(:unary, 'copy') { |c| c.a.copy }
+op(:unary, 'copy') { |c| c.dst.store(c.a) }
 
 # elementwise, two operands
-op(:binary, 'add') { |c| c.a + c.b }
-op(:binary, 'sub') { |c| c.a - c.b }
-op(:binary, 'mul') { |c| c.a * c.b }
-op(:binary, 'div') { |c| c.a / c.b }
-op(:binary, 'mod', :real) { |c| c.a % c.b }
-op(:binary, 'pow') { |c| c.a**c.b }
-op(:binary, 'copysign', :float) { |c| c.a.copysign(c.b) }
-op(:binary, 'left_shift', :int) { |c| c.a << 1 }
-op(:binary, 'right_shift', :int) { |c| c.a >> 1 }
-op(:binary, 'clip') { |c| c.a.clip(c.b, c.b) }
+op(:binary, 'add') { |c| c.sc.inplace + c.b }
+op(:binary, 'sub') { |c| c.sc.inplace - c.b }
+op(:binary, 'mul') { |c| c.sc.inplace * c.b }
+op(:binary, 'div') { |c| c.sc.inplace / c.b }
+op(:binary, 'mod', :real) { |c| c.sc.inplace % c.b }
+op(:binary, 'pow') { |c| c.sc.inplace**c.b }
+op(:binary, 'copysign', :float) { |c| c.sc.inplace.copysign(c.b) }
+op(:binary, 'left_shift', :int) { |c| c.sc.inplace << 1 }
+op(:binary, 'right_shift', :int) { |c| c.sc.inplace >> 1 }
+op(:binary, 'clip') { |c| c.sc.inplace.clip(c.b, c.b) }
 
 # the scalar path, which is a kernel of its own for every one of these
-op(:scalar, 'add_s') { |c| c.a + c.scalar }
-op(:scalar, 'sub_s') { |c| c.a - c.scalar }
-op(:scalar, 'mul_s') { |c| c.a * c.scalar }
-op(:scalar, 'div_s') { |c| c.a / c.scalar }
-op(:scalar, 'mod_s', :real) { |c| c.a % c.scalar }
-op(:scalar, 'pow_s') { |c| c.a**c.scalar }
-op(:scalar, 'pow_int_s', :float) { |c| c.a**3 }
-op(:scalar, 'clip_s') { |c| c.a.clip(0, 100) }
-op(:scalar, 'clip_min_s') { |c| c.a.clip(0, nil) }
-op(:scalar, 'clip_max_s') { |c| c.a.clip(nil, 100) }
-op(:scalar, 'scalar_left') { |c| c.scalar - c.a }
+op(:scalar, 'add_s') { |c| c.sc.inplace + c.scalar }
+op(:scalar, 'sub_s') { |c| c.sc.inplace - c.scalar }
+op(:scalar, 'mul_s') { |c| c.sc.inplace * c.scalar }
+op(:scalar, 'div_s') { |c| c.sc.inplace / c.scalar }
+op(:scalar, 'mod_s', :real) { |c| c.sc.inplace % c.scalar }
+op(:scalar, 'pow_s') { |c| c.sc.inplace**c.scalar }
+op(:scalar, 'pow_int_s', :float) { |c| c.sc.inplace**3 }
+op(:scalar, 'clip_s') { |c| c.sc.inplace.clip(0, 100) }
+op(:scalar, 'clip_min_s') { |c| c.sc.inplace.clip(0, nil) }
+op(:scalar, 'clip_max_s') { |c| c.sc.inplace.clip(nil, 100) }
+op(:scalar, 'scalar_left') { |c| c.scalar - c.sc.inplace }
 
 # NMath
 %w[sqrt exp exp2 exp10 expm1 log log2 log10 log1p sin cos tan asin acos atan
    sinh cosh tanh asinh acosh atanh cbrt erf erfc sinc].each do |f|
-  op(:math, f, :float) { |c| XM::NMath.send(f, c.unit) }
+  op(:math, f, :float) { |c| XM::NMath.send(f, c.usc.inplace) }
 end
-op(:math, 'atan2', :float) { |c| XM::NMath.atan2(c.a, c.b) }
-op(:math, 'atan2_s', :float) { |c| XM::NMath.atan2(c.a, 1.0) }
-op(:math, 'hypot', :float) { |c| XM::NMath.hypot(c.a, c.b) }
-op(:math, 'ldexp', :float) { |c| XM::NMath.ldexp(c.a, c.idx[0]) }
-op(:math, 'frexp', :float) { |c| XM::NMath.frexp(c.a) }
-op(:math, 'modf', :float) { |c| c.a.modf }
+op(:math, 'atan2', :float) { |c| XM::NMath.atan2(c.sc.inplace, c.b) }
+# The Ruby Float makes NMath dispatch to DFloat::Math, so this one allocates a
+# double array and runs the double kernel however it is written. That is the
+# finding, not an artefact of the harness -- see SFloat::Math.atan2 for the
+# same call at a seventh of the time.
+op(:math, 'atan2_s', :float) { |c| XM::NMath.atan2(c.sc.inplace, 1.0) }
+op(:math, 'hypot', :float) { |c| XM::NMath.hypot(c.sc.inplace, c.b) }
+op(:math, 'ldexp', :float) { |c| XM::NMath.ldexp(c.sc.inplace, c.idx[0]) }
+op(:math, 'frexp', :float, peer: false) { |c| XM::NMath.frexp(c.a) }
+op(:math, 'modf', :float, peer: false) { |c| c.a.modf }
 
-# comparisons, whose output is a Bit array
+# comparisons, whose output is a Bit array a thirty-second the size, so what it
+# costs to allocate does not carry the measurement the way a float one does
 op(:cmp, 'gt') { |c| c.a > c.scalar }
 op(:cmp, 'ge') { |c| c.a >= c.scalar }
 op(:cmp, 'lt') { |c| c.a < c.scalar }
@@ -289,7 +327,7 @@ op(:cmp, 'isfinite', :float) { |c| c.a.isfinite }
 op(:cmp, 'isposinf', :float) { |c| c.a.isposinf }
 op(:cmp, 'isneginf', :float) { |c| c.a.isneginf }
 op(:cmp, 'signbit', :float) { |c| c.a.signbit }
-op(:cmp, 'cast_to_bit', :real) { |c| XM::Bit.cast(c.a) }
+op(:cmp, 'cast_to_bit', :real) { |c| c.bdst.store(c.a) }
 
 # Bit's own operations
 op(:bit, 'and', :bit) { |c| c.a & c.b }
@@ -298,8 +336,8 @@ op(:bit, 'xor', :bit) { |c| c.a ^ c.b }
 op(:bit, 'not', :bit) { |c| ~c.a }
 op(:bit, 'and_s', :bit) { |c| c.a & 1 }
 op(:bit, 'eq', :bit) { |c| c.a.eq(c.b) }
-op(:bit, 'store', :bit) { |c| XM::Bit.new(c.rows, c.cols).store(c.a) }
-op(:bit, 'fill', :bit) { |c| XM::Bit.new(c.rows, c.cols).fill(1) }
+op(:bit, 'store', :bit) { |c| c.dst.store(c.a) }
+op(:bit, 'fill', :bit) { |c| c.dst.fill(1) }
 
 # reductions over the whole array
 op(:reduce, 'sum') { |c| c.a.sum }
@@ -338,9 +376,9 @@ op(:axis, 'count_true axis1', :bit) { |c| c.a.count_true(axis: 1) }
 op(:axis, 'all? axis1', :bit) { |c| c.a.all?(axis: 1) }
 
 # scans
-op(:scan, 'cumsum') { |c| c.a.cumsum }
-op(:scan, 'cumprod') { |c| c.a.cumprod }
-op(:scan, 'cumsum_nan', :float) { |c| c.a.cumsum(nan: true) }
+op(:scan, 'cumsum') { |c| c.sc.inplace.cumsum }
+op(:scan, 'cumprod') { |c| c.sc.inplace.cumprod }
+op(:scan, 'cumsum_nan', :float) { |c| c.sc.inplace.cumsum(nan: true) }
 
 # compaction, whose output is an index array
 op(:compact, 'where', :bit) { |c| c.a.where }
@@ -348,21 +386,21 @@ op(:compact, 'where2', :bit) { |c| c.a.where2 }
 op(:compact, 'mask') { |c| c.a[c.mask] }
 
 # subscripting
-op(:index, 'aref index') { |c| c.a[c.idx, true] }
+op(:index, 'aref index', :num, peer: false) { |c| c.a[c.idx, true] }
 op(:index, 'aset scalar') { |c| c.dst[0...(c.rows / 2), true] = c.scalar }
 op(:index, 'aset array') { |c| c.dst[c.idx, true] = c.b }
 op(:index, 'at', :num) { |c| c.a.at(c.idx, c.idx) }
 op(:index, 'diagonal', :num, work: ->(c) { 2 * Math.sqrt(c.n) * c.elmsz }) { |c| c.sq.diagonal.copy }
 
-# store and cast
-op(:store, 'store same', :any) { |c| c.klass.new(c.rows, c.cols).store(c.a) }
-op(:store, 'cast wider', :num, work: ->(c) { 3 * c.n * c.elmsz }) { |c| (c.klass == XM::DFloat ? XM::SFloat : XM::DFloat).cast(c.a) }
-op(:store, 'cast int', :real) { |c| (c.klass == XM::Int64 ? XM::Int32 : XM::Int64).cast(c.a) }
-op(:store, 'cast from bit', :bit, work: ->(c) { c.n * (0.125 + 4) }) { |c| XM::Int32.cast(c.a) }
-op(:store, 'fill', :num) { |c| c.a.copy.fill(c.scalar) }
-op(:store, 'seq', :num) { |c| c.klass.new(c.rows, c.cols).seq(1) }
-op(:store, 'transpose copy', :num) { |c| c.a.transpose.copy }
-op(:store, 'reshape copy', :num) { |c| c.a.flatten.copy }
+# store and cast, each into a destination the context already allocated
+op(:store, 'store same', :any) { |c| c.dst.store(c.a) }
+op(:store, 'cast wider', :num, work: ->(c) { 3 * c.n * c.elmsz }) { |c| c.wide.store(c.a) }
+op(:store, 'cast int', :real) { |c| c.int.store(c.a) }
+op(:store, 'cast from bit', :bit, work: ->(c) { c.n * (0.125 + 8) }) { |c| c.int.store(c.a) }
+op(:store, 'fill', :num, work: ->(c) { c.n * c.elmsz }) { |c| c.dst.fill(c.scalar) }
+op(:store, 'seq', :num, work: ->(c) { c.n * c.elmsz }) { |c| c.dst.seq(1) }
+op(:store, 'transpose copy', :num) { |c| c.tdst.store(c.a.transpose) }
+op(:store, 'reshape copy', :num) { |c| c.fdst.store(c.a.flatten) }
 
 # sorting
 op(:sort, 'sort', :real) { |c| c.a.sort }
@@ -404,7 +442,8 @@ def case_rows(group, name, dtype, layout)
       tq, = measure(3) { kase[:body].call(quarter) }
       work = (kase[:work] || WORK[kase[:group]]).call(ctx)
       shape = t / [tq, 1e-15].max > 2.0 ? 'per element' : 'per launch or per row'
-      out << ['ROW', group, kase[:name], dtype, layout, t, work, shape, spread].join("\t")
+      out << ['ROW', group, kase[:name], dtype, layout, t, work, shape, spread,
+              kase[:peer] ? 1 : 0].join("\t")
     rescue StandardError, NotImplementedError => e
       out << ['SKIP', group, kase[:name], dtype, layout,
               "#{e.class}: #{e.message.to_s.split("\n").first.to_s[0, 40]}"].join("\t")
@@ -467,7 +506,8 @@ cells.each_with_index do |(group, name, dtype, layout), i|
     when 'ROW'
       t = f[5].to_f
       rows << { group: f[1].to_sym, name: f[2], dtype: f[3], layout: f[4].to_sym,
-                time: t, rate: f[6].to_f / t / 1e9, shape: f[7], spread: f[8].to_f }
+                time: t, rate: f[6].to_f / t / 1e9, shape: f[7], spread: f[8].to_f,
+                peer: f[9] != '0' }
     when 'SKIP' then skipped[f[5]] << "#{f[1]}/#{f[2]}/#{f[3]}"
     when 'CELL' then skipped[f[5]] << "#{f[1]}/#{f[2]}/#{f[3]} raised before it could be measured"
     end
@@ -492,13 +532,14 @@ puts
 STEADY = 10.0
 
 rows.group_by { |r| [r[:group], r[:dtype], r[:layout]] }.each_value do |cell|
-  steady = cell.reject { |r| r[:spread] >= STEADY }
+  steady = cell.select { |r| r[:peer] && r[:spread] < STEADY }
   ref = (steady.empty? ? cell : steady).max_by { |r| r[:rate] }
   cell.each { |r| r[:ref] = ref[:rate]; r[:ratio] = ref[:rate] / r[:rate] }
 end
 
 NO_PEER = %i[alloc host compact scan sort].freeze
 flagged = rows.reject { |r| NO_PEER.include?(r[:group]) }
+              .select { |r| r[:peer] }
               .reject { |r| r[:time] < launch * 10 }
               .select { |r| r[:ratio] >= FLAG }
               .sort_by { |r| -r[:ratio] }
@@ -525,6 +566,8 @@ puts '  layout, never against a fixed number of GB/s: a Bit operand moves a'
 puts '  thirty-second of what a float one does, and a reduction writes nothing.'
 puts '  alloc, host, compact, scan and sort have no peer to be read against and'
 puts '  are never flagged, nor is a row within ten launches of the floor above;'
-puts '  ALL=1 prints them with the rest. A row whose own reps spread more than'
-puts format('  %.0fx is read like any other but cannot be the reference, since its', STEADY)
-puts '  floor is pool luck rather than what the hardware can do.'
+puts '  ALL=1 prints them with the rest, along with the cases that have to'
+puts '  allocate their result and so cannot be compared with in-place peers.'
+puts format('  A row whose own reps spread more than %.0fx is read like any other but', STEADY)
+puts '  cannot be the reference, since its floor is pool luck rather than what'
+puts '  the hardware can do.'
