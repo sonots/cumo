@@ -3202,6 +3202,37 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # A store into a view with an index array is buffered by ndloop, which copies
+  # the operand one element per thread. Contracting the trailing contiguous
+  # dimensions into a single element left a whole row to one thread.
+  test "index assignment writes every element for any rank" do
+    order = [2, 0, 1]
+    (1..8).each do |rank|
+      shape = [3] * rank
+      sub = [Cumo::Int64[*order]] * rank
+      a = Cumo::Int32.new(*shape).seq(1)
+      b = Cumo::Int32.new(*shape).seq(1000)
+      want = a.to_a
+      apply = lambda do |dst, src, depth|
+        order.each_with_index do |d, k|
+          depth == rank - 1 ? dst[d] = src[k] : apply.call(dst[d], src[k], depth + 1)
+        end
+      end
+      apply.call(want, b.to_a, 0)
+      a[*sub] = b
+      assert_equal(want, a.to_a, "rank #{rank}")
+    end
+  end
+
+  test "index assignment fills a wide row" do
+    a = Cumo::Int32.new(5, 300).seq(1)
+    b = Cumo::Int32.new(3, 300).seq(1000)
+    want = a.to_a
+    [4, 1, 2].each_with_index { |dst, k| want[dst] = b.to_a[k] }
+    a[Cumo::Int64[4, 1, 2], true] = b
+    assert_equal(want, a.to_a)
+  end
+
   test "flatten of a view writes through to its source" do
     a = Cumo::Int32.new(4, 6).seq(1)
     f = a[true, 0...3].flatten

@@ -1113,6 +1113,13 @@ cumo_ndfunc_set_bufcp(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
                 sz *= n;
             }
             LBUFCP(lp,j) = ALLOC(cumo_na_buffer_copy_t);
+            LBUFCP(lp,j)->buf_on_device = cumo_cuda_runtime_is_device_memory(LARG(lp,j).ptr);
+            if (LBUFCP(lp,j)->buf_on_device) {
+                // The copy below runs one thread per element, so a contracted
+                // element leaves a whole row to a single thread.
+                ndim = nd;
+                elmsz = LARG(lp,j).elmsz;
+            }
             LBUFCP(lp,j)->ndim = ndim;
             LBUFCP(lp,j)->elmsz = elmsz;
             LBUFCP(lp,j)->n = buf_shape;
@@ -1121,7 +1128,6 @@ cumo_ndfunc_set_bufcp(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
             LARG(lp,j).iter = buf_iter;
             //printf("in cumo_ndfunc_set_bufcp(1): lp->user.args[%d].iter=%lx\n",j,(size_t)(LARG(lp,j).iter));
             LBUFCP(lp,j)->src_ptr = LARG(lp,j).ptr;
-            LBUFCP(lp,j)->buf_on_device = cumo_cuda_runtime_is_device_memory(LARG(lp,j).ptr);
             if (LBUFCP(lp,j)->buf_on_device) {
                 LARG(lp,j).ptr = LBUFCP(lp,j)->buf_ptr = cumo_cuda_runtime_malloc(sz);
             }
