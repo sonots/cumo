@@ -150,7 +150,7 @@ def operand(klass, rows, cols, layout)
 end
 
 Ctx = Struct.new(:klass, :dtype, :layout, :rows, :cols, :n, :elmsz, :a, :b, :scalar, :mask, :idx, :sq,
-                 :unit, :dst, :sc, :usc, :wide, :int, :tdst, :fdst, :bdst)
+                 :unit, :dst, :sc, :usc, :wide, :int, :tdst, :fdst, :bdst, :flat)
 
 # A case that allocates its own result does not measure a kernel in cumo, it
 # measures whether the pool happened to hold a block of the size it wanted --
@@ -194,8 +194,13 @@ def context(dtype, layout, rows = ROWS)
   int = (klass == XM::Int64 ? XM::Int32 : XM::Int64).new(rows, cols).fill(0)
   tdst = klass.new(cols, rows).fill(dtype == 'Bit' ? 1 : 0)
   fdst = klass.new(n).fill(dtype == 'Bit' ? 1 : 0)
+  # Flattening a view that no stride can describe builds an index array of one
+  # size_t per element, and a fresh managed block of that size costs more to
+  # first touch than any kernel in this file: 8MB of it reads 563us against the
+  # 9.2us the kernel filling it takes. Built here, the row measures the store.
+  flat = a.flatten
   Ctx.new(klass, dtype, layout, rows, cols, n, elmsz, a, b, scalar, mask, idx, sq,
-          unit, dst, sc, usc, wide, int, tdst, fdst, bdst)
+          unit, dst, sc, usc, wide, int, tdst, fdst, bdst, flat)
 end
 
 # --- the case table --------------------------------------------------------
@@ -404,7 +409,7 @@ op(:store, 'cast from bit', :bit, work: ->(c) { c.n * (0.125 + 8) }) { |c| c.int
 op(:store, 'fill', :num, work: ->(c) { c.n * c.elmsz }) { |c| c.dst.fill(c.scalar) }
 op(:store, 'seq', :num, work: ->(c) { c.n * c.elmsz }) { |c| c.dst.seq(1) }
 op(:store, 'transpose copy', :num) { |c| c.tdst.store(c.a.transpose) }
-op(:store, 'reshape copy', :num) { |c| c.fdst.store(c.a.flatten) }
+op(:store, 'reshape copy', :num) { |c| c.fdst.store(c.flat) }
 
 # sorting
 op(:sort, 'sort', :real) { |c| c.a.sort }
