@@ -1,12 +1,10 @@
 //<% unless c_iter.include? 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer);
-//<% end %>
-//<% if type_name == class_name && !c_iter.include?('robject') %>
 void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_iarray_stridx_t* a2, cumo_na_indexer_t* indexer);
 
-// store_array calls this iterator with a loop of its own that keeps
-// CUMO_NDF_INDEX_LOOP on, so an index array can reach here. cumo_na_iarray_t
-// carries byte steps only, and an indexed operand has a step of zero.
+// With INDEX_LOOP on either operand can arrive carrying an index array, and
+// cumo_na_iarray_t carries byte steps only: an indexed operand has a step of
+// zero there, so those are addressed through cumo_na_iarray_stridx_t instead.
 static int
 <%=c_iter%>_has_index(cumo_na_loop_t *const lp)
 {
@@ -74,15 +72,12 @@ static void
     {
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-        //<% if type_name == class_name %>
         if (<%=c_iter%>_has_index(lp)) {
             cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
             cumo_na_iarray_stridx_t b2 = cumo_na_make_iarray_stridx(&lp->args[1]);
 
             <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&b2,&indexer);
-        } else
-        //<% end %>
-        {
+        } else {
             cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
             cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
 
@@ -101,10 +96,10 @@ static VALUE
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0 };
     <% else %>
     // Without INDEXER_LOOP ndloop walks the outer dimensions itself and the
-    // kernel runs once per row, which for a column slice costs one launch per
-    // row and nothing else. An index on either side is buffered into
-    // contiguous memory first, in one launch of its own.
-    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 0, ain, 0 };
+    // kernel runs once per row. INDEX_LOOP has to stay on too: staging an
+    // indexed operand into a contiguous buffer costs a copy in each direction,
+    // and the one of the destination is read back over by this very store.
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 0, ain, 0 };
     <% end %>
 
     cumo_na_ndloop(&ndf, 2, self, obj);
