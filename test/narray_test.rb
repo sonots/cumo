@@ -3233,6 +3233,34 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(want, a.to_a)
   end
 
+  # A store between two dtypes staged an indexed operand through a contiguous
+  # buffer, so only the same-type store ever addressed an index itself. Each
+  # pair of dtypes now has a kernel of its own to do it.
+  test "a cast store writes every element through an index" do
+    order = [4, 0, 2]
+    idx = Cumo::Int64[*order]
+    [[Cumo::SFloat, Cumo::DFloat], [Cumo::DFloat, Cumo::SFloat],
+     [Cumo::Int32, Cumo::Int64], [Cumo::Int64, Cumo::UInt8],
+     [Cumo::UInt8, Cumo::Int32], [Cumo::DComplex, Cumo::DFloat],
+     [Cumo::SFloat, Cumo::Int32]].each do |dst_type, src_type|
+      at = "#{dst_type} <- #{src_type}"
+
+      src = src_type.new(order.size, 5).seq(1)
+      want = dst_type.new(6, 5).fill(0)
+      order.each_with_index { |row, k| want[row, true] = src[k, true] }
+      dst = dst_type.new(6, 5).fill(0)
+      dst[idx, true] = src
+      assert_equal(want.to_a, dst.to_a, "#{at} indexed destination")
+
+      wide = src_type.new(6, 5).seq(1)
+      want = dst_type.new(order.size, 5).fill(0)
+      order.each_with_index { |row, k| want[k, true] = wide[row, true] }
+      dst = dst_type.new(order.size, 5).fill(0)
+      dst.store(wide[idx, true])
+      assert_equal(want.to_a, dst.to_a, "#{at} indexed source")
+    end
+  end
+
   test "flatten of a view writes through to its source" do
     a = Cumo::Int32.new(4, 6).seq(1)
     f = a[true, 0...3].flatten
