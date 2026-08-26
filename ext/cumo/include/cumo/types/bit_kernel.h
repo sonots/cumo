@@ -118,6 +118,92 @@ cumo_bit_chunk(const CUMO_BIT_DIGIT *a, size_t p, ssize_t s, const size_t *idx, 
     return z & CUMO_SLB(kend);
 }
 
+// The trailing loop dimensions along which a Bit operand runs bit by bit. When
+// the output takes a whole word from one thread, the input can be gathered a
+// word at a time over those rather than a bit at a time through the indexer,
+// whose decomposition costs two runtime divisions per element. A column slice
+// is a run per row with the rows apart, which is the case this is for.
+typedef struct {
+    int ok;
+    int outer_ndim;      // loop dimensions [0, outer_ndim) address a row
+    int64_t inner_len;   // elements in one row
+} cumo_bit_run_t;
+
+static inline cumo_bit_run_t
+cumo_bit_make_run(const cumo_na_bit_iarray_stridx_t* a, const cumo_na_indexer_t* indexer)
+{
+    cumo_bit_run_t run;
+    int k = indexer->ndim;
+    ssize_t acc = 1;
+
+    run.ok = 0;
+    run.outer_ndim = indexer->ndim;
+    run.inner_len = 1;
+    while (k > 0 &&
+           CUMO_SDX_IS_STRIDE(a->stridx[k-1]) &&
+           CUMO_SDX_GET_STRIDE(a->stridx[k-1]) == acc) {
+        acc *= (ssize_t)indexer->shape[k-1];
+        --k;
+    }
+    // A row shorter than a word would leave the gather below assembling one out
+    // of several rows, which is what the bit-at-a-time path already does.
+    if (k < indexer->ndim && acc >= (ssize_t)CUMO_NB) {
+        run.ok = 1;
+        run.outer_ndim = k;
+        run.inner_len = (int64_t)acc;
+    }
+    return run;
+}
+
+// Bit position of the first element of the given row.
+__device__ static inline size_t
+cumo_bit_run_pos(const cumo_na_bit_iarray_stridx_t* a, const cumo_na_indexer_t* indexer, cumo_bit_run_t run, int64_t row)
+{
+    size_t pos = a->pos;
+    for (int j = run.outer_ndim; --j >= 0;) {
+        int64_t n = (int64_t)indexer->shape[j];
+        int64_t k = row % n;
+        row /= n;
+        if (CUMO_SDX_IS_INDEX(a->stridx[j])) {
+            pos += CUMO_SDX_GET_INDEX(a->stridx[j])[k];
+        } else {
+            pos += CUMO_SDX_GET_STRIDE(a->stridx[j]) * k;
+        }
+    }
+    return pos;
+}
+
+// Elements [w*CUMO_NB, w*CUMO_NB+CUMO_NB) of a loop over n elements, as one
+// word. A word straddles two rows unless the row length is a multiple of
+// CUMO_NB, so it is taken in as many pieces as it has rows -- one, almost
+// always two at most.
+__device__ static inline CUMO_BIT_DIGIT
+cumo_bit_run_word(const cumo_na_bit_iarray_stridx_t* a, const cumo_na_indexer_t* indexer, cumo_bit_run_t run, uint64_t w, uint64_t n)
+{
+    const ssize_t nb = (ssize_t)CUMO_NB;
+    uint64_t base = w * CUMO_NB;
+    CUMO_BIT_DIGIT z = 0;
+    uint64_t k = 0;
+
+    while (k < CUMO_NB && base + k < n) {
+        int64_t i = (int64_t)(base + k);
+        int64_t row = i / run.inner_len;
+        int64_t col = i - row * run.inner_len;
+        uint64_t take = (uint64_t)(run.inner_len - col);
+        if (take > CUMO_NB - k)   take = CUMO_NB - k;
+        if (base + k + take > n)  take = n - (base + k);
+
+        size_t p = cumo_bit_run_pos(a, indexer, run, row) + (size_t)col;
+        ssize_t o = (ssize_t)(p % CUMO_NB);
+        uint64_t nw = (uint64_t)((o + (ssize_t)take + nb - 1) / nb);
+        CUMO_BIT_DIGIT piece = cumo_bit_gather_word(a->ptr + p / CUMO_NB, o, nw, 0);
+
+        z |= (piece & CUMO_SLB(take)) << k;
+        k += take;
+    }
+    return z;
+}
+
 // Stores the k-th index of a where result, whose element size the caller picked
 // from the size of the operand.
 __device__ static inline void
