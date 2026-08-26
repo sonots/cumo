@@ -355,6 +355,36 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
+  # A reduction addresses its operands itself, so mulsum makes one that carries
+  # an index array contiguous first -- with a copy that moves whole bytes, where
+  # a Bit element is one bit. The sum came out of the wrong bits.
+  test "mulsum over an indexed Bit operand reads the bits it was given" do
+    n = 12
+    src = (0...n).map { |i| i % 3 == 1 ? 1 : 0 }
+    a = Cumo::SFloat.new(n).seq(1)
+    b = Cumo::Bit.cast(src)
+
+    assert_equal(src.each_index.sum { |i| (i + 1) * src[i] }.to_f, Float(a.mulsum(b)))
+
+    [[1, 4, 7, 10], [0, 1, 2], [11, 10, 9], [4, 4, 4]].each do |idx|
+      want = idx.sum { |i| (i + 1) * src[i] }.to_f
+      at = "idx #{idx.inspect}"
+      assert_equal(idx.map { |i| src[i] }, b[idx].to_a, "#{at} view")
+      assert_equal(want, Float(a[idx].mulsum(b[idx])), at)
+      assert_equal(want, Float(a[idx].mulsum(b[idx].copy)), "#{at} copied")
+    end
+  end
+
+  test "NArray#copy of a Bit copies bits, not bytes" do
+    src = (0...40).map { |i| i % 3 == 1 ? 1 : 0 }
+    b = Cumo::Bit.cast(src)
+    na_copy = Cumo::NArray.instance_method(:copy)
+    assert_equal(src, na_copy.bind(b).call.to_a)
+    idx = (0...40).select { |i| i % 7 == 2 }
+    assert_equal(idx.map { |i| src[i] }, na_copy.bind(b[idx]).call.to_a)
+    assert_equal(src[5, 20], na_copy.bind(b[5...25]).call.to_a)
+  end
+
   test "all? and any? split a long axis across blocks" do
     rows = 2
     cols = 200_003
