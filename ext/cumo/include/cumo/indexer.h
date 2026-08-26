@@ -67,6 +67,16 @@ typedef struct {
     cumo_na_indexer_t out_indexer;
 } cumo_na_reduction_arg_t;
 
+/* The same for a Bit input. Steps on the input side are bits and on the output
+ * side bytes, which is why this cannot be the struct above.
+ */
+typedef struct {
+    cumo_na_bit_iarray_t in;
+    cumo_na_iarray_t out;
+    cumo_na_indexer_t in_indexer;
+    cumo_na_indexer_t out_indexer;
+} cumo_na_bit_reduction_arg_t;
+
 #ifndef __CUDACC__
 extern int cumo_na_debug_flag;  // narray.c
 
@@ -215,6 +225,30 @@ cumo_na_make_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
     if (cumo_na_debug_flag) {
         print_cumo_na_reduction_arg_t(&arg);
     }
+
+    return arg;
+}
+
+static cumo_na_bit_reduction_arg_t
+cumo_na_make_bit_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
+{
+    cumo_na_bit_reduction_arg_t arg;
+    int i;
+    int in_ndim = lp_user->args[0].ndim;
+
+    arg.in = cumo_na_make_bit_iarray(&lp_user->args[0]);
+    arg.in_indexer = cumo_na_make_indexer(&lp_user->args[0]);
+
+    arg.out_indexer.ndim = 0;
+    arg.out_indexer.total_size = 1;
+    for (i = 0; i < in_ndim; ++i) {
+        if (!cumo_na_test_reduce(lp_user->reduce, i)) {
+            arg.out_indexer.shape[arg.out_indexer.ndim] = arg.in_indexer.shape[i];
+            arg.out_indexer.total_size *= arg.in_indexer.shape[i];
+            ++arg.out_indexer.ndim;
+        }
+    }
+    arg.out = cumo_na_make_iarray_given_ndim(&lp_user->args[out_arg], arg.out_indexer.ndim);
 
     return arg;
 }
