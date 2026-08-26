@@ -355,6 +355,42 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
+  # A view whose rows are each a run of bits but sit apart -- a column slice --
+  # is not flat over the whole reduce group, and the fold within a row was given
+  # up along with it. These rows start at a different bit of their word from one
+  # another and do not end on a word boundary, which is what the fold has to
+  # carry now.
+  test "count_true folds words within a row of a view it cannot flatten" do
+    [[9, 37], [5, 32], [7, 31], [4, 96], [3, 200]].each do |rows, cols|
+      src = (0...rows).map { |r| bits.call(cols * 2).rotate(r * 3) }
+      a = Cumo::Bit.cast(src)
+      slice = a[true, 0...cols]
+      want = src.map { |row| row[0, cols] }.flatten
+      at = "#{rows}x#{cols}"
+
+      assert_equal(want.count(1), slice.count_true.to_i, "#{at} count_true")
+      assert_equal(want.count(0), slice.count_false.to_i, "#{at} count_false")
+      assert_equal(want.count(1), slice.count_true(axis: [0, 1]).to_i, "#{at} both axes")
+      assert_equal(want.all? { |v| v == 1 }, slice.all?, "#{at} all?")
+      assert_equal(want.any? { |v| v == 1 }, slice.any?, "#{at} any?")
+    end
+  end
+
+  test "count_true folds words within the trailing axes of a 3-D view" do
+    rows, mid, cols = 4, 5, 66
+    wide = cols * 2
+    src = bits.call(rows * mid * wide)
+    a = Cumo::Bit.cast(src).reshape(rows, mid, wide)[true, true, 0...cols]
+    at = ->(i, j, k) { src[(i * mid + j) * wide + k] }
+
+    want = (0...rows).map do |i|
+      (0...mid).sum { |j| (0...cols).count { |k| at.call(i, j, k) == 1 } }
+    end
+    assert_equal(want, a.count_true(axis: [1, 2]).to_a)
+    assert_equal(want.sum, a.count_true.to_i)
+    assert_equal(want.map { |c| mid * cols - c }, a.count_false(axis: [1, 2]).to_a)
+  end
+
   # A reduction addresses its operands itself, so mulsum makes one that carries
   # an index array contiguous first -- with a copy that moves whole bytes, where
   # a Bit element is one bit. The sum came out of the wrong bits.
