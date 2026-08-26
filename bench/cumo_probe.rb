@@ -515,7 +515,7 @@ cells.each_with_index do |(group, name, dtype, layout), i|
     when 'ROW'
       t = f[5].to_f
       rows << { group: f[1].to_sym, name: f[2], dtype: f[3], layout: f[4].to_sym,
-                time: t, rate: f[6].to_f / t / 1e9, shape: f[7], spread: f[8].to_f,
+                time: t, work: f[6].to_f, rate: f[6].to_f / t / 1e9, shape: f[7], spread: f[8].to_f,
                 peer: f[9] != '0' }
     when 'SKIP' then skipped[f[5]] << "#{f[1]}/#{f[2]}/#{f[3]}"
     when 'CELL' then skipped[f[5]] << "#{f[1]}/#{f[2]}/#{f[3]} raised before it could be measured"
@@ -534,22 +534,36 @@ puts
 # Within one group, one dtype and one layout, the fastest member is what the
 # hardware can do for that kind of work, so the others are read against it.
 #
+# What a row costs is the launch above plus what its kernel does, and the ratio
+# has to be taken on the second part alone. Reading 60 against 12 microseconds
+# as five understates a kernel that is fifty times its peer's, and the answer
+# used to be to throw away everything within ten launches of the floor -- which
+# threw away the whole band an in-place elementwise case lives in, since those
+# land at one to two launches. A kernel that cannot be resolved below the floor
+# is credited with one launch, so a row is never read as faster than the harness
+# can see and the ratio is a lower bound rather than a guess.
+#
 # A row whose reps spread this far did not measure a kernel, it measured whether
 # the pool happened to hold a block of the size it wanted, so its floor is not
 # what the hardware can do and it cannot stand as the reference. It still gets a
 # ratio of its own -- it is only barred from setting one.
 STEADY = 10.0
 
+def net_rate(row, launch)
+  row[:work] / [row[:time] - launch, launch].max / 1e9
+end
+
 rows.group_by { |r| [r[:group], r[:dtype], r[:layout]] }.each_value do |cell|
   steady = cell.select { |r| r[:peer] && r[:spread] < STEADY }
-  ref = (steady.empty? ? cell : steady).max_by { |r| r[:rate] }
-  cell.each { |r| r[:ref] = ref[:rate]; r[:ratio] = ref[:rate] / r[:rate] }
+  ref = (steady.empty? ? cell : steady).max_by { |r| net_rate(r, launch) }
+  ref_rate = net_rate(ref, launch)
+  cell.each { |r| r[:ref] = ref[:rate]; r[:ratio] = ref_rate / net_rate(r, launch) }
 end
 
 NO_PEER = %i[alloc host compact scan sort].freeze
 flagged = rows.reject { |r| NO_PEER.include?(r[:group]) }
               .select { |r| r[:peer] }
-              .reject { |r| r[:time] < launch * 10 }
+              .reject { |r| r[:time] <= launch * 2 }
               .select { |r| r[:ratio] >= FLAG }
               .sort_by { |r| -r[:ratio] }
 
@@ -574,9 +588,17 @@ puts '  A row is read against the fastest member of its own group, dtype and'
 puts '  layout, never against a fixed number of GB/s: a Bit operand moves a'
 puts '  thirty-second of what a float one does, and a reduction writes nothing.'
 puts '  alloc, host, compact, scan and sort have no peer to be read against and'
-puts '  are never flagged, nor is a row within ten launches of the floor above;'
-puts '  ALL=1 prints them with the rest, along with the cases that have to'
-puts '  allocate their result and so cannot be compared with in-place peers.'
+puts '  are never flagged; ALL=1 prints them with the rest, along with the cases'
+puts '  that have to allocate their result and so cannot be compared with'
+puts '  in-place peers.'
+puts '  The ratio is taken after the launch above is subtracted from both sides,'
+puts '  since a row that spends most of its time on the floor would otherwise'
+puts '  read as barely off its peers. A row that does not clear two launches has'
+puts '  no kernel the harness can resolve and is not flagged whatever its ratio.'
 puts format('  A row whose own reps spread more than %.0fx is read like any other but', STEADY)
 puts '  cannot be the reference, since its floor is pool luck rather than what'
 puts '  the hardware can do.'
+puts '  A ratio out of a cell of two says as much about which of them set the'
+puts '  reference as about either kernel, and the work the two are credited can'
+puts '  differ by a wide margin. Read such a row against the same case in'
+puts '  another layout before believing the number.'
