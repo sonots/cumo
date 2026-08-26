@@ -130,4 +130,7 @@ cumo_bit_store_index(char *a, size_t elmsz, uint64_t k, size_t v)
     }
 }
 
+// Last, because the reductions there fold with cumo_bit_gather_word above.
+#include "cumo/bit_reduce_kernel.h"
+
 #endif // CUMO_BIT_KERNEL_H

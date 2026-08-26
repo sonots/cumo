@@ -57,14 +57,17 @@ typedef struct {
     bool out_flat;
     bool out2_flat;
     bool out_inner;         // the out axis, not the reduce axis, runs along memory
-    ssize_t in_out_step;    // bytes
-    ssize_t in_reduce_step; // bytes
+    ssize_t in_out_step;    // bytes, or bits for a Bit input
+    ssize_t in_reduce_step; // bytes, or bits for a Bit input
     ssize_t out_step;       // bytes
     ssize_t out2_step;      // bytes
 } cumo_reduce_addr_t;
 
 // True when the offset of the i-th element over dims [begin, end) is i * step.
-static inline bool axes_are_flat(const cumo_na_iarray_t& iarray, const cumo_na_indexer_t& indexer, int begin, int end, ssize_t* step) {
+// Templated on the iarray so that a Bit reduction, whose steps are bits rather
+// than bytes, gets the same arithmetic.
+template <typename TIarray>
+static inline bool axes_are_flat(const TIarray& iarray, const cumo_na_indexer_t& indexer, int begin, int end, ssize_t* step) {
     if (begin >= end) {
         *step = 0;
         return true;
@@ -78,7 +81,8 @@ static inline bool axes_are_flat(const cumo_na_iarray_t& iarray, const cumo_na_i
     return true;
 }
 
-static inline cumo_reduce_addr_t make_reduce_addr(const cumo_na_reduction_arg_t& arg, int64_t reduce_total_size) {
+template <typename TArg>
+static inline cumo_reduce_addr_t make_reduce_addr(const TArg& arg, int64_t reduce_total_size) {
     cumo_reduce_addr_t ad;
     int in_ndim = arg.in_indexer.ndim;
     ssize_t whole_step;
@@ -149,10 +153,12 @@ static inline void reduce_block_split(const cumo_reduce_addr_t& ad, int64_t redu
     *out_block_size = max_block_size / rbs;
 }
 
-// Byte offset of the i-th element over dims [begin, end). Everything here is
+// Offset of the i-th element over dims [begin, end), in whatever unit the
+// iarray's steps carry. Everything here is
 // read out of the kernel parameter and nothing is written back, which is what
 // keeps the indexer out of local memory.
-__device__ static inline ssize_t axes_offset(const cumo_na_iarray_t& iarray, const cumo_na_indexer_t& indexer, int begin, int end, int64_t i) {
+template <typename TIarray>
+__device__ static inline ssize_t axes_offset(const TIarray& iarray, const cumo_na_indexer_t& indexer, int begin, int end, int64_t i) {
     ssize_t off = 0;
     for (int j = end; --j >= begin;) {
         int64_t n = static_cast<int64_t>(indexer.shape[j]);

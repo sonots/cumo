@@ -1,33 +1,13 @@
 #undef int_t
 #define int_t uint64_t
 
-void <%="cumo_#{c_iter}_chunk_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, ssize_t s1, size_t *idx1, char *p2, uint64_t n);
-void <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, size_t *idx1, ssize_t s2, uint64_t n);
-void <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(size_t p1, char *p2, CUMO_BIT_DIGIT *a1, ssize_t s1, ssize_t s2, uint64_t n);
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_reduction_arg_t* arg);
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
-    size_t  i;
-    CUMO_BIT_DIGIT *a1;
-    size_t  p1;
-    char   *p2;
-    ssize_t s1, s2;
-    size_t *idx1;
-
-    CUMO_INIT_COUNTER(lp, i);
-    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
-    CUMO_INIT_PTR(lp, 1, p2, s2);
-
-    if (s2==0) {
-        <%="cumo_#{c_iter}_chunk_kernel_launch"%>(a1,p1,s1,idx1,p2,i);
-    } else {
-        if (idx1) {
-            <%="cumo_#{c_iter}_index_stride_kernel_launch"%>(p1,p2,a1,idx1,s2,i);
-        } else {
-            <%="cumo_#{c_iter}_stride_stride_kernel_launch"%>(p1,p2,a1,s1,s2,i);
-        }
-    }
+    cumo_na_bit_reduction_arg_t arg = cumo_na_make_bit_reduction_arg(lp, 1);
+    <%="cumo_#{c_iter}_kernel_launch"%>(&arg);
 }
 
 static VALUE
@@ -49,16 +29,24 @@ static VALUE
     } else {
         VALUE v, reduce;
         cumo_narray_t *na;
-        cumo_ndfunc_arg_in_t ain[3] = {{cT,0},{cumo_sym_reduce,0},{cumo_sym_init,0}};
+        cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cumo_sym_reduce,0}};
         cumo_ndfunc_arg_out_t aout[1] = {{cumo_cUInt64,0}};
-        cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP_NIP, 3, 1, ain, aout };
+        cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
 
         CumoGetNArray(self,na);
         if (CUMO_NA_SIZE(na)==0) {
             return INT2FIX(0);
         }
         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
-        v = cumo_na_ndloop(&ndf, 3, self, reduce, INT2FIX(0));
+        if (cumo_na_has_idx_p(self)) {
+            // The reduction addresses its input by stride, so an index array
+            // has to go first. cumo_na_copy moves whole bytes and a Bit element
+            // is one bit, so the copy has to be this class's own.
+            VALUE copy = <%=find_tmpl("copy").c_func%>(self);
+            v = cumo_na_ndloop(&ndf, 2, copy, reduce);
+        } else {
+            v = cumo_na_ndloop(&ndf, 2, self, reduce);
+        }
         return v;
     }
 }

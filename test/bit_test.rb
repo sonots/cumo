@@ -252,6 +252,76 @@ class BitTest < Test::Unit::TestCase
     assert { a.count_true == src.flatten.count(1) }
   end
 
+  # A Bit count ran its whole loop once per output element, so both an axis
+  # reduction and a view ndloop cannot flatten cost a kernel launch per row.
+  # The reduce axis is addressed in the kernel now, which is what the layouts
+  # below check: each row of a column slice starts at a different bit of its
+  # word, and a stepped or indexed row is not a run of bits at all.
+  test "count_true reduces a view along an axis" do
+    rows = 9
+    cols = 37
+    src = (0...rows).map { |r| bits.call(cols * 2).rotate(r) }
+    a = Cumo::Bit.cast(src)
+
+    slice = a[true, 0...cols]
+    want = src.map { |row| row[0, cols] }
+    assert_equal(want.map { |row| row.count(1) }, slice.count_true(axis: 1).to_a)
+    assert_equal(want.map { |row| row.count(0) }, slice.count_false(axis: 1).to_a)
+    assert_equal(want.transpose.map { |col| col.count(1) }, slice.count_true(axis: 0).to_a)
+    assert_equal(want.flatten.count(1), slice.count_true.to_i)
+
+    stepped = a[true, (0...(cols * 2)).step(3)]
+    want = src.map { |row| (0...(cols * 2)).step(3).map { |i| row[i] } }
+    assert_equal(want.map { |row| row.count(1) }, stepped.count_true(axis: 1).to_a)
+    assert_equal(want.map { |row| row.count(0) }, stepped.count_false(axis: 1).to_a)
+    assert_equal(want.flatten.count(1), stepped.count_true.to_i)
+
+    idx = (0...(cols * 2)).select { |i| i % 5 == 2 }
+    picked = a[true, idx]
+    want = src.map { |row| idx.map { |i| row[i] } }
+    assert_equal(want.map { |row| row.count(1) }, picked.count_true(axis: 1).to_a)
+    assert_equal(want.transpose.map { |col| col.count(1) }, picked.count_true(axis: 0).to_a)
+    assert_equal(want.flatten.count(1), picked.count_true.to_i)
+  end
+
+  test "count_true reduces three dimensions over any set of axes" do
+    shape = [4, 5, 66]
+    src = bits.call(shape.inject(:*))
+    a = Cumo::Bit.cast(src).reshape(*shape)
+
+    [[0], [1], [2], [0, 1], [0, 2], [1, 2], [0, 1, 2]].each do |axis|
+      kept = (0...3).to_a - axis
+      counts = Hash.new(0)
+      shape[0].times do |i|
+        shape[1].times do |j|
+          shape[2].times do |k|
+            next unless src[(i * shape[1] + j) * shape[2] + k] == 1
+            counts[kept.map { |d| [i, j, k][d] }] += 1
+          end
+        end
+      end
+      want = kept.map { |d| shape[d] }
+                 .inject([[]]) { |acc, n| acc.flat_map { |p| (0...n).map { |v| p + [v] } } }
+                 .map { |key| counts[key] }
+      assert_equal(want, a.count_true(axis: axis).flatten.to_a, "axis #{axis.inspect}")
+    end
+  end
+
+  # Few outputs and a long axis leave the grid one block per output, so the
+  # count runs the axis in chunks and combines them in a second pass. 200000
+  # bits is past the point where that starts.
+  test "count_true splits a long axis across blocks" do
+    rows = 2
+    cols = 200_003
+    src = bits.call(rows * cols)
+    a = Cumo::Bit.cast(src).reshape(rows, cols)
+    want = (0...rows).map { |r| src[r * cols, cols].count(1) }
+    assert_equal(want, a.count_true(axis: 1).to_a)
+    assert_equal(want.map { |c| cols - c }, a.count_false(axis: 1).to_a)
+    assert_equal(src.count(1), a.count_true.to_i)
+    assert_equal(src.count(1), a[true, 1...cols].count_true.to_i + a[true, 0].count_true.to_i)
+  end
+
   # where, where2 and mask only reach the device below
   # CUMO_BIT_WHERE_MIN_KERNEL_SIZE, which is 8192, so these are the sizes that
   # exercise the compaction rather than the host loop. 4096 elements is one
