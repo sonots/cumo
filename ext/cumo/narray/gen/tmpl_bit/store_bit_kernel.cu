@@ -16,6 +16,17 @@ __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_bit_iarray_strid
 }
 <% end %>
 
+// One thread per word of the output, taking the word from the operand's own
+// rows. The lanes of a warp would otherwise each pay the indexer to read one
+// bit of the same word.
+__global__ void <%="cumo_#{c_iter}_run_kernel"%>(cumo_na_bit_iarray_stridx_t a1, cumo_na_indexer_t indexer, cumo_bit_run_t run, CUMO_BIT_DIGIT *out, uint64_t n, uint64_t w3)
+{
+    for (uint64_t w = blockIdx.x * blockDim.x + threadIdx.x; w < w3; w += blockDim.x * gridDim.x) {
+        CUMO_BIT_DIGIT x = cumo_bit_run_word(&a1, &indexer, run, w, n);
+        cumo_bit_store_word(out, w, x, 0, n);
+    }
+}
+
 __global__ void <%="cumo_#{c_iter}_contiguous_kernel"%>(CUMO_BIT_DIGIT *a1, ssize_t o1, uint64_t w1, CUMO_BIT_DIGIT *a3, size_t p3, uint64_t n, uint64_t w3)
 {
     for (uint64_t w = blockIdx.x * blockDim.x + threadIdx.x; w < w3; w += blockDim.x * gridDim.x) {
@@ -30,6 +41,20 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_iarray_stridx_t* a1, cumo_n
     // operand is laid out, so the lanes can pool their bits into that word
     // rather than each taking it with an atomic.
     CUMO_BIT_DIGIT *out = cumo_na_bit_iarray_stridx_is_flat(a3, indexer) ? a3->ptr + a3->pos / CUMO_NB : NULL;
+
+    // With the output taking a whole word from one thread, an operand whose
+    // rows run bit by bit can be gathered a word at a time as well.
+    if (out != NULL) {
+        cumo_bit_run_t run = cumo_bit_make_run(a1, indexer);
+        if (run.ok) {
+            uint64_t w3 = (indexer->total_size + CUMO_NB - 1) / CUMO_NB;
+            <%="cumo_#{c_iter}_run_kernel"%><<<cumo_get_grid_dim(w3), cumo_get_block_dim(w3)>>>(
+                *a1, *indexer, run, out, indexer->total_size, w3);
+            cumo_cuda_runtime_check_kernel_launch();
+            return;
+        }
+    }
+
     uint64_t end = out ? ((indexer->total_size + CUMO_NB - 1) & ~(uint64_t)(CUMO_NB - 1)) : indexer->total_size;
     size_t grid_dim = cumo_get_grid_dim(end);
     // the ballot needs whole warps, so a short loop cannot shrink the block

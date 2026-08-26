@@ -355,6 +355,60 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
+  # An operand whose rows are runs of bits but which sit apart -- a column slice
+  # -- was read one bit at a time through the indexer, two runtime divisions an
+  # element, while the output took whole words from one thread each. The word is
+  # gathered from the operand's own rows now. A row length that is not a whole
+  # number of words makes a word straddle two rows, which is the case that has
+  # to come out right.
+  test "Bit elementwise ops take a word from a view whose rows are runs" do
+    [[5, 70], [9, 37], [7, 31], [4, 96], [2, 33], [3, 200]].each do |rows, cols|
+      wide = cols * 2
+      s1 = (0...(rows * wide)).map { |i| (i * 7 + 3) % 5 == 0 ? 1 : 0 }
+      s2 = (0...(rows * wide)).map { |i| (i * 3 + 1) % 4 == 0 ? 1 : 0 }
+      a = Cumo::Bit.cast(s1).reshape(rows, wide)
+      b = Cumo::Bit.cast(s2).reshape(rows, wide)
+      take = ->(src, off) { (0...rows).map { |r| (0...cols).map { |c| src[r * wide + off + c] } } }
+      zip = ->(x, y, &op) { x.zip(y).map { |u, v| u.zip(v).map { |m, n| op.call(m, n) } } }
+
+      [0, 1].each do |off|
+        va = a[true, off...(off + cols)]
+        vb = b[true, off...(off + cols)]
+        wa = take.call(s1, off)
+        wb = take.call(s2, off)
+        at = "#{rows}x#{cols} off #{off}"
+
+        dst = Cumo::Bit.new(rows, cols).fill(1)
+        dst.store(va)
+        assert_equal(wa, dst.to_a, "#{at} store")
+        assert_equal(wa, va.copy.to_a, "#{at} copy")
+        assert_equal(wa.map { |row| row.map { |v| 1 - v } }, (~va).to_a, "#{at} not")
+        assert_equal(zip.call(wa, wb) { |u, v| u & v }, (va & vb).to_a, "#{at} and")
+        assert_equal(zip.call(wa, wb) { |u, v| u | v }, (va | vb).to_a, "#{at} or")
+        assert_equal(zip.call(wa, wb) { |u, v| u ^ v }, (va ^ vb).to_a, "#{at} xor")
+        assert_equal(wa.flatten.count(1), va.count_true.to_i, "#{at} count_true")
+      end
+    end
+  end
+
+  test "Bit elementwise ops keep the bit-at-a-time path for a scattered operand" do
+    n = 96
+    src = (0...(n * n)).map { |i| (i * 7 + 3) % 5 == 0 ? 1 : 0 }
+    a = Cumo::Bit.cast(src).reshape(n, n)
+    at = ->(i, j) { src[i * n + j] }
+
+    t = a.transpose
+    assert_equal((0...n).map { |i| (0...n).map { |j| at.call(j, i) } }, t.copy.to_a, "transposed copy")
+    assert_equal((0...n).map { |i| (0...n).map { |j| at.call(j, i) ^ at.call(i, j) } }, (t ^ a).to_a, "transposed xor")
+
+    step = a[true, (0...n).step(2)]
+    assert_equal((0...n).map { |i| (0...n).step(2).map { |j| at.call(i, j) } }, step.copy.to_a, "stepped copy")
+
+    idx = (0...n).to_a.rotate(7)
+    picked = a[true, idx]
+    assert_equal((0...n).map { |i| idx.map { |j| at.call(i, j) } }, picked.copy.to_a, "indexed copy")
+  end
+
   # A view whose rows are each a run of bits but sit apart -- a column slice --
   # is not flat over the whole reduce group, and the fold within a row was given
   # up along with it. These rows start at a different bit of their word from one
