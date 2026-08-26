@@ -6,6 +6,7 @@
 #include "cumo/template.h"
 #include "cumo/indexer.h"
 
+static ID cumo_id_copy;
 static ID cumo_id_mulsum;
 static ID cumo_id_store;
 static ID cumo_id_swap_byte;
@@ -98,6 +99,13 @@ cumo_na_copy(VALUE self)
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
     cumo_ndfunc_t ndf = { iter_copy_bytes, CUMO_FULL_LOOP, 1, 1, ain, aout };
+
+    // The loops below move whole bytes, which is one element of every class but
+    // Cumo::Bit, whose element is one bit. Its own copy is the one that can
+    // address that.
+    if (rb_obj_is_kind_of(self, cumo_cBit)) {
+        return rb_funcall(self, cumo_id_copy, 0);
+    }
 
     // Cumo::RObject data is host memory, which the kernel below must not touch.
     // Everything else goes through the indexer so that ndloop hands the whole
@@ -1021,6 +1029,7 @@ Init_cumo_na_data(void)
 
     //rb_define_method(cNArray, "dot", cumo_na_dot, 1);
 
+    cumo_id_copy         = rb_intern("copy");
     cumo_id_mulsum       = rb_intern("mulsum");
     cumo_id_store        = rb_intern("store");
     cumo_id_swap_byte    = rb_intern("swap_byte");
