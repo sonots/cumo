@@ -17,14 +17,64 @@ namespace cumo_bit_detail {
 // axis runs bit by bit through memory, one thread takes a whole word of
 // CUMO_NB elements at a time instead of one element, which is where a bit
 // reduction gets to be thirty-two times cheaper than the loop it replaces.
-static inline bool reduce_by_words(const cumo_detail::cumo_reduce_addr_t& ad) {
-    return ad.in_reduce_flat && ad.in_reduce_step == 1;
-}
+// Which trailing reduce dimensions run bit by bit through memory, so that a
+// thread can fold a word of them at a time. The dimensions before them are
+// walked one row at a time: a column slice is a run of bits per row and the
+// rows sit apart, which is no reason to give up the fold within a row.
+typedef struct {
+    int words;           // 0 = a unit is one element, 1 = a unit is one word
+    int outer_begin;     // reduce dimensions [outer_begin, inner_begin) are rows
+    int inner_begin;     // reduce dimensions [inner_begin, ndim) are the run
+    int64_t inner_len;   // elements in one row
+    int64_t words_per_row;
+    int64_t unit_total;
+} cumo_bit_word_addr_t;
 
-static inline int64_t reduce_unit_count(const cumo_detail::cumo_reduce_addr_t& ad, int64_t reduce_total_size) {
-    return reduce_by_words(ad)
-        ? (reduce_total_size + (int64_t)CUMO_NB - 1) / (int64_t)CUMO_NB
-        : reduce_total_size;
+template <typename TArg>
+static inline cumo_bit_word_addr_t make_bit_word_addr(const TArg& arg, const cumo_detail::cumo_reduce_addr_t& ad, int64_t reduce_total_size) {
+    const int64_t nb = (int64_t)CUMO_NB;
+    cumo_bit_word_addr_t wa;
+
+    wa.words = 0;
+    wa.outer_begin = 0;
+    wa.inner_begin = 0;
+    wa.inner_len = reduce_total_size;
+    wa.words_per_row = 0;
+    wa.unit_total = reduce_total_size;
+
+    if (ad.in_reduce_flat && ad.in_reduce_step == 1) {
+        // The whole group is one run, so there is a single row.
+        wa.words = 1;
+        wa.words_per_row = (reduce_total_size + nb - 1) / nb;
+        wa.unit_total = wa.words_per_row;
+        return wa;
+    }
+    if (ad.split < 0) {
+        // The reduce axis does not fall on a dimension boundary, which leaves
+        // no run to look for.
+        return wa;
+    }
+
+    int ndim = arg.in_indexer.ndim;
+    int k = ndim;
+    ssize_t acc = 1;
+    while (k > ad.split && arg.in.step[k-1] == acc) {
+        acc *= (ssize_t)arg.in_indexer.shape[k-1];
+        --k;
+    }
+    if (k == ndim || (int64_t)acc < nb) {
+        // Nothing runs bit by bit, or a row holds less than a word, where the
+        // fold would cost more parallelism than it saves work.
+        return wa;
+    }
+
+    wa.words = 1;
+    wa.outer_begin = ad.split;
+    wa.inner_begin = k;
+    wa.inner_len = (int64_t)acc;
+    wa.words_per_row = (wa.inner_len + nb - 1) / nb;
+    wa.unit_total = (reduce_total_size / wa.inner_len) * wa.words_per_row;
+    return wa;
 }
 
 // A unit is CUMO_NB elements wide when the axis folds by words, so the chunk a
@@ -74,22 +124,36 @@ struct BitCountImpl {
 // which is what count_false is.
 template <typename TArg>
 __device__ static inline uint64_t bit_count_axis(
-        const TArg& arg, const cumo_detail::cumo_reduce_addr_t& ad, bool words, int invert,
+        const TArg& arg, const cumo_detail::cumo_reduce_addr_t& ad, const cumo_bit_word_addr_t& wa, int invert,
         ssize_t in_out_off, int64_t i_in, int64_t reduce_total_size,
         int64_t begin, int64_t end, int64_t reduce_offset, int64_t reduce_block_size) {
     const ssize_t nb = (ssize_t)CUMO_NB;
     uint64_t accum = 0;
 
-    if (words) {
-        ssize_t p = (ssize_t)arg.in.pos + in_out_off;
+    if (wa.words) {
+        // One row when the whole group is a run, and then the address of the
+        // row is loop-invariant. multirow is the same for every thread of the
+        // launch, so the branch below costs no divergence.
+        const bool multirow = wa.inner_begin > wa.outer_begin;
+        const ssize_t base_pos = (ssize_t)arg.in.pos + in_out_off;
+        ssize_t p = base_pos;
         const CUMO_BIT_DIGIT* a = arg.in.ptr + (size_t)(p / nb);
         ssize_t o = p % nb;
-        uint64_t nw = (uint64_t)((o + reduce_total_size + nb - 1) / nb);
+        uint64_t nw = (uint64_t)((o + wa.inner_len + nb - 1) / nb);
 
         for (int64_t c = begin + reduce_offset; c < end; c += reduce_block_size) {
-            int64_t base = c * (int64_t)CUMO_NB;
-            uint64_t kend = (reduce_total_size - base < (int64_t)CUMO_NB) ? (uint64_t)(reduce_total_size - base) : CUMO_NB;
-            CUMO_BIT_DIGIT z = cumo_bit_gather_word(a, o, nw, (uint64_t)c);
+            int64_t w = c;
+            if (multirow) {
+                int64_t row = c / wa.words_per_row;
+                w = c - row * wa.words_per_row;
+                p = base_pos + cumo_detail::axes_offset(arg.in, arg.in_indexer, wa.outer_begin, wa.inner_begin, row);
+                a = arg.in.ptr + (size_t)(p / nb);
+                o = p % nb;
+                nw = (uint64_t)((o + wa.inner_len + nb - 1) / nb);
+            }
+            int64_t base = w * (int64_t)CUMO_NB;
+            uint64_t kend = (wa.inner_len - base < (int64_t)CUMO_NB) ? (uint64_t)(wa.inner_len - base) : CUMO_NB;
+            CUMO_BIT_DIGIT z = cumo_bit_gather_word(a, o, nw, (uint64_t)w);
             if (invert) z = ~z;
             accum += (uint64_t)__popc(z & CUMO_SLB(kend));
         }
@@ -105,7 +169,7 @@ __device__ static inline uint64_t bit_count_axis(
 }
 
 __global__ static void bit_count_reduction_kernel(
-        cumo_na_bit_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, bool words, int invert,
+        cumo_na_bit_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, cumo_bit_word_addr_t wa, int invert,
         int out_block_size, int reduce_block_size, int64_t unit_total_size) {
     extern __shared__ __align__(8) char sdata_raw[];
     uint64_t* sdata = reinterpret_cast<uint64_t*>(sdata_raw);
@@ -124,7 +188,7 @@ __global__ static void bit_count_reduction_kernel(
         ssize_t in_out_off = bit_in_out_offset(arg, ad, i_out);
         int64_t i_in = i_out * reduce_total_size + reduce_offset;
 
-        uint64_t accum = bit_count_axis(arg, ad, words, invert, in_out_off, i_in, reduce_total_size,
+        uint64_t accum = bit_count_axis(arg, ad, wa, invert, in_out_off, i_in, reduce_total_size,
                                         0, unit_total_size, reduce_offset, reduce_block_size);
 
         accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, impl);
@@ -138,7 +202,7 @@ __global__ static void bit_count_reduction_kernel(
 // grid a handful of blocks however long the reduce axis is.
 template <typename TArg>
 __global__ static void bit_count_partial_kernel(
-        TArg arg, cumo_detail::cumo_reduce_addr_t ad, bool words, int invert,
+        TArg arg, cumo_detail::cumo_reduce_addr_t ad, cumo_bit_word_addr_t wa, int invert,
         uint64_t* partial, int64_t n_split, int64_t chunk,
         int out_block_size, int reduce_block_size, int64_t unit_total_size) {
     extern __shared__ __align__(8) char sdata_raw[];
@@ -164,7 +228,7 @@ __global__ static void bit_count_partial_kernel(
         ssize_t in_out_off = bit_in_out_offset(arg, ad, i_out);
         int64_t i_in = i_out * reduce_total_size + begin + reduce_offset;
 
-        uint64_t accum = bit_count_axis(arg, ad, words, invert, in_out_off, i_in, reduce_total_size,
+        uint64_t accum = bit_count_axis(arg, ad, wa, invert, in_out_off, i_in, reduce_total_size,
                                         begin, end, reduce_offset, reduce_block_size);
 
         accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, impl);
@@ -180,7 +244,7 @@ __global__ static void bit_count_partial_kernel(
 // that both reductions below share it.
 struct bit_reduce_plan {
     cumo_detail::cumo_reduce_addr_t ad;
-    bool words;
+    cumo_bit_word_addr_t wa;
     int64_t out_total_size;
     int64_t reduce_total_size;
     int64_t unit_total_size;
@@ -201,13 +265,13 @@ static inline bit_reduce_plan make_bit_reduce_plan(const TArg& arg) {
     p.out_total_size = arg.out_indexer.total_size;
     p.reduce_total_size = arg.in_indexer.total_size / p.out_total_size;
     p.ad = cumo_detail::make_reduce_addr(arg, p.reduce_total_size);
-    p.words = reduce_by_words(p.ad);
-    p.unit_total_size = reduce_unit_count(p.ad, p.reduce_total_size);
+    p.wa = make_bit_word_addr(arg, p.ad, p.reduce_total_size);
+    p.unit_total_size = p.wa.unit_total;
 
     cumo_detail::reduce_block_split(p.ad, p.unit_total_size, &p.out_block_size, &p.reduce_block_size);
     p.out_block_num = (p.out_total_size + p.out_block_size - 1) / p.out_block_size;
 
-    p.n_split = reduce_split_count(p.unit_total_size, p.out_block_num, p.words);
+    p.n_split = reduce_split_count(p.unit_total_size, p.out_block_num, p.wa.words != 0);
     p.chunk = 0;
     p.split_out_block_size = 0;
     p.split_reduce_block_size = 0;
@@ -230,7 +294,7 @@ __device__ static inline CUMO_BIT_DIGIT bit_pred_of_count(uint64_t count, int64_
 }
 
 __global__ static void bit_pred_reduction_kernel(
-        cumo_na_bit_pred_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, bool words, int all,
+        cumo_na_bit_pred_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, cumo_bit_word_addr_t wa, int all,
         int out_block_size, int reduce_block_size, int64_t unit_total_size) {
     extern __shared__ __align__(8) char sdata_raw[];
     uint64_t* sdata = reinterpret_cast<uint64_t*>(sdata_raw);
@@ -249,7 +313,7 @@ __global__ static void bit_pred_reduction_kernel(
         ssize_t in_out_off = bit_in_out_offset(arg, ad, i_out);
         int64_t i_in = i_out * reduce_total_size + reduce_offset;
 
-        uint64_t accum = bit_count_axis(arg, ad, words, 0, in_out_off, i_in, reduce_total_size,
+        uint64_t accum = bit_count_axis(arg, ad, wa, 0, in_out_off, i_in, reduce_total_size,
                                         0, unit_total_size, reduce_offset, reduce_block_size);
 
         accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, impl);
@@ -296,7 +360,7 @@ static inline void cumo_bit_count_reduce(cumo_na_bit_reduction_arg_t arg, int in
     if (p.n_split < 2) {
         int64_t grid_size = std::min(cumo_detail::max_grid_size, p.out_block_num);
         cumo_bit_detail::bit_count_reduction_kernel<<<grid_size, block_size, shared_mem_size>>>(
-            arg, p.ad, p.words, invert, (int)p.out_block_size, (int)p.reduce_block_size, p.unit_total_size);
+            arg, p.ad, p.wa, invert, (int)p.out_block_size, (int)p.reduce_block_size, p.unit_total_size);
         cumo_cuda_runtime_check_kernel_launch();
         return;
     }
@@ -306,7 +370,7 @@ static inline void cumo_bit_count_reduce(cumo_na_bit_reduction_arg_t arg, int in
 
     int64_t grid_size = std::min(cumo_detail::max_grid_size, p.partial_block_num);
     cumo_bit_detail::bit_count_partial_kernel<<<grid_size, block_size, shared_mem_size>>>(
-        arg, p.ad, p.words, invert, partial, p.n_split, p.chunk,
+        arg, p.ad, p.wa, invert, partial, p.n_split, p.chunk,
         (int)p.split_out_block_size, (int)p.split_reduce_block_size, p.unit_total_size);
     cumo_cuda_runtime_check_kernel_launch();
 
@@ -337,7 +401,7 @@ static inline void cumo_bit_pred_reduce(cumo_na_bit_pred_reduction_arg_t arg, in
     if (p.n_split < 2) {
         int64_t grid_size = std::min(cumo_detail::max_grid_size, p.out_block_num);
         cumo_bit_detail::bit_pred_reduction_kernel<<<grid_size, block_size, shared_mem_size>>>(
-            arg, p.ad, p.words, all, (int)p.out_block_size, (int)p.reduce_block_size, p.unit_total_size);
+            arg, p.ad, p.wa, all, (int)p.out_block_size, (int)p.reduce_block_size, p.unit_total_size);
         cumo_cuda_runtime_check_kernel_launch();
         return;
     }
@@ -347,7 +411,7 @@ static inline void cumo_bit_pred_reduce(cumo_na_bit_pred_reduction_arg_t arg, in
 
     int64_t grid_size = std::min(cumo_detail::max_grid_size, p.partial_block_num);
     cumo_bit_detail::bit_count_partial_kernel<<<grid_size, block_size, shared_mem_size>>>(
-        arg, p.ad, p.words, 0, partial, p.n_split, p.chunk,
+        arg, p.ad, p.wa, 0, partial, p.n_split, p.chunk,
         (int)p.split_out_block_size, (int)p.split_reduce_block_size, p.unit_total_size);
     cumo_cuda_runtime_check_kernel_launch();
 
