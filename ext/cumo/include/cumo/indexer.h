@@ -77,6 +77,16 @@ typedef struct {
     cumo_na_indexer_t out_indexer;
 } cumo_na_bit_reduction_arg_t;
 
+/* The same again for a reduction that answers a Bit, which is what all? and
+ * any? do.
+ */
+typedef struct {
+    cumo_na_bit_iarray_t in;
+    cumo_na_bit_iarray_t out;
+    cumo_na_indexer_t in_indexer;
+    cumo_na_indexer_t out_indexer;
+} cumo_na_bit_pred_reduction_arg_t;
+
 #ifndef __CUDACC__
 extern int cumo_na_debug_flag;  // narray.c
 
@@ -183,15 +193,21 @@ cumo_na_make_bit_iarray_stridx(cumo_na_loop_args_t* arg)
 }
 
 static cumo_na_bit_iarray_t
-cumo_na_make_bit_iarray(cumo_na_loop_args_t* arg)
+cumo_na_make_bit_iarray_given_ndim(cumo_na_loop_args_t* arg, int ndim)
 {
     cumo_na_bit_iarray_t iarray;
     iarray.ptr = (CUMO_BIT_DIGIT*)(arg->ptr);
     iarray.pos = arg->iter[0].pos;
-    for (int idim = arg->ndim; --idim >= 0;) {
+    for (int idim = ndim; --idim >= 0;) {
         iarray.step[idim] = arg->iter[idim].step;
     }
     return iarray;
+}
+
+static cumo_na_bit_iarray_t
+cumo_na_make_bit_iarray(cumo_na_loop_args_t* arg)
+{
+    return cumo_na_make_bit_iarray_given_ndim(arg, arg->ndim);
 }
 
 // out_arg names the loop argument to reduce into. It is 1 for a reduction with
@@ -249,6 +265,20 @@ cumo_na_make_bit_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
         }
     }
     arg.out = cumo_na_make_iarray_given_ndim(&lp_user->args[out_arg], arg.out_indexer.ndim);
+
+    return arg;
+}
+
+static cumo_na_bit_pred_reduction_arg_t
+cumo_na_make_bit_pred_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
+{
+    cumo_na_bit_reduction_arg_t base = cumo_na_make_bit_reduction_arg(lp_user, out_arg);
+    cumo_na_bit_pred_reduction_arg_t arg;
+
+    arg.in = base.in;
+    arg.in_indexer = base.in_indexer;
+    arg.out_indexer = base.out_indexer;
+    arg.out = cumo_na_make_bit_iarray_given_ndim(&lp_user->args[out_arg], arg.out_indexer.ndim);
 
     return arg;
 }

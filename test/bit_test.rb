@@ -322,6 +322,52 @@ class BitTest < Test::Unit::TestCase
     assert_equal(src.count(1), a[true, 1...cols].count_true.to_i + a[true, 0].count_true.to_i)
   end
 
+  # all? and any? had the same loop as the count, one launch per output element,
+  # and they answer a Bit rather than a number. Both reduce a whole axis now,
+  # which is why the patterns here have their odd element out at either end.
+  test "all? and any? reduce along an axis" do
+    rows = 6
+    cols = 70
+    [->(r, c) { 1 },
+     ->(r, c) { 0 },
+     ->(r, c) { c == cols - 1 && r.even? ? 0 : 1 },
+     ->(r, c) { c.zero? && r.odd? ? 1 : 0 },
+     ->(r, c) { (r + c) % 3 == 0 ? 1 : 0 }].each_with_index do |gen, k|
+      src = (0...rows).map { |r| (0...cols).map { |c| gen.call(r, c) } }
+      a = Cumo::Bit.cast(src)
+      at = "pattern #{k}"
+
+      assert_equal(src.map { |row| row.all?(1) ? 1 : 0 }, a.all?(axis: 1).to_a, "#{at} all? axis 1")
+      assert_equal(src.map { |row| row.any?(1) ? 1 : 0 }, a.any?(axis: 1).to_a, "#{at} any? axis 1")
+      assert_equal(src.map { |row| row.any?(1) ? 0 : 1 }, a.none?(axis: 1).to_a, "#{at} none? axis 1")
+      assert_equal(src.transpose.map { |col| col.all?(1) ? 1 : 0 }, a.all?(axis: 0).to_a, "#{at} all? axis 0")
+      assert_equal(src.transpose.map { |col| col.any?(1) ? 1 : 0 }, a.any?(axis: 0).to_a, "#{at} any? axis 0")
+
+      assert_equal(src.flatten.all?(1), a.all?, "#{at} all?")
+      assert_equal(src.flatten.any?(1), a.any?, "#{at} any?")
+      assert_equal(!src.flatten.any?(1), a.none?, "#{at} none?")
+
+      slice = a[true, 1...(cols - 1)]
+      want = src.map { |row| row[1, cols - 2] }
+      assert_equal(want.map { |row| row.all?(1) ? 1 : 0 }, slice.all?(axis: 1).to_a, "#{at} view all?")
+      assert_equal(want.map { |row| row.any?(1) ? 1 : 0 }, slice.any?(axis: 1).to_a, "#{at} view any?")
+      assert_equal(want.flatten.any?(1), slice.any?, "#{at} view any? of the whole")
+    end
+  end
+
+  test "all? and any? split a long axis across blocks" do
+    rows = 2
+    cols = 200_003
+    [[cols - 1, 0], [0, 1]].each do |flip, fill|
+      src = (0...rows).map { |r| a = Array.new(cols, fill); a[flip] = 1 - fill; a }
+      a = Cumo::Bit.cast(src)
+      assert_equal(src.map { |row| row.all?(1) ? 1 : 0 }, a.all?(axis: 1).to_a, "fill #{fill}")
+      assert_equal(src.map { |row| row.any?(1) ? 1 : 0 }, a.any?(axis: 1).to_a, "fill #{fill}")
+      assert_equal(src.flatten.all?(1), a.all?, "fill #{fill} whole")
+      assert_equal(src.flatten.any?(1), a.any?, "fill #{fill} whole")
+    end
+  end
+
   # where, where2 and mask only reach the device below
   # CUMO_BIT_WHERE_MIN_KERNEL_SIZE, which is 8192, so these are the sizes that
   # exercise the compaction rather than the host loop. 4096 elements is one
