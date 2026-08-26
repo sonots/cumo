@@ -100,7 +100,7 @@ a = xm::DFloat.new(3,5).seq
 
 Numo returns a Ruby numeric object wherever a result is 0-dimensional, while Cumo returns the 0-dimensional NArray itself.
 Cumo differs in this way to avoid synchronization and minimize CPU ⇄ GPU data transfer.
-That is not only a cost of the port; see [Keeping Scalars On The Device](#keeping-scalars-on-the-device) for what it buys.
+That is not only a cost of the port; see [Keeping Scalars On The Device](#keeping-scalars-on-the-device) and [Ruby Floats In NMath Promote To Double](#ruby-floats-in-nmath-promote-to-double) for what it buys.
 
 The methods affected are:
 
@@ -177,6 +177,50 @@ x += p_dir * alpha     # and consumed there, without crossing the bus
 ```
 
 Read the value back once the loop is done, or every k iterations if it has to test something.
+
+### Ruby Floats In NMath Promote To Double
+
+`Cumo::NMath` picks the module it dispatches to from every argument it is given, and a Ruby `Float` counts as a `DFloat` there.
+A single-precision array therefore comes back doubled whenever a plain Float rides along, even though the arithmetic operators leave it alone:
+
+```ruby
+Cumo::NMath.atan2(a, 2.0)   #=> Cumo::DFloat
+Cumo::NMath.atan2(a, b)     #=> Cumo::SFloat
+a + 2.0                     #=> Cumo::SFloat
+```
+
+Numo promotes the same way, and on a CPU it costs nothing: Numo's single-precision math computes in double and narrows the result anyway.
+On a GeForce card, whose double-precision rate is a sixty-fourth of its single-precision one, it costs a great deal.
+512x2048 elements in place on an RTX 5070 Ti Laptop:
+
+```
+                SFloat     DFloat
+a * 2.0         11.8 us    12.8 us
+sqrt            11.0 us    43.0 us
+sin             11.5 us    97.5 us
+atan            11.1 us   122.9 us
+atan2           12.5 us   192.4 us
+```
+
+Only the transcendentals pay for the promotion; a double multiply runs at the speed of a single one.
+The methods a Float can reach as a second argument are `atan2`, `hypot` and `ldexp`.
+`ldexp` pays a different way, since scaling by a power of two is cheap in either precision: `Cumo::NMath.ldexp(a, 2.0)` takes 268.0 us against 12.6 us for `Cumo::NMath.ldexp(a, 2)`, and the difference there is the doubled arrays it has to allocate rather than the arithmetic.
+
+Pass a 0-dimensional array instead of a Float and the call stays single precision.
+That is what `[]` hands back, so a scalar taken out of an array is already in the right form:
+
+```ruby
+two = Cumo::SFloat[2.0][0]     # a 0-dimensional Cumo::SFloat
+Cumo::NMath.atan2(a, two)      #=> Cumo::SFloat, 14.9 us against 219.3 us
+```
+
+Naming the module directly works too, under both libraries:
+
+```ruby
+Cumo::SFloat::Math.atan2(a, 2.0)   #=> Cumo::SFloat
+```
+
+The 0-dimensional form has no effect under Numo, where `[]` returns a Ruby Float.
 
 ### Select a GPU device ID
 
