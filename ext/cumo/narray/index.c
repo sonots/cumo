@@ -591,6 +591,7 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             // numeric index -- trim dimension
             if (!keep_dim && q[i].n==1 && q[i].step==0) {
                 if (CUMO_SDX_IS_INDEX(sdx1)) {
+                    cumo_na_index_wait_fill(na1);
                     na2->offset += CUMO_SDX_GET_INDEX(sdx1)[q[i].beg];
                 } else {
                     na2->offset += CUMO_SDX_GET_STRIDE(sdx1)*q[i].beg;
@@ -677,7 +678,6 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
     ssize_t *strides_na1;
     size_t  *index;
     ssize_t beg, step;
-    int use_cumo_cuda_runtime_malloc = 0;
 
     strides_na1 = ALLOCA_N(ssize_t, na1->base.ndim);
     cumo_na_get_strides_nadata(na1, strides_na1, elmsz);
@@ -687,7 +687,6 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
     } else {
         //index = ALLOC_N(size_t, size);
         index = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*size);
-        use_cumo_cuda_runtime_malloc = 1;
     }
     CUMO_SDX_SET_INDEX(na2->stridx[0], index);
 
@@ -723,10 +722,6 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
     }
     na2->base.size = size;
     na2->base.shape[0] = size;
-    if (use_cumo_cuda_runtime_malloc) {
-        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_index_at_nadata");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    }
 }
 
 void cumo_na_index_at_naview_index_index_index_add_kernel_launch(size_t *idx, size_t *idx1, size_t *idx2, uint64_t n);
@@ -740,14 +735,12 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
     int i;
     size_t  *index;
     size_t size = q[ndim-1].n;
-    int use_cumo_cuda_runtime_malloc = 0;
 
     if (q[ndim-1].idx != NULL) {
         index = q[ndim-1].idx;
     } else {
         //index = ALLOC_N(size_t, size);
         index = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*size);
-        use_cumo_cuda_runtime_malloc = 1;
     }
     CUMO_SDX_SET_INDEX(na2->stridx[0], index);
 
@@ -841,10 +834,6 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
     }
     na2->base.size = size;
     na2->base.shape[0] = size;
-    if (use_cumo_cuda_runtime_malloc) {
-        CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_index_at_naview");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    }
 }
 
 static int
