@@ -29,3 +29,4 @@ t.rb
 .DS_Store
 /vendor/
 .kernel_cache/
+bench/cumo_probe_baseline.json
