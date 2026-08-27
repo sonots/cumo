@@ -182,6 +182,11 @@ class NArrayTest < Test::Unit::TestCase
         assert { a[(-5..-1) % 2] == [2, 5, 11] }
         assert { a[(-5...-1) % 2] == [2, 5] }
         assert { a[[4, 3, 0, 1, 5, 2]] == [7, 5, 1, 2, 11, 3] }
+        assert { a[[3]] == [5] }
+        assert { a[[3]].shape == [1] }
+        assert { a[[-3]] == [5] }
+        assert { a[Cumo::Int32.cast([3])] == [5] }
+        assert { a[2..-1][[1]] == [5] }
         assert { a.reverse == [11, 7, 5, 3, 2, 1] }
         assert { a.sum == 29 }
         if float_types.include?(dtype)
@@ -1142,6 +1147,10 @@ class NArrayTest < Test::Unit::TestCase
     test "#{dtype},advanced indexing" do
       a = dtype[[1, 2, 3], [4, 5, 6]]
       assert { a[[0, 1], [0, 1]].dup == [[1, 2], [4, 5]] }
+      assert { a[[1], true] == [[4, 5, 6]] }
+      assert { a[[1], true].shape == [1, 3] }
+      assert { a[true, [2]] == [[3], [6]] }
+      assert { a[[1], [2]] == [[6]] }
       assert { a[[0, 1], [0, 1]].sum == 12 }
       assert { a[[0, 1], [0, 1]].diagonal == [1, 5] }
       diag = a.dup[[0, 1], [0, 1]].diagonal

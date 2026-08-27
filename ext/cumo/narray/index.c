@@ -109,12 +109,24 @@ cumo_na_range_check(ssize_t pos, ssize_t size, int dim)
 
 // copy ruby array to idx
 static void
-cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
+cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *q, int at_mode)
 {
     int k;
     size_t* idx;
     cudaError_t status;
     int n = RARRAY_LEN(ary);
+
+    // A step names the one element a one-element subscript does, without a
+    // device allocation, a kernel to fill it, or the synchronize a loop pays
+    // to read that one entry back. at() is left out: it gathers through an
+    // index array whatever it is given, so a step only moves the same work,
+    // and its synchronize, into cumo_na_index_at_nadata.
+    if (n == 1 && !at_mode) {
+        cumo_na_index_set_step(q, orig_dim, 1,
+            cumo_na_range_check(NUM2SSIZET(RARRAY_AREF(ary,0)), size, orig_dim), 1);
+        return;
+    }
+
     //q->idx = ALLOC_N(size_t, n);
     //for (k=0; k<n; k++) {
     //    q->idx[k] = na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
@@ -145,7 +157,7 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
 
 // copy narray to idx
 static void
-cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
+cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q, int at_mode)
 {
     VALUE idx, buf;
     cumo_narray_t *na;
@@ -185,6 +197,13 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     for (k=0; k<n; k++) {
         // A checked index is non-negative, so it is already a valid size_t.
         host_idx[k] = cumo_na_range_check(host_idx[k], size, orig_dim);
+    }
+
+    if (n == 1 && !at_mode) {
+        cumo_na_index_set_step(q, orig_dim, 1, (size_t)host_idx[0], 1);
+        RB_GC_GUARD(buf);
+        RB_GC_GUARD(idx);
+        return;
     }
 
     q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
@@ -330,7 +349,7 @@ cumo_na_parse_enumerator(VALUE enum_obj, int orig_dim, ssize_t size, cumo_na_ind
 // i: parse i-th index
 // q: parsed information is stored to *q
 static void
-cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_arg_t *q)
+cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_arg_t *q, int at_mode)
 {
     switch(TYPE(a)) {
 
@@ -370,7 +389,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
         break;
 
     case T_ARRAY:
-        cumo_na_parse_array(a, i, size, q);
+        cumo_na_parse_array(a, i, size, q, at_mode);
         break;
 
     default:
@@ -387,7 +406,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
         }
         // NArray index
         else if (CUMO_NA_CumoIsNArray(a)) {
-            cumo_na_parse_narray_index(a, i, size, q);
+            cumo_na_parse_narray_index(a, i, size, q, at_mode);
         }
         else {
             rb_raise(rb_eIndexError, "not allowed type");
@@ -397,7 +416,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
 
 
 static size_t
-cumo_na_index_parse_args(VALUE args, cumo_narray_t *na, cumo_na_index_arg_t *q, int ndim)
+cumo_na_index_parse_args(VALUE args, cumo_narray_t *na, cumo_na_index_arg_t *q, int ndim, int at_mode)
 {
     int i, j, k, l, nidx;
     size_t total=1;
@@ -415,7 +434,7 @@ cumo_na_index_parse_args(VALUE args, cumo_narray_t *na, cumo_na_index_arg_t *q, 
         if (v==Qfalse) {
             for (l = ndim - (nidx-1); l>0; l--) {
                 //printf("i=%d j=%d k=%d l=%d ndim=%d nidx=%d\n",i,j,k,l,ndim,nidx);
-                cumo_na_index_parse_each(Qtrue, na->shape[k], k, &q[j]);
+                cumo_na_index_parse_each(Qtrue, na->shape[k], k, &q[j], at_mode);
                 if (q[j].n > 1) {
                     total *= q[j].n;
                 }
@@ -425,12 +444,12 @@ cumo_na_index_parse_args(VALUE args, cumo_narray_t *na, cumo_na_index_arg_t *q, 
         }
         // new dimension
         else if (v==cumo_sym_new) {
-            cumo_na_index_parse_each(v, 1, k, &q[j]);
+            cumo_na_index_parse_each(v, 1, k, &q[j], at_mode);
             j++;
         }
         // other dimension
         else {
-            cumo_na_index_parse_each(v, na->shape[k], k, &q[j]);
+            cumo_na_index_parse_each(v, na->shape[k], k, &q[j], at_mode);
             if (q[j].n > 1) {
                 total *= q[j].n;
             }
@@ -852,7 +871,7 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
     cumo_narray_view_t *na2;
     ssize_t elmsz;
 
-    cumo_na_index_parse_args(args, na1, q, ndim);
+    cumo_na_index_parse_args(args, na1, q, ndim, at_mode);
 
     if (cumo_na_debug_flag) print_index_arg(q,ndim);
 
