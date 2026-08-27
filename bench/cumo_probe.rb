@@ -15,6 +15,8 @@
 #   GPU=1 DTYPES=all LAYOUTS=all ruby cumo_probe.rb
 #   GPU=1 ALL=1 ruby cumo_probe.rb                # every row, not just the flagged
 #   GPU=1 COLS=4096 ROWS=1024 REPS=7 ruby cumo_probe.rb
+#   GPU=1 SAVE_BASELINE=1 ruby cumo_probe.rb      # record what today can do
+#   GPU=1 ruby cumo_probe.rb                      # ... and read later runs against it
 #   ruby cumo_probe.rb                            # the same sweep on Numo
 #
 # Every row is also run on a quarter of the rows, which says whether what makes
@@ -57,6 +59,15 @@ REPS    = (ENV['REPS'] || 5).to_i
 GROUP   = ENV['GROUP']
 FLAG    = (ENV['FLAG'] || 5.0).to_f   # times its group's reference before a row is called out
 SHOW_ALL = !ENV['ALL'].to_s.empty?
+
+# Five groups and a handful of cases have no peer to be read against, so the
+# only thing that can call them out is what the same sweep measured before.
+# SAVE_BASELINE=1 writes this run's rows, and every later run on the machine is
+# read against them; DRIFT is how many times its recorded time a row has to lose
+# before it is called out.
+BASELINE = ENV['BASELINE'] || File.join(__dir__, 'cumo_probe_baseline.json')
+SAVE_BASELINE = !ENV['SAVE_BASELINE'].to_s.empty?
+DRIFT   = (ENV['DRIFT'] || 2.0).to_f
 
 DTYPE_SETS = {
   'default' => %w[SFloat Int32 Bit],
@@ -501,26 +512,37 @@ includes = $LOAD_PATH.reject { |d| d.start_with?(RbConfig::CONFIG['rubylibdir'],
               .flat_map { |d| ['-I', d] }
 child_env = ENV.to_h.merge('COLS' => COLS.to_s, 'ROWS' => ROWS.to_s, 'REPS' => REPS.to_s)
 
+# One case in a process of its own. Returns what it said rather than printing
+# it, so a row can be put back through the same measurement later.
+def run_cell(cell, includes, child_env)
+  env = child_env.merge('CUMO_PROBE_CASE' => cell.map(&:to_s).join('|'))
+  out, = Open3.capture2(env, RbConfig.ruby, *includes, $PROGRAM_NAME)
+  got = { rows: [], launches: [], skipped: [] }
+  out.each_line do |line|
+    f = line.chomp.split("\t")
+    case f.first
+    when 'LAUNCH' then got[:launches] << f[1].to_f
+    when 'ROW'
+      t = f[5].to_f
+      got[:rows] << { group: f[1].to_sym, name: f[2], dtype: f[3], layout: f[4].to_sym,
+                      time: t, work: f[6].to_f, rate: f[6].to_f / t / 1e9, shape: f[7],
+                      spread: f[8].to_f, peer: f[9] != '0' }
+    when 'SKIP' then got[:skipped] << [f[5], "#{f[1]}/#{f[2]}/#{f[3]}"]
+    when 'CELL' then got[:skipped] << [f[5], "#{f[1]}/#{f[2]}/#{f[3]} raised before it could be measured"]
+    end
+  end
+  got
+end
+
 rows = []
 skipped = Hash.new { |h, k| h[k] = [] }
 launches = []
 
-cells.each_with_index do |(group, name, dtype, layout), i|
-  env = child_env.merge('CUMO_PROBE_CASE' => [group, name, dtype, layout].join('|'))
-  out, = Open3.capture2(env, RbConfig.ruby, *includes, $PROGRAM_NAME)
-  out.each_line do |line|
-    f = line.chomp.split("\t")
-    case f.first
-    when 'LAUNCH' then launches << f[1].to_f
-    when 'ROW'
-      t = f[5].to_f
-      rows << { group: f[1].to_sym, name: f[2], dtype: f[3], layout: f[4].to_sym,
-                time: t, work: f[6].to_f, rate: f[6].to_f / t / 1e9, shape: f[7], spread: f[8].to_f,
-                peer: f[9] != '0' }
-    when 'SKIP' then skipped[f[5]] << "#{f[1]}/#{f[2]}/#{f[3]}"
-    when 'CELL' then skipped[f[5]] << "#{f[1]}/#{f[2]}/#{f[3]} raised before it could be measured"
-    end
-  end
+cells.each_with_index do |cell, i|
+  got = run_cell(cell, includes, child_env)
+  rows.concat(got[:rows])
+  launches.concat(got[:launches])
+  got[:skipped].each { |why, what| skipped[why] << what }
   print '.'
   $stdout.flush if (i % 40).zero?
 end
@@ -549,8 +571,15 @@ puts
 # ratio of its own -- it is only barred from setting one.
 STEADY = 10.0
 
+# What is left of a row's time once the launch it sits above is taken off. A
+# kernel the harness cannot resolve below that floor is credited with one launch,
+# so a row is never read as faster than the harness can see.
+def net_time(t, launch)
+  [t - launch, launch].max
+end
+
 def net_rate(row, launch)
-  row[:work] / [row[:time] - launch, launch].max / 1e9
+  row[:work] / net_time(row[:time], launch) / 1e9
 end
 
 rows.group_by { |r| [r[:group], r[:dtype], r[:layout]] }.each_value do |cell|
@@ -575,6 +604,157 @@ puts "  #{'-' * 84}"
 end
 puts format('  (nothing was more than %.1fx off its peers)', FLAG) if flagged.empty? && !SHOW_ALL
 puts
+
+# --- against the last run --------------------------------------------------
+#
+# The peer test is blind twice over. A group with nothing comparable in it --
+# alloc, host, compact, scan and sort -- has no reference at all, and neither
+# have the cases that must allocate their result; that is seventeen of the cases
+# in this file, and where, where2, mask, sort and sort_index are among them. And
+# a regression that slows a whole group at once carries the reference down with
+# it, so nothing in the group stands out however far it has fallen.
+#
+# What answers both is the same sweep on the same machine before the change.
+# Times are compared with each side's own launch taken off, and only against an
+# entry recorded at the same shape and on the same backend -- never against a
+# rate, since the work a group is credited with is a model in this file and
+# editing it would otherwise read as a regression.
+def baseline_key(row)
+  [row[:group], row[:name], row[:dtype], row[:layout]].join('/')
+end
+
+def read_baseline(path)
+  return nil unless File.exist?(path)
+
+  JSON.parse(File.read(path))
+rescue StandardError => e
+  warn format('  baseline %s: %s: %s', path, e.class, e.message)
+  nil
+end
+
+require 'json'
+saved = read_baseline(BASELINE)
+
+if SAVE_BASELINE
+  # Two processes have to agree before a row is worth watching. What one of them
+  # says is not a property of the kernel: max_index over a column slice read 154,
+  # 162, 157, 172 and once 31 microseconds, at a spread inside each of them of
+  # 1.2, because the copy it makes lands in a pool block or on fresh managed
+  # pages. Recording the 31 would call every later run a regression. So each cell
+  # is measured a second time, the slower of the two is what gets written, and a
+  # cell whose two readings disagree by the bar itself is written as one nothing
+  # can be read against.
+  entries = saved && saved['rows'].is_a?(Hash) ? saved['rows'] : {}
+  print '  confirming '
+  rows.each_with_index do |r, i|
+    got = run_cell([r[:group], r[:name], r[:dtype], r[:layout]], includes, child_env)
+    second = got[:rows].first
+    pair = [r[:time], second ? second[:time] : r[:time]]
+    entries[baseline_key(r)] = { 'time' => pair.max, 'launch' => launch, 'rows' => ROWS,
+                                 'cols' => COLS, 'backend' => XM.to_s,
+                                 'watch' => pair.max / [pair.min, 1e-15].max < DRIFT }
+    print '.'
+    $stdout.flush if (i % 40).zero?
+  end
+  puts
+  meta = { 'saved' => Time.now.strftime('%Y-%m-%d %H:%M'), 'version' => version, 'ruby' => RUBY_VERSION }
+  File.write(BASELINE, "#{JSON.pretty_generate('meta' => meta, 'rows' => entries.sort.to_h)}\n")
+  puts format('  wrote %d of this run\'s rows to %s, which now holds %d', rows.size, BASELINE, entries.size)
+  puts
+elsif saved.nil?
+  puts format('  no baseline at %s; SAVE_BASELINE=1 records one, and later runs are read', BASELINE)
+  puts '  against it -- which is the only thing that can call out a group with no peer.'
+  puts
+else
+  entries = saved['rows'].is_a?(Hash) ? saved['rows'] : {}
+  meta = saved['meta'] || {}
+  drifted = []
+  faster = 0
+  fresh = 0
+  elsewhere = 0
+  floored = 0
+  unsteady = 0
+  rows.each do |r|
+    was = entries[baseline_key(r)]
+    if was.nil?
+      fresh += 1
+      next
+    end
+    if was['rows'] != ROWS || was['cols'] != COLS || was['backend'] != XM.to_s
+      elsewhere += 1
+      next
+    end
+    if was['watch'] == false
+      unsteady += 1
+      next
+    end
+    # Neither side cleared two launches, so both are reading the harness rather
+    # than a kernel -- and the launch a run measures moves with how many cells it
+    # had to take it over, which would read as drift on its own.
+    if r[:time] <= launch * 2 && was['time'].to_f <= was['launch'].to_f * 2
+      floored += 1
+      next
+    end
+
+    then_t = net_time(was['time'].to_f, was['launch'].to_f)
+    now_t = net_time(r[:time], launch)
+    r[:was] = was['time'].to_f
+    r[:then_t] = then_t
+    r[:drift] = now_t / then_t
+    if r[:drift] >= DRIFT then drifted << r
+    elsif r[:drift] <= 1.0 / DRIFT then faster += 1
+    end
+  end
+
+  # A cell reads five or fifteen times its recorded time now and then, and owes
+  # it to the machine rather than to the kernel: a process that starts while the
+  # card is idle measures the ramp, and every one of its reps is slow together so
+  # the spread never gives it away. sort_index took 16851us once and 1130 the
+  # four times after, at a spread of 1.09. So put what drifted back through the
+  # same measurement and keep what says it twice, which is what a reader is told
+  # to do with the peer table anyway. Both readings have to clear the bar, and
+  # the smaller of the two is reported.
+  unless drifted.empty?
+    again = []
+    drifted.each do |r|
+      got = run_cell([r[:group], r[:name], r[:dtype], r[:layout]], includes, child_env)
+      row = got[:rows].first
+      next if row.nil?
+
+      second = net_time(row[:time], launch) / r[:then_t]
+      next if second < DRIFT
+
+      r[:time] = [r[:time], row[:time]].min
+      r[:drift] = [r[:drift], second].min
+      again << r
+    end
+    settled = drifted.size - again.size
+    drifted = again
+  end
+
+  puts format('  against %s, saved %s (%s %s)', File.basename(BASELINE), meta['saved'] || '?',
+              XM, meta['version'] || '?')
+  puts format('  %-7s %-17s %-8s %-9s %10s %9s %8s', 'group', 'case', 'dtype', 'layout', 'us', 'was', 'change')
+  puts "  #{'-' * 74}"
+  drifted.sort_by { |r| -r[:drift] }.each do |r|
+    puts format('  %-7s %-17s %-8s %-9s %10.1f %9.1f %7.1fx', r[:group], r[:name], r[:dtype], r[:layout],
+                r[:time] * 1e6, r[:was] * 1e6, r[:drift])
+  end
+  puts format('  (nothing lost more than %.1fx of what it did then)', DRIFT) if drifted.empty?
+  if settled.to_i.positive?
+    puts format('  %d more lost that much once and not the second time it was asked', settled)
+  end
+  attempted = cells.map { |c| c.join('/') }
+  gone = (attempted & entries.keys) - rows.map { |r| baseline_key(r) }
+  puts format('  %d rows read against it, %d new to it, %d at another shape, %d under the floor, ' \
+              '%d it could not pin down twice',
+              rows.size - fresh - elsewhere - floored - unsteady, fresh, elsewhere, floored, unsteady)
+  if faster.positive?
+    puts format('  %d gained more than %.1fx, which is worth the same look as losing it', faster, DRIFT)
+  end
+  puts format('  %d it holds were tried here and raised: %s', gone.size, gone.first(3).join(' ')) unless gone.empty?
+  puts
+end
 
 puts format('  %d rows over %d cases, %d dtypes, %d layouts', rows.size, CASES.size, DTYPES.size, LAYOUTS.size)
 unless skipped.empty?
@@ -602,3 +782,10 @@ puts '  A ratio out of a cell of two says as much about which of them set the'
 puts '  reference as about either kernel, and the work the two are credited can'
 puts '  differ by a wide margin. Read such a row against the same case in'
 puts '  another layout before believing the number.'
+puts '  What no peer can answer -- a group with no reference in it, or one that'
+puts '  slowed all at once and carried its reference down -- the last run can.'
+puts '  SAVE_BASELINE=1 records a run and every later run is read against it.'
+puts '  A row it could not pin down twice is left out of that: what a cell that'
+puts '  allocates its own result reads is its pool luck, and the two groups it'
+puts '  takes out are alloc, which measures the allocation on purpose, and the'
+puts '  cases with two outputs.'
