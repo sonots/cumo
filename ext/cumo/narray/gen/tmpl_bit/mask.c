@@ -154,6 +154,7 @@ static VALUE
     nv->stridx = ALLOC_N(cumo_stridx_t,1);
     nv->stridx[0] = stridx0;
     nv->offset = 0;
+    cumo_na_index_mark_filled(nv);
 
     switch(CUMO_NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:

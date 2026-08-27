@@ -107,6 +107,36 @@ cumo_na_range_check(ssize_t pos, ssize_t size, int dim)
     return idx;
 }
 
+// A view's index arrays are written once, by the kernels that build the view,
+// and never again, so a host read of one entry has to wait for those and for
+// nothing else. cudaDeviceSynchronize is the only way to ask, and it waits for
+// everything queued: a scalar read of a[idx, true] cost 70us behind twenty
+// kernels, against 0.2us for the same read on a view built from a range.
+//
+// What it does give is that one of them settles every view built before it. So
+// count them, have a view remember the count its fills were issued at, and skip
+// the wait once the count has moved on. A view whose count is unknown waits as
+// it did before, which is what makes missing a place that builds one cost speed
+// rather than correctness.
+static uint64_t cumo_na_sync_epoch = 0;
+
+void
+cumo_na_index_mark_filled(cumo_narray_view_t *nv)
+{
+    nv->index_sync_epoch = cumo_na_sync_epoch;
+}
+
+void
+cumo_na_index_wait_fill(const cumo_narray_view_t *nv)
+{
+    if (nv->index_sync_epoch < cumo_na_sync_epoch) {
+        return;
+    }
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_index_wait_fill");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_na_sync_epoch++;
+}
+
 // copy ruby array to idx
 static void
 cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *q, int at_mode)
@@ -926,6 +956,8 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
         }
         break;
     }
+    cumo_na_index_mark_filled(na2);
+
     if (store) {
         cumo_na_get_pointer_for_write(store); // allocate memory
         cumo_na_store(cumo_na_flatten_dim(store,0),view);
@@ -1152,8 +1184,7 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
                 x = cumo_na_range_check(idx[i], na->shape[i], i);
                 sdx = nv->stridx[i];
                 if (CUMO_SDX_IS_INDEX(sdx)) {
-                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_get_result_dimension");
-                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+                    cumo_na_index_wait_fill(nv);
                     pos += CUMO_SDX_GET_INDEX(sdx)[x];
                 } else {
                     pos += CUMO_SDX_GET_STRIDE(sdx)*x;
@@ -1170,8 +1201,7 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
                 x = x / s;
                 sdx = nv->stridx[i];
                 if (CUMO_SDX_IS_INDEX(sdx)) {
-                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_get_result_dimension");
-                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+                    cumo_na_index_wait_fill(nv);
                     pos += CUMO_SDX_GET_INDEX(sdx)[m];
                 } else {
                     pos += CUMO_SDX_GET_STRIDE(sdx)*m;

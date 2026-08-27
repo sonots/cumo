@@ -248,6 +248,8 @@ typedef struct {
                          // elm.step_unit = elm.bit_size / elm.access_unit
                          // elm.step_unit = elm.size_bits / elm.unit_bits
     cumo_stridx_t *stridx;    // stride or indices of data pointer for each dimension
+    uint64_t index_sync_epoch; // synchronizes counted when the index fills were
+                               // issued; UINT64_MAX when that is not known
 } cumo_narray_view_t;
 
 

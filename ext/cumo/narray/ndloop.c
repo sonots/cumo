@@ -581,8 +581,7 @@ ndloop_set_stepidx(cumo_na_md_loop_t *lp, int j, VALUE vna, int *dim_map, int rw
                 }
             } else if (n==1) {
                 if (CUMO_SDX_IS_INDEX(sdx)) {
-                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("ndloop_set_stepidx", "any");
-                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+                    cumo_na_index_wait_fill((const cumo_narray_view_t *)na);
                     LITER(lp,0,j).pos += CUMO_SDX_GET_INDEX(sdx)[0];
                 }
             }

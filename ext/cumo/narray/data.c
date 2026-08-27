@@ -613,6 +613,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
         }
         break;
     }
+    cumo_na_index_mark_filled(na2);
     return view;
 }
 
