@@ -5517,6 +5517,21 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([], wrong)
   end
 
+  test "trimming a dimension waits for the kernel that filled the view's index" do
+    rows, cols = 4096, 512
+    a = Cumo::SFloat.new(rows, cols).seq(1)
+    busy = Cumo::SFloat.new(2048, 2048).seq(1)
+    wrong = []
+    8.times do |rep|
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      30.times { busy.inplace * 2.0 }
+      order = (0...rows).to_a.rotate(rep * 11 + 3)
+      got = a[Cumo::Int32.cast(order), true][0, true][0].to_a.first
+      wrong << [rep, got] if got != order[0] * cols + 1.0
+    end
+    assert_equal([], wrong)
+  end
+
   test "a subclass of RObject keeps its data on the host too" do
     klass = Class.new(Cumo::RObject)
     a = klass.new(6)
