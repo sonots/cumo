@@ -50,9 +50,9 @@ static VALUE
 
     rb_scan_args(argc, argv, "4:", &gamma, &beta, &mean, &var, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 3, opts);
-    eps = cumo_cuda_cudnn_option_value(opts[0], Qnil);
-    axis = cumo_cuda_cudnn_option_value(opts[1], Qnil);
-    y = cumo_cuda_cudnn_option_value(opts[2], Qnil);
+    eps = cumo_option_value(opts[0], Qnil);
+    axis = cumo_option_value(opts[1], Qnil);
+    y = cumo_option_value(opts[2], Qnil);
 
     if (eps != Qnil) {
         double_eps = NUM2DBL(eps);
@@ -78,17 +78,17 @@ static VALUE
         CumoGetNArray(mean, nmean);
         CumoGetNArray(var, nvar);
 
-        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(ngamma->size, reduced_total_size);
-        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nbeta->size, reduced_total_size);
-        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nmean->size, reduced_total_size);
-        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(nvar->size, reduced_total_size);
+        CUMO_CHECK_SIZE_EQ(ngamma->size, reduced_total_size);
+        CUMO_CHECK_SIZE_EQ(nbeta->size, reduced_total_size);
+        CUMO_CHECK_SIZE_EQ(nmean->size, reduced_total_size);
+        CUMO_CHECK_SIZE_EQ(nvar->size, reduced_total_size);
     }
 
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(gamma, cT);
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(beta, cT);
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(mean, cT);
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(var, cT);
+    CUMO_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CHECK_NARRAY_TYPE(gamma, cT);
+    CUMO_CHECK_NARRAY_TYPE(beta, cT);
+    CUMO_CHECK_NARRAY_TYPE(mean, cT);
+    CUMO_CHECK_NARRAY_TYPE(var, cT);
 
     x_cont = cumo_na_as_contiguous_array(x);
     gamma_cont = cumo_na_as_contiguous_array(gamma);

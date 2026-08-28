@@ -6,6 +6,7 @@
 #include <cudnn.h>
 #endif // CUDNN_FOUND
 #include "cumo/narray.h"
+#include "cumo/check.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -22,28 +23,6 @@ extern VALUE cumo_na_eShapeError;
 
 #define CUMO_CUDA_CUDNN_DEFAULT_MAX_WORKSPACE_SIZE 8 * 1024 * 1024
 
-// TODO: Move to proper generic place
-#define CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x,t)                 \
-    if (rb_obj_class(x)!=(t)) {                                \
-        rb_raise(rb_eTypeError,"invalid NArray type (class)"); \
-    }
-
-// TODO: Move to proper generic place
-#define CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(sz1,sz2)        \
-    if ((sz1) != (sz2)) {                            \
-        rb_raise(cumo_na_eShapeError,                \
-                 "size mismatch: %d != %d",     \
-                 (int)(sz1), (int)(sz2));            \
-    }
-
-// TODO: Move to proper generic place
-#define CUMO_CUDA_CUDNN_CHECK_DIM_EQ(nd1,nd2)        \
-    if ((nd1) != (nd2)) {                            \
-        rb_raise(cumo_na_eShapeError,                \
-                 "dimension mismatch: %d != %d",     \
-                 (int)(nd1), (int)(nd2));            \
-    }
-
 // An output array given by the caller is written through a descriptor built
 // from another operand, or as if it were contiguous, so cuDNN never learns how
 // long it really is. It has to be checked here instead.
@@ -52,11 +31,11 @@ cumo_cuda_cudnn_check_output(VALUE out, VALUE type, size_t ndim, size_t *shape)
 {
     cumo_narray_t *na;
 
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(out, type);
+    CUMO_CHECK_NARRAY_TYPE(out, type);
     CumoGetNArray(out, na);
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
+    CUMO_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
     for (size_t idim = 0; idim < ndim; ++idim) {
-        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(na->shape[idim], shape[idim]);
+        CUMO_CHECK_SIZE_EQ(na->shape[idim], shape[idim]);
     }
     if (cumo_na_check_contiguous(out) != Qtrue) {
         rb_raise(cumo_na_eShapeError, "output NArray must be contiguous");
@@ -89,11 +68,11 @@ cumo_cuda_cudnn_check_input(VALUE in, VALUE type, size_t ndim, size_t *shape)
 {
     cumo_narray_t *na;
 
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(in, type);
+    CUMO_CHECK_NARRAY_TYPE(in, type);
     CumoGetNArray(in, na);
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
+    CUMO_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
     for (size_t idim = 0; idim < ndim; ++idim) {
-        CUMO_CUDA_CUDNN_CHECK_SIZE_EQ(na->shape[idim], shape[idim]);
+        CUMO_CHECK_SIZE_EQ(na->shape[idim], shape[idim]);
     }
 }
 
@@ -102,18 +81,6 @@ cumo_cuda_cudnn_check_status(cudnnStatus_t status);
 
 cudnnHandle_t
 cumo_cuda_cudnn_handle();
-
-// TODO: Move to more generic proper place
-static inline VALUE
-cumo_cuda_cudnn_option_value(VALUE value, VALUE default_value)
-{
-    switch(TYPE(value)) {
-    case T_NIL:
-    case T_UNDEF:
-        return default_value;
-    }
-    return value;
-}
 
 // VALUE is Ruby Array
 static inline void
@@ -130,7 +97,7 @@ cumo_cuda_cudnn_get_int_ary(int* int_ary, VALUE ary, size_t ndim, int default_va
         }
     } else {
         Check_Type(ary, T_ARRAY);
-        CUMO_CUDA_CUDNN_CHECK_DIM_EQ((size_t)(RARRAY_LEN(ary)), ndim);
+        CUMO_CHECK_DIM_EQ((size_t)(RARRAY_LEN(ary)), ndim);
         for (size_t idim = 0; idim < ndim; ++idim) {
             int_ary[idim] = NUM2INT(rb_ary_entry(ary, idim));
         }
