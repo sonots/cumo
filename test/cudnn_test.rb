@@ -325,6 +325,51 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
+    # The mode cuDNN is given comes from x's shape, not from the axis, so an
+    # axis that names nothing in x answers as though a different one had been
+    # given rather than failing. The sizes below are the ones that reach the
+    # kernel, so nothing else can raise first.
+    sub_test_case "an axis that does not name x's dimensions" do
+      setup do
+        @x = dtype.new(2, 4, 3, 3).seq(1)
+        @gamma = dtype.ones(4)
+        @beta = dtype.zeros(4)
+        @gy = dtype.ones(2, 4, 3, 3)
+      end
+
+      test "batch_norm rejects an axis outside x #{dtype}" do
+        assert_raise(ArgumentError) { @x.batch_norm(dtype.ones(72), dtype.zeros(72), axis: [5]) }
+        assert_raise(ArgumentError) { @x.batch_norm(dtype.ones(72), dtype.zeros(72), axis: [-1]) }
+      end
+
+      test "batch_norm rejects a repeated or unordered axis #{dtype}" do
+        assert_raise(ArgumentError) { @x.batch_norm(dtype.ones(36), dtype.zeros(36), axis: [0, 0]) }
+        assert_raise(ArgumentError) { @x.batch_norm(@gamma, @beta, axis: [3, 0, 2]) }
+        assert_raise(ArgumentError) { @x.batch_norm(@gamma, @beta, axis: [0, 3, 2]) }
+      end
+
+      test "fixed_batch_norm and batch_norm_backward reject it too #{dtype}" do
+        assert_raise(ArgumentError) do
+          @x.fixed_batch_norm(@gamma, @beta, @beta, @gamma, axis: [5])
+        end
+        assert_raise(ArgumentError) do
+          @x.fixed_batch_norm(@gamma, @beta, @beta, @gamma, axis: [0, 0])
+        end
+        assert_raise(ArgumentError) { @x.batch_norm_backward(@gamma, @gy, axis: [-1]) }
+        assert_raise(ArgumentError) { @x.batch_norm_backward(@gamma, @gy, axis: [3, 0, 2]) }
+      end
+
+      test "the spatial axis and the default still go through #{dtype}" do
+        assert { @x.batch_norm(@gamma, @beta, axis: [0, 2, 3]).shape == [2, 4, 3, 3] }
+        assert { @x.fixed_batch_norm(@gamma, @beta, @beta, @gamma, axis: [0, 2, 3]).shape == [2, 4, 3, 3] }
+        assert { @x.batch_norm_backward(@gamma, @gy, axis: [0, 2, 3]).first.shape == [2, 4, 3, 3] }
+
+        flat = dtype.new(8, 4).seq(1)
+        assert { flat.batch_norm(@gamma, @beta).shape == [8, 4] }
+        assert { flat.batch_norm(@gamma, @beta, axis: [0]).shape == [8, 4] }
+      end
+    end
+
     sub_test_case "batch_norm_backward" do
       setup do
         @batch_size = 2

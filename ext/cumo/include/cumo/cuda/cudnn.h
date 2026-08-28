@@ -151,8 +151,26 @@ cumo_cuda_cudnn_get_int_axis(int* int_axis, VALUE axis)
     for (size_t idim = 0; idim < axis_ndim; ++idim) {
         int_axis[idim] = NUM2INT(rb_ary_entry(axis, (long)idim));
     }
-    // TODO: check axis is sorted
     return axis_ndim;
+}
+
+// The axis names dimensions of x, and the batch normalization mode is picked
+// from it. One outside x, repeated, or out of order names neither: the mode
+// comes out the same either way, so the call goes through and answers as
+// though a different axis had been given.
+static inline void
+cumo_cuda_cudnn_check_axis(size_t axis_ndim, int* int_axis, size_t x_ndim)
+{
+    for (size_t idim = 0; idim < axis_ndim; ++idim) {
+        if (int_axis[idim] < 0 || (size_t)int_axis[idim] >= x_ndim) {
+            rb_raise(rb_eArgError, "axis[%d]=%d is out of range for a %d-dimensional array",
+                     (int)idim, int_axis[idim], (int)x_ndim);
+        }
+        if (idim > 0 && int_axis[idim] <= int_axis[idim - 1]) {
+            rb_raise(rb_eArgError, "axis must increase, but axis[%d]=%d follows axis[%d]=%d",
+                     (int)idim, int_axis[idim], (int)(idim - 1), int_axis[idim - 1]);
+        }
+    }
 }
 
 size_t
