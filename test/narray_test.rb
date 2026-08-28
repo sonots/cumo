@@ -5475,6 +5475,76 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # The expectations are built in Ruby out of the source's own bytes, so a
+  # kernel that reached the wrong element cannot cancel out against a copy.
+  swap_dtypes = [
+    Cumo::UInt8, Cumo::Int16, Cumo::Int32, Cumo::Int64,
+    Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex,
+  ]
+  swap_expect = lambda do |binary, elmsz|
+    binary.b.each_char.each_slice(elmsz).map { |bytes| bytes.reverse.join }.join.b
+  end
+
+  test "swap_byte reverses the bytes of every element of a view" do
+    rows, cols = 6, 8
+    values = Array.new(rows * cols) { |i| (i * 37) % 251 }
+    views = {
+      "contiguous" => ->(a) { a },
+      "column slice" => ->(a) { a[true, 2...6] },
+      "reversed" => ->(a) { a[true, (cols - 1).step(0, -1)] },
+      "row stride" => ->(a) { a[0.step(rows - 1, 2), true] },
+      "index view" => ->(a) { a[[4, 1, 0, 3], true] },
+      "column index" => ->(a) { a[true, [7, 0, 3]] },
+      "transpose" => ->(a) { a.transpose },
+    }
+    swap_dtypes.each do |dtype|
+      elmsz = dtype::ELEMENT_BYTE_SIZE
+      src = dtype.cast(values).reshape(rows, cols)
+      views.each do |what, take|
+        v = take.call(src)
+        assert_equal(swap_expect.call(v.to_binary, elmsz), v.swap_byte.to_binary.b, "#{dtype} #{what}")
+      end
+      # a 5-d shape runs past the dimension-specialised kernels
+      deep = dtype.cast(values).reshape(2, 2, 2, 2, 3)
+      assert_equal(swap_expect.call(deep.to_binary, elmsz), deep.swap_byte.to_binary.b, "#{dtype} 5d")
+      slice = deep[true, 1, true, true, 0...2]
+      assert_equal(swap_expect.call(slice.to_binary, elmsz), slice.swap_byte.to_binary.b, "#{dtype} 5d slice")
+    end
+  end
+
+  # An inplace swap_byte hands the same address in on both sides, so a whole
+  # element has to be read before any of it is written.
+  test "an inplace swap_byte reverses in place" do
+    values = Array.new(48) { |i| (i * 37) % 251 }
+    swap_dtypes.each do |dtype|
+      elmsz = dtype::ELEMENT_BYTE_SIZE
+      want = swap_expect.call(dtype.cast(values).to_binary, elmsz)
+
+      flat = dtype.cast(values)
+      flat.inplace.swap_byte
+      assert_equal(want, flat.to_binary.b, "#{dtype} flat")
+
+      whole = dtype.cast(values).reshape(6, 8)
+      view = whole[true, 2...6]
+      before = swap_expect.call(view.to_binary, elmsz)
+      view.inplace.swap_byte
+      assert_equal(before, view.to_binary.b, "#{dtype} view")
+      untouched = whole[true, 0...2]
+      assert_equal(dtype.cast(values).reshape(6, 8)[true, 0...2].to_binary.b, untouched.to_binary.b,
+                   "#{dtype} beyond the view")
+    end
+  end
+
+  test "hton, to_network, to_vacs and to_host go through swap_byte" do
+    a = Cumo::Int32.new(20).seq(1)
+    assert_equal(a.swap_byte.to_binary, a.hton.to_binary)
+    # Whichever way round the host is, one of the two swaps and the other is
+    # already in the order it names.
+    assert_equal([a.to_binary, a.swap_byte.to_binary].sort,
+                 [a.to_network.to_binary, a.to_vacs.to_binary].sort)
+    assert_equal(a.to_binary, a.to_host.to_binary)
+  end
+
   test "at() rejects a scalar subscript" do
     a = Cumo::DFloat.new(3, 3, 3).seq
     assert_raise(IndexError) { a.at(0, 1, 2) }

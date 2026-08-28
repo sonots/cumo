@@ -55,6 +55,7 @@ static ID cumo_id_swap_byte;
 
 void cumo_iter_copy_bytes_kernel_launch(char *p1, char *p2, ssize_t s1, ssize_t s2, size_t *idx1, size_t *idx2, size_t n, int elmsz);
 void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz);
+void cumo_iter_swap_byte_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz);
 #define m_memcpy(src,dst) memcpy(dst,src,e)
 
 static void
@@ -152,6 +153,16 @@ iter_swap_byte(cumo_na_loop_t *const lp)
     LOOP_UNARY_PTR(lp,m_swap_byte);
 }
 
+static void
+iter_swap_byte_indexer(cumo_na_loop_t *const lp)
+{
+    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+    cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+
+    cumo_iter_swap_byte_indexer_kernel_launch(&a1, &a2, &indexer, (ssize_t)lp->args[0].elmsz);
+}
+
 static VALUE
 cumo_na_swap_byte(VALUE self)
 {
@@ -160,6 +171,13 @@ cumo_na_swap_byte(VALUE self)
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
     cumo_ndfunc_t ndf = { iter_swap_byte, CUMO_FULL_LOOP|CUMO_NDF_ACCEPT_BYTESWAP,
                      1, 1, ain, aout };
+
+    // Cumo::Bit's element is one bit, which a loop stepping by the element
+    // stride cannot address; it keeps the loop it has always had.
+    if (!rb_obj_is_kind_of(self, cumo_cBit)) {
+        ndf.func = iter_swap_byte_indexer;
+        ndf.flag = CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ACCEPT_BYTESWAP;
+    }
 
     v = cumo_na_ndloop(&ndf, 1, self);
     if (self!=v) {
