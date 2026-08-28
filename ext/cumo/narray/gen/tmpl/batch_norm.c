@@ -166,7 +166,9 @@ static VALUE
     mode = cumo_cuda_cudnn_GetBatchNormMode(axis_ndim, int_axis);
     status = cumo_cuda_cudnn_CreateBNTensorDescriptor(&bn_desc, x_desc, mode);
     if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
-    // TODO: bn_desc may return another type, and may need to cast gamma, beta, mean, var
+    // The derived descriptor carries x's own type -- cuDNN widens only for
+    // half, which these templates are never generated for -- and the checks
+    // above hold every parameter to x's class, so none of them needs a cast.
 
     handle = cumo_cuda_cudnn_handle();
 
