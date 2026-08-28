@@ -329,6 +329,49 @@ class CUDNNTest < Test::Unit::TestCase
     # axis that names nothing in x answers as though a different one had been
     # given rather than failing. The sizes below are the ones that reach the
     # kernel, so nothing else can raise first.
+    # cuDNN derives the parameter descriptor from x and gives it x's own type,
+    # widening only for half, which these methods are never generated for. What
+    # makes that enough is that every parameter is held to x's class here, so
+    # the descriptor and the buffer behind it can never disagree.
+    sub_test_case "a parameter of another dtype" do
+      setup do
+        @other = (dtype == Cumo::SFloat) ? Cumo::DFloat : Cumo::SFloat
+        @x = dtype.new(2, 4, 3, 3).seq(1)
+        @gamma = dtype.ones(4)
+        @beta = dtype.zeros(4)
+        @gy = dtype.ones(2, 4, 3, 3)
+        @axis = [0, 2, 3]
+      end
+
+      test "batch_norm rejects it #{dtype}" do
+        assert_raise(TypeError) { @x.batch_norm(@other.ones(4), @beta, axis: @axis) }
+        assert_raise(TypeError) { @x.batch_norm(@gamma, @other.zeros(4), axis: @axis) }
+        assert_raise(TypeError) do
+          @x.batch_norm(@gamma, @beta, axis: @axis, running_mean: @other.zeros(4), running_var: @other.ones(4))
+        end
+        assert_raise(TypeError) do
+          @x.batch_norm(@gamma, @beta, axis: @axis, mean: @other.zeros(4), inv_std: @other.zeros(4))
+        end
+      end
+
+      test "fixed_batch_norm and batch_norm_backward reject it #{dtype}" do
+        assert_raise(TypeError) do
+          @x.fixed_batch_norm(@other.ones(4), @beta, @beta, @gamma, axis: @axis)
+        end
+        assert_raise(TypeError) do
+          @x.fixed_batch_norm(@gamma, @beta, @other.zeros(4), @gamma, axis: @axis)
+        end
+        assert_raise(TypeError) { @x.batch_norm_backward(@other.ones(4), @gy, axis: @axis) }
+        assert_raise(TypeError) { @x.batch_norm_backward(@gamma, @other.ones(2, 4, 3, 3), axis: @axis) }
+      end
+
+      test "the same call with x's own dtype goes through #{dtype}" do
+        assert { @x.batch_norm(@gamma, @beta, axis: @axis).class == dtype }
+        assert { @x.fixed_batch_norm(@gamma, @beta, @beta, @gamma, axis: @axis).class == dtype }
+        assert { @x.batch_norm_backward(@gamma, @gy, axis: @axis).first.class == dtype }
+      end
+    end
+
     sub_test_case "an axis that does not name x's dimensions" do
       setup do
         @x = dtype.new(2, 4, 3, 3).seq(1)
