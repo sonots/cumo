@@ -80,6 +80,7 @@ static VALUE
     CumoGetNArray(x, nx);
     CumoGetNArray(gamma, ngamma);
     x_ndim = nx->ndim;
+    cumo_cuda_cudnn_check_axis(axis_ndim, int_axis, x_ndim);
     x_shape = nx->shape;
     gamma_ndim = ngamma->ndim;
     gamma_shape = ngamma->shape;

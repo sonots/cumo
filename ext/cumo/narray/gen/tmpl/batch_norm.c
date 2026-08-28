@@ -93,6 +93,7 @@ static VALUE
 
     CumoGetNArray(x, nx);
     x_ndim = nx->ndim;
+    cumo_cuda_cudnn_check_axis(axis_ndim, int_axis, x_ndim);
     x_shape = nx->shape;
 
     {
