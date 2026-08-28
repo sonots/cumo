@@ -17,7 +17,7 @@ static void
 cumo_cuda_cudnn_get_sizet_ary(size_t *sizet_ary, VALUE ary, size_t ndim)
 {
     Check_Type(ary, T_ARRAY);
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ((size_t)(RARRAY_LEN(ary)), ndim);
+    CUMO_CHECK_DIM_EQ((size_t)(RARRAY_LEN(ary)), ndim);
     for (size_t idim = 0; idim < ndim; ++idim) {
         sizet_ary[idim] = NUM2SIZET(rb_ary_entry(ary, (long)idim));
     }
@@ -61,16 +61,16 @@ static VALUE
 
     rb_scan_args(argc, argv, "2:", &gy, &w_shape, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 3, opts);
-    stride = cumo_cuda_cudnn_option_value(opts[0], Qnil);
-    pad = cumo_cuda_cudnn_option_value(opts[1], Qnil);
-    gw = cumo_cuda_cudnn_option_value(opts[2], Qnil);
+    stride = cumo_option_value(opts[0], Qnil);
+    pad = cumo_option_value(opts[1], Qnil);
+    gw = cumo_option_value(opts[2], Qnil);
 
     CumoGetNArray(x, nx);
     CumoGetNArray(gy, ngy);
 
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(nx->ndim, ngy->ndim);
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(gy, cT);
+    CUMO_CHECK_DIM_EQ(nx->ndim, ngy->ndim);
+    CUMO_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CHECK_NARRAY_TYPE(gy, cT);
     if (nx->ndim - 2 < 2) {
         rb_raise(cumo_na_eShapeError, "CUDNN convolution requires number of spatial "
                 "dimensions to be greater than or equal to 2, but %d", nx->ndim - 2);
@@ -90,9 +90,9 @@ static VALUE
     // w_shape = (out_channels, in_channels, k_1, k_2, ..., k_N)
     // x_shape = (batch_size, in_channels, d_1, d_2, ..., d_N)
     // y_shape = (batch_size, out_channels, out_1, out_2, ..., out_N)
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(nx->shape[0], ngy->shape[0]);
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(sizet_w_shape[0], ngy->shape[1]);
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(sizet_w_shape[1], nx->shape[1]);
+    CUMO_CHECK_DIM_EQ(nx->shape[0], ngy->shape[0]);
+    CUMO_CHECK_DIM_EQ(sizet_w_shape[0], ngy->shape[1]);
+    CUMO_CHECK_DIM_EQ(sizet_w_shape[1], nx->shape[1]);
 
     {
         // cuDNN rejects a gy of the wrong spatial size with CUDNN_STATUS_BAD_PARAM,

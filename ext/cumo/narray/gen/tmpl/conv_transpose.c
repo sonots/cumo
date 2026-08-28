@@ -24,7 +24,7 @@ get_int_out_size(int* int_out_size, VALUE out_size, size_t ndim, size_t* x_shape
         }
     } else {
         Check_Type(out_size, T_ARRAY);
-        CUMO_CUDA_CUDNN_CHECK_DIM_EQ((size_t)(RARRAY_LEN(out_size)), ndim);
+        CUMO_CHECK_DIM_EQ((size_t)(RARRAY_LEN(out_size)), ndim);
         for (size_t i = 0; i < ndim; ++i) {
             int_out_size[i] = NUM2INT(rb_ary_entry(out_size, (long)i));
         }
@@ -80,18 +80,18 @@ static VALUE
 
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 5, opts);
-    b = cumo_cuda_cudnn_option_value(opts[0], Qnil);
-    stride = cumo_cuda_cudnn_option_value(opts[1], Qnil);
-    pad = cumo_cuda_cudnn_option_value(opts[2], Qnil);
-    out_size = cumo_cuda_cudnn_option_value(opts[3], Qnil);
-    y = cumo_cuda_cudnn_option_value(opts[4], Qnil);
+    b = cumo_option_value(opts[0], Qnil);
+    stride = cumo_option_value(opts[1], Qnil);
+    pad = cumo_option_value(opts[2], Qnil);
+    out_size = cumo_option_value(opts[3], Qnil);
+    y = cumo_option_value(opts[4], Qnil);
 
     CumoGetNArray(x, nx);
     CumoGetNArray(w, nw);
 
-    CUMO_CUDA_CUDNN_CHECK_DIM_EQ(nx->ndim, nw->ndim);
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(w, cT);
+    CUMO_CHECK_DIM_EQ(nx->ndim, nw->ndim);
+    CUMO_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CHECK_NARRAY_TYPE(w, cT);
     if (nx->ndim - 2 < 2) {
         rb_raise(cumo_na_eShapeError, "CUDNN convolution requires number of spatial "
                 "dimensions to be greater than or equal to 2, but %d", nx->ndim - 2);
@@ -190,7 +190,7 @@ static VALUE
         size_t *b_shape;
         int b_ndim;
 
-        CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(b, cT);
+        CUMO_CHECK_NARRAY_TYPE(b, cT);
         CumoGetNArray(b, nb);
         new_shape[0] = 1;
         new_shape[1] = nb->size;

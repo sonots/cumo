@@ -50,13 +50,13 @@ static VALUE
 
     rb_scan_args(argc, argv, "2:", &mode, &kernel_size, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 3, opts);
-    stride = cumo_cuda_cudnn_option_value(opts[0], Qnil);
-    pad = cumo_cuda_cudnn_option_value(opts[1], Qnil);
-    y = cumo_cuda_cudnn_option_value(opts[2], Qnil);
+    stride = cumo_option_value(opts[0], Qnil);
+    pad = cumo_option_value(opts[1], Qnil);
+    y = cumo_option_value(opts[2], Qnil);
 
     CumoGetNArray(x, nx);
 
-    CUMO_CUDA_CUDNN_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CHECK_NARRAY_TYPE(x, cT);
     if (nx->ndim - 2 < 2) {
         rb_raise(cumo_na_eShapeError, "CUDNN pooling requires number of spatial "
                 "dimensions to be greater than or equal to 2, but %d", nx->ndim - 2);
