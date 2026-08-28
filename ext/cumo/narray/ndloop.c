@@ -1550,6 +1550,8 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
     }
 
+    // One wait settles every index array the loop below reads, so the loop
+    // reads them without one of its own.
     ndloop_sync_md_index(lp);
     ndloop_sync_user_index(lp);
 
@@ -1582,8 +1584,6 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
             // j-th argument
             for (j=0; j<lp->narg; j++) {
                 if (LITER(lp,i,j).idx) {
-                    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("loop_narrayx", "any");
-                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
                     LITER(lp,i+1,j).pos = LITER(lp,i,j).pos + LITER(lp,i,j).idx[c[i]];
                 } else {
                     LITER(lp,i+1,j).pos = LITER(lp,i,j).pos + LITER(lp,i,j).step*c[i];
