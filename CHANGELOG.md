@@ -1,3 +1,30 @@
+# 0.5.11 (2026/08/29)
+
+Breaking changes:
+
+* `conv` and `pooling` raise `ArgumentError` on a stride of zero, where the assert meant to catch it never ran under `NDEBUG` and the division by it raised SIGFPE (PR #307)
+
+Fixes:
+
+* Fix a numeric subscript into a view built from an index array reading the parent's index before the kernel that fills it, which answered with whatever the memory held (PR #333)
+* Fix `mulsum` answering from the wrong bits when an operand is a `Cumo::Bit` view carrying an index array, `cumo_na_copy` moving whole bytes where a Bit element is one bit (PR #326)
+
+Changes:
+
+* Read a view's index array through one synchronize instead of one per row of an md-loop, one per element read, or one per one-element subscript; with twenty kernels queued, `rand` over a 2000-row gather goes from 11.2ms to 3.4ms, a second `a[idx, true][0, 0]` from 54.2us to 0.2us, and `a[[0], true] * 2.0` from 104.3us to 3.5us (PR #334, PR #332, PR #331)
+* Gather a word of a `Cumo::Bit` operand from its rows rather than a bit at a time, and fold a Bit reduction by words within a row rather than only across a flat group; on a 512x2048 column slice `dst.store(slice)` goes from 18.0us to 8.9us and `count_true` from 22.2us to 8.8us (PR #328, PR #327)
+* Reduce `Bit#count_true`, `count_false`, `all?` and `any?` in one kernel instead of one launch per output element; 512x2048 `count_true(axis: 1)` goes from 904.0us to 10.0us and `all?(axis: 1)` from 498.7us to 12.7us (PR #324, PR #323)
+* Address a store's index array from its kernel instead of staging it through a contiguous buffer; a 512x2048 SFloat store into an indexed destination goes from 30.1us to 12.4us (PR #322)
+* Copy an ndloop buffer one element per thread instead of one row; `a[idx, true] = b` on a 1024x1024 SFloat goes from 1567.3us to 67.5us (PR #319)
+* Build `flatten`'s index array with a kernel instead of a host loop; a 512x2048 SFloat column slice goes from 2448.5us to 529.1us (PR #316)
+* Reduce `mulsum` in one kernel instead of one per output element; 512x2048 SFloat `mulsum(axis: 1)` goes from 1758.8us to 13.6us (PR #315)
+* Scatter one element per lane in the compaction behind `where`, `where2` and `mask`; at 4M elements `mask` goes from 193.8us to 106.2us and `where` from 131.4us to 74.1us (PR #313)
+* Build a contiguous Bit output a word at a time with `__ballot_sync`, whatever the operand's layout; at 4M elements `a > 0.5` goes from 459.0us to 31.5us and `view & view` from 481.5us to 42.6us (PR #312, PR #311)
+* Count bits a word at a time instead of one atomicAdd per element; 16M bits all set go from 227.0us to 17.9us (PR #309)
+* Document that a Ruby Float in `Cumo::NMath` promotes the result to double, and that passing a 0-dimensional array keeps it single (PR #325)
+* Drop the contiguity assert the cuDNN descriptors do not need (PR #308)
+* Sweep every kernel family in `bench/cumo_probe.rb`, measure the kernel rather than the allocation it sits above, and read a run against a saved baseline (PR #330, PR #329, PR #321, PR #320, PR #318, PR #317, PR #314, PR #310)
+
 # 0.5.10 (2026/08/23)
 
 Breaking changes:
