@@ -1,36 +1,22 @@
-/*
-  Extract an element only if self is a dimensionless NArray.
-  @overload extract
-  @return [Numeric,Cumo::NArray]
-  --- Extract element value as Ruby Object if self is a dimensionless NArray,
-  otherwise returns self.
-*/
+static VALUE
+<%=c_func(0)%>_cpu(VALUE self);
 
-// TODO(sonots): Return Cumo::Bit instead of ruby built-in object to avoid synchronization
+/*
+  Returns self.
+  @overload extract
+  @return [Cumo::Bit]
+  --- Note that Cumo::Bit always returns Cumo::Bit and does not
+  return a Ruby Integer as Numo::Bit does to avoid
+  synchronization between CPU and GPU for performance.
+
+  Call `Cumo.enable_compatible_mode` to make this method behave
+  compatible with Numo, or you can use `extract_cpu` method instead.
+*/
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {
-    CUMO_BIT_DIGIT *ptr, val;
-    size_t pos;
-    cumo_narray_t *na;
-    CumoGetNArray(self,na);
-
-    if (na->ndim==0) {
-        pos = cumo_na_get_offset(self);
-        ptr = (CUMO_BIT_DIGIT*)cumo_na_get_pointer_for_read(self);
-
-        CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-
-        {
-            // Reading through the managed pointer faults the whole page back from
-            // the device, which costs more than the kernel that wrote it.
-            CUMO_BIT_DIGIT word;
-            cumo_cuda_runtime_check_status(cudaMemcpy(&word, ptr+(pos)/CUMO_NB, sizeof(CUMO_BIT_DIGIT), cudaMemcpyDeviceToHost));
-            val = (word >> ((pos)%CUMO_NB)) & 1u;
-        }
-        cumo_na_release_lock(self);
-        return INT2FIX(val);
+    if (cumo_compatible_mode_enabled_p()) {
+        return <%=c_func(0)%>_cpu(self);
     }
     return self;
 }
