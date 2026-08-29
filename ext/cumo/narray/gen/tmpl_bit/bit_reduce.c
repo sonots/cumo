@@ -46,7 +46,10 @@ static VALUE
     if (argc > 0) {
         return v;
     }
-    v = <%=find_tmpl("extract").c_func%>(v);
+    // all?, any? and none? answer with a Ruby boolean either way, so this
+    // reads the bit rather than handing back the zero-dimensional Bit that
+    // extract returns outside compatible mode.
+    v = <%=find_tmpl("extract_cpu").c_func%>(v);
     switch (v) {
     case INT2FIX(0):
         return Qfalse;

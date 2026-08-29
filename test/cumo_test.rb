@@ -61,6 +61,7 @@ class CumoTest < Test::Unit::TestCase
     count_true: -> { (Cumo::DFloat[3, 1, 7] > 2).count_true },
     count_false: -> { (Cumo::DFloat[3, 1, 7] > 2).count_false },
     bit_aref: -> { (Cumo::DFloat[3, 1, 7] > 2)[1] },
+    bit_extract: -> { Cumo::Bit.cast(1).extract },
   }.freeze
 
   def test_compatible_mode_extracts_every_documented_method
