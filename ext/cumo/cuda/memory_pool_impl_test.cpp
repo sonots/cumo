@@ -337,7 +337,10 @@ public:
         assert(pool_->GetFreeBytes() == kRoundSize * 8);
     }
 
-    // TODO(sonots): Fix after implementing compaction
+    // RemoveFromFreeList leaves an emptied bin in the arena -- it erases the
+    // chunk and returns, where Malloc drops one through CompactIndex. The
+    // assertions below spell that out, so they describe the arena as it is
+    // rather than wait on a compaction this path is not getting.
     void TestRemoveFromFreeList() {
         Arena& arena = pool_->GetArena(stream_ptr_);
         ArenaIndexMap& arena_index_map = pool_->GetArenaIndexMap(stream_ptr_);
