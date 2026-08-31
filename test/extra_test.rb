@@ -484,8 +484,21 @@ class NArrayExtraTest < CumoTestBase
     end
   end
 
+  def argsort_ref_3d(ary, axis)
+    res = Cumo::Int32.zeros(*ary.shape)
+    d0, d1 = [0, 1, 2] - [axis]
+    ary.shape[d0].times do |i|
+      ary.shape[d1].times do |j|
+        slicer = Array.new(3, true)
+        slicer[d0] = i
+        slicer[d1] = j
+        res[*slicer] = ary[*slicer].sort_index
+      end
+    end
+    res
+  end
+
   def test_argsort
-    omit("Cumo does not implement argsort")
     types = [Cumo::SFloat, Cumo::DFloat, Cumo::Int64, Cumo::Int32, Cumo::Int16, Cumo::Int8,
              Cumo::UInt64, Cumo::UInt32, Cumo::UInt16, Cumo::UInt8]
     types.each do |dtype|
@@ -556,6 +569,21 @@ class NArrayExtraTest < CumoTestBase
         assert_equal(ex0, a.argsort(-2))
         assert_equal(ex1, a.argsort(-1))
         assert_equal(ex1, a.argsort)
+      end
+
+      shapes = [[2, 3, 4], [3, 2, 2]]
+      shapes.each do |shape|
+        a = dtype.new(*shape).rand - 0.5
+        ex0 = argsort_ref_3d(a, 0)
+        ex1 = argsort_ref_3d(a, 1)
+        ex2 = argsort_ref_3d(a, 2)
+
+        assert_equal(ex0, a.argsort(0))
+        assert_equal(ex1, a.argsort(1))
+        assert_equal(ex2, a.argsort(2))
+        assert_equal(ex0, a.argsort(-3))
+        assert_equal(ex2, a.argsort)
+        assert_equal(a.flatten.sort_index, a.argsort(nil))
       end
     end
   end
