@@ -1121,6 +1121,61 @@ module Cumo
       a
     end
 
+    # Returns an index array of sort result.
+    #
+    # @example
+    #   require 'cumo/narray'
+    #
+    #   a = Cumo::DFloat[[0.1, 0.7],
+    #                    [0.4, 0.2],
+    #                    [0.2, 0.5]]
+    #   pp a.argsort
+    #   # =>
+    #   # Cumo::Int32#shape=[3,2]
+    #   # [[0, 1],
+    #   #  [1, 0],
+    #   #  [0, 1]]
+    #   pp a.argsort(axis: 0)
+    #   # =>
+    #   # Cumo::Int32#shape=[3,2]
+    #   # [[0, 1],
+    #   #  [2, 2],
+    #   #  [1, 0]]
+    #   pp a.argsort(axis: 1)
+    #   # =>
+    #   # Cumo::Int32#shape=[3,2]
+    #   # [[0, 1],
+    #   #  [1, 0],
+    #   #  [0, 1]]
+    #   pp a.argsort(axis: nil)
+    #   # =>
+    #   # Cumo::Int32#shape=[6]
+    #   # [0, 3, 4, 2, 5, 1]
+    #
+    # @overload argsort(axis: -1)
+    #   @param axis [Integer, nil] Axis along which to sort. Default is -1 (the last axis).
+    #     If `nil` is given, the array is flattened before sorting.
+    #   @return [Cumo::Int32] An array of indices that would sort the array.
+    def argsort(axis_ = 'none', axis: -1)
+      raise NotImplementedError, "argsort is not implemented for #{self.class}" unless respond_to?(:sort_index)
+
+      axis = axis_ unless axis_ == 'none'
+
+      return flatten.sort_index if axis.nil?
+
+      axis += ndim if axis < 0
+      raise NArray::DimensionError, "dimension is out of range" if axis < 0 || axis >= ndim
+
+      return sort_index if ndim == 1
+
+      # sort_index answers with an index into the flattened array; the axes
+      # after axis divide out of it and the ones before it fall to the modulo.
+      idx = sort_index(axis)
+      inner = shape[(axis + 1)..-1].reduce(1, :*)
+      idx = idx / inner if inner > 1
+      idx % shape[axis]
+    end
+
     # Return the sum along diagonals of the array.
     #
     # If 2-D array, computes the summation along its diagonal with the
