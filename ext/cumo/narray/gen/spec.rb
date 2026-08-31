@@ -184,6 +184,10 @@ if is_bit
   def_alias "count_0_cpu", "count_false_cpu"
   bit_reduce "all?", 1
   bit_reduce "any?", 0
+  bit_stat "mean", "CUMO_BIT_STAT_MEAN"
+  bit_stat "var", "CUMO_BIT_STAT_VAR"
+  bit_stat "stddev", "CUMO_BIT_STAT_STDDEV"
+  bit_stat "rms", "CUMO_BIT_STAT_RMS"
   def_method "none?", "none_p"
   def_method "where"
   def_method "where2"

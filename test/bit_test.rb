@@ -680,4 +680,51 @@ class BitTest < Test::Unit::TestCase
       end
     end
   end
+
+  # Every element is 0 or 1, so the four statistics come out of the same bit
+  # count all? and any? reduce, and DFloat is what says the count is right.
+  test "mean, var, stddev and rms of a bit array" do
+    [[1000], [64, 129], [7, 33, 17], [1 << 22]].each do |shape|
+      srand(7)
+      a = Cumo::Bit.cast(Array.new(shape.reduce(:*)) { rand(2) }).reshape(*shape)
+      ref = Cumo::DFloat.cast(a)
+
+      ([[]] + (0...shape.size).map { |axis| [axis] }).each do |axis|
+        assert { a.mean(*axis).instance_of?(Cumo::DFloat) }
+        assert { (a.mean(*axis) - ref.mean(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (a.var(*axis) - ref.var(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (a.stddev(*axis) - ref.stddev(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (a.rms(*axis) - ref.rms(*axis)).abs.max.extract_cpu < 1e-12 }
+      end
+    end
+
+    a = Cumo::Bit[[1, 0, 1], [1, 1, 0]]
+    assert { (a.mean.extract_cpu - (2.0 / 3)).abs < 1e-15 }
+    assert { a.mean(0) == [1, 0.5, 0.5] }
+    assert { a.mean(axis: 1, keepdims: true).shape == [2, 1] }
+
+    assert { Cumo::Bit[0, 0, 0, 0].mean.extract_cpu.zero? }
+    assert { Cumo::Bit[0, 0, 0, 0].var.extract_cpu.zero? }
+    assert { (Cumo::Bit[1, 1, 1, 1].mean.extract_cpu - 1).abs < 1e-15 }
+    assert { Cumo::Bit[1, 1, 1, 1].var.extract_cpu.zero? }
+    assert { (Cumo::Bit[1].mean.extract_cpu - 1).abs < 1e-15 }
+    assert { Cumo::Bit[1].var.extract_cpu.nan? }
+    assert { Cumo::Bit[1].stddev.extract_cpu.nan? }
+    assert { (Cumo::Bit[1].rms.extract_cpu - 1).abs < 1e-15 }
+  end
+
+  test "mean, var, stddev and rms of a bit view" do
+    srand(11)
+    base = Cumo::Bit.cast(Array.new(64 * 65) { rand(2) }).reshape(64, 65)
+
+    [base[true, 1..-2], base[(0..-1).step(2), true], base[[3, 1, 2, 0], true]].each do |v|
+      ref = Cumo::DFloat.cast(v)
+      [[], [0], [1]].each do |axis|
+        assert { (v.mean(*axis) - ref.mean(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (v.var(*axis) - ref.var(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (v.stddev(*axis) - ref.stddev(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (v.rms(*axis) - ref.rms(*axis)).abs.max.extract_cpu < 1e-12 }
+      end
+    end
+  end
 end

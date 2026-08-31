@@ -7,6 +7,11 @@
 #include "cumo/indexer.h"
 #include "cumo/reduce_kernel.h"
 
+#define CUMO_BIT_STAT_MEAN   0
+#define CUMO_BIT_STAT_VAR    1
+#define CUMO_BIT_STAT_STDDEV 2
+#define CUMO_BIT_STAT_RMS    3
+
 namespace cumo_bit_detail {
 
 // A Bit reduction addresses its operands the way a numeric one does -- the
@@ -287,6 +292,71 @@ static inline bit_reduce_plan make_bit_reduce_plan(const TArg& arg) {
     return p;
 }
 
+// mean, var, stddev and rms of a bit array are functions of how many bits are
+// set and how long the axis is, because every element is 0 or 1. They reduce
+// the way count does and differ only in what the store computes.
+__device__ static inline double bit_stat_of_count(uint64_t count, int64_t reduce_total_size, int stat) {
+    double k = (double)count;
+    double n = (double)reduce_total_size;
+    double mean = k / n;
+    switch (stat) {
+        case CUMO_BIT_STAT_MEAN: return mean;
+        case CUMO_BIT_STAT_RMS: return sqrt(mean);
+        // x squared is x for a bit, so the squared deviations sum to k - k * mean.
+        case CUMO_BIT_STAT_VAR: return (k - k * mean) / (n - 1);
+        default: return sqrt((k - k * mean) / (n - 1));
+    }
+}
+
+__global__ static void bit_stat_reduction_kernel(
+        cumo_na_bit_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, cumo_bit_word_addr_t wa, int stat,
+        int out_block_size, int reduce_block_size, int64_t unit_total_size) {
+    extern __shared__ __align__(8) char sdata_raw[];
+    uint64_t* sdata = reinterpret_cast<uint64_t*>(sdata_raw);
+    unsigned int tid = threadIdx.x;
+    BitCountImpl impl;
+
+    int64_t out_total_size = arg.out_indexer.total_size;
+    int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
+
+    int64_t reduce_offset = tid / out_block_size;
+    int64_t out_offset = tid % out_block_size;
+    int64_t out_base = blockIdx.x * out_block_size;
+    int64_t out_stride = gridDim.x * out_block_size;
+
+    for (int64_t i_out = out_base + out_offset; i_out < out_total_size; i_out += out_stride) {
+        ssize_t in_out_off = bit_in_out_offset(arg, ad, i_out);
+        int64_t i_in = i_out * reduce_total_size + reduce_offset;
+
+        uint64_t accum = bit_count_axis(arg, ad, wa, 0, in_out_off, i_in, reduce_total_size,
+                                        0, unit_total_size, reduce_offset, reduce_block_size);
+
+        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        if (reduce_offset == 0) {
+            *reinterpret_cast<double*>(arg.out.ptr + bit_out_offset(arg, ad, i_out)) =
+                bit_stat_of_count(accum, reduce_total_size, stat);
+        }
+    }
+}
+
+// Second pass of a split statistic, laid out like bit_pred_combine_kernel.
+__global__ static void bit_stat_combine_kernel(
+        cumo_na_bit_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, int stat,
+        const uint64_t* partial, int64_t n_split) {
+    int64_t out_total_size = arg.out_indexer.total_size;
+    int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
+
+    for (int64_t i_out = blockIdx.x * blockDim.x + threadIdx.x; i_out < out_total_size;
+         i_out += (int64_t)blockDim.x * gridDim.x) {
+        uint64_t count = 0;
+        for (int64_t i_split = 0; i_split < n_split; ++i_split) {
+            count += partial[i_out * n_split + i_split];
+        }
+        *reinterpret_cast<double*>(arg.out.ptr + bit_out_offset(arg, ad, i_out)) =
+            bit_stat_of_count(count, reduce_total_size, stat);
+    }
+}
+
 // all? and any? are the count of set bits against the length of the axis and
 // against zero, so they reduce the same way and differ only here.
 __device__ static inline CUMO_BIT_DIGIT bit_pred_of_count(uint64_t count, int64_t reduce_total_size, int all) {
@@ -383,6 +453,42 @@ static inline void cumo_bit_count_reduce(cumo_na_bit_reduction_arg_t arg, int in
     combine.out = arg.out;
     combine.out_indexer = arg.out_indexer;
     cumo_reduce<uint64_t, uint64_t>(combine, cumo_bit_detail::BitCountImpl{});
+
+    cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
+}
+
+// The same for the four statistics, whose result is a DFloat of the same width
+// as the count it is computed from.
+static inline void cumo_bit_stat_reduce(cumo_na_bit_reduction_arg_t arg, int stat) {
+    if (arg.out_indexer.total_size == 0) {
+        return;
+    }
+
+    cumo_bit_detail::bit_reduce_plan p = cumo_bit_detail::make_bit_reduce_plan(arg);
+    int64_t block_size = cumo_detail::max_block_size;
+    int64_t shared_mem_size = sizeof(uint64_t) * block_size;
+
+    if (p.n_split < 2) {
+        int64_t grid_size = std::min(cumo_detail::max_grid_size, p.out_block_num);
+        cumo_bit_detail::bit_stat_reduction_kernel<<<grid_size, block_size, shared_mem_size>>>(
+            arg, p.ad, p.wa, stat, (int)p.out_block_size, (int)p.reduce_block_size, p.unit_total_size);
+        cumo_cuda_runtime_check_kernel_launch();
+        return;
+    }
+
+    int64_t partial_total_size = p.out_total_size * p.n_split;
+    uint64_t* partial = reinterpret_cast<uint64_t*>(cumo_cuda_runtime_malloc(sizeof(uint64_t) * partial_total_size));
+
+    int64_t grid_size = std::min(cumo_detail::max_grid_size, p.partial_block_num);
+    cumo_bit_detail::bit_count_partial_kernel<<<grid_size, block_size, shared_mem_size>>>(
+        arg, p.ad, p.wa, 0, partial, p.n_split, p.chunk,
+        (int)p.split_out_block_size, (int)p.split_reduce_block_size, p.unit_total_size);
+    cumo_cuda_runtime_check_kernel_launch();
+
+    int64_t combine_grid = (p.out_total_size + block_size - 1) / block_size;
+    if (combine_grid > cumo_detail::max_grid_size) combine_grid = cumo_detail::max_grid_size;
+    cumo_bit_detail::bit_stat_combine_kernel<<<combine_grid, block_size>>>(arg, p.ad, stat, partial, p.n_split);
+    cumo_cuda_runtime_check_kernel_launch();
 
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
 }
