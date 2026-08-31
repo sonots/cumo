@@ -327,6 +327,12 @@ if is_float
   accum "stddev", "rtype", "cRT"
   accum "var", "rtype", "cRT"
   accum "rms", "rtype", "cRT"
+elsif is_int && !is_object
+  # An integer is exact but none of these are, so they answer in double.
+  accum "mean", "double", "cumo_cDFloat"
+  accum "stddev", "double", "cumo_cDFloat"
+  accum "var", "double", "cumo_cDFloat"
+  accum "rms", "double", "cumo_cDFloat"
 end
 
 if is_comparable

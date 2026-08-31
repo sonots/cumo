@@ -189,6 +189,7 @@ class NArrayTest < Test::Unit::TestCase
         assert { a[2..-1][[1]] == [5] }
         assert { a.reverse == [11, 7, 5, 3, 2, 1] }
         assert { a.sum == 29 }
+        assert { (a.mean.extract_cpu - 29.0 / 6).abs < 1e-6 }
         if float_types.include?(dtype)
           assert { a.mean == 29.0 / 6 }
           assert { a.var == 13.76666666666667 }
@@ -1429,6 +1430,31 @@ class NArrayTest < Test::Unit::TestCase
     assert { Cumo::DFloat[1].rms == 1.0 }
     assert { Cumo::SComplex[1].rms == 1.0 }
     assert { Cumo::DComplex[1].rms == 1.0 }
+
+    assert { Cumo::Int32[1].mean == 1.0 }
+    assert { Cumo::Int32[1].var.to_f.nan? }
+    assert { Cumo::Int32[1].stddev.to_f.nan? }
+    assert { Cumo::Int32[1].rms == 1.0 }
+  end
+
+  test "mean, var, stddev and rms of an integer array" do
+    int_types = types.select { |dtype| dtype.name.include?("Int") }
+    int_types.each do |dtype|
+      a = dtype[[1, 2, 3], [5, 7, 11]]
+      ref = Cumo::DFloat.cast(a)
+
+      [[], [0], [1]].each do |axis|
+        assert { a.mean(*axis).instance_of?(Cumo::DFloat) }
+        assert { (a.mean(*axis) - ref.mean(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (a.var(*axis) - ref.var(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (a.stddev(*axis) - ref.stddev(*axis)).abs.max.extract_cpu < 1e-12 }
+        assert { (a.rms(*axis) - ref.rms(*axis)).abs.max.extract_cpu < 1e-12 }
+      end
+
+      assert { a.mean == 29.0 / 6 }
+      assert { a.mean(0) == [3, 4.5, 7] }
+      assert { a.mean(axis: 1, keepdims: true).shape == [2, 1] }
+    end
   end
 
   test "concatenate with empty arrays" do
