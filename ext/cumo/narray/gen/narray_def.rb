@@ -49,6 +49,11 @@ module NArrayMethod
     def_method(meth, "bit_count_cpu")
   end
 
+  def bit_stat(meth, stat)
+    h = {stat:stat}
+    def_method(meth, "bit_stat", **h)
+  end
+
   def bit_reduce(meth, init_bit)
     h = {init_bit:init_bit}
     def_method(meth, "bit_reduce", **h)
