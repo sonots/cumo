@@ -49,6 +49,13 @@ list_type_rb.each do |type_rb|
 
 src : <%= list_type_cu.join(" ") %> <%= list_type_c.join(" ") %>
 
+# mkmf writes no rule that makes an object depend on a header, so editing one
+# and rebuilding was a no-op that kept the previous cumo.so. Rebuilding all of
+# them is a minute and a half, so the list does not have to be per-object.
+CUMO_HDRS = <%= Dir.glob("#{__dir__}/**/*.{h,hpp}").sort.join(" ") %>
+
+$(OBJS): $(CUMO_HDRS)
+
 build-ctest : <%= __dir__ %>/cuda/memory_pool_impl_test.exe
 
 run-ctest : <%= __dir__ %>/cuda/memory_pool_impl_test.exe
