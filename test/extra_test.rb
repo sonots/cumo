@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "stringio"
+
 require_relative "test_helper"
 
 class NArrayExtraTest < CumoTestBase
@@ -747,17 +749,55 @@ class NArrayExtraTest < CumoTestBase
     # fweights
     fw = Cumo::Int32[1, 4, 2]
     c = x.cov(fweights: fw)
-    error = (Cumo::DFloat[[0.6190476, -0.2857143], [-0.2857143, 4.2857143]] - c).abs.max
+    error = (Cumo::DFloat[[0.6190476, -0.2857143], [-0.2857143, 4.2857143]] - c).abs.max.extract_cpu
     assert_operator(error, :<, 1e-6)
     # aweights
     aw = Cumo::DFloat[2, 0.5, 0.25]
     c = x.cov(aweights: aw)
-    error = (Cumo::DFloat[[1.4230769, -2.6538461], [-2.6538461, 8.6538461]] - c).abs.max
+    error = (Cumo::DFloat[[1.4230769, -2.6538461], [-2.6538461, 8.6538461]] - c).abs.max.extract_cpu
     assert_operator(error, :<, 1e-6)
     # fweights and aweights
     c = x.cov(fweights: fw, aweights: aw)
-    error = (Cumo::DFloat[[1.1900826, -1.7851240], [-1.7851240, 5.3553719]] - c).abs.max
+    error = (Cumo::DFloat[[1.1900826, -1.7851240], [-1.7851240, 5.3553719]] - c).abs.max.extract_cpu
     assert_operator(error, :<, 1e-6)
+    # weights given as a Ruby Array
+    assert_equal(x.cov(fweights: fw), x.cov(fweights: [1, 4, 2]))
+    assert_equal(x.cov(aweights: aw), x.cov(aweights: [2, 0.5, 0.25]))
+  end
+
+  def test_cov_invalid_argument
+    x = Cumo::DFloat[[3, 1, 2], [2, 5, 8]]
+    a = Cumo::DFloat.new(2, 2, 3).seq
+
+    assert_raise_message("ndim must be <= 2") { a.cov }
+    assert_raise_message("y.ndim must be <= 2") { x.cov(a) }
+    assert_raise_message("ddof must be 0 or 1") { x.cov(ddof: 2) }
+
+    assert_raise_message("fweights must be 1-D array") { x.cov(fweights: Cumo::Int32[[1, 4, 2]]) }
+    assert_raise_message("fweights size is wrong") { x.cov(fweights: Cumo::Int32[1, 4]) }
+    assert_raise_message("fweights must be non-negative") { x.cov(fweights: Cumo::Int32[1, -4, 2]) }
+    assert_raise_message("fweights must be integer") { x.cov(fweights: Cumo::DFloat[1.5, 4, 2]) }
+
+    assert_raise_message("aweights must be 1-D array") { x.cov(aweights: Cumo::DFloat[[2, 0.5, 0.25]]) }
+    assert_raise_message("aweights size is wrong") { x.cov(aweights: Cumo::DFloat[2, 0.5]) }
+    assert_raise_message("aweights must be non-negative") { x.cov(aweights: Cumo::DFloat[2, -0.5, 0.25]) }
+  end
+
+  def test_cov_degenerate_degrees_of_freedom
+    x = Cumo::DFloat[[3, 1, 2], [2, 5, 8]]
+
+    c = nil
+    stderr = $stderr
+    $stderr = StringIO.new
+    begin
+      c = x.cov(fweights: Cumo::Int32[0, 0, 0])
+      warning = $stderr.string
+    ensure
+      $stderr = stderr
+    end
+
+    assert_equal("Degrees of freedom <= 0 for slice\n", warning)
+    assert_equal(true, c.isnan.all?)
   end
 
   # class methods
