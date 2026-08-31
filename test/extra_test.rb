@@ -722,7 +722,7 @@ class NArrayExtraTest < CumoTestBase
   end
 
   def test_cov
-    [Cumo::SFloat, Cumo::SComplex, Cumo::DFloat, Cumo::DComplex].each do |dtype|
+    TYPES.each do |dtype|
       a = dtype[1, 2, 3]
       if [Cumo::DComplex, Cumo::SComplex].include?(dtype)
         assert_equal(1.0 + 0.0i, a.cov)
@@ -731,7 +731,7 @@ class NArrayExtraTest < CumoTestBase
       end
 
       a = dtype[[1, 2], [3, 4]]
-      assert_equal(dtype[[0.5, 0.5], [0.5, 0.5]], a.cov)
+      assert_equal(Cumo::DFloat[[0.5, 0.5], [0.5, 0.5]], a.cov)
     end
 
     # xy

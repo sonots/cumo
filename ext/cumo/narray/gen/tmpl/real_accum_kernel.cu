@@ -101,6 +101,55 @@ struct cumo_<%=type_name%>_ptp_impl {
     }
 };
 
+<% unless is_float %>
+// mean, var, stddev and rms answer in double for the integer types, so they
+// accumulate in double too rather than in dtype.
+struct cumo_<%=type_name%>_moments_impl {
+    struct Moments {
+        double n;
+        double mean;
+        double m2;
+    };
+    __device__ Moments Identity(int64_t /*index*/) { return {0, 0, 0}; }
+    __device__ Moments MapIn(dtype in, int64_t /*index*/) { return {1, (double)in, 0}; }
+    __device__ void Reduce(Moments next, Moments& accum) {
+        if (next.n == 0) { return; }
+        if (accum.n == 0) { accum = next; return; }
+        double n = accum.n + next.n;
+        double delta = next.mean - accum.mean;
+        accum.mean += delta * (next.n / n);
+        accum.m2 += next.m2 + delta * delta * accum.n * next.n / n;
+        accum.n = n;
+    }
+};
+
+struct cumo_<%=type_name%>_var_impl : cumo_<%=type_name%>_moments_impl {
+    __device__ double MapOut(Moments accum) { return accum.m2 / (accum.n - 1); }
+};
+
+struct cumo_<%=type_name%>_stddev_impl : cumo_<%=type_name%>_moments_impl {
+    __device__ double MapOut(Moments accum) { return sqrt(accum.m2 / (accum.n - 1)); }
+};
+
+struct cumo_<%=type_name%>_mean_impl {
+    // The reduce axis is the same length for every output, so the divisor is a
+    // constant the launcher already knows rather than a count the tree carries.
+    double n;
+    __device__ double Identity(int64_t /*index*/) { return 0; }
+    __device__ double MapIn(dtype in, int64_t /*index*/) { return (double)in; }
+    __device__ void Reduce(double next, double& accum) { accum += next; }
+    __device__ double MapOut(double accum) { return accum / n; }
+};
+
+struct cumo_<%=type_name%>_rms_impl {
+    double n;
+    __device__ double Identity(int64_t /*index*/) { return 0; }
+    __device__ double MapIn(dtype in, int64_t /*index*/) { double x = (double)in; return x * x; }
+    __device__ void Reduce(double next, double& accum) { accum += next; }
+    __device__ double MapOut(double accum) { return sqrt(accum / n); }
+};
+<% end %>
+
 <% if is_float %>
 // The nan-aware forms of the reductions above. sum, prod and their kin skip a
 // NaN, so it maps to the identity and the tree never sees it. min and max go
@@ -192,6 +241,30 @@ void cumo_<%=type_name%>_minmax_kernel_launch(cumo_na_reduction_arg_t* arg, cumo
 {
     cumo_reduce_pair_split<dtype, dtype, cumo_<%=type_name%>_minmax_impl>(*arg, *out2, cumo_<%=type_name%>_minmax_impl{});
 }
+<% unless is_float %>
+
+void cumo_<%=type_name%>_mean_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    double n = (double)(arg->in_indexer.total_size / arg->out_indexer.total_size);
+    cumo_reduce_split<dtype, double, cumo_<%=type_name%>_mean_impl>(*arg, cumo_<%=type_name%>_mean_impl{n});
+}
+
+void cumo_<%=type_name%>_var_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, double, cumo_<%=type_name%>_var_impl>(*arg, cumo_<%=type_name%>_var_impl{});
+}
+
+void cumo_<%=type_name%>_stddev_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, double, cumo_<%=type_name%>_stddev_impl>(*arg, cumo_<%=type_name%>_stddev_impl{});
+}
+
+void cumo_<%=type_name%>_rms_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    double n = (double)(arg->in_indexer.total_size / arg->out_indexer.total_size);
+    cumo_reduce_split<dtype, double, cumo_<%=type_name%>_rms_impl>(*arg, cumo_<%=type_name%>_rms_impl{n});
+}
+<% end %>
 <% if is_float %>
 
 void cumo_<%=type_name%>_sum_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
