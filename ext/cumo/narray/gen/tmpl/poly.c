@@ -57,7 +57,7 @@ static VALUE
     <% if type_name == 'robject' %>
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_NO_LOOP, 0, 1, 0, aout };
     <% else %>
-    cumo_ndfunc_t ndf = { <%=c_iter%>_kernel, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_INDEXER_LOOP, 0, 1, 0, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>_kernel, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 0, 1, 0, aout };
     <% end %>
 
     argc = RARRAY_LEN(args);

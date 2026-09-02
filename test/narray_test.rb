@@ -961,6 +961,54 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    # ndloop walks an elementwise function in the order the written operand
+    # lays its elements out, so a view whose axes are out of order is visited
+    # along its memory rather than its shape. The answer must not depend on
+    # that, and seq, which reads the position, must not be reordered.
+    sub_test_case "#{dtype}, elementwise on views whose axes are out of order" do
+      small = ->(shape) { dtype.cast(Array.new(shape.reduce(:*)) { |i| i % 7 + 1 }).reshape(*shape) }
+      perms = { [5, 6] => [[1, 0]], [3, 4, 5] => [[2, 1, 0], [1, 0, 2], [2, 0, 1]], [2, 3, 4, 5] => [[3, 2, 1, 0], [0, 2, 1, 3]] }
+
+      test "binary, unary, store and fill agree with the contiguous copies" do
+        perms.each do |shape, list|
+          list.each do |perm|
+            back = Array.new(shape.size)
+            perm.each_with_index { |axis, i| back[axis] = shape[i] }
+            x = small.call(back).transpose(*perm)
+            y = small.call(back).transpose(*perm)
+            c = small.call(shape)
+            xc = x.copy
+            yc = y.copy
+            assert { x + y == xc + yc }
+            assert { x * c == xc * c }
+            assert { c - x == c - xc }
+            assert { -x == -xc }
+            assert { x.eq(y) == xc.eq(yc) }
+            row = small.call([shape.last])
+            assert { x + row == xc + row }
+            v = small.call(back).transpose(*perm)
+            v.inplace * y
+            assert { v == xc * yc }
+            d = dtype.zeros(*back).transpose(*perm)
+            d.store(y)
+            assert { d == yc }
+            d.fill(3)
+            assert { d == dtype.new(*shape).fill(3) }
+            next if [Cumo::DComplex, Cumo::SComplex].include?(dtype)
+
+            assert { x.gt(y) == xc.gt(yc) }
+            assert { x.clip(2, 5) == xc.clip(2, 5) }
+          end
+        end
+      end
+
+      test "seq fills a transposed view in the order of its shape" do
+        v = dtype.zeros(4, 5).transpose
+        v.seq
+        assert_equal((0...20).each_slice(4).to_a, v.to_a)
+      end
+    end
+
     sub_test_case "#{dtype}, #dot" do
       test "scalar.dot(scalar)" do
         a = dtype[1].sum

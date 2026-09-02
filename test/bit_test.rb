@@ -307,6 +307,28 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
+  # An elementwise Bit operation on views whose axes are out of order is walked
+  # along memory rather than along its shape.
+  test "elementwise operations on Bit views with axes out of order" do
+    src_a = bits.call(7 * 66)
+    src_b = bits.call(7 * 66).rotate(5)
+    a = Cumo::Bit.cast(src_a).reshape(66, 7).transpose
+    b = Cumo::Bit.cast(src_b).reshape(66, 7).transpose
+    ac = a.copy
+    bc = b.copy
+    assert_equal((ac & bc).to_a, (a & b).to_a)
+    assert_equal((ac | bc).to_a, (a | b).to_a)
+    assert_equal((~ac).to_a, (~a).to_a)
+    d = Cumo::Bit.new(66, 7).fill(0).transpose
+    d.store(b)
+    assert_equal(bc.to_a, d.to_a)
+    d.fill(1)
+    assert_equal(7 * 66, Integer(d.count_true))
+    three = Cumo::Bit.cast(bits.call(3 * 4 * 5)).reshape(5, 4, 3).transpose(2, 0, 1)
+    assert_equal((three.copy & three.copy).to_a, (three & three).to_a)
+    assert_equal([3, 5, 4], (three & three).shape)
+  end
+
   # A short row shares a block with other rows, and the group of threads a row
   # gets shrinks with its length. Every group size from one thread up to a
   # whole block, with row counts that leave a block a partial tail.

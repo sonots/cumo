@@ -35,7 +35,7 @@ static VALUE
     // ndloop cannot stage a Bit operand into a buffer — a buffer copy moves
     // whole bytes — so INDEX_LOOP stays on and the kernel walks both operands'
     // own indices.
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 2,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2,0, ain,0};
 
     cumo_na_ndloop(&ndf, 2, self, obj);
     return self;

@@ -204,9 +204,9 @@ static VALUE
     cumo_ndfunc_t ndf_max = { <%=c_iter%>_max, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
     cumo_ndfunc_t ndf_both = { <%=c_iter%>, CUMO_STRIDE_LOOP, 3, 1, ain, aout };
     <% else %>
-    cumo_ndfunc_t ndf_min = { <%=c_iter%>_min, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
-    cumo_ndfunc_t ndf_max = { <%=c_iter%>_max, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
-    cumo_ndfunc_t ndf_both = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 3, 1, ain, aout };
+    cumo_ndfunc_t ndf_min = { <%=c_iter%>_min, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf_max = { <%=c_iter%>_max, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf_both = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 3, 1, ain, aout };
 
     {
         cumo_ndfunc_arg_in_t ain_s[1] = {{Qnil,0}};
@@ -215,7 +215,7 @@ static VALUE
 
         if (min_s && max_s) {
             dtype sv[2];
-            cumo_ndfunc_t ndf_s = { <%=c_iter%>_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };
+            cumo_ndfunc_t ndf_s = { <%=c_iter%>_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_s, aout };
             sv[0] = m_num_to_data(min);
             sv[1] = m_num_to_data(max);
             if (m_gt(sv[0],sv[1])) {rb_raise(cumo_na_eOperationError,"min is greater than max");}
@@ -223,12 +223,12 @@ static VALUE
         }
         if (min_s && !RTEST(max)) {
             dtype sv = m_num_to_data(min);
-            cumo_ndfunc_t ndf_min_s = { <%=c_iter%>_min_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };
+            cumo_ndfunc_t ndf_min_s = { <%=c_iter%>_min_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_s, aout };
             return cumo_na_ndloop3(&ndf_min_s, &sv, 1, self);
         }
         if (max_s && !RTEST(min)) {
             dtype sv = m_num_to_data(max);
-            cumo_ndfunc_t ndf_max_s = { <%=c_iter%>_max_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };
+            cumo_ndfunc_t ndf_max_s = { <%=c_iter%>_max_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_s, aout };
             return cumo_na_ndloop3(&ndf_max_s, &sv, 1, self);
         }
     }

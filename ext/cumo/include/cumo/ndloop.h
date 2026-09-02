@@ -48,6 +48,7 @@ typedef struct {
 #define CUMO_NDF_CUM                 (1<<8)
 
 #define CUMO_NDF_INDEXER_LOOP        (1<<9) // Cumo custom. Use cumo own indexer.
+#define CUMO_NDF_ANY_ORDER           (1<<10) // Cumo custom. The elements may be visited in any order, so ndloop may reorder the axes.
 
 #define CUMO_FULL_LOOP       (CUMO_NDF_HAS_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP|CUMO_NDF_INPLACE)
 #define CUMO_FULL_LOOP_NIP   (CUMO_NDF_HAS_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP)

@@ -931,6 +931,66 @@ cumo_ndfunc_contract_loop(cumo_na_md_loop_t *lp)
 }
 
 
+// Order the axes so that the one the written operand walks with the smallest
+// step is innermost, which is the one consecutive threads of an indexer kernel
+// take. A view that transposes a contiguous array otherwise hands the kernel
+// an inner axis whose step is a whole row, and every warp touches a line per
+// element: a + b on two transposed [4096,1024] views ran at 74 GB/s where the
+// contiguous add ran at 1500. Only for functions that declared the order of
+// their elements does not matter, and never through an index array.
+static void
+cumo_ndfunc_reorder_loop(cumo_na_md_loop_t *lp)
+{
+    int i, j, k, nd = lp->ndim;
+    int order[CUMO_NA_MAX_DIMENSION];
+    ssize_t key[CUMO_NA_MAX_DIMENSION];
+    size_t n[CUMO_NA_MAX_DIMENSION];
+    cumo_na_loop_iter_t iter[CUMO_NA_MAX_DIMENSION];
+    int written = (lp->narg > lp->nin) ? lp->nin : 0;
+
+    if (nd < 2) return;
+    for (i = 0; i < nd; i++) {
+        for (j = 0; j < lp->narg; j++) {
+            if (LITER(lp,i,j).idx) return;
+        }
+        key[i] = LITER(lp,i,written).step;
+        if (key[i] < 0) key[i] = -key[i];
+        order[i] = i;
+    }
+    // A stable insertion sort on the step magnitude, largest first, so that
+    // axes the written operand does not tell apart keep their order.
+    for (i = 1; i < nd; i++) {
+        int d = order[i];
+        for (k = i; k > 0 && key[order[k-1]] < key[d]; k--) {
+            order[k] = order[k-1];
+        }
+        order[k] = d;
+    }
+    for (i = 0; i < nd; i++) {
+        if (order[i] != i) break;
+    }
+    if (i == nd) return;
+
+    for (i = 0; i < nd; i++) {
+        n[i] = lp->n[order[i]];
+    }
+    for (i = 0; i < nd; i++) {
+        lp->n[i] = n[i];
+    }
+    for (j = 0; j < lp->narg; j++) {
+        // Only iter[0].pos carries the offset, so it stays where it is.
+        ssize_t pos = LITER(lp,0,j).pos;
+        for (i = 0; i < nd; i++) {
+            iter[i] = LITER(lp,order[i],j);
+        }
+        for (i = 0; i < nd; i++) {
+            LITER(lp,i,j) = iter[i];
+            LITER(lp,i,j).pos = 0;
+        }
+        LITER(lp,0,j).pos = pos;
+    }
+}
+
 // Ndloop does loop at two places, loop_narray and user loop.
 // loop_narray is an outer loop, and the user loop is an internal loop.
 //
@@ -1486,6 +1546,13 @@ ndloop_run(VALUE vlp)
         // do nothing
     } else {
         if (lp->loop_func == loop_narray) {
+            if (CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP) && CUMO_NDF_TEST(nf,CUMO_NDF_ANY_ORDER) && lp->reduce_dim == 0) {
+                cumo_ndfunc_reorder_loop(lp);
+                if (cumo_na_debug_flag) {
+                    printf("-- cumo_ndfunc_reorder_loop --\n");
+                    print_ndloop(lp);
+                }
+            }
             cumo_ndfunc_contract_loop(lp);
             if (cumo_na_debug_flag) {
                 printf("-- cumo_ndfunc_contract_loop --\n");

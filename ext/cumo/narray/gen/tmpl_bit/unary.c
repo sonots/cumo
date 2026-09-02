@@ -38,7 +38,7 @@ static VALUE
 {
     cumo_ndfunc_arg_in_t ain[1] = {{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain, aout };
 
     return cumo_na_ndloop(&ndf, 1, self);
 }
