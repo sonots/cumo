@@ -3082,6 +3082,20 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(ones.size, a.count_true.to_i)
   end
 
+  test "a non-contiguous view of more than 2**32 elements" do
+    # below 2**32 elements the flat index is split into per-dimension indices
+    # in 32 bits, and this shape is the first one past that. The transpose is
+    # what keeps the kernel from walking the array as one contiguous run.
+    cols = (1 << 31) + 512
+    a = Cumo::UInt8.new(2, cols).fill(0)
+    a[1, true] = 2
+    a.transpose.inplace + 1
+    assert_equal(4 * cols, a.sum.to_i)
+    assert_equal([1, 3], [a[0, 0].to_i, a[1, 0].to_i])
+    assert_equal([1, 3], [a[0, cols - 1].to_i, a[1, cols - 1].to_i])
+    assert_equal([1, 3], [a[0, cols / 2 + 1].to_i, a[1, cols / 2].to_i])
+  end
+
   # cumsum and cumprod had no tests at all before the scan was moved to the device
   def running(values)
     acc = nil
