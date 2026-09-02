@@ -99,7 +99,7 @@ static VALUE
     // kernel runs once per row. INDEX_LOOP has to stay on too: staging an
     // indexed operand into a contiguous buffer costs a copy in each direction,
     // and the one of the destination is read back over by this very store.
-    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 0, ain, 0 };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2, 0, ain, 0 };
     <% end %>
 
     cumo_na_ndloop(&ndf, 2, self, obj);

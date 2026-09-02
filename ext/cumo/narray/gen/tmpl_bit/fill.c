@@ -46,7 +46,7 @@ static VALUE
 <%=c_func(1)%>(VALUE self, VALUE val)
 {
     cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_option}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 2,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2,0, ain,0};
 
     cumo_na_ndloop(&ndf, 2, self, val);
     return self;

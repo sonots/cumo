@@ -135,8 +135,8 @@ static VALUE
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP, 2, 1, ain, aout };
     cumo_ndfunc_t ndf_i = { <%=c_iter%>_int32, CUMO_STRIDE_LOOP, 2, 1, ain_i, aout };
     <% else %>
-    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
-    cumo_ndfunc_t ndf_i = { <%=c_iter%>_int32, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 2, 1, ain_i, aout };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2, 1, ain, aout };
+    cumo_ndfunc_t ndf_i = { <%=c_iter%>_int32, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2, 1, ain_i, aout };
     <% end %>
 
     //<% if type_name != 'robject' %>
@@ -157,22 +157,22 @@ static VALUE
         if (!NIL_P(num) && CumoIsNArray(other)) {
             dtype sv = m_num_to_data(num);
             if (rb_obj_is_kind_of(other, cumo_cInt32)) {
-                cumo_ndfunc_t ndf_i_s = { <%=c_iter%>_int32_s_left, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_i_s, aout };
+                cumo_ndfunc_t ndf_i_s = { <%=c_iter%>_int32_s_left, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_i_s, aout };
                 return cumo_na_ndloop3(&ndf_i_s, &sv, 1, other);
             }
             {
-                cumo_ndfunc_t ndf_s = { <%=c_iter%>_s_left, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };
+                cumo_ndfunc_t ndf_s = { <%=c_iter%>_s_left, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_s, aout };
                 return cumo_na_ndloop3(&ndf_s, &sv, 1, other);
             }
         }
         if (FIXNUM_P(other)) {
             int32_t sv = NUM2INT32(other);
-            cumo_ndfunc_t ndf_i_s = { <%=c_iter%>_int32_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };
+            cumo_ndfunc_t ndf_i_s = { <%=c_iter%>_int32_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_s, aout };
             return cumo_na_ndloop3(&ndf_i_s, &sv, 1, self);
         }
         if (rb_obj_is_kind_of(other, rb_cNumeric)) {
             dtype sv = m_num_to_data(other);
-            cumo_ndfunc_t ndf_s = { <%=c_iter%>_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1, 1, ain_s, aout };
+            cumo_ndfunc_t ndf_s = { <%=c_iter%>_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_s, aout };
             return cumo_na_ndloop3(&ndf_s, &sv, 1, self);
         }
     }

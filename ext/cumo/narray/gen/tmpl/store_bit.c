@@ -76,7 +76,7 @@ static VALUE
     // Without INDEXER_LOOP ndloop walks the outer dimensions itself and the
     // kernel runs once per row. INDEX_LOOP has to stay on: ndloop cannot stage
     // the Bit operand into a buffer, since a buffer copy moves whole bytes.
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 2,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2,0, ain,0};
     <% end %>
 
     cumo_na_ndloop(&ndf, 2, self, obj);
