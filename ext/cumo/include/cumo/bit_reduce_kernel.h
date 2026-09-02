@@ -184,8 +184,8 @@ __global__ static void bit_count_reduction_kernel(
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    cumo_detail::reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -196,7 +196,7 @@ __global__ static void bit_count_reduction_kernel(
         uint64_t accum = bit_count_axis(arg, ad, wa, invert, in_out_off, i_in, reduce_total_size,
                                         0, unit_total_size, reduce_offset, reduce_block_size);
 
-        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             *reinterpret_cast<uint64_t*>(arg.out.ptr + bit_out_offset(arg, ad, i_out)) = accum;
         }
@@ -219,8 +219,8 @@ __global__ static void bit_count_partial_kernel(
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
     int64_t partial_total_size = out_total_size * n_split;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    cumo_detail::reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -236,7 +236,7 @@ __global__ static void bit_count_partial_kernel(
         uint64_t accum = bit_count_axis(arg, ad, wa, invert, in_out_off, i_in, reduce_total_size,
                                         begin, end, reduce_offset, reduce_block_size);
 
-        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             partial[i_out * n_split + i_split] = accum;
         }
@@ -319,8 +319,8 @@ __global__ static void bit_stat_reduction_kernel(
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    cumo_detail::reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -331,7 +331,7 @@ __global__ static void bit_stat_reduction_kernel(
         uint64_t accum = bit_count_axis(arg, ad, wa, 0, in_out_off, i_in, reduce_total_size,
                                         0, unit_total_size, reduce_offset, reduce_block_size);
 
-        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             *reinterpret_cast<double*>(arg.out.ptr + bit_out_offset(arg, ad, i_out)) =
                 bit_stat_of_count(accum, reduce_total_size, stat);
@@ -374,8 +374,8 @@ __global__ static void bit_pred_reduction_kernel(
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    cumo_detail::reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -386,7 +386,7 @@ __global__ static void bit_pred_reduction_kernel(
         uint64_t accum = bit_count_axis(arg, ad, wa, 0, in_out_off, i_in, reduce_total_size,
                                         0, unit_total_size, reduce_offset, reduce_block_size);
 
-        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = cumo_detail::reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             size_t pos = (size_t)((ssize_t)arg.out.pos + bit_out_offset(arg, ad, i_out));
             CUMO_STORE_BIT(arg.out.ptr, pos, bit_pred_of_count(accum, reduce_total_size, all));

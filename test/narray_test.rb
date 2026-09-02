@@ -192,9 +192,9 @@ class NArrayTest < Test::Unit::TestCase
         assert { (a.mean.extract_cpu - 29.0 / 6).abs < 1e-6 }
         if float_types.include?(dtype)
           assert { a.mean == 29.0 / 6 }
-          assert { a.var == 13.76666666666667 }
-          assert { a.stddev == 3.710345895825168 }
-          assert { a.rms == 5.901977069875258 }
+          assert_in_delta(13.766666666666667, a.var.extract_cpu, 1e-13)
+          assert_in_delta(3.710345895825168, a.stddev.extract_cpu, 1e-13)
+          assert_in_delta(5.901977069875258, a.rms.extract_cpu, 1e-13)
         end
         assert { a.dup.fill(12) == [12] * 6 }
         assert { (a + 1) == [2, 3, 4, 6, 8, 12] }
@@ -859,6 +859,81 @@ class NArrayTest < Test::Unit::TestCase
         a = small.call([2, 3, 4])
         assert { a.mulsum(a, axis: 1, keepdims: true) == (a * a).sum(axis: 1, keepdims: true) }
         assert { a.mulsum(a, axis: [0, 1], keepdims: true) == (a * a).sum(axis: [0, 1], keepdims: true) }
+      end
+    end
+
+    # A reduction along the contiguous axis hands each output a group of
+    # consecutive threads, sized by the axis length, and a block covers as many
+    # outputs as those groups fit. The lengths below straddle every group size
+    # from a single thread up to a whole block, and the row counts leave a
+    # block with a partial tail and make a block go round more than once.
+    sub_test_case "#{dtype}, reductions along a short contiguous axis" do
+      lens = [1, 2, 3, 8, 9, 17, 33, 100, 127]
+      lens += [257, 1100] unless [Cumo::Int8, Cumo::UInt8].include?(dtype)
+      row_counts = [1, 3, 1030]
+
+      # Every row a rotation of 0...len, so the values of a row are distinct
+      # and the largest one sits in a different place from row to row.
+      rotated = lambda do |rows, len|
+        base = Cumo::Int32.new(rows, len).seq % len
+        dtype.cast((base + Cumo::Int32.new(rows, 1).seq * 7) % len)
+      end
+
+      ordered = ![Cumo::DComplex, Cumo::SComplex].include?(dtype)
+
+      test "sum, min, max, ptp and minmax agree with the same axis reduced from the other side" do
+        lens.each do |len|
+          row_counts.each do |rows|
+            a = rotated.call(rows, len)
+            t = a.transpose.copy
+            assert { a.sum(axis: 1) == t.sum(axis: 0) }
+            # The squares of 0...1100 add up past a single-precision mantissa.
+            assert { a.mulsum(a, axis: 1) == t.mulsum(t, axis: 0) } if len <= 257
+            next unless ordered
+
+            assert { a.max(axis: 1) == t.max(axis: 0) }
+            assert { a.min(axis: 1) == t.min(axis: 0) }
+            assert { a.ptp(axis: 1) == t.ptp(axis: 0) }
+            assert { a.minmax(axis: 1) == t.minmax(axis: 0) }
+          end
+        end
+      end
+
+      test "the index reductions find the largest and smallest of every row" do
+        omit "complex numbers are not ordered" unless ordered
+
+        lens.each do |len|
+          row_counts.each do |rows|
+            a = rotated.call(rows, len)
+            t = a.transpose.copy
+            assert { a.argmax(axis: 1) == t.argmax(axis: 0) }
+            assert { a.argmin(axis: 1) == t.argmin(axis: 0) }
+            to_flat = ->(idx) { idx.to_a.each_with_index.map { |ti, j| j * len + ti / rows } }
+            assert { a.max_index(axis: 1).to_a == to_flat.call(t.max_index(axis: 0)) }
+            assert { a.min_index(axis: 1).to_a == to_flat.call(t.min_index(axis: 0)) }
+          end
+        end
+      end
+
+      if float_types.include?(dtype)
+        test "mean and var agree with the same axis reduced from the other side" do
+          lens.each do |len|
+            row_counts.each do |rows|
+              a = rotated.call(rows, len)
+              t = a.transpose.copy
+              assert_in_delta(0.0, (a.mean(axis: 1) - t.mean(axis: 0)).abs.max.extract_cpu, 1e-4)
+              assert_in_delta(0.0, (a.var(axis: 1) - t.var(axis: 0)).abs.max.extract_cpu, 1e-2) if len > 1
+            end
+          end
+        end
+      end
+
+      test "a strided view along the reduced axis" do
+        a = rotated.call(1030, 257)
+        [a[true, (0...257).step(3)], a[true, 256.step(0, -2)], a[(0...1030).step(5), true], a[[3, 1, 4, 1, 5], true]].each do |v|
+          assert { v.sum(axis: 1) == v.copy.transpose.copy.sum(axis: 0) }
+          assert { v.max(axis: 1) == v.copy.transpose.copy.max(axis: 0) } if ordered
+        end
       end
     end
 
