@@ -855,6 +855,30 @@ class NArrayTest < Test::Unit::TestCase
         end
       end
 
+      # With two or more axes left over, the offset of an output is put together
+      # from every one of them for each operand, and the two operands do not
+      # have to share a layout.
+      test "mulsum over a middle axis of operands laid out differently" do
+        [[4, 5, 6], [3, 1100, 2], [2, 3, 4, 5]].each do |shape|
+          x = small.call(shape)
+          y = small.call(shape)
+          last = shape.size - 1
+          pairs = [
+            [x, y.reverse(0)],
+            [x.reverse(last), y],
+            [x.reverse(1), y.reverse(0)],
+            [x, y.transpose.copy.transpose],
+            [x.transpose.copy.transpose, y.reverse(1)]
+          ]
+          pairs.each do |a, b|
+            (0...shape.size).each do |axis|
+              assert { a.mulsum(b, axis: axis) == a.copy.mulsum(b.copy, axis: axis) }
+            end
+            assert { a.mulsum(b, axis: [0, last]) == a.copy.mulsum(b.copy, axis: [0, last]) }
+          end
+        end
+      end
+
       test "mulsum keeps the reduced axes when asked" do
         a = small.call([2, 3, 4])
         assert { a.mulsum(a, axis: 1, keepdims: true) == (a * a).sum(axis: 1, keepdims: true) }

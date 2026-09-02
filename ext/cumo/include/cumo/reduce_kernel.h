@@ -8,6 +8,18 @@
 
 #include "cumo/indexer.h"
 
+// A kernel parameter that is read through a runtime index, the way the steps
+// of an operand are, is copied to local memory by the compiler unless it is
+// declared __grid_constant__, and the copy is paid by every thread: the second
+// operand of a zip reduction cost a 104-byte stack frame that put mulsum along
+// a middle axis at three times the sum of the same bytes. The qualifier needs
+// CUDA 11.7 and sm_70; below those the parameter is merely const.
+#if (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700) || (defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ < 11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ < 7)))
+#define CUMO_GRID_CONSTANT const
+#else
+#define CUMO_GRID_CONSTANT const __grid_constant__
+#endif
+
 namespace cumo_detail {
 
 static constexpr int64_t max_block_size = 512;
@@ -156,7 +168,7 @@ static inline void reduce_block_split(const cumo_reduce_addr_t& ad, int64_t redu
     int64_t n = std::max(int64_t{1}, reduce_total_size);
     int64_t rbs;
     if (ad.out_inner) {
-        rbs = std::min(max_block_size / warp_size, round_up_to_power_of_2(n));
+        rbs = std::min(max_block_size / warp_size, round_up_to_power_of_2((n + min_reduce_per_thread - 1) / min_reduce_per_thread));
     } else {
         rbs = std::min(max_block_size, round_up_to_power_of_2((n + min_reduce_per_thread - 1) / min_reduce_per_thread));
     }
@@ -168,49 +180,82 @@ static inline void reduce_block_split(const cumo_reduce_addr_t& ad, int64_t redu
 // iarray's steps carry. Everything here is
 // read out of the kernel parameter and nothing is written back, which is what
 // keeps the indexer out of local memory.
+//
+// i is always below the product of the dims, so the outermost one takes what
+// is left without a division.
 template <typename TIarray>
-__device__ static inline ssize_t axes_offset(const TIarray& iarray, const cumo_na_indexer_t& indexer, int begin, int end, int64_t i) {
+__device__ static __forceinline__ ssize_t axes_offset(const TIarray& iarray, const cumo_na_indexer_t& indexer, int begin, int end, int64_t i) {
+    if (end <= begin) return 0;
     ssize_t off = 0;
-    for (int j = end; --j >= begin;) {
+    for (int j = end; --j > begin;) {
         int64_t n = static_cast<int64_t>(indexer.shape[j]);
         off += static_cast<ssize_t>(i % n) * iarray.step[j];
         i /= n;
     }
-    return off;
+    return off + static_cast<ssize_t>(i) * iarray.step[begin];
+}
+
+// The same split of i handed to two operands that share the indexer, which is
+// what the two inputs of a zip reduction are.
+template <typename TIarray>
+__device__ static __forceinline__ void axes_offset_pair(const TIarray& a, const TIarray& b, const cumo_na_indexer_t& indexer, int begin, int end, int64_t i, ssize_t* off_a, ssize_t* off_b) {
+    *off_a = 0;
+    *off_b = 0;
+    if (end <= begin) return;
+    for (int j = end; --j > begin;) {
+        int64_t n = static_cast<int64_t>(indexer.shape[j]);
+        ssize_t r = static_cast<ssize_t>(i % n);
+        *off_a += r * a.step[j];
+        *off_b += r * b.step[j];
+        i /= n;
+    }
+    *off_a += static_cast<ssize_t>(i) * a.step[begin];
+    *off_b += static_cast<ssize_t>(i) * b.step[begin];
 }
 
 // The input side takes the iarray and the indexer rather than the whole
 // reduction arg, so that mulsum can address its second operand with the same
 // indexer and a step set of its own.
 template <bool FLAT>
-__device__ static inline ssize_t reduce_in_out_offset(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, int64_t i_out) {
+__device__ static __forceinline__ ssize_t reduce_in_out_offset(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, int64_t i_out) {
     if (FLAT || ad.in_out_flat) return i_out * ad.in_out_step;
     if (ad.split < 0) return 0;
     return axes_offset(in, in_indexer, 0, ad.split, i_out);
 }
 
+// reduce_in_out_offset for the two operands of a zip reduction at once.
 template <bool FLAT>
-__device__ static inline ssize_t reduce_in_offset(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, ssize_t in_out_off, int64_t i_reduce, int64_t i_in) {
+__device__ static __forceinline__ void reduce_in_out_offset_pair(const cumo_na_iarray_t& in, const cumo_na_iarray_t& in2, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, const cumo_reduce_addr_t& ad2, int64_t i_out, ssize_t* off, ssize_t* off2) {
+    if (!FLAT && !ad.in_out_flat && !ad2.in_out_flat && ad.split >= 0 && ad.split == ad2.split) {
+        axes_offset_pair(in, in2, in_indexer, 0, ad.split, i_out, off, off2);
+        return;
+    }
+    *off = reduce_in_out_offset<FLAT>(in, in_indexer, ad, i_out);
+    *off2 = reduce_in_out_offset<FLAT>(in2, in_indexer, ad2, i_out);
+}
+
+template <bool FLAT>
+__device__ static __forceinline__ ssize_t reduce_in_offset(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, ssize_t in_out_off, int64_t i_reduce, int64_t i_in) {
     if (FLAT || ad.in_reduce_flat) return in_out_off + i_reduce * ad.in_reduce_step;
     if (ad.split < 0) return axes_offset(in, in_indexer, 0, in_indexer.ndim, i_in);
     return in_out_off + axes_offset(in, in_indexer, ad.split, in_indexer.ndim, i_reduce);
 }
 
 template <bool FLAT>
-__device__ static inline ssize_t reduce_out_offset(const cumo_na_reduction_arg_t& arg, const cumo_reduce_addr_t& ad, int64_t i_out) {
+__device__ static __forceinline__ ssize_t reduce_out_offset(const cumo_na_reduction_arg_t& arg, const cumo_reduce_addr_t& ad, int64_t i_out) {
     if (FLAT || ad.out_flat) return i_out * ad.out_step;
     return axes_offset(arg.out, arg.out_indexer, 0, arg.out_indexer.ndim, i_out);
 }
 
 template <bool FLAT>
-__device__ static inline ssize_t reduce_out2_offset(const cumo_na_reduction_arg_t& arg, const cumo_na_iarray_t& out2, const cumo_reduce_addr_t& ad, int64_t i_out) {
+__device__ static __forceinline__ ssize_t reduce_out2_offset(const cumo_na_reduction_arg_t& arg, const cumo_na_iarray_t& out2, const cumo_reduce_addr_t& ad, int64_t i_out) {
     if (FLAT || ad.out2_flat) return i_out * ad.out2_step;
     return axes_offset(out2, arg.out_indexer, 0, arg.out_indexer.ndim, i_out);
 }
 
 // Which output and which slice of its reduce axis a thread takes, in the
 // layout reduce_block_split describes.
-__device__ static inline void reduce_thread_split(const cumo_reduce_addr_t& ad, unsigned int tid, int out_block_size, int reduce_block_size, int64_t* reduce_offset, int64_t* out_offset) {
+__device__ static __forceinline__ void reduce_thread_split(const cumo_reduce_addr_t& ad, unsigned int tid, int out_block_size, int reduce_block_size, int64_t* reduce_offset, int64_t* out_offset) {
     if (!ad.out_inner) {
         *reduce_offset = tid % reduce_block_size;
         *out_offset = tid / reduce_block_size;
@@ -226,7 +271,7 @@ __device__ static inline void reduce_thread_split(const cumo_reduce_addr_t& ad, 
 // layout they are a contiguous, warp-aligned group of reduce_block_size, so a
 // step whose partners are within a warp needs only __syncwarp.
 template <typename TypeReduce, typename ReductionImpl>
-__device__ static inline TypeReduce reduce_in_block(TypeReduce accum, TypeReduce* sdata, unsigned int tid, int out_block_size, int reduce_block_size, bool reduce_major, ReductionImpl& impl) {
+__device__ static __forceinline__ TypeReduce reduce_in_block(TypeReduce accum, TypeReduce* sdata, unsigned int tid, int out_block_size, int reduce_block_size, bool reduce_major, ReductionImpl& impl) {
     if (reduce_block_size == 1) return accum;
     if (reduce_major) {
         int r = tid % reduce_block_size;
@@ -268,7 +313,7 @@ __device__ static inline TypeReduce reduce_in_block(TypeReduce accum, TypeReduce
 // the offset of the element from the start of the input, which is the index
 // (min|max)_index answers with.
 template <bool FLAT, bool ARG_INDEX, typename TypeIn, typename ReductionImpl>
-__device__ static inline auto reduce_axis(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, ReductionImpl& impl,
+__device__ static __forceinline__ auto reduce_axis(const cumo_na_iarray_t& in, const cumo_na_indexer_t& in_indexer, const cumo_reduce_addr_t& ad, ReductionImpl& impl,
         ssize_t in_out_off, int64_t i_in, int64_t begin, int64_t end, int64_t reduce_offset, int64_t reduce_block_size) -> decltype(impl.Identity(0)) {
     using TypeReduce = decltype(impl.Identity(0));
 
@@ -296,7 +341,7 @@ __device__ static inline auto reduce_axis(const cumo_na_iarray_t& in, const cumo
 // an array. The pair comes out of one broadcast, so arg.in_indexer addresses
 // both and only the steps differ, which is what in2 and ad2 carry.
 template <bool FLAT, typename TypeIn, typename ReductionImpl>
-__device__ static inline auto reduce_axis_zip(const cumo_na_reduction_arg_t& arg, const cumo_na_iarray_t& in2,
+__device__ static __forceinline__ auto reduce_axis_zip(const cumo_na_reduction_arg_t& arg, const cumo_na_iarray_t& in2,
         const cumo_reduce_addr_t& ad, const cumo_reduce_addr_t& ad2, ReductionImpl& impl,
         ssize_t in_out_off, ssize_t in_out_off2, int64_t i_in, int64_t begin, int64_t end,
         int64_t reduce_offset, int64_t reduce_block_size) -> decltype(impl.Identity(0)) {
@@ -326,7 +371,7 @@ __device__ static inline auto reduce_axis_zip(const cumo_na_reduction_arg_t& arg
 // Note that reduction and out axis are inverse with cupy. Former axes are out axes, latters are reduce axes.
 
 template <bool FLAT, typename TypeIn, typename TypeOut, typename ReductionImpl>
-__global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t ad, int out_block_size, int reduce_block_size, ReductionImpl impl) {
+__global__ static void reduction_kernel(CUMO_GRID_CONSTANT cumo_na_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_reduce_addr_t ad, int out_block_size, int reduce_block_size, ReductionImpl impl) {
     using TypeReduce = decltype(impl.Identity(0));
 
     extern __shared__ __align__(8) char sdata_raw[];
@@ -358,7 +403,7 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, cumo_reduce
 // Variant of reduction_kernel reading two inputs, for mulsum. See
 // reduce_axis_zip above.
 template <bool FLAT, typename TypeIn, typename TypeOut, typename ReductionImpl>
-__global__ static void reduction_zip_kernel(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, cumo_reduce_addr_t ad, cumo_reduce_addr_t ad2, int out_block_size, int reduce_block_size, ReductionImpl impl) {
+__global__ static void reduction_zip_kernel(CUMO_GRID_CONSTANT cumo_na_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_na_iarray_t in2, CUMO_GRID_CONSTANT cumo_reduce_addr_t ad, CUMO_GRID_CONSTANT cumo_reduce_addr_t ad2, int out_block_size, int reduce_block_size, ReductionImpl impl) {
     using TypeReduce = decltype(impl.Identity(0));
 
     extern __shared__ __align__(8) char sdata_raw[];
@@ -374,8 +419,8 @@ __global__ static void reduction_zip_kernel(cumo_na_reduction_arg_t arg, cumo_na
     int64_t out_stride = gridDim.x * out_block_size;
 
     for (int64_t i_out = out_base + out_offset; i_out < out_total_size; i_out += out_stride) {
-        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg.in, arg.in_indexer, ad, i_out);
-        ssize_t in_out_off2 = reduce_in_out_offset<FLAT>(in2, arg.in_indexer, ad2, i_out);
+        ssize_t in_out_off, in_out_off2;
+        reduce_in_out_offset_pair<FLAT>(arg.in, in2, arg.in_indexer, ad, ad2, i_out, &in_out_off, &in_out_off2);
         int64_t i_in = i_out * reduce_total_size + reduce_offset;
 
         TypeReduce accum = reduce_axis_zip<FLAT,TypeIn>(arg, in2, ad, ad2, impl, in_out_off, in_out_off2, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
@@ -391,7 +436,7 @@ __global__ static void reduction_zip_kernel(cumo_na_reduction_arg_t arg, cumo_na
 // Variant of reduction_kernel for arg-reductions (argmax/argmin), which report
 // the index along the reduction axis rather than the index of an element.
 template <bool FLAT, typename TypeIn, typename TypeOut, typename ReductionImpl>
-__global__ static void reduction_arg_kernel(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t ad, int out_block_size, int reduce_block_size, ReductionImpl impl) {
+__global__ static void reduction_arg_kernel(CUMO_GRID_CONSTANT cumo_na_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_reduce_addr_t ad, int out_block_size, int reduce_block_size, ReductionImpl impl) {
     using TypeReduce = decltype(impl.Identity(0));
 
     extern __shared__ __align__(8) char sdata_raw[];
@@ -424,7 +469,7 @@ __global__ static void reduction_arg_kernel(cumo_na_reduction_arg_t arg, cumo_re
 // minmax reads the input once instead of reducing it twice. The impl stores
 // through the pointers rather than returning, since there are two of them.
 template <bool FLAT, typename TypeIn, typename TypeOut, typename ReductionImpl>
-__global__ static void reduction_pair_kernel(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2_iarray, cumo_reduce_addr_t ad, int out_block_size, int reduce_block_size, ReductionImpl impl) {
+__global__ static void reduction_pair_kernel(CUMO_GRID_CONSTANT cumo_na_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_na_iarray_t out2_iarray, CUMO_GRID_CONSTANT cumo_reduce_addr_t ad, int out_block_size, int reduce_block_size, ReductionImpl impl) {
     using TypeReduce = decltype(impl.Identity(0));
 
     extern __shared__ __align__(8) char sdata_raw[];
@@ -462,7 +507,7 @@ __global__ static void reduction_pair_kernel(cumo_na_reduction_arg_t arg, cumo_n
 // threads are handed out by output first, so a block still covers consecutive
 // outputs when those are the ones running along memory.
 template <bool FLAT, bool ARG, typename TypeIn, typename TypeReduce, typename ReductionImpl>
-__global__ static void reduction_partial_kernel(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t ad, TypeReduce* partial, int64_t n_split, int64_t chunk, int out_block_size, int reduce_block_size, ReductionImpl impl) {
+__global__ static void reduction_partial_kernel(CUMO_GRID_CONSTANT cumo_na_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_reduce_addr_t ad, TypeReduce* partial, int64_t n_split, int64_t chunk, int out_block_size, int reduce_block_size, ReductionImpl impl) {
     extern __shared__ __align__(8) char sdata_raw[];
     TypeReduce* sdata = reinterpret_cast<TypeReduce*>(sdata_raw);
     unsigned int tid = threadIdx.x;
@@ -496,7 +541,7 @@ __global__ static void reduction_partial_kernel(cumo_na_reduction_arg_t arg, cum
 
 // First pass of a split zip reduction. See reduction_partial_kernel above.
 template <bool FLAT, typename TypeIn, typename TypeReduce, typename ReductionImpl>
-__global__ static void reduction_zip_partial_kernel(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, cumo_reduce_addr_t ad, cumo_reduce_addr_t ad2, TypeReduce* partial, int64_t n_split, int64_t chunk, int out_block_size, int reduce_block_size, ReductionImpl impl) {
+__global__ static void reduction_zip_partial_kernel(CUMO_GRID_CONSTANT cumo_na_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_na_iarray_t in2, CUMO_GRID_CONSTANT cumo_reduce_addr_t ad, CUMO_GRID_CONSTANT cumo_reduce_addr_t ad2, TypeReduce* partial, int64_t n_split, int64_t chunk, int out_block_size, int reduce_block_size, ReductionImpl impl) {
     extern __shared__ __align__(8) char sdata_raw[];
     TypeReduce* sdata = reinterpret_cast<TypeReduce*>(sdata_raw);
     unsigned int tid = threadIdx.x;
@@ -516,8 +561,8 @@ __global__ static void reduction_zip_partial_kernel(cumo_na_reduction_arg_t arg,
         int64_t begin = i_split * chunk;
         int64_t end = begin + chunk;
         if (end > reduce_total_size) end = reduce_total_size;
-        ssize_t in_out_off = reduce_in_out_offset<FLAT>(arg.in, arg.in_indexer, ad, i_out);
-        ssize_t in_out_off2 = reduce_in_out_offset<FLAT>(in2, arg.in_indexer, ad2, i_out);
+        ssize_t in_out_off, in_out_off2;
+        reduce_in_out_offset_pair<FLAT>(arg.in, in2, arg.in_indexer, ad, ad2, i_out, &in_out_off, &in_out_off2);
         int64_t i_in = i_out * reduce_total_size + begin + reduce_offset;
 
         TypeReduce accum = reduce_axis_zip<FLAT,TypeIn>(arg, in2, ad, ad2, impl, in_out_off, in_out_off2, i_in, begin, end, reduce_offset, reduce_block_size);
