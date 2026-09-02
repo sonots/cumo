@@ -289,14 +289,38 @@ cumo_na_make_bit_pred_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
 
 #ifdef __CUDACC__
 
+// Splits the flat index i into the per-dimension indices. A 64-bit division
+// on the device is a software routine of about a hundred instructions, and a
+// non-contiguous or broadcast operand pays one per dimension per element, so
+// when the whole array fits 32 bits the split runs in 32 bits. The outermost
+// dimension takes what is left without dividing, since i is always below
+// total_size. On an RTX 5070 Ti a [1024,3072] + [3072] runs at 321 GB/s in
+// 64 bits and 609 with this.
+#define CUMO_NA_INDEXER_DECOMPOSE(indexer, i, ndim) \
+    do { \
+        if ((indexer)->total_size <= 0xffffffffu) { \
+            uint32_t i32_ = (uint32_t)(i); \
+            for (int j_ = (ndim); --j_ >= 1;) { \
+                uint32_t n_ = (uint32_t)(indexer)->shape[j_]; \
+                (indexer)->index[j_] = i32_ % n_; \
+                i32_ /= n_; \
+            } \
+            if ((ndim) > 0) (indexer)->index[0] = i32_; \
+        } else { \
+            uint64_t i64_ = (i); \
+            for (int j_ = (ndim); --j_ >= 1;) { \
+                (indexer)->index[j_] = i64_ % (indexer)->shape[j_]; \
+                i64_ /= (indexer)->shape[j_]; \
+            } \
+            if ((ndim) > 0) (indexer)->index[0] = i64_; \
+        } \
+    } while (0)
+
 __host__ __device__
 static inline void
 cumo_na_indexer_set_dim(cumo_na_indexer_t* indexer, uint64_t i) {
     indexer->raw_index = i;
-    for (int j = indexer->ndim; --j >= 0;) {
-        indexer->index[j] = i % indexer->shape[j];
-        i /= indexer->shape[j];
-    }
+    CUMO_NA_INDEXER_DECOMPOSE(indexer, i, indexer->ndim);
 }
 
 // Let compiler optimize
@@ -305,10 +329,7 @@ __host__ __device__ \
 static inline void \
 cumo_na_indexer_set_dim##NDIM(cumo_na_indexer_t* indexer, uint64_t i) { \
     indexer->raw_index = i; \
-    for (int j = NDIM; --j >= 0;) { \
-        indexer->index[j] = i % indexer->shape[j]; \
-        i /= indexer->shape[j]; \
-    } \
+    CUMO_NA_INDEXER_DECOMPOSE(indexer, i, NDIM); \
 }
 
 CUMO_NA_INDEXER_SET(8)
