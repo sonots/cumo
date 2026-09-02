@@ -138,16 +138,27 @@ static inline void set_reduce_addr_out2(cumo_reduce_addr_t* ad, const cumo_na_re
     ad->out2_flat = axes_are_flat(out2, arg.out_indexer, 0, arg.out_indexer.ndim, &ad->out2_step);
 }
 
-// Threads of a block are consecutive in i_out below out_block_size and
-// consecutive in i_reduce above it, so whichever of the two runs along memory
-// decides whether a block's reads coalesce. Handing the reduce axis every
-// thread is right when it is the contiguous one and wrong when it is not: a
-// 2048x2048 sum along axis 0 otherwise puts each of a block's 512 threads on a
-// different row and reads one element per transaction.
+// How a block's threads are shared between outputs. Whichever of the two axes
+// runs along memory decides whether a block's reads coalesce, so the threads
+// that sit next to each other in the block walk that axis: consecutive in
+// i_out when the out axis is the contiguous one (a 2048x2048 sum along axis 0
+// otherwise puts each of a block's 512 threads on a different row and reads
+// one element per transaction), and consecutive in i_reduce when the reduce
+// axis is. In that second, reduce-major form the threads of one output are a
+// contiguous group of reduce_block_size, and the group is sized so that every
+// thread has min_reduce_per_thread elements to read rather than one: a
+// 4096x256 sum along the last axis with a 256-thread group per row reads one
+// element per thread and then spends the time in the tree, at 92 GB/s, where
+// a group of 16 reading 16 each gets 520.
+static constexpr int64_t min_reduce_per_thread = 16;
+
 static inline void reduce_block_split(const cumo_reduce_addr_t& ad, int64_t reduce_total_size, int64_t* out_block_size, int64_t* reduce_block_size) {
-    int64_t rbs = std::min(max_block_size, round_up_to_power_of_2(std::max(int64_t{1}, reduce_total_size)));
+    int64_t n = std::max(int64_t{1}, reduce_total_size);
+    int64_t rbs;
     if (ad.out_inner) {
-        rbs = std::min(rbs, max_block_size / warp_size);
+        rbs = std::min(max_block_size / warp_size, round_up_to_power_of_2(n));
+    } else {
+        rbs = std::min(max_block_size, round_up_to_power_of_2((n + min_reduce_per_thread - 1) / min_reduce_per_thread));
     }
     *reduce_block_size = rbs;
     *out_block_size = max_block_size / rbs;
@@ -197,12 +208,39 @@ __device__ static inline ssize_t reduce_out2_offset(const cumo_na_reduction_arg_
     return axes_offset(out2, arg.out_indexer, 0, arg.out_indexer.ndim, i_out);
 }
 
-// Combines the accumulators a block holds for one output element. Threads that
-// share out_offset sit reduce_block_size apart, so the tree only has to run
-// down to out_block_size.
+// Which output and which slice of its reduce axis a thread takes, in the
+// layout reduce_block_split describes.
+__device__ static inline void reduce_thread_split(const cumo_reduce_addr_t& ad, unsigned int tid, int out_block_size, int reduce_block_size, int64_t* reduce_offset, int64_t* out_offset) {
+    if (!ad.out_inner) {
+        *reduce_offset = tid % reduce_block_size;
+        *out_offset = tid / reduce_block_size;
+    } else {
+        *reduce_offset = tid / out_block_size;
+        *out_offset = tid % out_block_size;
+    }
+}
+
+// Combines the accumulators a block holds for one output element. In the
+// out-major layout the threads that share out_offset sit out_block_size apart,
+// so the tree only has to run down to out_block_size. In the reduce-major
+// layout they are a contiguous, warp-aligned group of reduce_block_size, so a
+// step whose partners are within a warp needs only __syncwarp.
 template <typename TypeReduce, typename ReductionImpl>
-__device__ static inline TypeReduce reduce_in_block(TypeReduce accum, TypeReduce* sdata, unsigned int tid, int out_block_size, ReductionImpl& impl) {
-    if (out_block_size > max_block_size / 2) return accum;
+__device__ static inline TypeReduce reduce_in_block(TypeReduce accum, TypeReduce* sdata, unsigned int tid, int out_block_size, int reduce_block_size, bool reduce_major, ReductionImpl& impl) {
+    if (reduce_block_size == 1) return accum;
+    if (reduce_major) {
+        int r = tid % reduce_block_size;
+        sdata[tid] = accum;
+        for (int stride = reduce_block_size / 2; stride > 0; stride >>= 1) {
+            if (stride >= warp_size) __syncthreads(); else __syncwarp();
+            if (r < stride) {
+                impl.Reduce(sdata[tid + stride], sdata[tid]);
+            }
+        }
+        accum = sdata[tid];
+        if (reduce_block_size > warp_size) __syncthreads(); else __syncwarp();
+        return accum;
+    }
     sdata[tid] = accum;
     __syncthreads();
     // NOTE: Compiler optimizes to unroll this loop
@@ -298,8 +336,8 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, cumo_reduce
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
 
-    int64_t reduce_offset = tid / out_block_size; // # of cols == # of elems
-    int64_t out_offset = tid % out_block_size;    // # of rows
+    int64_t reduce_offset, out_offset;
+    reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -309,7 +347,7 @@ __global__ static void reduction_kernel(cumo_na_reduction_arg_t arg, cumo_reduce
 
         TypeReduce accum = reduce_axis<FLAT,false,TypeIn>(arg.in, arg.in_indexer, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
 
-        accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             TypeOut* out_ptr = reinterpret_cast<TypeOut*>(arg.out.ptr + reduce_out_offset<FLAT>(arg, ad, i_out));
             *out_ptr = impl.MapOut(accum);
@@ -330,8 +368,8 @@ __global__ static void reduction_zip_kernel(cumo_na_reduction_arg_t arg, cumo_na
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -342,7 +380,7 @@ __global__ static void reduction_zip_kernel(cumo_na_reduction_arg_t arg, cumo_na
 
         TypeReduce accum = reduce_axis_zip<FLAT,TypeIn>(arg, in2, ad, ad2, impl, in_out_off, in_out_off2, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
 
-        accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             TypeOut* out_ptr = reinterpret_cast<TypeOut*>(arg.out.ptr + reduce_out_offset<FLAT>(arg, ad, i_out));
             *out_ptr = impl.MapOut(accum);
@@ -363,8 +401,8 @@ __global__ static void reduction_arg_kernel(cumo_na_reduction_arg_t arg, cumo_re
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -374,7 +412,7 @@ __global__ static void reduction_arg_kernel(cumo_na_reduction_arg_t arg, cumo_re
 
         TypeReduce accum = reduce_axis<FLAT,true,TypeIn>(arg.in, arg.in_indexer, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
 
-        accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             TypeOut* out_ptr = reinterpret_cast<TypeOut*>(arg.out.ptr + reduce_out_offset<FLAT>(arg, ad, i_out));
             *out_ptr = impl.MapOut(accum);
@@ -396,8 +434,8 @@ __global__ static void reduction_pair_kernel(cumo_na_reduction_arg_t arg, cumo_n
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -407,7 +445,7 @@ __global__ static void reduction_pair_kernel(cumo_na_reduction_arg_t arg, cumo_n
 
         TypeReduce accum = reduce_axis<FLAT,false,TypeIn>(arg.in, arg.in_indexer, ad, impl, in_out_off, i_in, 0, reduce_total_size, reduce_offset, reduce_block_size);
 
-        accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             TypeOut* out_ptr = reinterpret_cast<TypeOut*>(arg.out.ptr + reduce_out_offset<FLAT>(arg, ad, i_out));
             TypeOut* out2_ptr = reinterpret_cast<TypeOut*>(out2_iarray.ptr + reduce_out2_offset<FLAT>(arg, out2_iarray, ad, i_out));
@@ -433,8 +471,8 @@ __global__ static void reduction_partial_kernel(cumo_na_reduction_arg_t arg, cum
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
     int64_t partial_total_size = out_total_size * n_split;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -449,7 +487,7 @@ __global__ static void reduction_partial_kernel(cumo_na_reduction_arg_t arg, cum
 
         TypeReduce accum = reduce_axis<FLAT,ARG,TypeIn>(arg.in, arg.in_indexer, ad, impl, in_out_off, i_in, begin, end, reduce_offset, reduce_block_size);
 
-        accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             partial[i_out * n_split + i_split] = accum;
         }
@@ -467,8 +505,8 @@ __global__ static void reduction_zip_partial_kernel(cumo_na_reduction_arg_t arg,
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
     int64_t partial_total_size = out_total_size * n_split;
 
-    int64_t reduce_offset = tid / out_block_size;
-    int64_t out_offset = tid % out_block_size;
+    int64_t reduce_offset, out_offset;
+    reduce_thread_split(ad, tid, out_block_size, reduce_block_size, &reduce_offset, &out_offset);
     int64_t out_base = blockIdx.x * out_block_size;
     int64_t out_stride = gridDim.x * out_block_size;
 
@@ -484,7 +522,7 @@ __global__ static void reduction_zip_partial_kernel(cumo_na_reduction_arg_t arg,
 
         TypeReduce accum = reduce_axis_zip<FLAT,TypeIn>(arg, in2, ad, ad2, impl, in_out_off, in_out_off2, i_in, begin, end, reduce_offset, reduce_block_size);
 
-        accum = reduce_in_block(accum, sdata, tid, out_block_size, impl);
+        accum = reduce_in_block(accum, sdata, tid, out_block_size, reduce_block_size, !ad.out_inner, impl);
         if (reduce_offset == 0) {
             partial[i_out * n_split + i_split] = accum;
         }

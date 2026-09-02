@@ -307,6 +307,23 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
+  # A short row shares a block with other rows, and the group of threads a row
+  # gets shrinks with its length. Every group size from one thread up to a
+  # whole block, with row counts that leave a block a partial tail.
+  test "count_true, all? and any? along short rows" do
+    [1, 2, 3, 31, 32, 33, 64, 65, 100, 257].each do |cols|
+      [1, 3, 1030].each do |rows|
+        src = (0...rows).map { |r| bits.call(cols).rotate(r) }
+        a = Cumo::Bit.cast(src)
+        assert_equal(src.map { |row| row.count(1) }, a.count_true(axis: 1).to_a, "count_true #{rows}x#{cols}")
+        assert_equal(src.map { |row| row.count(0) }, a.count_false(axis: 1).to_a, "count_false #{rows}x#{cols}")
+        assert_equal(src.map { |row| row.all?(1) ? 1 : 0 }, a.all?(axis: 1).to_a, "all? #{rows}x#{cols}")
+        assert_equal(src.map { |row| row.any?(1) ? 1 : 0 }, a.any?(axis: 1).to_a, "any? #{rows}x#{cols}")
+        assert_equal(src.map { |row| row.count(1).fdiv(cols) }, a.mean(axis: 1).to_a, "mean #{rows}x#{cols}")
+      end
+    end
+  end
+
   # Few outputs and a long axis leave the grid one block per output, so the
   # count runs the axis in chunks and combines them in a second pass. 200000
   # bits is past the point where that starts.
