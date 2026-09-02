@@ -174,7 +174,7 @@ __device__ static inline uint64_t bit_count_axis(
 }
 
 __global__ static void bit_count_reduction_kernel(
-        cumo_na_bit_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, cumo_bit_word_addr_t wa, int invert,
+        CUMO_GRID_CONSTANT cumo_na_bit_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_detail::cumo_reduce_addr_t ad, CUMO_GRID_CONSTANT cumo_bit_word_addr_t wa, int invert,
         int out_block_size, int reduce_block_size, int64_t unit_total_size) {
     extern __shared__ __align__(8) char sdata_raw[];
     uint64_t* sdata = reinterpret_cast<uint64_t*>(sdata_raw);
@@ -207,7 +207,7 @@ __global__ static void bit_count_reduction_kernel(
 // grid a handful of blocks however long the reduce axis is.
 template <typename TArg>
 __global__ static void bit_count_partial_kernel(
-        TArg arg, cumo_detail::cumo_reduce_addr_t ad, cumo_bit_word_addr_t wa, int invert,
+        CUMO_GRID_CONSTANT TArg arg, CUMO_GRID_CONSTANT cumo_detail::cumo_reduce_addr_t ad, CUMO_GRID_CONSTANT cumo_bit_word_addr_t wa, int invert,
         uint64_t* partial, int64_t n_split, int64_t chunk,
         int out_block_size, int reduce_block_size, int64_t unit_total_size) {
     extern __shared__ __align__(8) char sdata_raw[];
@@ -309,7 +309,7 @@ __device__ static inline double bit_stat_of_count(uint64_t count, int64_t reduce
 }
 
 __global__ static void bit_stat_reduction_kernel(
-        cumo_na_bit_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, cumo_bit_word_addr_t wa, int stat,
+        CUMO_GRID_CONSTANT cumo_na_bit_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_detail::cumo_reduce_addr_t ad, CUMO_GRID_CONSTANT cumo_bit_word_addr_t wa, int stat,
         int out_block_size, int reduce_block_size, int64_t unit_total_size) {
     extern __shared__ __align__(8) char sdata_raw[];
     uint64_t* sdata = reinterpret_cast<uint64_t*>(sdata_raw);
@@ -341,7 +341,7 @@ __global__ static void bit_stat_reduction_kernel(
 
 // Second pass of a split statistic, laid out like bit_pred_combine_kernel.
 __global__ static void bit_stat_combine_kernel(
-        cumo_na_bit_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, int stat,
+        CUMO_GRID_CONSTANT cumo_na_bit_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_detail::cumo_reduce_addr_t ad, int stat,
         const uint64_t* partial, int64_t n_split) {
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
@@ -364,7 +364,7 @@ __device__ static inline CUMO_BIT_DIGIT bit_pred_of_count(uint64_t count, int64_
 }
 
 __global__ static void bit_pred_reduction_kernel(
-        cumo_na_bit_pred_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, cumo_bit_word_addr_t wa, int all,
+        CUMO_GRID_CONSTANT cumo_na_bit_pred_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_detail::cumo_reduce_addr_t ad, CUMO_GRID_CONSTANT cumo_bit_word_addr_t wa, int all,
         int out_block_size, int reduce_block_size, int64_t unit_total_size) {
     extern __shared__ __align__(8) char sdata_raw[];
     uint64_t* sdata = reinterpret_cast<uint64_t*>(sdata_raw);
@@ -397,7 +397,7 @@ __global__ static void bit_pred_reduction_kernel(
 // Second pass of a split all? or any?. There are few outputs whenever the axis
 // was worth splitting, so one thread per output walks its chunks.
 __global__ static void bit_pred_combine_kernel(
-        cumo_na_bit_pred_reduction_arg_t arg, cumo_detail::cumo_reduce_addr_t ad, int all,
+        CUMO_GRID_CONSTANT cumo_na_bit_pred_reduction_arg_t arg, CUMO_GRID_CONSTANT cumo_detail::cumo_reduce_addr_t ad, int all,
         const uint64_t* partial, int64_t n_split) {
     int64_t out_total_size = arg.out_indexer.total_size;
     int64_t reduce_total_size = arg.in_indexer.total_size / out_total_size;
