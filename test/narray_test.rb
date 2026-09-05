@@ -5948,6 +5948,34 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal("true", reader.value)
   end
 
+  # divmod on RObject calls whatever the element's class defines, and the pair
+  # it answered was taken apart without being looked at, so a short Array
+  # handed back the words beyond it as Ruby objects.
+  test "divmod on RObject checks what the element answered" do
+    answers = {
+      "scalar" => 12345,
+      "short" => [1],
+      "empty" => [],
+      "string" => "ab",
+      "long" => [1, 2, 3]
+    }
+    answers.each do |what, answer|
+      klass = Class.new do
+        define_method(:divmod) { |_other| answer }
+      end
+      a = Cumo::RObject[klass.new, klass.new]
+      assert_raise(TypeError, what) { a.divmod(1) }
+    end
+
+    pair = Class.new do
+      def divmod(_other) = [7, 8]
+    end
+    q, r = Cumo::RObject[pair.new, pair.new].divmod(1)
+    assert_equal([[7, 7], [8, 8]], [q.to_a, r.to_a])
+    assert_equal([[2, -3], [1, 2]], Cumo::RObject[7, -7].divmod(3).map(&:to_a))
+    assert_equal([[3], [Rational(1, 2)]], Cumo::RObject[Rational(7, 2)].divmod(1).map(&:to_a))
+  end
+
   test "an object with to_int can be used as a subscript and as a shape" do
     o = Object.new
     def o.to_int = 3
