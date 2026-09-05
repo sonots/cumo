@@ -1641,7 +1641,11 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         rb_raise(rb_eArgError,"marshal shape should be array");
     }
     CumoGetNArray(self,na);
-    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+    // Only an array that holds its own data has a buffer to load into, and the
+    // release below reads a flag that is only where it thinks it is on that
+    // kind. A view is the one other kind that exists today; a file map would
+    // hand back its mapping's protection bits in place of that flag.
+    if (CUMO_NA_TYPE(na) != CUMO_NARRAY_DATA_T) {
         rb_raise(rb_eArgError,"cannot load marshal data into a view");
     }
 
