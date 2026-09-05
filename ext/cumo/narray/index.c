@@ -179,6 +179,10 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
         ((size_t*)RSTRING_PTR(buf))[k] = i;
     }
     status = cudaMemcpyAsync(q->idx,RSTRING_PTR(buf),sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
+    // Hand the bytes back here rather than at the next collection: a subscript
+    // is small but every one of them stages a buffer, and waiting for the
+    // collector to catch up costs more than the buffer does.
+    rb_str_resize(buf, 0);
     RB_GC_GUARD(buf);
     cumo_cuda_runtime_check_status(status);
 
