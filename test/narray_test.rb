@@ -5859,7 +5859,25 @@ class NArrayTest < Test::Unit::TestCase
       f.marshal_load([1, [1 << 20], 0, Array.new(1 << 20) { |i| i }])
       borrowed = f.size == (1 << 20) && f[(1 << 20) - 1].to_a.first == (1 << 20) - 1
 
-      print [grew, shrank, typed, viewed, borrowed].join(",")
+      # Converting a shape element runs to_int, which is Ruby free to reach
+      # this array and free or replace the buffer before it is released here.
+      reentered = %w[free store_binary marshal_load].map do |what|
+        g = Cumo::RObject.new(4)
+        g.store([1, 2, 3, 4])
+        o = Object.new
+        o.define_singleton_method(:to_int) do
+          case what
+          when "free" then g.free
+          when "store_binary" then g.store_binary(("\\x01" * 32).freeze)
+          else g.marshal_load([1, [2], 0, [+"x", +"y"]])
+          end
+          8
+        end
+        g.marshal_load([1, [o], 0, Array.new(8) { |i| i }])
+        g.to_a == (0...8).to_a
+      end
+
+      print [grew, shrank, typed, viewed, borrowed, *reentered].join(",")
     RUBY
     lib = File.expand_path("../lib", __dir__)
     r, w = IO.pipe
@@ -5877,7 +5895,7 @@ class NArrayTest < Test::Unit::TestCase
       sleep 0.05
     end
     assert { Process.last_status.success? }
-    assert_equal("true,true,true,ArgumentError,true", reader.value)
+    assert_equal("true,true,true,ArgumentError,true,true,true,true", reader.value)
   end
 
   test "marshal round trips an array that was never allocated" do
