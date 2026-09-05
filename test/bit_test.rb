@@ -766,4 +766,61 @@ class BitTest < Test::Unit::TestCase
       end
     end
   end
+
+  test "swap_byte on a bit array only moves the endian flag" do
+    srand(13)
+    a = Cumo::Bit.cast(Array.new(3 * 8) { rand(2) }).reshape(3, 8)
+    values = a.to_a
+
+    s = a.swap_byte
+    assert_equal(values, s.to_a)
+    assert { s.byte_swapped? }
+    assert { !s.host_order? }
+    assert { !a.byte_swapped? }
+    assert { !s.swap_byte.byte_swapped? }
+    assert_equal(values, a.hton.to_a)
+    assert_equal(values, a.to_swapped.to_a)
+    assert { a.to_host.equal?(a) }
+    assert { a.to_swapped.to_host.host_order? }
+
+    view = a[true, 2...6]
+    assert_equal(view.to_a, view.swap_byte.to_a)
+    assert_equal(values, a.to_a)
+
+    x = a.inplace
+    assert { x.swap_byte.equal?(x) }
+    assert { x.byte_swapped? }
+    assert_equal(values, x.to_a)
+  end
+
+  # Before this guard the loop stepped one byte per bit, eight times past the
+  # end of the packed buffer, and a large array took the process down.
+  test "swap_byte on a large bit array does not run past the buffer" do
+    script = <<~RUBY
+      require "cumo/narray"
+      b = Cumo::Bit.new(1 << 26).fill(1)
+      done = %i[swap_byte hton to_network to_swapped].select do |m|
+        v = b.send(m)
+        Integer(v.count_true) == (1 << 26) && v.byte_swapped?
+      end
+      print done.join(",")
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    r, w = IO.pipe
+    pid = Process.spawn(RbConfig.ruby, "-I#{lib}", "-e", script, out: w, err: File::NULL)
+    w.close
+    reader = Thread.new { r.read }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
+    until Process.waitpid(pid, Process::WNOHANG)
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        Process.kill("KILL", pid)
+        Process.waitpid(pid)
+        reader.kill
+        flunk("swap_byte on a large bit array did not finish in 60 seconds")
+      end
+      sleep 0.05
+    end
+    assert { Process.last_status.success? }
+    assert_equal("swap_byte,hton,to_network,to_swapped", reader.value)
+  end
 end
