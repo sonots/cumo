@@ -1616,10 +1616,12 @@ static VALUE cumo_na_inplace( VALUE self );
 static VALUE
 cumo_na_marshal_load(VALUE self, VALUE a)
 {
-    VALUE v;
+    VALUE v, vshape;
     cumo_narray_t *na;
     void *old_ptr;
     size_t old_byte_size;
+    size_t *shape;
+    int ndim;
     bool old_owned;
 
     if (OBJ_FROZEN(self)) {
@@ -1642,15 +1644,31 @@ cumo_na_marshal_load(VALUE self, VALUE a)
     if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
         rb_raise(rb_eArgError,"cannot load marshal data into a view");
     }
-    // Any buffer already here was sized for the shape being replaced, and the
-    // write below goes by the new one. Note it while the array can still say
-    // how large it is, and let it go once the new shape has been accepted: a
-    // shape the array refuses has to leave the array as it was.
+
+    // Read the shape first. Converting its elements runs to_int, which is Ruby
+    // free to reach this array and free or replace the buffer, so nothing may
+    // be noted down until that has finished.
+    vshape = RARRAY_AREF(a,1);
+    if (RARRAY_LEN(vshape) == 1 && TYPE(RARRAY_AREF(vshape,0)) == T_ARRAY) {
+        vshape = RARRAY_AREF(vshape,0);
+    }
+    ndim = RARRAY_LEN(vshape);
+    if (ndim > CUMO_NA_MAX_DIMENSION) {
+        rb_raise(rb_eArgError,"ndim=%d exceeds maximum dimension",ndim);
+    }
+    shape = ALLOCA_N(size_t, ndim);
+    cumo_na_array_to_internal_shape(self, vshape, shape);
+
+    // Any buffer here was sized for the shape being replaced, and the write
+    // below goes by the new one. Note it while the array can still say how
+    // large it is, and let it go once the new shape has been accepted: a shape
+    // the array refuses has to leave the array as it was. No Ruby runs between
+    // the two, so what is released is what was measured.
     old_ptr = CUMO_NA_DATA_PTR(na);
     old_byte_size = cumo_na_data_byte_size(self);
     old_owned = CUMO_NA_DATA_OWNED(na);
 
-    cumo_na_initialize(self,RARRAY_AREF(a,1));
+    cumo_na_setup(self, ndim, shape);
     if (old_ptr != NULL) {
         if (old_owned) {
             cumo_na_free_owned_ptr(self, old_ptr, old_byte_size);
