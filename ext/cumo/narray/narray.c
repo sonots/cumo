@@ -243,7 +243,7 @@ cumo_na_array_to_internal_shape(VALUE self, VALUE ary, size_t *shape)
         s = 1;
     }
     for (i=0; i<n; i++) {
-        v = RARRAY_AREF(ary,i);
+        v = rb_ary_entry(ary,i);
         x = NUM2SSIZET(v);
         if (x < 0) {
             rb_raise(rb_eArgError,"size must be non-negative");
@@ -1417,7 +1417,7 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
             shape = ALLOCA_N(size_t,nd);
             len = 1;
             for (i=0; i<nd; ++i) {
-                len *= shape[i] = NUM2SIZET(RARRAY_AREF(vshape,i));
+                len *= shape[i] = NUM2SIZET(rb_ary_entry(vshape,i));
             }
             break;
         default:
@@ -1432,6 +1432,9 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
         } else {
             byte_size = ceil(len * NUM2DBL(velmsz));
         }
+        // The shape went through to_int, which is Ruby code free to empty
+        // the string this length came from.
+        str_len = RSTRING_LEN(vstr);
         if (byte_size > str_len) {
             rb_raise(rb_eArgError, "specified size is too large");
         }
@@ -1482,16 +1485,18 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
 
     narg = rb_scan_args(argc,argv,"11",&vstr,&voffset);
     Check_Type(vstr,T_STRING);
-    str_len = RSTRING_LEN(vstr);
     if (narg==2) {
         offset = NUM2SIZET(voffset);
-        if (str_len < offset) {
-            rb_raise(rb_eArgError, "offset is larger than string length");
-        }
-        str_len -= offset;
     } else {
         offset = 0;
     }
+    // The offset went through to_int, which is Ruby code free to empty the
+    // string, so its length is only known once that has run.
+    str_len = RSTRING_LEN(vstr);
+    if (str_len < offset) {
+        rb_raise(rb_eArgError, "offset is larger than string length");
+    }
+    str_len -= offset;
 
     CumoGetNArray(self,na);
     size = CUMO_NA_SIZE(na);
@@ -1627,8 +1632,8 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         rb_raise(rb_eArgError,"marshal shape should be array");
     }
     cumo_na_initialize(self,RARRAY_AREF(a,1));
-    CUMO_NA_FL0_SET(self,FIX2INT(RARRAY_AREF(a,2)));
-    v = RARRAY_AREF(a,3);
+    CUMO_NA_FL0_SET(self,NUM2INT(rb_ary_entry(a,2)));
+    v = rb_ary_entry(a,3);
     if (rb_obj_class(self) == cumo_cRObject) {
         cumo_narray_t *na;
         char *ptr;
@@ -1753,7 +1758,7 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
     reduce = Qnil;
     narg = RARRAY_LEN(axes);
     for (i=0; i<narg; i++) {
-        v = RARRAY_AREF(axes,i);
+        v = rb_ary_entry(axes,i);
         //printf("argv[%d]=",i);rb_p(v);
         if (TYPE(v)==T_FIXNUM) {
             beg = FIX2INT(v);

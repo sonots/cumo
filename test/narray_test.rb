@@ -5798,4 +5798,148 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([5, 1, 3], a[[4, 0, 2]].copy.to_a)
     assert_equal(true, a.free)
   end
+
+  test "an object with to_int can be used as a subscript and as a shape" do
+    o = Object.new
+    def o.to_int = 3
+    a = Cumo::DFloat.new(10).seq
+    assert_equal([3, 3], Cumo::DFloat.new([o, 3]).shape)
+    assert_equal([2, 3], Cumo::DFloat.from_binary("\0" * 64, [2, o]).shape)
+    assert_equal([1.0, 3.0, 2.0], a[[1, o, 2]].to_a)
+    assert_equal([1.0, 3.0], a.at([1, o]).to_a)
+    assert_equal([0.0, 5.0, 10.0, 15.0], Cumo::DFloat.new(4, 4).seq.diagonal(0, [0, 1]).to_a)
+    d = Cumo::DFloat.allocate
+    d.marshal_load(Cumo::DFloat.new(2, 2).seq.marshal_dump)
+    assert_equal([[0.0, 1.0], [2.0, 3.0]], d.to_a)
+    two = Object.new
+    def two.to_int = 2
+    def two.<=>(_other) = 0
+    assert_equal([4], Cumo::DFloat.new(4, 4, 4).seq.sum(axis: [0, (two..two)]).shape)
+    b = Cumo::DFloat.new(4)
+    assert_equal(32, b.store_binary("\0" * 64, two))
+  end
+
+  # A subscript, a shape, an axis list, a marshal array and the string behind
+  # from_binary are each measured once and walked afterwards, and the
+  # conversion of every element is Ruby code that can empty that same object.
+  # The reads that followed went past the end of the buffer, and its contents
+  # were read back as VALUEs. Runs in a child process because a regression here
+  # takes the process down rather than failing a test.
+  test "an array or string emptied from inside a conversion is not read past its end" do
+    script = <<~RUBY
+      require "cumo/narray"
+
+      def shrinking(n)
+        ary = []
+        o = Object.new
+        o.define_singleton_method(:to_int) { ary.replace([]); GC.start; 0 }
+        ary.concat([o] + Array.new(n, 1))
+        ary
+      end
+
+      # A short array stays embedded in its own object, so it has to start
+      # long enough to own a heap buffer that replace() can hand back.
+      def shrinking_heap(len)
+        ary = Array.new(4096, 1)
+        o = Object.new
+        o.define_singleton_method(:to_int) { ary.replace([]); GC.start; 0 }
+        ary[0] = o
+        ary.slice!(len..)
+        ary
+      end
+
+      cases = {
+        "aref" => -> { Cumo::DFloat.new(10).seq[shrinking(2048)] },
+        "aref2" => -> { a = shrinking(2048); Cumo::DFloat.new(10, 10).seq[a, a] },
+        "aset" => -> { Cumo::DFloat.new(10).seq[shrinking(2048)] = 0 },
+        "at" => -> { Cumo::DFloat.new(64).seq.at(shrinking(2048)) },
+        "at2" => -> { a = shrinking(2048); Cumo::DFloat.new(8, 8).seq.at(a, a) },
+        "shape" => -> { Cumo::DFloat.new(shrinking(7)) },
+        "from_binary" => -> { Cumo::DFloat.from_binary("\\0" * 8192, shrinking(7)) },
+        "diagonal" => -> { Cumo::DFloat.new(4, 4).seq.diagonal(0, shrinking_heap(2)) },
+        "axis" => lambda {
+          axes = Array.new(4096, 0)
+          o = Object.new
+          o.define_singleton_method(:<=>) { |_| 0 }
+          o.define_singleton_method(:to_int) { axes.replace([]); GC.start; 0 }
+          axes[0] = (o..o)
+          axes.slice!(3..)
+          Cumo::DFloat.new(4, 4, 4).seq.sum(axis: axes)
+        },
+        "from_binary_string" => lambda {
+          str = "A" * (1 << 20)
+          o = Object.new
+          o.define_singleton_method(:to_int) { str.replace(""); GC.start; 8 }
+          Cumo::DFloat.from_binary(str, [o, 16384])
+        },
+        "store_binary_offset" => lambda {
+          str = "A" * (1 << 20)
+          o = Object.new
+          o.define_singleton_method(:to_int) { str.replace(""); GC.start; 0 }
+          Cumo::DFloat.new(16384).store_binary(str, o)
+        },
+        "nvrtc" => lambda {
+          opts = Array.new(4096, "-x")
+          o = Object.new
+          o.define_singleton_method(:to_str) { opts.replace([]); GC.start; "-DA=1" }
+          opts[0] = o
+          opts.slice!(8..)
+          prog = Cumo::CUDA::NVRTC.nvrtcCreateProgram("__global__ void k(){}", "k.cu", [], [])
+          Cumo::CUDA::NVRTC.nvrtcCompileProgram(prog, opts)
+        },
+        "marshal_load" => lambda {
+          a = Array.new(4096, 0)
+          o = Object.new
+          o.define_singleton_method(:to_int) { a.replace([]); GC.start; 4 }
+          a[0] = 1
+          a[1] = [o]
+          a[2] = 0
+          a[3] = "\\0" * 32
+          a.slice!(4..)
+          Cumo::DFloat.allocate.marshal_load(a)
+        }
+      }
+      got = cases.map do |name, c|
+        begin
+          c.call
+          "\#{name}=no error"
+        rescue StandardError => e
+          "\#{name}=\#{e.class}"
+        end
+      end
+      print got.join(",")
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    r, w = IO.pipe
+    pid = Process.spawn(RbConfig.ruby, "-I#{lib}", "-e", script, out: w, err: File::NULL)
+    w.close
+    reader = Thread.new { r.read }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 120
+    until Process.waitpid(pid, Process::WNOHANG)
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        Process.kill("KILL", pid)
+        Process.waitpid(pid)
+        reader.kill
+        flunk("the shrinking-array cases did not finish in 120 seconds")
+      end
+      sleep 0.05
+    end
+    assert { Process.last_status.success? }
+    want = [
+      "aref=TypeError",
+      "aref2=TypeError",
+      "aset=TypeError",
+      "at=TypeError",
+      "at2=TypeError",
+      "shape=TypeError",
+      "from_binary=TypeError",
+      "diagonal=TypeError",
+      "axis=Cumo::NArray::DimensionError",
+      "from_binary_string=ArgumentError",
+      "store_binary_offset=ArgumentError",
+      "nvrtc=TypeError",
+      "marshal_load=TypeError"
+    ]
+    assert_equal(want.join(","), reader.value)
+  end
 end

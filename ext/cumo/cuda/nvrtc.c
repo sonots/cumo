@@ -63,7 +63,7 @@ push_strings(VALUE strings, VALUE ary, int n)
     int i;
 
     for (i = 0; i < n; i++) {
-        VALUE str = rb_str_to_str(RARRAY_AREF(ary, i));
+        VALUE str = rb_str_to_str(rb_ary_entry(ary, i));
         StringValueCStr(str);
         rb_ary_push(strings, str);
     }

@@ -718,8 +718,8 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         if (RARRAY_LEN(vaxes) != 2) {
             rb_raise(rb_eArgError,"axes must be 2-element array");
         }
-        ax[0] = NUM2INT(RARRAY_AREF(vaxes,0));
-        ax[1] = NUM2INT(RARRAY_AREF(vaxes,1));
+        ax[0] = NUM2INT(rb_ary_entry(vaxes,0));
+        ax[1] = NUM2INT(rb_ary_entry(vaxes,1));
         if (ax[0]<-nd || ax[0]>=nd || ax[1]<-nd || ax[1]>=nd) {
             rb_raise(rb_eArgError,"axis out of range:[%d,%d]",ax[0],ax[1]);
         }
