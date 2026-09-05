@@ -5898,6 +5898,83 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal("true,true,true,ArgumentError,true,true,true,true", reader.value)
   end
 
+  # initialize is on every NArray and reachable through send, and it took a
+  # new shape while leaving the buffer sized for the old one in place. Runs in
+  # a child process because a regression here corrupts the heap.
+  test "initialize with a new shape sizes the buffer again" do
+    script = <<~RUBY
+      require "cumo/narray"
+
+      a = Cumo::DFloat.new(8).seq
+      a.send(:initialize, [4096])
+      grew = begin
+        a.sum
+        "no error"
+      rescue RuntimeError
+        "RuntimeError"
+      end
+      a.seq
+      reusable = a.size == 4096 && a.sum.to_a.first == 4096 * 4095 / 2
+
+      b = Cumo::RObject.new(4)
+      b.store([1, 2, 3, 4])
+      b.send(:initialize, [4096])
+      robject = begin
+        b[0] = 99
+        "no error"
+      rescue RuntimeError
+        "RuntimeError"
+      end
+      GC.start
+
+      c = Cumo::DFloat.new(64).seq
+      viewed = [[4, 4], [1000], [2, 2, 2, 2, 2, 2]].map do |shape|
+        begin
+          c[0..7].send(:initialize, shape)
+          "no error"
+        rescue ArgumentError
+          "ArgumentError"
+        end
+      end
+      # the base has to come through all of that untouched
+      base = c.to_a == (0...64).map(&:to_f)
+
+      print [grew, reusable, robject, *viewed, base].join(",")
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    r, w = IO.pipe
+    pid = Process.spawn(RbConfig.ruby, "-I#{lib}", "-e", script, out: w, err: File::NULL)
+    w.close
+    reader = Thread.new { r.read }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
+    until Process.waitpid(pid, Process::WNOHANG)
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        Process.kill("KILL", pid)
+        Process.waitpid(pid)
+        reader.kill
+        flunk("reinitialize did not finish in 60 seconds")
+      end
+      sleep 0.05
+    end
+    assert { Process.last_status.success? }
+    assert_equal("RuntimeError,true,RuntimeError,ArgumentError,ArgumentError,ArgumentError,true",
+                 reader.value)
+  end
+
+  test "new still takes a shape either way" do
+    assert_equal([2, 3], Cumo::DFloat.new(2, 3).shape)
+    assert_equal([2, 3], Cumo::DFloat.new([2, 3]).shape)
+    assert_equal([[0.0, 1.0], [2.0, 3.0]], Cumo::DFloat.new(2, 2).seq.to_a)
+  end
+
+  test "initialize leaves a frozen array alone" do
+    a = Cumo::DFloat.new(4).seq
+    a.freeze
+    assert_raise(RuntimeError) { a.__send__(:initialize, [4]) }
+    assert_raise(RuntimeError) { a.__send__(:initialize, [4096]) }
+    assert_equal([0.0, 1.0, 2.0, 3.0], a.to_a)
+  end
+
   test "marshal round trips an array that was never allocated" do
     a = Cumo::DFloat.new(2, 3).seq
     assert_equal(a.to_a, Marshal.load(Marshal.dump(a)).to_a)
