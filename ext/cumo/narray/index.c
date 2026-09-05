@@ -252,7 +252,11 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
 static void
 cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
-    int n;
+    // The count is what the subscript names, which an int cannot hold once the
+    // dimension is longer than 2**31. The guard below only looked like it
+    // caught that: a truncated count came out negative up to 2**32 and was
+    // rounded to an empty view, and past that it came out positive and wrong.
+    ssize_t n;
     ssize_t beg, end, beg_orig, end_orig;
     const char *dot = "..", *edot = "...";
 

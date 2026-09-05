@@ -3168,6 +3168,23 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([1, 3], [a[0, cols / 2 + 1].to_i, a[1, cols / 2].to_i])
   end
 
+  test "a range subscript longer than 2**31" do
+    cols = (1 << 31) + 512
+    a = Cumo::UInt8.new(1, cols).fill(0)
+    a[0, 0] = 7
+    a[0, (1 << 31) - 1] = 9
+    a[0, cols - 1] = 5
+
+    v = a[true, 0...(1 << 31)]
+    assert_equal([1, 1 << 31], v.shape)
+    assert_equal([7, 9], [v[0, 0].to_i, v[0, (1 << 31) - 1].to_i])
+    assert_equal(16, v.sum.to_i)
+    assert_equal([1, (1 << 31) - 1], a[true, 0...((1 << 31) - 1)].shape)
+    assert_equal([[1, 512], 5], [a[true, (1 << 31)...cols].shape, a[true, (1 << 31)...cols].sum.to_i])
+    # a range that runs backwards still names nothing
+    assert_equal([1, 0], a[true, ((1 << 31) + 1)..(1 << 31)].shape)
+  end
+
   # cumsum and cumprod had no tests at all before the scan was moved to the device
   def running(values)
     acc = nil
