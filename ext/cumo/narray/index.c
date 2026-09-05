@@ -172,7 +172,7 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
     q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
     idx = ALLOC_N(size_t, n);
     for (k=0; k<n; k++) {
-        idx[k] = cumo_na_range_check(NUM2SSIZET(RARRAY_AREF(ary,k)), size, orig_dim);
+        idx[k] = cumo_na_range_check(NUM2SSIZET(rb_ary_entry(ary,k)), size, orig_dim);
     }
     status = cudaMemcpyAsync(q->idx,idx,sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
     xfree(idx);
