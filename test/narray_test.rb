@@ -5816,6 +5816,81 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(true, a.free)
   end
 
+  # marshal_load takes its shape from the data it is handed, but the buffer
+  # already in hand was sized for the shape being replaced, and nothing sized
+  # it again. A larger shape wrote past the end of it. Runs in a child process
+  # because a regression here corrupts the heap rather than failing a test.
+  test "marshal_load into an allocated array sizes its buffer again" do
+    script = <<~RUBY
+      require "cumo/narray"
+
+      a = Cumo::RObject.new(2)
+      a.store([+"a", +"b"])
+      a.marshal_load([1, [4096], 0, Array.new(4096) { |i| i }])
+      grew = a.size == 4096 && a[0].to_a.first == 0 && a[4095].to_a.first == 4095
+
+      b = Cumo::RObject.new(4096)
+      b.store(Array.new(4096) { +"x" })
+      b.marshal_load([1, [2], 0, [+"p", +"q"]])
+      shrank = b.to_a == ["p", "q"]
+
+      c = Cumo::DFloat.new(2).seq
+      c.marshal_load(Cumo::DFloat.new(3, 4).seq(10).marshal_dump)
+      typed = c.shape == [3, 4] && c[2, 3].to_a == [21.0]
+
+      # RObject so that a view without this guard corrupts the heap rather
+      # than quietly growing: a frozen String is swapped in whole for the
+      # other types, which hides the write.
+      e = Cumo::RObject.new(8)
+      e.store(Array.new(8) { +"a" })
+      viewed = begin
+        e[2..5].marshal_load([1, [4096], 0, Array.new(4096) { +"z" }])
+        "no error"
+      rescue ArgumentError
+        "ArgumentError"
+      end
+
+      # A buffer that belongs to a frozen String is not this array's to free,
+      # but keeping it while the shape grows makes the copy that comes next
+      # read a megabyte out of sixteen bytes.
+      f = Cumo::RObject.new(2)
+      f.store([+"a", +"b"])
+      f.store_binary(("\\x01" * 16).freeze)
+      f.marshal_load([1, [1 << 20], 0, Array.new(1 << 20) { |i| i }])
+      borrowed = f.size == (1 << 20) && f[(1 << 20) - 1].to_a.first == (1 << 20) - 1
+
+      print [grew, shrank, typed, viewed, borrowed].join(",")
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    r, w = IO.pipe
+    pid = Process.spawn(RbConfig.ruby, "-I#{lib}", "-e", script, out: w, err: File::NULL)
+    w.close
+    reader = Thread.new { r.read }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
+    until Process.waitpid(pid, Process::WNOHANG)
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        Process.kill("KILL", pid)
+        Process.waitpid(pid)
+        reader.kill
+        flunk("marshal_load did not finish in 60 seconds")
+      end
+      sleep 0.05
+    end
+    assert { Process.last_status.success? }
+    assert_equal("true,true,true,ArgumentError,true", reader.value)
+  end
+
+  test "marshal round trips an array that was never allocated" do
+    a = Cumo::DFloat.new(2, 3).seq
+    assert_equal(a.to_a, Marshal.load(Marshal.dump(a)).to_a)
+    r = Cumo::RObject.cast([+"a", +"b"])
+    assert_equal(%w[a b], Marshal.load(Marshal.dump(r)).to_a)
+    frozen = Cumo::RObject.new(2)
+    frozen.store([1, 2])
+    frozen.freeze
+    assert_raise(RuntimeError) { frozen.marshal_load([1, [4], 0, [1, 2, 3, 4]]) }
+  end
+
   test "an object with to_int can be used as a subscript and as a shape" do
     o = Object.new
     def o.to_int = 3

@@ -614,14 +614,17 @@ cumo_na_data_byte_size(VALUE self)
 // type, so the deallocator has to be picked the same way. cudaFree() on host
 // memory raises, and xfree() on device memory reads a malloc header that is not
 // there.
+// The size is passed in rather than measured here: a caller that has already
+// taken a new shape can no longer ask the array how large the buffer it is
+// letting go was.
 static void
-cumo_na_free_owned_ptr(VALUE self, void *ptr)
+cumo_na_free_owned_ptr(VALUE self, void *ptr, size_t byte_size)
 {
     if (rb_obj_is_kind_of(self, cumo_cRObject)) {
         xfree(ptr);
     } else {
         cumo_cuda_runtime_free(ptr);
-        rb_gc_adjust_memory_usage(-(ssize_t)cumo_na_data_byte_size(self));
+        rb_gc_adjust_memory_usage(-(ssize_t)byte_size);
     }
 }
 
@@ -641,7 +644,7 @@ cumo_na_set_pointer(VALUE self, char *ptr, size_t byte_size)
     case CUMO_NARRAY_DATA_T:
         if (CUMO_NA_SIZE(na) > 0) {
             if (CUMO_NA_DATA_PTR(na) != NULL && CUMO_NA_DATA_OWNED(na)) {
-                cumo_na_free_owned_ptr(self, CUMO_NA_DATA_PTR(na));
+                cumo_na_free_owned_ptr(self, CUMO_NA_DATA_PTR(na), cumo_na_data_byte_size(self));
             }
             CUMO_NA_DATA_PTR(na) = ptr;
             CUMO_NA_DATA_OWNED(na) = FALSE;
@@ -657,7 +660,7 @@ cumo_na_set_pointer(VALUE self, char *ptr, size_t byte_size)
         case CUMO_NARRAY_DATA_T:
             if (CUMO_NA_SIZE(na) > 0) {
                 if (CUMO_NA_DATA_PTR(na) != NULL && CUMO_NA_DATA_OWNED(na)) {
-                    cumo_na_free_owned_ptr(obj, CUMO_NA_DATA_PTR(na));
+                    cumo_na_free_owned_ptr(obj, CUMO_NA_DATA_PTR(na), cumo_na_data_byte_size(obj));
                 }
                 CUMO_NA_DATA_PTR(na) = ptr;
                 CUMO_NA_DATA_OWNED(na) = FALSE;
@@ -1614,6 +1617,10 @@ static VALUE
 cumo_na_marshal_load(VALUE self, VALUE a)
 {
     VALUE v;
+    cumo_narray_t *na;
+    void *old_ptr;
+    size_t old_byte_size;
+    bool old_owned;
 
     if (OBJ_FROZEN(self)) {
         rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
@@ -1631,11 +1638,28 @@ cumo_na_marshal_load(VALUE self, VALUE a)
     if (TYPE(RARRAY_AREF(a,1)) != T_ARRAY) {
         rb_raise(rb_eArgError,"marshal shape should be array");
     }
+    CumoGetNArray(self,na);
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        rb_raise(rb_eArgError,"cannot load marshal data into a view");
+    }
+    // Any buffer already here was sized for the shape being replaced, and the
+    // write below goes by the new one. Note it while the array can still say
+    // how large it is, and let it go once the new shape has been accepted: a
+    // shape the array refuses has to leave the array as it was.
+    old_ptr = CUMO_NA_DATA_PTR(na);
+    old_byte_size = cumo_na_data_byte_size(self);
+    old_owned = CUMO_NA_DATA_OWNED(na);
+
     cumo_na_initialize(self,RARRAY_AREF(a,1));
+    if (old_ptr != NULL) {
+        if (old_owned) {
+            cumo_na_free_owned_ptr(self, old_ptr, old_byte_size);
+        }
+        CUMO_NA_DATA_PTR(na) = NULL;
+    }
     CUMO_NA_FL0_SET(self,NUM2INT(rb_ary_entry(a,2)));
     v = rb_ary_entry(a,3);
     if (rb_obj_class(self) == cumo_cRObject) {
-        cumo_narray_t *na;
         char *ptr;
         if (TYPE(v) != T_ARRAY) {
             rb_raise(rb_eArgError,"RObject content should be array");
@@ -2083,7 +2107,7 @@ cumo_na_free_data(VALUE self)
         // Not owned means the data belongs to something else -- store_binary()
         // points a frozen String's bytes at it -- so there is nothing to free.
         if (ptr != NULL && CUMO_NA_DATA_OWNED(na)) {
-            cumo_na_free_owned_ptr(self, ptr);
+            cumo_na_free_owned_ptr(self, ptr, cumo_na_data_byte_size(self));
             CUMO_NA_DATA_PTR(na) = NULL;
             return Qtrue;
         }
