@@ -13,8 +13,6 @@
 #endif
 
 
-// note: the memory refed by this pointer is not freed and causes memory leak.
-//
 // @example
 //     a[1..3,1] generates two cumo_na_index_arg_t(s). First is for 1..3, and second is for 1.
 typedef struct {
@@ -142,7 +140,7 @@ static void
 cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *q, int at_mode)
 {
     int k;
-    size_t* idx;
+    VALUE buf;
     cudaError_t status;
     int n = RARRAY_LEN(ary);
 
@@ -169,13 +167,19 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
     // Pinned memory would have to outlive the copy, and there is no way to
     // release it once the copy is done: a stream callback may not call the CUDA
     // API, so cudaFreeHost() there fails with cudaErrorNotPermitted and leaks.
+    // The host buffer is a String because the loop below raises on an index
+    // out of range, and on one whose to_int leaves nothing to convert: the
+    // collector takes the buffer back, where a free placed after the loop is
+    // never reached. That same to_int is Ruby, so the address is taken again
+    // each time round rather than held across it.
     q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-    idx = ALLOC_N(size_t, n);
+    buf = rb_str_tmp_new((long)(sizeof(size_t)*n));
     for (k=0; k<n; k++) {
-        idx[k] = cumo_na_range_check(NUM2SSIZET(rb_ary_entry(ary,k)), size, orig_dim);
+        size_t i = cumo_na_range_check(NUM2SSIZET(rb_ary_entry(ary,k)), size, orig_dim);
+        ((size_t*)RSTRING_PTR(buf))[k] = i;
     }
-    status = cudaMemcpyAsync(q->idx,idx,sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
-    xfree(idx);
+    status = cudaMemcpyAsync(q->idx,RSTRING_PTR(buf),sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
+    RB_GC_GUARD(buf);
     cumo_cuda_runtime_check_status(status);
 
     q->n    = n;

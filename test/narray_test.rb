@@ -5909,6 +5909,45 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(RuntimeError) { frozen.marshal_load([1, [4], 0, [1, 2, 3, 4]]) }
   end
 
+  # The host buffer an Array subscript is staged in was freed after the loop
+  # that fills it, and that loop raises on an index out of range, so every
+  # rejected subscript kept its buffer. Runs in a child process because the
+  # measurement is of the process itself.
+  test "a rejected Array subscript does not keep its staging buffer" do
+    script = <<~RUBY
+      require "cumo/narray"
+
+      def rss = File.read("/proc/self/status")[/VmRSS:\\s+(\\d+)/, 1].to_i
+
+      a = Cumo::DFloat.new(10).seq
+      bad = [0] * 100_000
+      bad[-1] = 999
+      200.times { a[bad] rescue IndexError }
+      GC.start
+      before = rss
+      2_000.times { a[bad] rescue IndexError }
+      GC.start
+      print(rss - before < 100_000)
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    r, w = IO.pipe
+    pid = Process.spawn(RbConfig.ruby, "-I#{lib}", "-e", script, out: w, err: File::NULL)
+    w.close
+    reader = Thread.new { r.read }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 120
+    until Process.waitpid(pid, Process::WNOHANG)
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        Process.kill("KILL", pid)
+        Process.waitpid(pid)
+        reader.kill
+        flunk("the rejected-subscript loop did not finish in 120 seconds")
+      end
+      sleep 0.05
+    end
+    assert { Process.last_status.success? }
+    assert_equal("true", reader.value)
+  end
+
   test "an object with to_int can be used as a subscript and as a shape" do
     o = Object.new
     def o.to_int = 3
