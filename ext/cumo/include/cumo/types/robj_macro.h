@@ -17,9 +17,14 @@
 #define m_mul(x,y)     rb_funcall(x,'*',1,y)
 #define m_div(x,y)     rb_funcall(x,'/',1,y)
 #define m_mod(x,y)     rb_funcall(x,'%',1,y)
-#define m_divmod(x,y,a,b)                               \
-    {x = rb_funcall(x,cumo_id_divmod,1,y);                   \
-     a = RARRAY_PTR(x)[0]; b = RARRAY_PTR(x)[1];}
+// divmod is whatever the element's class defines, so the pair it is supposed
+// to answer has to be looked at before it is taken apart.
+#define m_divmod(x,y,a,b)                                               \
+    {x = rb_funcall(x,cumo_id_divmod,1,y);                              \
+     if (!RB_TYPE_P(x, T_ARRAY) || RARRAY_LEN(x) != 2) {                \
+         rb_raise(rb_eTypeError, "divmod must return a 2-element Array");\
+     }                                                                  \
+     a = RARRAY_AREF(x,0); b = RARRAY_AREF(x,1);}
 #define m_pow(x,y)     rb_funcall(x,cumo_id_pow,1,y)
 #define m_pow_int(x,y) rb_funcall(x,cumo_id_pow,1,y)
 
