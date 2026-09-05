@@ -129,30 +129,6 @@ cumo_na_store(VALUE self, VALUE src)
 
 // ---------------------------------------------------------------------
 
-#define m_swap_byte(q1,q2)       \
-    {                            \
-        size_t j;                \
-        memcpy(b1,q1,e);         \
-        for (j=0; j<e; j++) {    \
-            b2[e-1-j] = b1[j];   \
-        }                        \
-        memcpy(q2,b2,e);         \
-    }
-
-static void
-iter_swap_byte(cumo_na_loop_t *const lp)
-{
-    char   *b1, *b2;
-    size_t  e;
-
-    e = lp->args[0].elmsz;
-    b1 = ALLOCA_N(char, e);
-    b2 = ALLOCA_N(char, e);
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("iter_swap_bytes", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    LOOP_UNARY_PTR(lp,m_swap_byte);
-}
-
 static void
 iter_swap_byte_indexer(cumo_na_loop_t *const lp)
 {
@@ -169,17 +145,19 @@ cumo_na_swap_byte(VALUE self)
     VALUE v;
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
-    cumo_ndfunc_t ndf = { iter_swap_byte, CUMO_FULL_LOOP|CUMO_NDF_ACCEPT_BYTESWAP,
-                     1, 1, ain, aout };
+    cumo_ndfunc_t ndf = { iter_swap_byte_indexer,
+                          CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ACCEPT_BYTESWAP,
+                          1, 1, ain, aout };
 
-    // Cumo::Bit's element is one bit, which a loop stepping by the element
-    // stride cannot address; it keeps the loop it has always had.
-    if (!rb_obj_is_kind_of(self, cumo_cBit)) {
-        ndf.func = iter_swap_byte_indexer;
-        ndf.flag = CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ACCEPT_BYTESWAP;
+    // Cumo::Bit's element is one bit, so swapping the bytes of an element
+    // changes nothing, and a loop stepping by the element stride would walk
+    // one byte per bit, eight times past the end of the packed buffer. Only
+    // the endian flag below needs to move.
+    if (rb_obj_is_kind_of(self, cumo_cBit)) {
+        v = CUMO_TEST_INPLACE(self) ? self : rb_funcall(self, cumo_id_copy, 0);
+    } else {
+        v = cumo_na_ndloop(&ndf, 1, self);
     }
-
-    v = cumo_na_ndloop(&ndf, 1, self);
     if (self!=v) {
         cumo_na_copy_flags(self, v);
     }
