@@ -5967,6 +5967,106 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([[0.0, 1.0], [2.0, 3.0]], Cumo::DFloat.new(2, 2).seq.to_a)
   end
 
+  # A view is laid out against the shape its base had when it was made, and
+  # reads the data through the base's pointer, so a base that takes a smaller
+  # shape used to leave the view reading past what it got: garbage out of an
+  # array, and writes landing wherever that reached.
+  test "a view whose base took a smaller shape is refused" do
+    [
+      [:range, ->(a) { a[0..1023] }],
+      [:index, ->(a) { a[Cumo::Int32.cast((0...1024).to_a)] }],
+      [:step, ->(a) { a[(0...1024).step(1)] }],
+      [:stride, ->(a) { a[(0..1023).step(2)] }],
+      [:reversed, ->(a) { a[1023.step(0, -1)] }]
+    ].each do |what, build|
+      a = Cumo::DFloat.new(1024).seq
+      v = build.call(a)
+      a.marshal_load([1, [2], 0, "\x00" * 16])
+      assert_raise(RuntimeError, what.to_s) { v.sum }
+      assert_raise(RuntimeError, what.to_s) { v[100] = 7.0 }
+    end
+
+    # the base was never allocated when the view was taken, so there was
+    # nothing about the buffer to go on
+    b = Cumo::DFloat.new(1024)
+    w = b[0..1023]
+    b.__send__(:initialize, [2])
+    b.seq
+    assert_raise(RuntimeError) { w.sum }
+    assert_equal([0.0, 1.0], b.to_a)
+  end
+
+  test "a view is refused on every dtype whose base shrank" do
+    [
+      Cumo::DFloat,
+      Cumo::SFloat,
+      Cumo::Int32,
+      Cumo::UInt8,
+      Cumo::DComplex,
+      Cumo::RObject,
+      Cumo::Bit
+    ].each do |dtype|
+      a = dtype.new(1024)
+      a.store(1)
+      v = a[0..1023]
+      a.__send__(:initialize, [2])
+      a.store(0)
+      assert_raise(RuntimeError, dtype.to_s) { dtype == Cumo::Bit ? v.count_true : v.sum }
+    end
+  end
+
+  # An empty subscript makes a real view that reaches nowhere, so it stays
+  # usable whatever the base does. Only an empty Array or Int32 builds one:
+  # an empty Range is turned away before it gets this far.
+  test "an empty view is left alone when its base shrinks" do
+    [
+      [:array, ->(a) { a[[]] }],
+      [:int32, ->(a) { a[Cumo::Int32.cast([])] }]
+    ].each do |what, build|
+      a = Cumo::DFloat.new(8).seq
+      v = build.call(a)
+      assert_equal([0], v.shape, what.to_s)
+      a.__send__(:initialize, [2])
+      a.seq
+      assert_equal([], v.to_a, what.to_s)
+    end
+    assert_raise(RangeError) { Cumo::DFloat.new(8).seq[0...0] }
+  end
+
+  # Once a base has been made smaller its views have to be measured from then
+  # on, including after it grows again: growing back part of the way leaves
+  # them still reaching past it.
+  test "a base that grew after shrinking is still watched" do
+    a = Cumo::DFloat.new(1024).seq
+    v = a[0..1023]
+    a.__send__(:initialize, [2])
+    a.__send__(:initialize, [512])
+    a.seq
+    assert_raise(RuntimeError) { v.sum }
+
+    b = Cumo::DFloat.new(1024).seq
+    w = b[0..1023]
+    b.__send__(:initialize, [2])
+    b.__send__(:initialize, [4096])
+    b.seq
+    # back to holding what the view reaches, so it is let through again
+    assert_equal(1024 * 1023 / 2.0, w.sum.to_a.first)
+  end
+
+  test "a view still works while its base is big enough" do
+    a = Cumo::DFloat.new(8).seq
+    assert_equal([2.0, 3.0, 4.0, 5.0], a[2..5].to_a)
+    assert_equal([3.0, 1.0, 4.0], a[Cumo::Int32.cast([3, 1, 4])].to_a)
+    assert_equal([7.0, 6.0, 5.0], a[7.step(5, -1)].to_a)
+    v = a[0..7]
+    a.__send__(:initialize, [16])
+    a.seq
+    # growing leaves every earlier view inside the base
+    assert_equal((0...8).map(&:to_f), v.to_a)
+    v[0] = 9.0
+    assert_equal(9.0, a[0].to_a.first)
+  end
+
   test "initialize leaves a frozen array alone" do
     a = Cumo::DFloat.new(4).seq
     a.freeze

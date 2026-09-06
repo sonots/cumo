@@ -248,6 +248,11 @@ typedef struct {
                          // elm.step_unit = elm.bit_size / elm.access_unit
                          // elm.step_unit = elm.size_bits / elm.unit_bits
     cumo_stridx_t *stridx;    // stride or indices of data pointer for each dimension
+    // One past the furthest position this view can reach, in the units its
+    // offset and strides are in: bits for Cumo::Bit, bytes otherwise. Zero
+    // until it has been worked out. What a view reaches never changes, so it
+    // is worked out once, and it stays right even after the base has moved on.
+    size_t   reach_end;
     uint64_t index_sync_epoch; // synchronizes counted when the index fills were
                                // issued; UINT64_MAX when that is not known
 } cumo_narray_view_t;
@@ -371,6 +376,7 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define CUMO_NA_VIEW_DATA(na)        (CUMO_NA_VIEW(na)->data)
 #define CUMO_NA_VIEW_OFFSET(na)      (CUMO_NA_VIEW(na)->offset)
 #define CUMO_NA_VIEW_STRIDX(na)      (CUMO_NA_VIEW(na)->stridx)
+#define CUMO_NA_VIEW_REACH_END(na)   (CUMO_NA_VIEW(na)->reach_end)
 
 #define CUMO_NA_IS_INDEX_AT(na,i)    (CUMO_SDX_IS_INDEX(CUMO_NA_VIEW_STRIDX(na)[i]))
 #define CUMO_NA_IS_STRIDE_AT(na,i)   (CUMO_SDX_IS_STRIDE(CUMO_NA_VIEW_STRIDX(na)[i]))
@@ -405,6 +411,10 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define CUMO_NA_FL0_COLUMN_MAJOR   (0x1<<1)
 #define CUMO_NA_FL1_LOCK           (0x1<<0)
 #define CUMO_NA_FL1_INPLACE        (0x1<<1)
+// Set once an array has been given a shape smaller than one it has had. Views
+// made under the larger shape reach past what it holds now, so that is when
+// they have to be measured; until then there is nothing to measure against.
+#define CUMO_NA_FL1_SHRUNK         (0x1<<2)
 
 #define CUMO_TEST_COLUMN_MAJOR(x)   CUMO_NA_FL0_TEST(x,CUMO_NA_FL0_COLUMN_MAJOR)
 #define CUMO_SET_COLUMN_MAJOR(x)    CUMO_NA_FL0_SET(x,CUMO_NA_FL0_COLUMN_MAJOR)
