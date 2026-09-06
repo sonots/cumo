@@ -64,6 +64,7 @@ narray/types/uint8
 narray/types/uint16
 narray/types/uint32
 narray/types/uint64
+narray/types/hfloat
 narray/types/sfloat
 narray/types/dfloat
 narray/types/scomplex
@@ -78,6 +79,7 @@ narray/types/uint8_kernel
 narray/types/uint16_kernel
 narray/types/uint32_kernel
 narray/types/uint64_kernel
+narray/types/hfloat_kernel
 narray/types/sfloat_kernel
 narray/types/dfloat_kernel
 narray/types/scomplex_kernel

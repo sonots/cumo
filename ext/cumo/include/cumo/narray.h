@@ -189,6 +189,7 @@ extern const rb_data_type_t cumo_na_data_type;
 extern VALUE cumo_cBit;
 extern VALUE cumo_cDFloat;
 extern VALUE cumo_cSFloat;
+extern VALUE cumo_cHFloat;
 extern VALUE cumo_cDComplex;
 extern VALUE cumo_cSComplex;
 extern VALUE cumo_cInt64;

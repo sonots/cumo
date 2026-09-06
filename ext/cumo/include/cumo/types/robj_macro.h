@@ -1,3 +1,5 @@
+#include "half_def.h"
+
 #define m_zero INT2FIX(0)
 #define m_one  INT2FIX(1)
 
@@ -6,6 +8,7 @@
 
 #define m_from_double(x) rb_float_new(x)
 #define m_from_real(x)   rb_float_new(x)
+#define m_from_half(x) m_from_real(cumo_half2float(x))
 #define m_from_sint(x)   INT2FIX(x)
 #define m_from_int32(x)  INT322NUM(x)
 #define m_from_int64(x)  INT642NUM(x)

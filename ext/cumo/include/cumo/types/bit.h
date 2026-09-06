@@ -1,3 +1,5 @@
+#include "half_def.h"
+
 typedef CUMO_BIT_DIGIT dtype;
 typedef CUMO_BIT_DIGIT rtype;
 #define cT  cumo_cBit
@@ -11,6 +13,7 @@ typedef CUMO_BIT_DIGIT rtype;
 
 #define m_from_double(x) (((x)==0) ? 0 : 1)
 #define m_from_real(x) (((x)==0) ? 0 : 1)
+#define m_from_half(x) m_from_real(cumo_half2float(x))
 #define m_from_sint(x) (((x)==0) ? 0 : 1)
 #define m_from_int32(x) (((x)==0) ? 0 : 1)
 #define m_from_int64(x) (((x)==0) ? 0 : 1)

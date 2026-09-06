@@ -1,11 +1,13 @@
 #ifndef CUMO_XINT_MACRO_KERNEL_H
 #define CUMO_XINT_MACRO_KERNEL_H
+#include "half_def_kernel.h"
 
 #define m_zero 0
 #define m_one  1
 
 #define m_from_double(x) (x)
 #define m_from_real(x) (x)
+#define m_from_half(x) m_from_real(cumo_half2float(x))
 #define m_from_sint(x) (x)
 #define m_from_int32(x) (x)
 #define m_from_int64(x) (x)

@@ -20,6 +20,7 @@ void Init_cumo_uint8();
 void Init_cumo_uint16();
 void Init_cumo_uint32();
 void Init_cumo_uint64();
+void Init_cumo_hfloat();
 void Init_cumo_sfloat();
 void Init_cumo_scomplex();
 void Init_cumo_dfloat();
@@ -150,6 +151,7 @@ Init_cumo()
     Init_cumo_dfloat();
     Init_cumo_scomplex();
     Init_cumo_sfloat();
+    Init_cumo_hfloat();
 
     Init_cumo_int64();
     Init_cumo_uint64();

@@ -1,4 +1,6 @@
+#ifndef not_nan
 #define not_nan(x) ((x)==(x))
+#endif
 
 #define m_mulsum(x,y,z) {z = m_add(m_mul(x,y),z);}
 #define m_mulsum_nan(x,y,z) {          \

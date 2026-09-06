@@ -2,6 +2,7 @@
 #define CUMO_COMPLEX_MACRO_KERNEL_H
 
 #include "float_def_kernel.h"
+#include "half_def_kernel.h"
 
 extern double round(double);
 extern double log2(double);
@@ -46,6 +47,7 @@ __host__ __device__ static inline dtype c_from_dcomplex(cumo_dcomplex x) {
 
 #define m_from_double(x) c_new(x,0)
 #define m_from_real(x)   c_new(x,0)
+#define m_from_half(x) m_from_real(cumo_half2float(x))
 #define m_from_sint(x)   c_new(x,0)
 #define m_from_int32(x)  c_new(x,0)
 #define m_from_int64(x)  c_new(x,0)
