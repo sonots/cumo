@@ -20,4 +20,9 @@ __host__ __device__ static inline cumo_half cumo_float2half(float f)
     return __float2half(f);
 }
 
+__host__ __device__ static inline cumo_half cumo_double2half(double d)
+{
+    return __double2half(d);
+}
+
 #endif // CUMO_HALF_DEF_KERNEL_H

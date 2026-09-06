@@ -5,9 +5,6 @@ require_relative "test_helper"
 class HFloatTest < Test::Unit::TestCase
   dtype = Cumo::HFloat
 
-  # Half carries 11 significant bits, so it holds every integer up to 2048 and
-  # only every other one above that.
-  EXACT = 2048
   MAX = 65504.0
   MIN_SUBNORMAL = 2.0**-24
 
@@ -76,6 +73,12 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal 0.0999755859375, dtype[0.1].to_a.first
   end
 
+  test "a double is rounded once, not through float" do
+    assert_equal 2050.0, dtype[2050.9999999999].to_a.first
+    assert_equal 2050.0, dtype[2049.0000000001].to_a.first
+    assert_equal MAX, dtype[65519.999999999].to_a.first
+  end
+
   test "a tie rounds to the even neighbour and the rest to the nearer one" do
     assert_equal 2052.0, dtype[2051].to_a.first
     assert_equal 0.300048828125, dtype[0.3].to_a.first
@@ -85,11 +88,10 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal Float::INFINITY, dtype[65520].to_a.first
   end
 
-  # The conversion a Ruby number takes is written out on the host, while an
-  # array cast on the GPU takes the hardware one. They have to agree.
   test "the host rounds a number the way the GPU does" do
     values = [0.1, 0.3, 0.7, 1.0 / 3, 2051, 65519, 65520, 1e-8, -0.3, 1e-5,
-              6.103515625e-05, 2.0**-24, 2.0**-25, 3.0e-8]
+              6.103515625e-05, 2.0**-24, 2.0**-25, 3.0e-8,
+              2049.0000000001, 2050.9999999999, 65519.999999999, 1.0000000000000002]
     host = dtype[*values].to_binary.unpack("S*")
     device = dtype.cast(Cumo::DFloat[*values]).to_binary.unpack("S*")
     assert_equal host.map { |x| format("%04x", x) }, device.map { |x| format("%04x", x) }
@@ -140,8 +142,6 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal Float::INFINITY, (a + a).to_a.first
   end
 
-  # Under 2**11 the sum of two halves is exact in float, so rounding it back to
-  # half answers what a native half instruction would.
   test "the four operations round once" do
     a = dtype[1.0009765625]
     assert_equal 1.0009765625, a.to_a.first
@@ -235,7 +235,6 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal dtype, dtype.upcast(Cumo::Bit)
     assert_equal dtype, Cumo::Bit.upcast(dtype)
     assert_equal Cumo::SFloat, dtype.upcast(Cumo::SFloat)
-    assert_equal Cumo::SFloat, Cumo::SFloat.upcast(dtype)
     assert_equal Cumo::DFloat, dtype.upcast(Cumo::DFloat)
     assert_equal Cumo::SComplex, dtype.upcast(Cumo::SComplex)
     assert_equal Cumo::DComplex, dtype.upcast(Cumo::DComplex)
@@ -279,5 +278,11 @@ class HFloatTest < Test::Unit::TestCase
     assert_raise(NoMethodError) { a.dot(a) }
     assert_raise(NoMethodError) { a.cumsum }
     assert_raise(NoMethodError) { dtype.new(2).rand }
+  end
+
+  test "NMath answers through SFloat until HFloat has a module of its own" do
+    assert_equal Cumo::SFloat, Cumo::NMath.sqrt(dtype[4.0]).class
+    assert_equal [2.0, 3.0], Cumo::NMath.sqrt(dtype[4.0, 9.0]).to_a
+    assert_equal [1.0], Cumo::NMath.exp(dtype[0.0]).to_a
   end
 end

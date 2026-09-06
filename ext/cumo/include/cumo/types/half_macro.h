@@ -9,13 +9,13 @@
 #define m_num_to_data(x) cumo_na_ruby_num_to_half(x)
 #define m_data_to_num(x) rb_float_new(cumo_half2float(x))
 
-#define m_from_double(x) cumo_float2half((float)(x))
-#define m_from_real(x)   cumo_float2half((float)(x))
-#define m_from_sint(x)   cumo_float2half((float)(x))
-#define m_from_int32(x)  cumo_float2half((float)(x))
-#define m_from_int64(x)  cumo_float2half((float)(x))
-#define m_from_uint32(x) cumo_float2half((float)(x))
-#define m_from_uint64(x) cumo_float2half((float)(x))
+#define m_from_double(x) cumo_double2half((double)(x))
+#define m_from_real(x)   cumo_double2half((double)(x))
+#define m_from_sint(x)   cumo_double2half((double)(x))
+#define m_from_int32(x)  cumo_double2half((double)(x))
+#define m_from_int64(x)  cumo_double2half((double)(x))
+#define m_from_uint32(x) cumo_double2half((double)(x))
+#define m_from_uint64(x) cumo_double2half((double)(x))
 #define m_from_half(x)   (x)
 
 #define m_add(x,y) cumo_float2half(cumo_half2float(x)+cumo_half2float(y))
@@ -43,7 +43,7 @@ static inline float cumo_half_floored_mod(float x, float y)
      }                                                                  \
      a = cumo_float2half(cumo_h_a); b = cumo_float2half(cumo_h_b);}
 #define m_pow(x,y) cumo_float2half(powf(cumo_half2float(x),cumo_half2float(y)))
-#define m_pow_int(x,y) cumo_float2half(powf(cumo_half2float(x),(float)(y)))
+#define m_pow_int(x,y) cumo_float2half(cumo_half_pow_int(cumo_half2float(x),(int)(y)))
 
 #define m_abs(x)     cumo_float2half(fabsf(cumo_half2float(x)))
 #define m_minus(x)   cumo_float2half(-cumo_half2float(x))
@@ -96,50 +96,40 @@ static inline float cumo_half_floored_mod(float x, float y)
      (cumo_half2float(qsort_cast(a)) > cumo_half2float(qsort_cast(b))))
 
 #define m_sqrt(x)    cumo_float2half(sqrtf(cumo_half2float(x)))
-#define m_cbrt(x)    cumo_float2half(cbrtf(cumo_half2float(x)))
-#define m_log(x)     cumo_float2half(logf(cumo_half2float(x)))
-#define m_log2(x)    cumo_float2half(log2f(cumo_half2float(x)))
-#define m_log10(x)   cumo_float2half(log10f(cumo_half2float(x)))
-#define m_exp(x)     cumo_float2half(expf(cumo_half2float(x)))
-#define m_exp2(x)    cumo_float2half(exp2f(cumo_half2float(x)))
-#define m_exp10(x)   cumo_float2half(powf(10.0f,cumo_half2float(x)))
-#define m_expm1(x)   cumo_float2half(expm1f(cumo_half2float(x)))
-#define m_log1p(x)   cumo_float2half(log1pf(cumo_half2float(x)))
 
-#define m_sin(x)     cumo_float2half(sinf(cumo_half2float(x)))
-#define m_cos(x)     cumo_float2half(cosf(cumo_half2float(x)))
-#define m_tan(x)     cumo_float2half(tanf(cumo_half2float(x)))
-#define m_asin(x)    cumo_float2half(asinf(cumo_half2float(x)))
-#define m_acos(x)    cumo_float2half(acosf(cumo_half2float(x)))
-#define m_atan(x)    cumo_float2half(atanf(cumo_half2float(x)))
-#define m_sinh(x)    cumo_float2half(sinhf(cumo_half2float(x)))
-#define m_cosh(x)    cumo_float2half(coshf(cumo_half2float(x)))
-#define m_tanh(x)    cumo_float2half(tanhf(cumo_half2float(x)))
-#define m_asinh(x)   cumo_float2half(asinhf(cumo_half2float(x)))
-#define m_acosh(x)   cumo_float2half(acoshf(cumo_half2float(x)))
-#define m_atanh(x)   cumo_float2half(atanhf(cumo_half2float(x)))
-#define m_atan2(x,y) cumo_float2half(atan2f(cumo_half2float(x),cumo_half2float(y)))
-#define m_hypot(x,y) cumo_float2half(hypotf(cumo_half2float(x),cumo_half2float(y)))
-#define m_sinc(x)    cumo_float2half(cumo_half_sinc(cumo_half2float(x)))
+static inline float cumo_half_pow_positive_int(float x, unsigned int p)
+{
+    float r = 1.0f;
+    switch (p) {
+    case 0: return 1.0f;
+    case 1: return x;
+    case 2: return x*x;
+    case 3: return x*x*x;
+    case 4: x = x*x; return x*x;
+    }
+    if (p > 64) return powf(x, (float)p);
+    while (p) {
+        if (p & 1) r *= x;
+        x *= x;
+        p >>= 1;
+    }
+    return r;
+}
 
-#define m_erf(x)     cumo_float2half(erff(cumo_half2float(x)))
-#define m_erfc(x)    cumo_float2half(erfcf(cumo_half2float(x)))
-#define m_ldexp(x,y) cumo_float2half(ldexpf(cumo_half2float(x),(int)cumo_half2float(y)))
-#define m_frexp(x,exp) cumo_float2half(frexpf(cumo_half2float(x),exp))
+static inline float cumo_half_pow_int(float x, int p)
+{
+    if (p < 0) return 1.0f / cumo_half_pow_positive_int(x, -(unsigned int)p);
+    return cumo_half_pow_positive_int(x, (unsigned int)p);
+}
 
 static inline float cumo_half_sign(float x)
 {
     return (x==0) ? 0.0f : ((x>0) ? 1.0f : ((x<0) ? -1.0f : x));
 }
 
-static inline float cumo_half_sinc(float x)
-{
-    return (x==0) ? 1.0f : (sinf(x)/x);
-}
-
 static inline cumo_half cumo_na_ruby_num_to_half(VALUE x)
 {
-    return cumo_float2half(NIL_P(x) ? (float)nan("") : (float)NUM2DBL(x));
+    return cumo_double2half(NIL_P(x) ? nan("") : NUM2DBL(x));
 }
 
 static inline cumo_half f_seq(cumo_half x, cumo_half y, double c)

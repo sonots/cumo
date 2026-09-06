@@ -80,4 +80,50 @@ static inline cumo_half cumo_float2half(float f)
     return h;
 }
 
+static inline cumo_half cumo_double2half(double d)
+{
+    union { unsigned long long u; double d; } v;
+    cumo_half h;
+    unsigned long long u, sign, mant, round_bits, tie;
+    unsigned int shift, out;
+    int exp;
+
+    v.d = d;
+    u = v.u;
+    sign = (u >> 48) & 0x8000ull;
+    u &= 0x7fffffffffffffffull;
+
+    if (u > 0x7ff0000000000000ull) {
+        h.x = (unsigned short)(sign | 0x7e00u);
+        return h;
+    }
+    if (u >= 0x40f0000000000000ull) {
+        h.x = (unsigned short)(sign | 0x7c00u);
+        return h;
+    }
+    if (u < 0x3e60000000000000ull) {
+        h.x = (unsigned short)sign;
+        return h;
+    }
+
+    exp = (int)(u >> 52) - 1023;
+    mant = u & 0xfffffffffffffull;
+    if (exp >= -14) {
+        out = (unsigned int)(exp + 15) << 10;
+        shift = 42;
+    } else {
+        mant |= 0x10000000000000ull;
+        shift = (unsigned int)(28 - exp);
+        out = 0;
+    }
+    round_bits = mant & ((1ull << shift) - 1ull);
+    tie = 1ull << (shift - 1);
+    out += (unsigned int)(mant >> shift);
+    if (round_bits > tie || (round_bits == tie && ((mant >> shift) & 1ull))) {
+        out += 1;
+    }
+    h.x = (unsigned short)(sign | out);
+    return h;
+}
+
 #endif // CUMO_HALF_DEF_H
