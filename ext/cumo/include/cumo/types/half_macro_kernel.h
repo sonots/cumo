@@ -3,6 +3,7 @@
 
 #include "float_def_kernel.h"
 #include "half_def_kernel.h"
+#include <string.h>
 
 #define CUMO_HALF_EPSILON 9.765625e-04f
 
@@ -153,11 +154,20 @@ __host__ __device__ static inline float cumo_half_pow_int(float x, int p)
     return cumo_half_pow_positive_int(x, (unsigned int)p);
 }
 
+// The bit-pattern intrinsics are device-only before CUDA 12, so the bits are
+// taken the way a host caller can take them too.
 __host__ __device__ static inline cumo_half cumo_half_step_down(cumo_half h)
 {
-    unsigned short b = __half_as_ushort(h);
-    if (b == 0x0000u) return __ushort_as_half(0x8001u);
-    return __ushort_as_half((unsigned short)((b & 0x8000u) ? (b + 1) : (b - 1)));
+    unsigned short b;
+    cumo_half r;
+    memcpy(&b, &h, sizeof(b));
+    if (b == 0x0000u) {
+        b = 0x8001u;
+    } else {
+        b = (unsigned short)((b & 0x8000u) ? (b + 1) : (b - 1));
+    }
+    memcpy(&r, &b, sizeof(b));
+    return r;
 }
 
 __host__ __device__ static inline float cumo_half_ldexp(float x, float y)
