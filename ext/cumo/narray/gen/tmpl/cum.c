@@ -19,9 +19,7 @@ static void
     //printf("i=%lu p1=%lx s1=%lu p2=%lx s2=%lu\n",i,(size_t)p1,s1,(size_t)p2,s2);
 
   <% unless type_name == 'robject' %>
-    // The host loop below runs in dtype, which for half would answer something
-    // else than the scan does, so half takes the scan whatever the length.
-    if (i >= CUMO_CUM_MIN_KERNEL_SIZE<% if is_half %> || 1<% end %>) {
+    if (i >= CUMO_CUM_MIN_KERNEL_SIZE) {
         cumo_cuda_runtime_check_status(<%="cumo_#{type_name}_#{name}#{j}_kernel_launch"%>(p1,p2,s1,s2,i));
         return;
     }
@@ -30,6 +28,28 @@ static void
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
+<% if is_half && name == 'cumsum' %>
+    // The scan this stands in for carries float, and a running sum of halves
+    // stops moving once it passes 2048, so the accumulator is float here too.
+    {
+        float acc, fy;
+
+        CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+        acc = cumo_half2float(x);
+        CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
+        for (i--; i--;) {
+            CUMO_GET_DATA_STRIDE(p1,s1,dtype,y);
+            fy = cumo_half2float(y);
+  <% if j == '_nan' %>
+            if (acc != acc) { acc = fy; } else if (fy == fy) { acc += fy; }
+  <% else %>
+            acc += fy;
+  <% end %>
+            x = cumo_float2half(acc);
+            CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
+        }
+    }
+<% else %>
     CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
     CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
     //printf("i=%lu x=%f\n",i,x);
@@ -39,6 +59,7 @@ static void
         CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
         //printf("i=%lu x=%f\n",i,x);
     }
+<% end %>
 }
 <% end %>
 

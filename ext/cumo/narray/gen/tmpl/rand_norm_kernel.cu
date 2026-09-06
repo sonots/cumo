@@ -16,7 +16,7 @@
 <% end %>
 
 __device__ static dtype
-<%="cumo_#{c_iter}_value"%>(curandStatePhilox4_32_10_t *st, dtype mu, rtype sigma)
+<%="cumo_#{c_iter}_value"%>(curandStatePhilox4_32_10_t *st, dtype mu, <% if is_half %>float<% else %>rtype<% end %> sigma)
 {
     //<% if is_complex %>
     dtype z;
@@ -24,13 +24,13 @@ __device__ static dtype
     CUMO_IMAG(z) = cumo_rand_normal(st) * sigma + CUMO_IMAG(mu);
     return z;
     //<% elsif is_half %>
-    return cumo_float2half(cumo_rand_normal(st) * cumo_half2float(sigma) + cumo_half2float(mu));
+    return cumo_float2half(cumo_rand_normal(st) * sigma + cumo_half2float(mu));
     //<% else %>
     return cumo_rand_normal(st) * sigma + mu;
     //<% end %>
 }
 
-__global__ void <%="cumo_#{c_iter}_index_kernel"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype mu, rtype sigma, uint64_t n)
+__global__ void <%="cumo_#{c_iter}_index_kernel"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype mu, <% if is_half %>float<% else %>rtype<% end %> sigma, uint64_t n)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         curandStatePhilox4_32_10_t st;
@@ -39,7 +39,7 @@ __global__ void <%="cumo_#{c_iter}_index_kernel"%>(char *p1, size_t *idx1, uint6
     }
 }
 
-__global__ void <%="cumo_#{c_iter}_stride_kernel"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype mu, rtype sigma, uint64_t n)
+__global__ void <%="cumo_#{c_iter}_stride_kernel"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype mu, <% if is_half %>float<% else %>rtype<% end %> sigma, uint64_t n)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         curandStatePhilox4_32_10_t st;
@@ -57,7 +57,7 @@ extern "C" {
 #endif
 #endif
 
-void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype mu, rtype sigma, uint64_t n)
+void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype mu, <% if is_half %>float<% else %>rtype<% end %> sigma, uint64_t n)
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
@@ -65,7 +65,7 @@ void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, uint64_t 
     cumo_cuda_runtime_check_kernel_launch();
 }
 
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype mu, rtype sigma, uint64_t n)
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype mu, <% if is_half %>float<% else %>rtype<% end %> sigma, uint64_t n)
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);

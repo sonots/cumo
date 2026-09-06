@@ -290,6 +290,8 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal true, sorted[2].nan?
     assert_equal [-Float::INFINITY, 0.0, Float::INFINITY],
                  dtype[Float::INFINITY, 0.0, -Float::INFINITY].sort.to_a
+    assert_equal [-Float::INFINITY, Float::INFINITY],
+                 dtype[0.0, -0.0].sort.to_a.map { |v| 1 / v }
   end
 
   test "sort agrees with SFloat over a long array" do
@@ -333,6 +335,32 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal 0, a.ge(5.0).count_true.to_a.first
     assert_operator a.max.to_a.first, :>, 4.5
     assert_operator a.min.to_a.first, :<, 2.5
+  end
+
+  test "a range half cannot hold still answers numbers in it" do
+    a = dtype.new(1000).rand(65535.0)
+    assert_equal 0, a.isfinite.count_false.to_a.first
+    assert_equal 0, a.lt(0.0).count_true.to_a.first
+    b = dtype.new(1000).rand(-60_000.0, 60_000.0)
+    assert_equal 0, b.isfinite.count_false.to_a.first
+    assert_equal 0, b.lt(-60_000.0).count_true.to_a.first
+  end
+
+  test "a sigma half cannot hold keeps the body of the distribution" do
+    a = dtype.new(2000).rand_norm(0.0, 66_000.0)
+    assert_operator a.isfinite.count_true.to_a.first, :>, 500
+  end
+
+  test "cumprod keeps half's range, as prod does" do
+    a = dtype[300.0, 300.0, 0.0001]
+    assert_equal Float::INFINITY, a.cumprod.to_a.last
+    assert_equal a.prod.to_a.first, a.cumprod.to_a.last
+    assert_equal [1.0, 3.0, 6.0], dtype[1, 2, 3].cumsum.to_a
+  end
+
+  test "median of a pair whose sum half cannot hold" do
+    assert_equal 44_992.0, dtype[40_000.0, 50_000.0].median.to_a.first
+    assert_equal 44_992.0, dtype[40_000.0, 50_000.0].median(nan: true).to_a.first
   end
 
   test "rand_norm lands around its mean" do

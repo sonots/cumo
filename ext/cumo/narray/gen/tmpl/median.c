@@ -49,7 +49,12 @@ static void
         *(dtype*)p2 = buf[0];
     }
     else if (n%2==0) {
+<% if is_half %>
+        // Adding the pair in half overflows where the midpoint itself fits.
+        *(dtype*)p2 = cumo_float2half((cumo_half2float(buf[n/2-1]) + cumo_half2float(buf[n/2])) / 2.0f);
+<% else %>
         *(dtype*)p2 = m_div(m_add(buf[n/2-1],buf[n/2]),m_from_real(2));
+<% end %>
     }
     else {
         *(dtype*)p2 = buf[(n-1)/2];

@@ -153,6 +153,13 @@ __host__ __device__ static inline float cumo_half_pow_int(float x, int p)
     return cumo_half_pow_positive_int(x, (unsigned int)p);
 }
 
+__host__ __device__ static inline cumo_half cumo_half_step_down(cumo_half h)
+{
+    unsigned short b = __half_as_ushort(h);
+    if (b == 0x0000u) return __ushort_as_half(0x8001u);
+    return __ushort_as_half((unsigned short)((b & 0x8000u) ? (b + 1) : (b - 1)));
+}
+
 __host__ __device__ static inline float cumo_half_ldexp(float x, float y)
 {
     if (!(y == y)) return y;

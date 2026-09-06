@@ -1,5 +1,20 @@
 <% unless type_name == 'robject' %>
-<% cum_t = is_half ? 'float' : 'dtype' %>
+<% widen = is_half && name == 'cumsum' %>
+<% cum_t = widen ? 'float' : 'dtype' %>
+<% if widen %>
+
+// A running sum of halves stops moving once it passes 2048, so the scan carries
+// float and each element is rounded as it is written.
+struct <%="cumo_thrust_#{name}_widen"%>
+{
+    __host__ __device__ float operator()(dtype x) const { return cumo_half2float(x); }
+};
+
+struct <%="cumo_thrust_#{name}_narrow"%>
+{
+    __host__ __device__ dtype operator()(float x) const { return cumo_float2half(x); }
+};
+<% end %>
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
 
 #if defined(__cplusplus)
@@ -20,20 +35,7 @@ struct <%="cumo_thrust_#{name}#{j}"%>
     using result_type          = <%=cum_t%>;
     __host__ __device__ <%=cum_t%> operator()(<%=cum_t%> x, <%=cum_t%> y) const { m_<%=name%><%=j%>(x,y); return x; }
 };
-<% if is_half %>
 
-// A running sum of halves stops moving once it passes 2048, so the scan carries
-// float and each element is rounded as it is written.
-struct <%="cumo_thrust_#{name}#{j}_widen"%>
-{
-    __host__ __device__ float operator()(dtype x) const { return cumo_half2float(x); }
-};
-
-struct <%="cumo_thrust_#{name}#{j}_narrow"%>
-{
-    __host__ __device__ dtype operator()(float x) const { return cumo_float2half(x); }
-};
-<% end %>
 
 // Nothing may reach the C caller: it has no handler, so an escaping exception
 // is std::terminate. The status goes back instead and the caller raises.
@@ -42,11 +44,11 @@ static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan"%>(Iterator1 first, It
 {
     cumo_thrust_pool_allocator alloc;
     try {
-<% if is_half %>
+<% if widen %>
         thrust::inclusive_scan(thrust::cuda::par(alloc),
-            thrust::make_transform_iterator(first, <%="cumo_thrust_#{name}#{j}_widen"%>()),
-            thrust::make_transform_iterator(last, <%="cumo_thrust_#{name}#{j}_widen"%>()),
-            thrust::make_transform_output_iterator(result, <%="cumo_thrust_#{name}#{j}_narrow"%>()),
+            thrust::make_transform_iterator(first, <%="cumo_thrust_#{name}_widen"%>()),
+            thrust::make_transform_iterator(last, <%="cumo_thrust_#{name}_widen"%>()),
+            thrust::make_transform_output_iterator(result, <%="cumo_thrust_#{name}_narrow"%>()),
             <%="cumo_thrust_#{name}#{j}"%>());
 <% else %>
         thrust::inclusive_scan(thrust::cuda::par(alloc), first, last, result, <%="cumo_thrust_#{name}#{j}"%>());
