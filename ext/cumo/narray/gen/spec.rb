@@ -357,10 +357,8 @@ if is_int && !is_object
   def_method "bincount"
 end
 
-unless is_half
-  cum "cumsum", "add"
-  cum "cumprod", "mul"
-end
+cum "cumsum", "add"
+cum "cumprod", "mul"
 
 # dot
 accum_binary "mulsum"
@@ -393,17 +391,15 @@ end
 def_method "eye"
 def_alias  "indgen", "seq"
 
-unless is_half
-  def_method "rand"
-  if is_float && !is_object
-    def_method "rand_norm"
-  end
+def_method "rand"
+if is_float && !is_object
+  def_method "rand_norm"
 end
 
 # y = a[0] + a[1]*x + a[2]*x^2 + a[3]*x^3 + ... + a[n]*x^n
 def_method "poly"
 
-if is_comparable && !is_object && !is_half
+if is_comparable && !is_object
   if is_float
     qsort type_name, "dtype", "*(dtype*)", "_prnan"
     qsort type_name, "dtype", "*(dtype*)", "_ignan"

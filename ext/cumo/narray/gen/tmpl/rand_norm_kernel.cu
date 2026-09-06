@@ -23,6 +23,8 @@ __device__ static dtype
     CUMO_REAL(z) = cumo_rand_normal(st) * sigma + CUMO_REAL(mu);
     CUMO_IMAG(z) = cumo_rand_normal(st) * sigma + CUMO_IMAG(mu);
     return z;
+    //<% elsif is_half %>
+    return cumo_float2half(cumo_rand_normal(st) * cumo_half2float(sigma) + cumo_half2float(mu));
     //<% else %>
     return cumo_rand_normal(st) * sigma + mu;
     //<% end %>

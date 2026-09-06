@@ -82,9 +82,9 @@ static VALUE
         g.mu = m_num_to_data(v1);
     }
     if (n == 2) {
-        g.sigma = NUM2DBL(v2);
+        g.sigma = <% if is_half %>cumo_float2half((float)NUM2DBL(v2))<% else %>NUM2DBL(v2)<% end %>;
     } else {
-        g.sigma = 1;
+        g.sigma = <% if is_half %>cumo_float2half(1.0f)<% else %>1<% end %>;
     }
     g.seed = cumo_cuda_rand_seed();
     g.offset = cumo_cuda_rand_offset();

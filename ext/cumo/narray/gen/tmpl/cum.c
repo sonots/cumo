@@ -19,7 +19,9 @@ static void
     //printf("i=%lu p1=%lx s1=%lu p2=%lx s2=%lu\n",i,(size_t)p1,s1,(size_t)p2,s2);
 
   <% unless type_name == 'robject' %>
-    if (i >= CUMO_CUM_MIN_KERNEL_SIZE) {
+    // The host loop below runs in dtype, which for half would answer something
+    // else than the scan does, so half takes the scan whatever the length.
+    if (i >= CUMO_CUM_MIN_KERNEL_SIZE<% if is_half %> || 1<% end %>) {
         cumo_cuda_runtime_check_status(<%="cumo_#{type_name}_#{name}#{j}_kernel_launch"%>(p1,p2,s1,s2,i));
         return;
     }

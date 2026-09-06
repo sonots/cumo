@@ -271,10 +271,81 @@ class HFloatTest < Test::Unit::TestCase
   end
 
   test "the methods a later step brings are not claimed yet" do
-    a = dtype[1.0, 2.0]
-    assert_raise(NoMethodError) { a.sort }
-    assert_raise(NoMethodError) { a.cumsum }
-    assert_raise(NoMethodError) { dtype.new(2).rand }
+    assert_raise(NoMethodError) { dtype.new(2, 2).seq.gemm(dtype.new(2, 2).seq) }
+    assert_raise(NoMethodError) { dtype.new(1, 1, 2, 2).seq.conv(dtype.new(1, 1, 2, 2).seq) }
+  end
+
+  test "sort orders as SFloat does" do
+    a = dtype[3.0, -1.0, 2.5, 0.0]
+    assert_equal [-1.0, 0.0, 2.5, 3.0], a.sort.to_a
+    assert_equal [1, 3, 2, 0], a.sort_index.to_a
+    assert_equal(-1.0, a.sort.to_a.first)
+    assert_equal [[1.0, 2.0], [3.0, 4.0]], dtype[[2.0, 1.0], [4.0, 3.0]].sort(axis: 1).to_a
+  end
+
+  test "sort puts a NaN last and keeps the signed zeros" do
+    a = dtype[1.0, Float::NAN, -1.0]
+    sorted = a.sort.to_a
+    assert_equal [-1.0, 1.0], sorted[0, 2]
+    assert_equal true, sorted[2].nan?
+    assert_equal [-Float::INFINITY, 0.0, Float::INFINITY],
+                 dtype[Float::INFINITY, 0.0, -Float::INFINITY].sort.to_a
+  end
+
+  test "sort agrees with SFloat over a long array" do
+    n = 5000
+    src = Array.new(n) { |i| ((i * 7919) % 1000 - 500) / 8.0 }
+    assert_equal Cumo::SFloat[*src].sort.to_a, dtype[*src].sort.to_a
+    assert_equal Cumo::SFloat[*src].sort_index.to_a, dtype[*src].sort_index.to_a
+  end
+
+  test "median" do
+    assert_equal 2.0, dtype[3.0, 1.0, 2.0].median.to_a.first
+    assert_equal 2.5, dtype[1.0, 2.0, 3.0, 4.0].median.to_a.first
+    assert_equal [1.5, 3.5], dtype[[1.0, 2.0], [3.0, 4.0]].median(axis: 1).to_a
+    assert_equal 2.0, dtype[3.0, 1.0, 2.0, Float::NAN].median.to_a.first
+  end
+
+  test "cumsum and cumprod" do
+    assert_equal [1.0, 3.0, 6.0, 10.0], dtype[1, 2, 3, 4].cumsum.to_a
+    assert_equal [1.0, 2.0, 6.0, 24.0], dtype[1, 2, 3, 4].cumprod.to_a
+  end
+
+  test "a running sum is carried wider than half at every length" do
+    assert_equal 8192.0, dtype.new(8191).fill(1.0).cumsum.to_a.last
+    assert_equal 8192.0, dtype.new(8192).fill(1.0).cumsum.to_a.last
+    assert_equal 40_000.0, dtype.new(40_000).fill(1.0).cumsum.to_a.last
+    a = dtype.new(3000).fill(1.0).cumsum
+    assert_equal 2050.0, a[2049].to_a.first
+    assert_equal 3000.0, a[2999].to_a.first
+  end
+
+  test "cumsum carries a NaN and skips it when asked" do
+    a = dtype[1.0, Float::NAN, 2.0]
+    assert_equal true, a.cumsum.to_a[2].nan?
+    assert_equal [1.0, 1.0, 3.0], a.cumsum(nan: true).to_a
+  end
+
+  test "rand fills the range it names" do
+    a = dtype.new(2000).rand(2.0, 5.0)
+    assert_equal dtype, a.class
+    assert_equal 0, a.lt(2.0).count_true.to_a.first
+    assert_equal 0, a.ge(5.0).count_true.to_a.first
+    assert_operator a.max.to_a.first, :>, 4.5
+    assert_operator a.min.to_a.first, :<, 2.5
+  end
+
+  test "rand_norm lands around its mean" do
+    a = dtype.new(4000).rand_norm(10.0, 1.0)
+    assert_in_delta 10.0, a.mean.to_a.first, 0.2
+    assert_operator a.stddev.to_a.first, :>, 0.5
+  end
+
+  test "the same seed answers the same numbers" do
+    Cumo::NArray.srand(42)
+    a = dtype.new(100).rand
+    Cumo::NArray.srand(42)
+    assert_equal a.to_a, dtype.new(100).rand.to_a
   end
 
   test "dot answers through mulsum until gemm takes it" do

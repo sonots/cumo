@@ -1,6 +1,7 @@
 #include "cumo/narray_kernel.h"
 #include "cumo/indexer.h"
 #include "cumo/template_kernel.h"
+#include "cumo/types/half_def_kernel.h"
 
 #include <cub/cub.cuh>
 #include <thrust/iterator/counting_iterator.h>
@@ -39,6 +40,16 @@ template <> struct float_key<float> {
         type u = __float_as_uint(x);
         if ((u & 0x7fffffffu) > 0x7f800000u) return ~(type)0;
         return (u & 0x80000000u) ? ~u : (u | 0x80000000u);
+    }
+};
+
+// Half's key is the same construction in 16 bits.
+template <> struct float_key<__half> {
+    typedef uint16_t type;
+    __device__ static type of(__half x) {
+        type u = __half_as_ushort(x);
+        if ((u & 0x7fffu) > 0x7c00u) return ~(type)0;
+        return (u & 0x8000u) ? (type)~u : (type)(u | 0x8000u);
     }
 };
 
@@ -176,6 +187,16 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
 // The rows are already sorted, so the middle of each is the answer. Trailing
 // NaNs are dropped first, which is what the host loop this replaces does and
 // what numo 0.9 does; numo-narray-alt lost that in a rewrite.
+// A half carries no operator of its own below sm_53, and isnan does not take
+// one at all, so both go through the element type.
+template <typename T> __device__ static inline bool sorted_isnan(T x) { return isnan(x); }
+template <> __device__ inline bool sorted_isnan<__half>(__half x) { return isnan(__half2float(x)); }
+
+template <typename T> __device__ static inline T sorted_midpoint(T a, T b) { return (a + b) / 2; }
+template <> __device__ inline __half sorted_midpoint<__half>(__half a, __half b) {
+    return __float2half((__half2float(a) + __half2float(b)) / 2.0f);
+}
+
 template <typename T, bool IS_FLOAT>
 __global__ void median_kernel(const T* sorted, int64_t row_len, cumo_na_iarray_t out, cumo_na_indexer_t out_indexer) {
     for (uint64_t r = blockIdx.x * blockDim.x + threadIdx.x; r < out_indexer.total_size; r += blockDim.x * gridDim.x) {
@@ -183,12 +204,12 @@ __global__ void median_kernel(const T* sorted, int64_t row_len, cumo_na_iarray_t
         int64_t n = row_len;
         T v;
         if constexpr (IS_FLOAT) {
-            while (n > 0 && isnan(row[n - 1])) --n;
+            while (n > 0 && sorted_isnan(row[n - 1])) --n;
         }
         if (n == 0) {
             v = row[0];
         } else if (n % 2 == 0) {
-            v = (row[n / 2 - 1] + row[n / 2]) / 2;
+            v = sorted_midpoint(row[n / 2 - 1], row[n / 2]);
         } else {
             v = row[(n - 1) / 2];
         }
@@ -341,5 +362,6 @@ CUMO_DEF_SORT(uint8, u_int8_t, false)
 CUMO_DEF_SORT(uint16, u_int16_t, false)
 CUMO_DEF_SORT(uint32, u_int32_t, false)
 CUMO_DEF_SORT(uint64, u_int64_t, false)
+CUMO_DEF_SORT(hfloat, __half, true)
 CUMO_DEF_SORT(sfloat, float, true)
 CUMO_DEF_SORT(dfloat, double, true)

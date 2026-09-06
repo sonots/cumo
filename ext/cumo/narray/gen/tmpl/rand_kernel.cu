@@ -45,6 +45,16 @@ __device__ static dtype
     CUMO_REAL(z) = cumo_rand_uniform(st) * CUMO_REAL(max) + CUMO_REAL(low);
     CUMO_IMAG(z) = cumo_rand_uniform(st) * CUMO_IMAG(max) + CUMO_IMAG(low);
     return z;
+    //<% elsif is_half %>
+    // Rounding the float into a half can land on the upper bound, which rand
+    // does not include, so that draw is taken again as the integer path does.
+    float fmax = cumo_half2float(max), flow = cumo_half2float(low);
+    float high = flow + fmax;
+    dtype h;
+    do {
+        h = cumo_float2half(cumo_rand_uniform(st) * fmax + flow);
+    } while (fmax > 0 && cumo_half2float(h) >= high);
+    return h;
     //<% else %>
     return (dtype)(cumo_rand_uniform(st) * max) + low;
     //<% end %>
