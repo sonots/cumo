@@ -4,6 +4,7 @@ typedef cumo_half dtype;
 typedef cumo_half rtype;
 #define cT  cumo_cHFloat
 #define cRT cumo_cHFloat
+#define mTM cumo_mHFloatMath
 
 #include "half_macro.h"
 
