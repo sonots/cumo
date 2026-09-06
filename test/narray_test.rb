@@ -1699,6 +1699,99 @@ class NArrayTest < Test::Unit::TestCase
     assert { c.argmin(nan: true) == 1 }
   end
 
+  # Ruby floors the quotient and gives the remainder the divisor's sign. C
+  # truncates toward zero, so every type but RObject, which asks Ruby, used to
+  # part company with it once the signs differed, and the floats were wrong
+  # even for positive input because the quotient was not rounded at all.
+  test "divmod and modulo follow Ruby on every signed type" do
+    # the divisible pairs are here for the remainder of zero, which must be
+    # left alone rather than pushed to the divisor's sign
+    pairs = [[7, 3], [-7, 3], [7, -3], [-7, -3], [6, 3], [-6, 3], [6, -3], [-6, -3]]
+    [
+      Cumo::DFloat,
+      Cumo::SFloat,
+      Cumo::Int8,
+      Cumo::Int16,
+      Cumo::Int32,
+      Cumo::Int64,
+      Cumo::RObject
+    ].each do |dtype|
+      float = dtype == Cumo::DFloat || dtype == Cumo::SFloat
+      pairs.each do |x, y|
+        value = float ? x.to_f : x
+        want_q, want_r = value.divmod(y)
+        q, r = dtype[value].divmod(y)
+        label = "#{dtype} #{x} #{y}"
+        assert_equal(want_q, q.to_a.first, label)
+        assert_equal(want_r, r.to_a.first, label)
+        assert_equal(value % y, (dtype[value] % y).to_a.first, label)
+        # what divmod means: the pair puts the value back together
+        assert_equal(value, q.to_a.first * y + r.to_a.first, label)
+      end
+    end
+  end
+
+  # The quotient a float divmod answers is a whole number, which it only is
+  # once it has been rounded: (x - r) / y lands beside one often enough that a
+  # third of a percent of double pairs miss it.
+  test "divmod on floats answers a whole quotient" do
+    [
+      [Cumo::DFloat, -200.0, 3.2],
+      [Cumo::DFloat, -200.0, -6.3],
+      [Cumo::DFloat, 200.0, -3.2],
+      [Cumo::SFloat, -200.0, -1.6]
+    ].each do |dtype, x, y|
+      q, r = dtype[x].divmod(y)
+      label = "#{dtype} #{x} #{y}"
+      assert_equal(q.to_a.first.floor, q.to_a.first, label)
+      assert_equal(x.divmod(y).first, q.to_a.first, label)
+      assert_in_delta(x.divmod(y).last, r.to_a.first, dtype == Cumo::SFloat ? 1e-4 : 1e-9, label)
+    end
+  end
+
+  # x - r runs off the bottom of the type, so the quotient is corrected in
+  # place instead
+  test "divmod holds at the low end of a signed type" do
+    [
+      [Cumo::Int8, -128],
+      [Cumo::Int16, -32_768],
+      [Cumo::Int32, -2_147_483_648],
+      [Cumo::Int64, -9_223_372_036_854_775_808]
+    ].each do |dtype, low|
+      q, r = dtype[low].divmod(3)
+      assert_equal(low.divmod(3), [q.to_a.first, r.to_a.first], dtype.to_s)
+    end
+  end
+
+  test "divmod by an infinite divisor follows Ruby" do
+    q, r = Cumo::DFloat[-7.0].divmod(Float::INFINITY)
+    assert_equal([-1.0, Float::INFINITY], [q.to_a.first, r.to_a.first])
+  end
+
+  test "divmod on unsigned types is unchanged" do
+    [Cumo::UInt8, Cumo::UInt16, Cumo::UInt32, Cumo::UInt64].each do |dtype|
+      q, r = dtype[7, 9].divmod(4)
+      assert_equal([[1, 2], [3, 1]], [q.to_a, r.to_a], dtype.to_s)
+      assert_equal([3, 1], (dtype[7, 9] % 4).to_a, dtype.to_s)
+    end
+  end
+
+  # a short array takes the scalar path, this many take the kernel
+  test "divmod follows Ruby through the kernel too" do
+    n = 1 << 16
+    a = Cumo::Int32.new(n).seq(-n / 2)
+    q, r = a.divmod(3)
+    got = [q.to_a, r.to_a]
+    want = (0...n).map { |i| (i - n / 2).divmod(3) }
+    assert_equal(want.transpose, got)
+
+    f = Cumo::DFloat.new(n).seq(-n / 2.0)
+    fq, fr = f.divmod(3)
+    fwant = (0...n).map { |i| (i - n / 2.0).divmod(3) }
+    fq_want, fr_want = fwant.transpose
+    assert_equal([fq_want.map(&:to_f), fr_want], [fq.to_a, fr.to_a])
+  end
+
   test "divmod returns quotient and remainder" do
     [Cumo::Int32, Cumo::Int64, Cumo::RObject].each do |dtype|
       a = dtype[17, 20, 23]
