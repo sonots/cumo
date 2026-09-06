@@ -5,7 +5,7 @@ Breaking changes:
 * `divmod` and `%` floor the quotient and give the remainder the divisor's sign, as Ruby does, on every signed type: `Cumo::Int32[-7].divmod(3)` answers `[-3, 2]` where it answered `[-2, -1]`, and `-7 % 3` answers `2` rather than `-1`. Dividing a float by zero answers a quotient of `NaN` where it answered `Infinity`. Unsigned types are unchanged (PR #364)
 * A view whose base has since been given a smaller shape raises `RuntimeError` instead of reading past what the base holds (PR #363)
 * `marshal_load` and `initialize` leave an array unallocated when they take a new shape, so it reads as unallocated until something is stored in it, and both refuse a view. `initialize` also refuses a frozen array, as `marshal_load` already did (PR #361, PR #360, PR #355)
-* A range subscript longer than 2**31 answers the length it names instead of an empty view, and one longer than 2**32 no longer answers with the low 32 bits of it (PR #354)
+* A range subscript longer than `2**31` answers the length it names instead of an empty view, and one longer than `2**32` no longer answers with the low 32 bits of it (PR #354)
 * `cov` rejects a 3-dimensional receiver or `y`, 2-dimensional or non-integer `fweights`, and any `ddof` but 0 or 1, where it answered from them; it warns and answers `nan` when the degrees of freedom come out at zero or below (PR #343)
 * `Cumo::Bit#extract` answers with a zero-dimensional `Cumo::Bit`, as every other dtype does, rather than a Ruby Integer read back through a synchronize (PR #341)
 * `batch_norm` and its backward reject an axis that names nothing in `x`, repeats a dimension, or is out of order, where they answered as though a different axis had been given (PR #336)
@@ -265,7 +265,7 @@ Fixes:
 * Backport: improve discrimination between int32/64
 * Backport: missing declaration of id_ge
 * Backport: support casting any object that responds to 'to_a'
-* Backport: fix the range of int32 as -2**31 .. 2**31-1
+* Backport: fix the range of int32 as `-2**31 .. 2**31-1`
 * Backport: if int32_max is Bignum, it should be protected from GC
 * fix: handle compiler flags included in RbConfig::CONFIG properly (#157)
 * Backport: Added more percentile tests
