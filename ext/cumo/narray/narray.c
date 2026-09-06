@@ -365,7 +365,7 @@ cumo_na_initialize(VALUE self, VALUE args)
     int ndim;
     cumo_narray_t *na;
     void *old_ptr;
-    size_t old_byte_size;
+    size_t old_capacity;
     bool old_owned;
 
     // Taking a shape lets go of what is held now, which is a write by any
@@ -397,20 +397,27 @@ cumo_na_initialize(VALUE self, VALUE args)
     // setup size_t shape[] from VALUE shape argument
     cumo_na_array_to_internal_shape(self, v, shape);
 
-    // Any buffer here was sized for the shape being replaced, and every read
-    // that follows goes by the new one. Note it once the conversions above
-    // have run, and let it go once the new shape has been accepted: no Ruby
-    // runs between the two, and a shape the array refuses leaves it as it was.
+    // The buffer here was sized for the shape being replaced, so it is let go
+    // once the new shape has been accepted and the write that follows asks for
+    // one that fits. Noting it down waits until the conversions above have
+    // run, and the release waits until the shape is accepted, so no Ruby runs
+    // in between and a shape the array refuses leaves the array as it was.
+    //
+    // A buffer that is already big enough stays. A view made under the old
+    // shape reaches as far as that shape did, and it reads through the base's
+    // pointer, so handing the base a smaller buffer would send the view off
+    // the end of it.
     old_ptr = CUMO_NA_DATA_PTR(na);
-    old_byte_size = cumo_na_data_byte_size(self);
     old_owned = CUMO_NA_DATA_OWNED(na);
+    old_capacity = CUMO_NA_DATA_CAPACITY(na);
 
     cumo_na_setup(self, ndim, shape);
-    if (old_ptr != NULL) {
+    if (old_ptr != NULL && cumo_na_data_byte_size(self) > old_capacity) {
         if (old_owned) {
-            cumo_na_free_owned_ptr(self, old_ptr, old_byte_size);
+            cumo_na_free_owned_ptr(self, old_ptr, old_capacity);
         }
         CUMO_NA_DATA_PTR(na) = NULL;
+        CUMO_NA_DATA_CAPACITY(na) = 0;
     }
 
     return self;
@@ -663,6 +670,23 @@ cumo_na_free_owned_ptr(VALUE self, void *ptr, size_t byte_size)
     }
 }
 
+// Bytes the buffer behind self has been allocated for, following a view to
+// what it is a view of. Zero when there is nothing behind it yet.
+static size_t
+cumo_na_held_capacity(VALUE self)
+{
+    cumo_narray_t *na;
+
+    CumoGetNArray(self,na);
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        CumoGetNArray(CUMO_NA_VIEW_DATA(na),na);
+    }
+    if (CUMO_NA_TYPE(na) != CUMO_NARRAY_DATA_T) {
+        return 0;
+    }
+    return CUMO_NA_DATA_CAPACITY(na);
+}
+
 static void
 cumo_na_set_pointer(VALUE self, char *ptr, size_t byte_size)
 {
@@ -678,11 +702,19 @@ cumo_na_set_pointer(VALUE self, char *ptr, size_t byte_size)
     switch(CUMO_NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
         if (CUMO_NA_SIZE(na) > 0) {
+            // Same reason as in initialize: a view reaches as far as the shape
+            // it was made under, so what the base points at never shrinks.
+            if (byte_size < CUMO_NA_DATA_CAPACITY(na)) {
+                rb_raise(rb_eArgError,
+                         "cannot point this NArray at %"SZF"u bytes: it has held %"SZF"u",
+                         byte_size, CUMO_NA_DATA_CAPACITY(na));
+            }
             if (CUMO_NA_DATA_PTR(na) != NULL && CUMO_NA_DATA_OWNED(na)) {
-                cumo_na_free_owned_ptr(self, CUMO_NA_DATA_PTR(na), cumo_na_data_byte_size(self));
+                cumo_na_free_owned_ptr(self, CUMO_NA_DATA_PTR(na), CUMO_NA_DATA_CAPACITY(na));
             }
             CUMO_NA_DATA_PTR(na) = ptr;
             CUMO_NA_DATA_OWNED(na) = FALSE;
+            CUMO_NA_DATA_CAPACITY(na) = byte_size;
         }
         return;
     case CUMO_NARRAY_VIEW_T:
@@ -732,12 +764,19 @@ cumo_na_pointer_copy_on_write(VALUE self)
         return;
     }
 
-    velmsz = rb_const_get(rb_obj_class(self), cumo_id_element_byte_size);
-    if (FIXNUM_P(velmsz)) {
-        byte_size = CUMO_NA_SIZE(na) * NUM2SIZET(velmsz);
-    } else {
-        byte_size = ceil(CUMO_NA_SIZE(na) * NUM2DBL(velmsz));
+    // What is being taken over is the whole buffer, not the part the shape in
+    // hand covers: a view made under a larger shape reads the rest of it.
+    byte_size = CUMO_NA_DATA_CAPACITY(na);
+    if (byte_size == 0) {
+        velmsz = rb_const_get(rb_obj_class(self), cumo_id_element_byte_size);
+        if (FIXNUM_P(velmsz)) {
+            byte_size = CUMO_NA_SIZE(na) * NUM2SIZET(velmsz);
+        } else {
+            byte_size = ceil(CUMO_NA_SIZE(na) * NUM2DBL(velmsz));
+        }
     }
+    // The capacity stays as it is so that allocate keeps the buffer at least
+    // as large as it has been.
     CUMO_NA_DATA_PTR(na) = NULL;
     rb_funcall(self, cumo_id_allocate, 0);
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_pointer_copy_on_write", "any");
@@ -1552,7 +1591,10 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
         rb_raise(rb_eArgError, "string is too short to store");
     }
 
-    if (OBJ_FROZEN(vstr)) {
+    // Pointing at the String's own bytes saves the copy, but only while they
+    // are at least as many as this array has ever held: a view made under a
+    // larger shape reads through this pointer. Copying is the way out.
+    if (OBJ_FROZEN(vstr) && byte_size >= cumo_na_held_capacity(self)) {
         cumo_na_set_pointer(self, RSTRING_PTR(vstr)+offset, byte_size);
         rb_ivar_set(self, cumo_id_source, vstr);
     } else {
@@ -2133,8 +2175,9 @@ cumo_na_free_data(VALUE self)
         // Not owned means the data belongs to something else -- store_binary()
         // points a frozen String's bytes at it -- so there is nothing to free.
         if (ptr != NULL && CUMO_NA_DATA_OWNED(na)) {
-            cumo_na_free_owned_ptr(self, ptr, cumo_na_data_byte_size(self));
+            cumo_na_free_owned_ptr(self, ptr, CUMO_NA_DATA_CAPACITY(na));
             CUMO_NA_DATA_PTR(na) = NULL;
+            CUMO_NA_DATA_CAPACITY(na) = 0;
             return Qtrue;
         }
     }

@@ -12,6 +12,7 @@ nst_allocate(VALUE self)
 {
     cumo_narray_t *na;
     void *ptr;
+    size_t bytes;
     VALUE velmsz;
 
     CumoGetNArray(self,na);
@@ -21,8 +22,15 @@ nst_allocate(VALUE self)
         ptr = CUMO_NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
             velmsz = rb_const_get(rb_obj_class(self), rb_intern("element_byte_size"));
-            ptr = cumo_cuda_runtime_malloc(NUM2SIZET(velmsz) * na->size);
+            // Never fewer bytes than this array has held: a view made under a
+            // larger shape reads through this pointer.
+            bytes = NUM2SIZET(velmsz) * na->size;
+            if (bytes < CUMO_NA_DATA_CAPACITY(na)) {
+                bytes = CUMO_NA_DATA_CAPACITY(na);
+            }
+            ptr = cumo_cuda_runtime_malloc(bytes);
             CUMO_NA_DATA_PTR(na) = ptr;
+            CUMO_NA_DATA_CAPACITY(na) = bytes;
         }
         break;
     case CUMO_NARRAY_VIEW_T:

@@ -17,24 +17,31 @@ static VALUE
             if (na->size > SIZE_MAX / sizeof(dtype)) {
                 rb_raise(rb_eRangeError, "total byte size of data is too large");
             }
+            // Never fewer bytes than this array has held: a view made under a
+            // larger shape reads through this pointer.
+            size_t bytes = sizeof(dtype) * na->size;
+            if (bytes < CUMO_NA_DATA_CAPACITY(na)) {
+                bytes = CUMO_NA_DATA_CAPACITY(na);
+            }
             <% if is_object %>
-            ptr = xmalloc(sizeof(dtype) * na->size);
+            ptr = xmalloc(bytes);
             {   size_t i;
                 VALUE *a = (VALUE*)ptr;
-                for (i=na->size; i--;) {
+                for (i=bytes/sizeof(dtype); i--;) {
                     *a++ = Qnil;
                 }
             }
             <% else %>
-            ptr = cumo_cuda_runtime_malloc(sizeof(dtype) * na->size);
+            ptr = cumo_cuda_runtime_malloc(bytes);
             <% end %>
             CUMO_NA_DATA_PTR(na) = ptr;
             CUMO_NA_DATA_OWNED(na) = TRUE;
+            CUMO_NA_DATA_CAPACITY(na) = bytes;
             <% unless is_object %>
             // Device memory never passes through ruby_xmalloc, so the GC sees a
             // few-byte object holding an arbitrarily large buffer and does not
             // run until the host itself runs out.
-            rb_gc_adjust_memory_usage(sizeof(dtype) * na->size);
+            rb_gc_adjust_memory_usage(bytes);
             <% end %>
         }
         <% if !is_object && !is_bit %>

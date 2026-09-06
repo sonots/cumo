@@ -231,6 +231,10 @@ typedef struct {
     cumo_narray_t base;
     char    *ptr;
     bool     owned;
+    // Bytes ptr was allocated for. The shape can be taken again, and a view
+    // made before that still reaches as far as the shape it was made under,
+    // so the buffer is never allowed to get smaller than it has been.
+    size_t   capacity;
 } cumo_narray_data_t;
 
 
@@ -368,6 +372,7 @@ _cumo_na_get_narray_t(VALUE obj, unsigned char cumo_na_type)
 #define CUMO_NA_VIEW(na)             ((cumo_narray_view_t*)(na))
 #define CUMO_NA_DATA_PTR(na)         (CUMO_NA_DATA(na)->ptr)
 #define CUMO_NA_DATA_OWNED(na)       (CUMO_NA_DATA(na)->owned)
+#define CUMO_NA_DATA_CAPACITY(na)    (CUMO_NA_DATA(na)->capacity)
 #define CUMO_NA_VIEW_DATA(na)        (CUMO_NA_VIEW(na)->data)
 #define CUMO_NA_VIEW_OFFSET(na)      (CUMO_NA_VIEW(na)->offset)
 #define CUMO_NA_VIEW_STRIDX(na)      (CUMO_NA_VIEW(na)->stridx)

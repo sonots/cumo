@@ -118,5 +118,6 @@ static VALUE
     na->base.reduce = INT2FIX(0);
     na->ptr = NULL;
     na->owned = FALSE;
+    na->capacity = 0;
     return TypedData_Wrap_Struct(klass, &<%=type_name%>_data_type, (void*)na);
 }

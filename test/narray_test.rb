@@ -5967,6 +5967,99 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([[0.0, 1.0], [2.0, 3.0]], Cumo::DFloat.new(2, 2).seq.to_a)
   end
 
+  # A view reads through the base's pointer but keeps the shape it was made
+  # under, so handing the base a smaller buffer sent the view off the end of
+  # it: reading garbage, and writing wherever that landed.
+  test "a view still reads its base after the base takes a smaller shape" do
+    make = [
+      [:range, ->(a) { a[0..1023] }, (0...1024).to_a],
+      [:index, ->(a) { a[Cumo::Int32.cast((0...1024).to_a)] }, (0...1024).to_a],
+      [:step, ->(a) { a[(0...1024).step(1)] }, (0...1024).to_a],
+      [:stride, ->(a) { a[(0..1023).step(2)] }, (0..1023).step(2).to_a]
+    ]
+    make.each do |what, build, elements|
+      a = Cumo::DFloat.new(1024).seq
+      v = build.call(a)
+      a.marshal_load([1, [2], 0, "\x00" * 16])
+      assert_equal([2], a.shape, what)
+      # the two elements the load wrote are zero now, the rest are untouched
+      want = elements.sum { |i| i < 2 ? 0.0 : i.to_f }
+      assert_equal(want, v.sum.to_a.first, what)
+    end
+
+    b = Cumo::DFloat.new(1024).seq
+    w = b[0..1023]
+    b.__send__(:initialize, [2])
+    b.seq
+    w[1000] = 7.0
+    assert_equal(7.0, w[1000].to_a.first)
+    assert_equal([0.0, 1.0], b.to_a)
+
+    r = Cumo::RObject.new(8)
+    r.store(Array.new(8) { |i| i })
+    rv = r[0..7]
+    r.marshal_load([1, [2], 0, [+"x", +"y"]])
+    assert_equal(["x", "y", 2, 3], rv.to_a.first(4))
+  end
+
+  # Bit and RObject allocate through templates of their own, so a buffer kept
+  # at the size it has been has to be kept by each of them.
+  test "a view outlives a smaller shape on every dtype" do
+    total =
+      lambda do |v|
+        next Integer(v.count_true) if v.is_a?(Cumo::Bit)
+
+        x = v.sum.to_a.first
+        x = x.real if x.is_a?(Complex)
+        x.to_i
+      end
+    [
+      Cumo::DFloat,
+      Cumo::SFloat,
+      Cumo::Int32,
+      Cumo::UInt8,
+      Cumo::DComplex,
+      Cumo::RObject,
+      Cumo::Bit
+    ].each do |dtype|
+      a = dtype.new(1024)
+      a.store(1)
+      v = a[0..1023]
+      assert_equal(1024, total.call(v), dtype.to_s)
+      a.__send__(:initialize, [2])
+      a.store(0)
+      assert_equal(1022, total.call(v), dtype.to_s)
+    end
+    GC.start
+  end
+
+  # Taking over a borrowed buffer allocated one for the shape in hand, which
+  # is smaller than the buffer being taken over once the shape has been taken
+  # again, and the view reading the rest of it lost its data.
+  test "a view survives its base taking over a borrowed buffer" do
+    str = ([1.0] * 1024).pack("d*").freeze
+    a = Cumo::DFloat.new(1024)
+    a.store_binary(str)
+    v = a[0..1023]
+    assert_equal(1024.0, v.sum.to_a.first)
+
+    a.__send__(:initialize, [2])
+    a[0] = 42.0
+    assert_equal([42.0, 1.0], a.to_a)
+    assert_equal(1024.0 - 1 + 42, v.sum.to_a.first)
+  end
+
+  test "an array that took a smaller shape still loads a larger one later" do
+    a = Cumo::DFloat.new(1024).seq
+    a.marshal_load([1, [2], 0, "\x00" * 16])
+    assert_equal([0.0, 0.0], a.to_a)
+    a.marshal_load(Cumo::DFloat.new(4096).seq(3).marshal_dump)
+    assert_equal([4096, 3.0, 4098.0], [a.size, a[0].to_a.first, a[4095].to_a.first])
+    a.__send__(:initialize, [3])
+    a.seq(1)
+    assert_equal([1.0, 2.0, 3.0], a.to_a)
+  end
+
   test "initialize leaves a frozen array alone" do
     a = Cumo::DFloat.new(4).seq
     a.freeze
