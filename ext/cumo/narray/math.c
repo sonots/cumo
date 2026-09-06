@@ -125,6 +125,7 @@ Init_cumo_na_math()
     rb_hash_aset(hCast, cumo_cDFloat,   cumo_mDFloatMath);
     rb_hash_aset(hCast, cumo_cDComplex, cumo_mDComplexMath);
     rb_hash_aset(hCast, cumo_cSFloat,   cumo_mSFloatMath);
+    rb_hash_aset(hCast, cumo_cHFloat,   cumo_mSFloatMath);
     rb_hash_aset(hCast, cumo_cSComplex, cumo_mSComplexMath);
 #ifdef RUBY_INTEGER_UNIFICATION
     rb_hash_aset(hCast, rb_cInteger, rb_mMath);

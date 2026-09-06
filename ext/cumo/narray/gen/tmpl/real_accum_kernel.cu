@@ -11,14 +11,14 @@
 struct cumo_<%=type_name%>_sum_impl {
     __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_zero; }
     __device__ <%=dtype%> MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum += next; }
+    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum = m_add(accum, next); }
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_prod_impl {
     __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_one; }
     __device__ <%=dtype%> MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum *= next; }
+    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum = m_mul(accum, next); }
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
@@ -29,11 +29,11 @@ struct cumo_<%=type_name%>_min_impl {
     // element was NaN, and equal elements keep the earlier one as numo does.
     __device__ dtype Identity(int64_t /*index*/) { return (dtype)nan(""); }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { if (next < accum || !not_nan(accum)) { accum = next; } }
+    __device__ void Reduce(dtype next, dtype& accum) { if (m_lt(next, accum) || !not_nan(accum)) { accum = next; } }
 <% else %>
     __device__ dtype Identity(int64_t /*index*/) { return DATA_MAX; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { accum = next < accum ? next : accum; }
+    __device__ void Reduce(dtype next, dtype& accum) { accum = m_lt(next, accum) ? next : accum; }
 <% end %>
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
@@ -42,11 +42,11 @@ struct cumo_<%=type_name%>_max_impl {
 <% if is_float %>
     __device__ dtype Identity(int64_t /*index*/) { return (dtype)nan(""); }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { if (accum < next || !not_nan(accum)) { accum = next; } }
+    __device__ void Reduce(dtype next, dtype& accum) { if (m_lt(accum, next) || !not_nan(accum)) { accum = next; } }
 <% else %>
     __device__ dtype Identity(int64_t /*index*/) { return DATA_MIN; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { accum = next < accum ? accum : next; }
+    __device__ void Reduce(dtype next, dtype& accum) { accum = m_lt(next, accum) ? accum : next; }
 <% end %>
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
@@ -63,15 +63,15 @@ struct cumo_<%=type_name%>_minmax_impl {
     __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)nan(""), (dtype)nan("")}; }
     __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
     __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        if (next.min < accum.min || !not_nan(accum.min)) { accum.min = next.min; }
-        if (accum.max < next.max || !not_nan(accum.max)) { accum.max = next.max; }
+        if (m_lt(next.min, accum.min) || !not_nan(accum.min)) { accum.min = next.min; }
+        if (m_lt(accum.max, next.max) || !not_nan(accum.max)) { accum.max = next.max; }
     }
 <% else %>
     __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
     __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
     __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        accum.min = next.min < accum.min ? next.min : accum.min;
-        accum.max = next.max < accum.max ? accum.max : next.max;
+        accum.min = m_lt(next.min, accum.min) ? next.min : accum.min;
+        accum.max = m_lt(next.max, accum.max) ? accum.max : next.max;
     }
 <% end %>
     __device__ void MapOut(MinAndMax accum, dtype* out_min, dtype* out_max) {
@@ -88,14 +88,14 @@ struct cumo_<%=type_name%>_ptp_impl {
     __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
     __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
     __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        if (next.min < accum.min) { accum.min = next.min; }
-        if (accum.max < next.max) { accum.max = next.max; }
+        if (m_lt(next.min, accum.min)) { accum.min = next.min; }
+        if (m_lt(accum.max, next.max)) { accum.max = next.max; }
     }
     __device__ dtype MapOut(MinAndMax accum) {
     <% if is_float %>
         // A NaN loses both comparisons above, so every element being NaN leaves
         // the identity untouched. An empty reduction raises before it gets here.
-        if (accum.max < accum.min) { return (dtype)nan(""); }
+        if (m_lt(accum.max, accum.min)) { return (dtype)nan(""); }
     <% end %>
         return m_sub(accum.max, accum.min);
     }
@@ -172,14 +172,14 @@ struct cumo_<%=type_name%>_prod_nan_impl {
 struct cumo_<%=type_name%>_min_nan_impl {
     __device__ dtype Identity(int64_t /*index*/) { return DATA_MAX; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || next < accum) { accum = next; } }
+    __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || m_lt(next, accum)) { accum = next; } }
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_max_nan_impl {
     __device__ dtype Identity(int64_t /*index*/) { return DATA_MIN; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || accum < next) { accum = next; } }
+    __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || m_lt(accum, next)) { accum = next; } }
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
@@ -191,8 +191,8 @@ struct cumo_<%=type_name%>_minmax_nan_impl {
     __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
     __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
     __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        if (!not_nan(next.min) || next.min < accum.min) { accum.min = next.min; }
-        if (!not_nan(next.max) || accum.max < next.max) { accum.max = next.max; }
+        if (!not_nan(next.min) || m_lt(next.min, accum.min)) { accum.min = next.min; }
+        if (!not_nan(next.max) || m_lt(accum.max, next.max)) { accum.max = next.max; }
     }
     __device__ void MapOut(MinAndMax accum, dtype* out_min, dtype* out_max) {
         *out_min = accum.min;

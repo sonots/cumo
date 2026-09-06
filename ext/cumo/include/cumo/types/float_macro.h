@@ -1,4 +1,5 @@
 #include "float_def.h"
+#include "half_def.h"
 
 extern double round(double);
 extern double log2(double);
@@ -17,6 +18,7 @@ extern double pow(double, double);
 
 #define m_from_double(x) (x)
 #define m_from_real(x) (x)
+#define m_from_half(x) m_from_real(cumo_half2float(x))
 #define m_from_sint(x) (x)
 #define m_from_int32(x) (x)
 #define m_from_int64(x) (x)

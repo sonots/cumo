@@ -33,7 +33,7 @@ struct cumo_<%=type_name%>_argmin_int<%=i%>_impl {
             return;
         }
 <% end %>
-        if (accum.value > next.value || (accum.value == next.value && next.index < accum.index)) { accum = next; }
+        if (m_gt(accum.value, next.value) || (m_eq(accum.value, next.value) && next.index < accum.index)) { accum = next; }
     }
     __device__ idx_t MapOut(ValueAndIndex accum) { return accum.index; }
 };
@@ -56,7 +56,7 @@ struct cumo_<%=type_name%>_argmin_nan_int<%=i%>_impl {
             if (next_nan && (!accum_nan || next.index < accum.index)) { accum = next; }
             return;
         }
-        if (accum.value > next.value || (accum.value == next.value && next.index < accum.index)) { accum = next; }
+        if (m_gt(accum.value, next.value) || (m_eq(accum.value, next.value) && next.index < accum.index)) { accum = next; }
     }
     __device__ idx_t MapOut(ValueAndIndex accum) { return accum.index; }
 };
@@ -83,7 +83,7 @@ struct cumo_<%=type_name%>_argmax_int<%=i%>_impl {
             return;
         }
 <% end %>
-        if (accum.value < next.value || (accum.value == next.value && next.index < accum.index)) { accum = next; }
+        if (m_lt(accum.value, next.value) || (m_eq(accum.value, next.value) && next.index < accum.index)) { accum = next; }
     }
     __device__ idx_t MapOut(ValueAndIndex accum) { return accum.index; }
 };
@@ -97,7 +97,7 @@ struct cumo_<%=type_name%>_argmax_nan_int<%=i%>_impl {
         dtype value;
         idx_t index;
     };
-    __device__ ValueAndIndex Identity(idx_t /*index*/) { return {-(dtype)INFINITY, INT<%=i%>_MAX}; }
+    __device__ ValueAndIndex Identity(idx_t /*index*/) { return {(dtype)(-INFINITY), INT<%=i%>_MAX}; }
     __device__ ValueAndIndex MapIn(dtype in, idx_t index) { return {in, index}; }
     __device__ void Reduce(ValueAndIndex next, ValueAndIndex& accum) {
         bool accum_nan = !not_nan(accum.value);
@@ -106,7 +106,7 @@ struct cumo_<%=type_name%>_argmax_nan_int<%=i%>_impl {
             if (next_nan && (!accum_nan || next.index < accum.index)) { accum = next; }
             return;
         }
-        if (accum.value < next.value || (accum.value == next.value && next.index < accum.index)) { accum = next; }
+        if (m_lt(accum.value, next.value) || (m_eq(accum.value, next.value) && next.index < accum.index)) { accum = next; }
     }
     __device__ idx_t MapOut(ValueAndIndex accum) { return accum.index; }
 };

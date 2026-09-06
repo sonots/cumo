@@ -20,6 +20,7 @@ set is_complex:          true
 set is_object:           false
 set is_comparable:       false
 set is_double_precision: false
+set is_half:             false
 set need_align:          true
 
 upcast_rb "Integer"
@@ -31,6 +32,7 @@ upcast "DComplex", "DComplex"
 upcast "SComplex", "SComplex"
 upcast "DFloat",   "DComplex"
 upcast "SFloat",   "SComplex"
+upcast "HFloat",   "SComplex"
 upcast "Int64",    "SComplex"
 upcast "Int32",    "SComplex"
 upcast "Int16",    "SComplex"

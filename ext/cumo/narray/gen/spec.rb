@@ -55,11 +55,11 @@ else
   def_id "eq"
   def_id "ne"
 end
-if (is_float || is_complex) && !is_object
+if (is_float || is_complex) && !is_object && !is_half
   def_id "gemm"
 end
 # cudnn
-if is_float && !is_complex && !is_object
+if is_float && !is_complex && !is_object && !is_half
   def_id "conv"
   def_id "conv_transpose"
   def_id "conv_grad_w"
@@ -127,6 +127,7 @@ def_method "store" do
     store_from "DComplex", "cumo_dcomplex", "m_from_dcomplex"
     store_from "SComplex", "cumo_scomplex", "m_from_scomplex"
   end
+  store_from "HFloat", "cumo_half", "m_from_half"
   store_from "DFloat", "double",   "m_from_real"
   store_from "SFloat", "float",    "m_from_real"
   store_from "Int64", "int64_t",  "m_from_int64"
@@ -317,7 +318,7 @@ if is_int && !is_object
     accum "sum", "int64_t", "cumo_cInt64"
     accum "prod", "int64_t", "cumo_cInt64"
   end
-else
+elsif !is_half
   accum "sum", "dtype", "cT"
   accum "prod", "dtype", "cT"
 end
@@ -326,7 +327,7 @@ if is_double_precision
   accum "kahan_sum", "dtype", "cT"
 end
 
-if is_float
+if is_float && !is_half
   accum "mean", "dtype", "cT"
   accum "stddev", "rtype", "cRT"
   accum "var", "rtype", "cRT"
@@ -356,17 +357,19 @@ if is_int && !is_object
   def_method "bincount"
 end
 
-cum "cumsum", "add"
-cum "cumprod", "mul"
+unless is_half
+  cum "cumsum", "add"
+  cum "cumprod", "mul"
+end
 
 # dot
-accum_binary "mulsum"
-if (is_float || is_complex) && !is_object
+accum_binary "mulsum" unless is_half
+if (is_float || is_complex) && !is_object && !is_half
   def_method "gemm"
 end
 
 # cudnn
-if is_float && !is_complex && !is_object
+if is_float && !is_complex && !is_object && !is_half
   def_method "conv"
   def_method "conv_transpose" # conv_backward_data
   def_method "conv_grad_w" # conv_backward_filter
@@ -390,15 +393,17 @@ end
 def_method "eye"
 def_alias  "indgen", "seq"
 
-def_method "rand"
-if is_float && !is_object
-  def_method "rand_norm"
+unless is_half
+  def_method "rand"
+  if is_float && !is_object
+    def_method "rand_norm"
+  end
 end
 
 # y = a[0] + a[1]*x + a[2]*x^2 + a[3]*x^3 + ... + a[n]*x^n
 def_method "poly"
 
-if is_comparable && !is_object
+if is_comparable && !is_object && !is_half
   if is_float
     qsort type_name, "dtype", "*(dtype*)", "_prnan"
     qsort type_name, "dtype", "*(dtype*)", "_ignan"
