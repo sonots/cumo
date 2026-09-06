@@ -15,6 +15,9 @@ VALUE cumo_na_eOperationError;
 VALUE cumo_na_eDimensionError;
 VALUE cumo_na_eValueError;
 
+size_t cumo_na_data_byte_size(VALUE self);
+static void cumo_na_free_owned_ptr(VALUE self, void *ptr, size_t byte_size);
+
 static ID cumo_id_contiguous_stride;
 static ID cumo_id_allocate;
 static ID cumo_id_element_byte_size;
@@ -360,6 +363,23 @@ cumo_na_initialize(VALUE self, VALUE args)
     VALUE v;
     size_t *shape=NULL;
     int ndim;
+    cumo_narray_t *na;
+    void *old_ptr;
+    size_t old_byte_size;
+    bool old_owned;
+
+    // Taking a shape lets go of what is held now, which is a write by any
+    // other name.
+    if (OBJ_FROZEN(self)) {
+        rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
+    }
+    CumoGetNArray(self,na);
+    // A view reads through strides that were laid out for the shape it has, so
+    // giving it another one walks off the end of them. Only an array holding
+    // its own data has a buffer that can be sized again.
+    if (CUMO_NA_TYPE(na) != CUMO_NARRAY_DATA_T) {
+        rb_raise(rb_eArgError,"cannot reinitialize a view");
+    }
 
     if (RARRAY_LEN(args) == 1) {
         v = RARRAY_AREF(args,0);
@@ -376,7 +396,22 @@ cumo_na_initialize(VALUE self, VALUE args)
     shape = ALLOCA_N(size_t, ndim);
     // setup size_t shape[] from VALUE shape argument
     cumo_na_array_to_internal_shape(self, v, shape);
+
+    // Any buffer here was sized for the shape being replaced, and every read
+    // that follows goes by the new one. Note it once the conversions above
+    // have run, and let it go once the new shape has been accepted: no Ruby
+    // runs between the two, and a shape the array refuses leaves it as it was.
+    old_ptr = CUMO_NA_DATA_PTR(na);
+    old_byte_size = cumo_na_data_byte_size(self);
+    old_owned = CUMO_NA_DATA_OWNED(na);
+
     cumo_na_setup(self, ndim, shape);
+    if (old_ptr != NULL) {
+        if (old_owned) {
+            cumo_na_free_owned_ptr(self, old_ptr, old_byte_size);
+        }
+        CUMO_NA_DATA_PTR(na) = NULL;
+    }
 
     return self;
 }
@@ -1616,13 +1651,8 @@ static VALUE cumo_na_inplace( VALUE self );
 static VALUE
 cumo_na_marshal_load(VALUE self, VALUE a)
 {
-    VALUE v, vshape;
+    VALUE v;
     cumo_narray_t *na;
-    void *old_ptr;
-    size_t old_byte_size;
-    size_t *shape;
-    int ndim;
-    bool old_owned;
 
     if (OBJ_FROZEN(self)) {
         rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
@@ -1649,36 +1679,10 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         rb_raise(rb_eArgError,"cannot load marshal data into a view");
     }
 
-    // Read the shape first. Converting its elements runs to_int, which is Ruby
-    // free to reach this array and free or replace the buffer, so nothing may
-    // be noted down until that has finished.
-    vshape = RARRAY_AREF(a,1);
-    if (RARRAY_LEN(vshape) == 1 && TYPE(RARRAY_AREF(vshape,0)) == T_ARRAY) {
-        vshape = RARRAY_AREF(vshape,0);
-    }
-    ndim = RARRAY_LEN(vshape);
-    if (ndim > CUMO_NA_MAX_DIMENSION) {
-        rb_raise(rb_eArgError,"ndim=%d exceeds maximum dimension",ndim);
-    }
-    shape = ALLOCA_N(size_t, ndim);
-    cumo_na_array_to_internal_shape(self, vshape, shape);
-
-    // Any buffer here was sized for the shape being replaced, and the write
-    // below goes by the new one. Note it while the array can still say how
-    // large it is, and let it go once the new shape has been accepted: a shape
-    // the array refuses has to leave the array as it was. No Ruby runs between
-    // the two, so what is released is what was measured.
-    old_ptr = CUMO_NA_DATA_PTR(na);
-    old_byte_size = cumo_na_data_byte_size(self);
-    old_owned = CUMO_NA_DATA_OWNED(na);
-
-    cumo_na_setup(self, ndim, shape);
-    if (old_ptr != NULL) {
-        if (old_owned) {
-            cumo_na_free_owned_ptr(self, old_ptr, old_byte_size);
-        }
-        CUMO_NA_DATA_PTR(na) = NULL;
-    }
+    // Taking a shape means letting go of the buffer sized for the one being
+    // replaced, in an order that survives the shape's own to_int reaching back
+    // here. initialize is where that is decided, for every way in.
+    cumo_na_initialize(self, RARRAY_AREF(a,1));
     CUMO_NA_FL0_SET(self,NUM2INT(rb_ary_entry(a,2)));
     v = rb_ary_entry(a,3);
     if (rb_obj_class(self) == cumo_cRObject) {
