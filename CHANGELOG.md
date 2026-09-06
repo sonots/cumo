@@ -1,3 +1,36 @@
+# 0.6.0 (2026/09/06)
+
+Breaking changes:
+
+* `divmod` and `%` floor the quotient and give the remainder the divisor's sign, as Ruby does, on every signed type: `Cumo::Int32[-7].divmod(3)` answers `[-3, 2]` where it answered `[-2, -1]`, and `-7 % 3` answers `2` rather than `-1`. Dividing a float by zero answers a quotient of `NaN` where it answered `Infinity`. Unsigned types are unchanged (PR #364)
+* A view whose base has since been given a smaller shape raises `RuntimeError` instead of reading past what the base holds (PR #363)
+* `marshal_load` and `initialize` leave an array unallocated when they take a new shape, so it reads as unallocated until something is stored in it, and both refuse a view. `initialize` also refuses a frozen array, as `marshal_load` already did (PR #361, PR #360, PR #355)
+* A range subscript longer than 2**31 answers the length it names instead of an empty view, and one longer than 2**32 no longer answers with the low 32 bits of it (PR #354)
+* `cov` rejects a 3-dimensional receiver or `y`, 2-dimensional or non-integer `fweights`, and any `ddof` but 0 or 1, where it answered from them; it warns and answers `nan` when the degrees of freedom come out at zero or below (PR #343)
+* `Cumo::Bit#extract` answers with a zero-dimensional `Cumo::Bit`, as every other dtype does, rather than a Ruby Integer read back through a synchronize (PR #341)
+* `batch_norm` and its backward reject an axis that names nothing in `x`, repeats a dimension, or is out of order, where they answered as though a different axis had been given (PR #336)
+
+Fixes:
+
+* Fix `RObject#divmod` reading the pair an element's `divmod` answered without looking at it: a bare Integer or a String took the process down, and a shorter Array handed back the words past its end as the quotient and the remainder (PR #359)
+* Fix an out-of-bounds read when `initialize` is given a new shape through `send`, which left the buffer sized for the old one: 4096 elements were read out of 8, and the same on an `Cumo::RObject` crashed at the next collection (PR #361)
+* Fix a memory leak when an Array subscript is rejected, the host buffer it is staged in being freed only after the loop that fills it, and the memory a subscript piles up before the collector takes it back (PR #357, PR #358)
+* Fix `marshal_load` writing past a buffer sized for the shape it replaces, and the double free that came of releasing a buffer noted down before the shape's own `to_int` had run (PR #355, PR #356)
+* Fix reading past a Ruby array or string that a conversion shrank underneath the walk: a subscript, a shape, an axis list, a marshal array and the string behind `from_binary` were each measured once and walked afterwards, and `to_int` is free to empty any of them (PR #353)
+* Fix `Cumo::Bit#swap_byte` walking one byte per bit, eight times past the end of the packed buffer; `hton`, `to_network` and `to_swapped` reach the same loop (PR #352)
+
+Changes:
+
+* Add `argsort`, which answers positions along an axis rather than into the flattened array as `sort_index` does (PR #342)
+* Add `mean`, `var`, `stddev` and `rms` to the integer types and to `Cumo::Bit`, which had only the float ones (PR #344, PR #345)
+* Walk an elementwise function along the memory of the operand it writes rather than the shape it was given; on a transposed 1024x1024 SFloat view `a.inplace + 1.0` goes from 1180.6us to 78.3us (PR #351)
+* Reduce along the contiguous axis with a contiguous group of threads, keep a reduction's operands out of local memory, and give a short strided row more elements per thread; `[1024, 4, 1024].sum(axis: 1)` goes from 142.0us to 23.4us and the same `mulsum` from 675.3us to 30.9us (PR #350, PR #347)
+* Split a flat index in 32 bits where the array fits in them, the 64-bit division being a software routine on the GPU; a 4M SFloat `a[true, 1..-2] * 2.0` goes from 60.6us to 38.7us (PR #348)
+* Reverse the bytes of an array in a kernel instead of on the host; a 4M SFloat `swap_byte` goes from 5617.0us to 13.0us (PR #335)
+* Add `bench/cumo_shape_probe.rb`, which reads each shape of an operation against the same bytes moved along the best path it has (PR #349)
+* Make every object depend on the headers it is built from, a header-only change having left stale objects behind (PR #346)
+* Answer the four cuDNN TODOs left in the tree, and say what the memory pool's `TestRemoveFromFreeList` holds rather than what it waits for (PR #340, PR #339, PR #338, PR #337)
+
 # 0.5.11 (2026/08/29)
 
 Breaking changes:
