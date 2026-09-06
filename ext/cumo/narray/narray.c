@@ -218,6 +218,7 @@ cumo_na_s_allocate_view(VALUE klass)
     na->data = Qnil;
     na->offset = 0;
     na->stridx = NULL;
+    na->reach_end = 0;
     na->index_sync_epoch = UINT64_MAX;
     return TypedData_Wrap_Struct(klass, &cumo_na_data_type_view, (void*)na);
 }
@@ -319,8 +320,14 @@ static void
 cumo_na_setup(VALUE self, int ndim, size_t *shape)
 {
     cumo_narray_t *na;
+    size_t was;
+
     CumoGetNArray(self,na);
+    was = na->size;
     cumo_na_setup_shape(na, ndim, shape);
+    if (na->size < was) {
+        CUMO_NA_FL1_SET(self, CUMO_NA_FL1_SHRUNK);
+    }
 }
 
 
@@ -746,12 +753,69 @@ cumo_na_pointer_copy_on_write(VALUE self)
     rb_ivar_set(self, cumo_id_source, Qnil);
 }
 
-static char *
+// One past the furthest position self can reach, in the units its offset and
+// strides are in. A view is laid out against the shape its base had when it
+// was made, and it reads the data through the base's pointer, so a base that
+// takes a smaller shape leaves the view reaching past what it gets. What the
+// view reaches never changes, so it is worked out once and kept.
+//
+// A dimension addressed by an index list has to be read to be measured. Those
+// indices belong to the view, not to the base, so reading them late still
+// gives the right answer.
+static size_t
+cumo_na_view_reach_end(cumo_narray_view_t *nv, size_t unit)
+{
+    int i;
+    size_t reach;
+
+    if (nv->reach_end != 0 || nv->base.size == 0) {
+        return nv->reach_end;
+    }
+
+    reach = nv->offset;
+    for (i=0; i < nv->base.ndim; i++) {
+        size_t n = nv->base.shape[i];
+
+        if (n == 0) {
+            return 0;
+        }
+        if (CUMO_SDX_IS_STRIDE(nv->stridx[i])) {
+            ssize_t stride = CUMO_SDX_GET_STRIDE(nv->stridx[i]);
+            // A negative stride puts the start at the far end, which the
+            // offset already accounts for, so only a positive one reaches on.
+            if (stride > 0) {
+                reach += (n-1) * (size_t)stride;
+            }
+        } else {
+            size_t *idx = CUMO_SDX_GET_INDEX(nv->stridx[i]);
+            VALUE buf = rb_str_tmp_new((long)(sizeof(size_t)*n));
+            size_t *host = (size_t*)RSTRING_PTR(buf);
+            size_t k, max = 0;
+
+            cumo_na_index_wait_fill(nv);
+            cumo_cuda_runtime_check_status(
+                cudaMemcpy(host, idx, sizeof(size_t)*n, cudaMemcpyDeviceToHost));
+            for (k=0; k<n; k++) {
+                if (host[k] > max) {
+                    max = host[k];
+                }
+            }
+            RB_GC_GUARD(buf);
+            reach += max;
+        }
+    }
+    nv->reach_end = reach + unit;
+    return nv->reach_end;
+}
+
+char *
 cumo_na_get_pointer_for_rw(VALUE self, int flag)
 {
     char *ptr;
     VALUE obj;
     cumo_narray_t *na;
+    size_t reach_end;
+    int is_bit;
 
     if ((flag & WRITE) && OBJ_FROZEN(self)) {
         rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
@@ -785,9 +849,27 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
         if (flag & WRITE) {
             cumo_na_pointer_copy_on_write(self);
         }
+        // Only a base that has been made smaller can leave a view reaching
+        // past it, and measuring a view costs a pass over its index lists, so
+        // nothing is measured until that has happened. Measured here because
+        // reading the base below replaces na.
+        if (CUMO_NA_FL1_TEST(obj, CUMO_NA_FL1_SHRUNK)) {
+            is_bit = RTEST(rb_obj_is_kind_of(self, cumo_cBit));
+            reach_end = cumo_na_view_reach_end(
+                (cumo_narray_view_t*)na,
+                is_bit ? 1 : NUM2SIZET(rb_const_get(rb_obj_class(self), cumo_id_element_byte_size)));
+        } else {
+            is_bit = 0;
+            reach_end = 0;
+        }
         CumoGetNArray(obj,na);
         switch(CUMO_NA_TYPE(na)) {
         case CUMO_NARRAY_DATA_T:
+            if (reach_end > (is_bit ? CUMO_NA_SIZE(na) : cumo_na_data_byte_size(obj))) {
+                rb_raise(rb_eRuntimeError,
+                         "this view was made when its base was larger and no "
+                         "longer fits in it");
+            }
             ptr = CUMO_NA_DATA_PTR(na);
             if (flag & (READ|WRITE)) {
                 if (CUMO_NA_SIZE(na) > 0 && ptr == NULL) {
