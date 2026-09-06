@@ -357,8 +357,10 @@ if is_int && !is_object
   def_method "bincount"
 end
 
-cum "cumsum", "add"
-cum "cumprod", "mul"
+unless is_half
+  cum "cumsum", "add"
+  cum "cumprod", "mul"
+end
 
 # dot
 accum_binary "mulsum"

@@ -102,7 +102,11 @@ static inline float cumo_half_floored_mod(float x, float y)
 #define m_log10(x)   cumo_float2half(log10f(cumo_half2float(x)))
 #define m_exp(x)     cumo_float2half(expf(cumo_half2float(x)))
 #define m_exp2(x)    cumo_float2half(exp2f(cumo_half2float(x)))
+#ifdef HAVE_EXP10
+#define m_exp10(x)   cumo_float2half(exp10f(cumo_half2float(x)))
+#else
 #define m_exp10(x)   cumo_float2half(powf(10.0f,cumo_half2float(x)))
+#endif
 #define m_expm1(x)   cumo_float2half(expm1f(cumo_half2float(x)))
 #define m_log1p(x)   cumo_float2half(log1pf(cumo_half2float(x)))
 
@@ -124,7 +128,7 @@ static inline float cumo_half_floored_mod(float x, float y)
 
 #define m_erf(x)     cumo_float2half(erff(cumo_half2float(x)))
 #define m_erfc(x)    cumo_float2half(erfcf(cumo_half2float(x)))
-#define m_ldexp(x,y) cumo_float2half(ldexpf(cumo_half2float(x),(int)cumo_half2float(y)))
+#define m_ldexp(x,y) cumo_float2half(cumo_half_ldexp(cumo_half2float(x),cumo_half2float(y)))
 #define m_frexp(x,exp) cumo_float2half(frexpf(cumo_half2float(x),exp))
 
 
@@ -151,6 +155,14 @@ static inline float cumo_half_pow_int(float x, int p)
 {
     if (p < 0) return 1.0f / cumo_half_pow_positive_int(x, -(unsigned int)p);
     return cumo_half_pow_positive_int(x, (unsigned int)p);
+}
+
+static inline float cumo_half_ldexp(float x, float y)
+{
+    if (!(y == y)) return y;
+    if (y > 64.0f) y = 64.0f;
+    if (y < -64.0f) y = -64.0f;
+    return ldexpf(x, (int)y);
 }
 
 static inline float cumo_half_sinc(float x)

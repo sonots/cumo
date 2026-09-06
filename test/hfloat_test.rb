@@ -273,6 +273,7 @@ class HFloatTest < Test::Unit::TestCase
   test "the methods a later step brings are not claimed yet" do
     a = dtype[1.0, 2.0]
     assert_raise(NoMethodError) { a.sort }
+    assert_raise(NoMethodError) { a.cumsum }
     assert_raise(NoMethodError) { dtype.new(2).rand }
   end
 
@@ -293,12 +294,8 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal [2.0, 4.0], dtype.new(2, 2).seq.sum(axis: 0).to_a
   end
 
-  # Accumulating in half would stop at 2048, where adding one leaves the value
-  # where it was.
   test "a sum longer than half can count is accumulated wider" do
-    [4096, 40_000].each do |n|
-      assert_equal n.to_f, dtype.new(n).fill(1.0).sum.to_a.first, n.to_s
-    end
+    assert_equal 40_000.0, dtype.new(40_000).fill(1.0).sum.to_a.first
     assert_equal 20_000.0, dtype.new(40_000).fill(0.5).sum.to_a.first
     a = dtype.new(2, 40_000).fill(1.0)
     assert_equal [40_000.0, 40_000.0], a.sum(axis: 1).to_a
@@ -338,11 +335,6 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal 107.0, a.ptp.to_a.first
   end
 
-  test "cumsum and cumprod" do
-    assert_equal [1.0, 3.0, 6.0, 10.0], dtype[1, 2, 3, 4].cumsum.to_a
-    assert_equal [1.0, 2.0, 6.0, 24.0], dtype[1, 2, 3, 4].cumprod.to_a
-  end
-
   test "mulsum accumulates wider than half" do
     n = 40_000
     assert_equal n.to_f, dtype.new(n).fill(1.0).mulsum(dtype.new(n).fill(1.0)).to_a.first
@@ -364,9 +356,14 @@ class HFloatTest < Test::Unit::TestCase
   end
 
   test "a math function rounds its answer to half" do
-    a = Cumo::NMath.sqrt(dtype[2.0])
-    assert_equal dtype, a.class
-    assert_equal Cumo::SFloat.cast(Cumo::SFloat::Math.sqrt(Cumo::SFloat[2.0])).to_a.first.to_f.then { |v| dtype[v].to_a.first }, a.to_a.first
+    assert_equal 1.4140625, Cumo::NMath.sqrt(dtype[2.0]).to_a.first
+    assert_equal 1.0, Cumo::NMath.sinc(dtype[0.0]).to_a.first
+  end
+
+  test "prod keeps half's range, as the elementwise multiply does" do
+    assert_equal Float::INFINITY, dtype[300.0, 300.0, 0.0001].prod.to_a.first
+    assert_equal Float::INFINITY, (dtype[300.0] * dtype[300.0]).to_a.first
+    assert_equal 8.0, dtype[1.0, 2.0, 4.0].prod.to_a.first
   end
 
   test "logseq" do

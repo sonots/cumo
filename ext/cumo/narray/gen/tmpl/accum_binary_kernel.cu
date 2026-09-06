@@ -20,11 +20,10 @@ struct <%="cumo_#{type_name}_#{name}#{nan}_impl"%> {
 <% if is_half %>
     __device__ float Identity(int64_t /*index*/) { return 0.0f; }
     __device__ float MapIn(dtype x, dtype y, int64_t /*index*/) {
-        float fx = cumo_half2float(x), fy = cumo_half2float(y);
 <% if nan == '_nan' %>
-        if (!(fx == fx) || !(fy == fy)) { return 0.0f; }
+        if (!not_nan(x) || !not_nan(y)) { return 0.0f; }
 <% end %>
-        return fx * fy;
+        return cumo_half2float(x) * cumo_half2float(y);
     }
     __device__ void Reduce(float next, float& accum) { accum = next + accum; }
     __device__ dtype MapOut(float accum) { return cumo_float2half(accum); }
