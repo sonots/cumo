@@ -5,21 +5,28 @@
 }  /* extern "C" { */
 #endif
 
+<% acc = is_half ? 'float' : dtype %>
+<% to_acc = is_half ? 'cumo_half2float' : '' %>
+<% from_acc = is_half ? 'cumo_float2half' : '' %>
+<% acc_zero = is_half ? '0.0f' : 'm_zero' %>
+<% acc_one = is_half ? '1.0f' : 'm_one' %>
+
+
 // Reduce also combines two accumulators, so next has to be the accumulator type:
-// the integer types widen to 64 bits and taking dtype there truncates every
-// partial the shared-memory tree merges.
+// the integer types widen to 64 bits and half to float, and taking dtype there
+// truncates every partial the shared-memory tree merges.
 struct cumo_<%=type_name%>_sum_impl {
-    __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_zero; }
-    __device__ <%=dtype%> MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum = m_add(accum, next); }
-    __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
+    __device__ <%=acc%> Identity(int64_t /*index*/) { return <%=acc_zero%>; }
+    __device__ <%=acc%> MapIn(dtype in, int64_t /*index*/) { return <%=to_acc%>(in); }
+    __device__ void Reduce(<%=acc%> next, <%=acc%>& accum) { accum = accum + next; }
+    __device__ <%=dtype%> MapOut(<%=acc%> accum) { return <%=from_acc%>(accum); }
 };
 
 struct cumo_<%=type_name%>_prod_impl {
-    __device__ <%=dtype%> Identity(int64_t /*index*/) { return m_one; }
-    __device__ <%=dtype%> MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(<%=dtype%> next, <%=dtype%>& accum) { accum = m_mul(accum, next); }
-    __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
+    __device__ <%=acc%> Identity(int64_t /*index*/) { return <%=acc_one%>; }
+    __device__ <%=acc%> MapIn(dtype in, int64_t /*index*/) { return <%=to_acc%>(in); }
+    __device__ void Reduce(<%=acc%> next, <%=acc%>& accum) { accum = accum * next; }
+    __device__ <%=dtype%> MapOut(<%=acc%> accum) { return <%=from_acc%>(accum); }
 };
 
 struct cumo_<%=type_name%>_min_impl {
@@ -156,17 +163,17 @@ struct cumo_<%=type_name%>_rms_impl {
 // the other way: numo answers NaN as soon as one element is NaN, and a NaN
 // absorbs in Reduce because it loses every comparison.
 struct cumo_<%=type_name%>_sum_nan_impl {
-    __device__ dtype Identity(int64_t /*index*/) { return m_zero; }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? in : m_zero; }
-    __device__ void Reduce(dtype next, dtype& accum) { accum = m_add(next, accum); }
-    __device__ dtype MapOut(dtype accum) { return accum; }
+    __device__ <%=acc%> Identity(int64_t /*index*/) { return <%=acc_zero%>; }
+    __device__ <%=acc%> MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? <%=to_acc%>(in) : <%=acc_zero%>; }
+    __device__ void Reduce(<%=acc%> next, <%=acc%>& accum) { accum = next + accum; }
+    __device__ dtype MapOut(<%=acc%> accum) { return <%=from_acc%>(accum); }
 };
 
 struct cumo_<%=type_name%>_prod_nan_impl {
-    __device__ dtype Identity(int64_t /*index*/) { return m_one; }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? in : m_one; }
-    __device__ void Reduce(dtype next, dtype& accum) { accum = m_mul(next, accum); }
-    __device__ dtype MapOut(dtype accum) { return accum; }
+    __device__ <%=acc%> Identity(int64_t /*index*/) { return <%=acc_one%>; }
+    __device__ <%=acc%> MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? <%=to_acc%>(in) : <%=acc_one%>; }
+    __device__ void Reduce(<%=acc%> next, <%=acc%>& accum) { accum = next * accum; }
+    __device__ dtype MapOut(<%=acc%> accum) { return <%=from_acc%>(accum); }
 };
 
 struct cumo_<%=type_name%>_min_nan_impl {

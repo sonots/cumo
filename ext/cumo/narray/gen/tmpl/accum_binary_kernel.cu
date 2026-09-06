@@ -14,8 +14,21 @@
 
 // The product is never an array of its own: MapIn takes one element of each
 // operand, which is what a zip reduction hands it. The accumulator stays dtype
-// rather than widening, as the host loop it replaces did.
+// rather than widening, as the host loop it replaces did, except for half,
+// which cannot carry a sum of more than a couple of thousand terms.
 struct <%="cumo_#{type_name}_#{name}#{nan}_impl"%> {
+<% if is_half %>
+    __device__ float Identity(int64_t /*index*/) { return 0.0f; }
+    __device__ float MapIn(dtype x, dtype y, int64_t /*index*/) {
+        float fx = cumo_half2float(x), fy = cumo_half2float(y);
+<% if nan == '_nan' %>
+        if (!(fx == fx) || !(fy == fy)) { return 0.0f; }
+<% end %>
+        return fx * fy;
+    }
+    __device__ void Reduce(float next, float& accum) { accum = next + accum; }
+    __device__ dtype MapOut(float accum) { return cumo_float2half(accum); }
+<% else %>
     __device__ dtype Identity(int64_t /*index*/) { return m_zero; }
     __device__ dtype MapIn(dtype x, dtype y, int64_t /*index*/) {
         dtype z = m_zero;
@@ -24,6 +37,7 @@ struct <%="cumo_#{type_name}_#{name}#{nan}_impl"%> {
     }
     __device__ void Reduce(dtype next, dtype& accum) { accum = m_add(next, accum); }
     __device__ dtype MapOut(dtype accum) { return accum; }
+<% end %>
 };
 //<% end %>
 

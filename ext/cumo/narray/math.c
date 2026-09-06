@@ -4,6 +4,7 @@
 VALUE cumo_mNMath;
 extern VALUE cumo_mDFloatMath, cumo_mDComplexMath;
 extern VALUE cumo_mSFloatMath, cumo_mSComplexMath;
+extern VALUE cumo_mHFloatMath;
 static ID cumo_id_send;
 static ID cumo_id_UPCAST;
 static ID cumo_id_DISPATCH;
@@ -125,7 +126,7 @@ Init_cumo_na_math()
     rb_hash_aset(hCast, cumo_cDFloat,   cumo_mDFloatMath);
     rb_hash_aset(hCast, cumo_cDComplex, cumo_mDComplexMath);
     rb_hash_aset(hCast, cumo_cSFloat,   cumo_mSFloatMath);
-    rb_hash_aset(hCast, cumo_cHFloat,   cumo_mSFloatMath);
+    rb_hash_aset(hCast, cumo_cHFloat,   cumo_mHFloatMath);
     rb_hash_aset(hCast, cumo_cSComplex, cumo_mSComplexMath);
 #ifdef RUBY_INTEGER_UNIFICATION
     rb_hash_aset(hCast, rb_cInteger, rb_mMath);

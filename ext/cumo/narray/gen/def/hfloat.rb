@@ -8,7 +8,7 @@ set class_alias:         "Float16"
 set class_var:           "cT"
 set ctype:               "cumo_half"
 
-set has_math:            false
+set has_math:            true
 set is_bit:              false
 set is_int:              false
 set is_unsigned:         false

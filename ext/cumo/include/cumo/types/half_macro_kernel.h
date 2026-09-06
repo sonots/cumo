@@ -79,6 +79,37 @@ __host__ __device__ static inline float cumo_half_floored_mod(float x, float y)
 #define m_sprintf(s,x) sprintf(s,"%g",cumo_half2float(x))
 
 #define m_sqrt(x)    cumo_float2half(sqrtf(cumo_half2float(x)))
+#define m_cbrt(x)    cumo_float2half(cbrtf(cumo_half2float(x)))
+#define m_log(x)     cumo_float2half(logf(cumo_half2float(x)))
+#define m_log2(x)    cumo_float2half(log2f(cumo_half2float(x)))
+#define m_log10(x)   cumo_float2half(log10f(cumo_half2float(x)))
+#define m_exp(x)     cumo_float2half(expf(cumo_half2float(x)))
+#define m_exp2(x)    cumo_float2half(exp2f(cumo_half2float(x)))
+#define m_exp10(x)   cumo_float2half(powf(10.0f,cumo_half2float(x)))
+#define m_expm1(x)   cumo_float2half(expm1f(cumo_half2float(x)))
+#define m_log1p(x)   cumo_float2half(log1pf(cumo_half2float(x)))
+
+#define m_sin(x)     cumo_float2half(sinf(cumo_half2float(x)))
+#define m_cos(x)     cumo_float2half(cosf(cumo_half2float(x)))
+#define m_tan(x)     cumo_float2half(tanf(cumo_half2float(x)))
+#define m_asin(x)    cumo_float2half(asinf(cumo_half2float(x)))
+#define m_acos(x)    cumo_float2half(acosf(cumo_half2float(x)))
+#define m_atan(x)    cumo_float2half(atanf(cumo_half2float(x)))
+#define m_sinh(x)    cumo_float2half(sinhf(cumo_half2float(x)))
+#define m_cosh(x)    cumo_float2half(coshf(cumo_half2float(x)))
+#define m_tanh(x)    cumo_float2half(tanhf(cumo_half2float(x)))
+#define m_asinh(x)   cumo_float2half(asinhf(cumo_half2float(x)))
+#define m_acosh(x)   cumo_float2half(acoshf(cumo_half2float(x)))
+#define m_atanh(x)   cumo_float2half(atanhf(cumo_half2float(x)))
+#define m_atan2(x,y) cumo_float2half(atan2f(cumo_half2float(x),cumo_half2float(y)))
+#define m_hypot(x,y) cumo_float2half(hypotf(cumo_half2float(x),cumo_half2float(y)))
+#define m_sinc(x)    cumo_float2half(cumo_half_sinc(cumo_half2float(x)))
+
+#define m_erf(x)     cumo_float2half(erff(cumo_half2float(x)))
+#define m_erfc(x)    cumo_float2half(erfcf(cumo_half2float(x)))
+#define m_ldexp(x,y) cumo_float2half(ldexpf(cumo_half2float(x),(int)cumo_half2float(y)))
+#define m_frexp(x,exp) cumo_float2half(frexpf(cumo_half2float(x),exp))
+
 
 __host__ __device__ static inline float cumo_half_pow_positive_int(float x, unsigned int p)
 {
@@ -103,6 +134,11 @@ __host__ __device__ static inline float cumo_half_pow_int(float x, int p)
 {
     if (p < 0) return 1.0f / cumo_half_pow_positive_int(x, -(unsigned int)p);
     return cumo_half_pow_positive_int(x, (unsigned int)p);
+}
+
+__host__ __device__ static inline float cumo_half_sinc(float x)
+{
+    return sinf(x)/x;
 }
 
 __host__ __device__ static inline float cumo_half_sign(float x)

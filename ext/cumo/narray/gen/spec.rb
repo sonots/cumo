@@ -318,7 +318,7 @@ if is_int && !is_object
     accum "sum", "int64_t", "cumo_cInt64"
     accum "prod", "int64_t", "cumo_cInt64"
   end
-elsif !is_half
+else
   accum "sum", "dtype", "cT"
   accum "prod", "dtype", "cT"
 end
@@ -327,7 +327,7 @@ if is_double_precision
   accum "kahan_sum", "dtype", "cT"
 end
 
-if is_float && !is_half
+if is_float
   accum "mean", "dtype", "cT"
   accum "stddev", "rtype", "cRT"
   accum "var", "rtype", "cRT"
@@ -357,13 +357,11 @@ if is_int && !is_object
   def_method "bincount"
 end
 
-unless is_half
-  cum "cumsum", "add"
-  cum "cumprod", "mul"
-end
+cum "cumsum", "add"
+cum "cumprod", "mul"
 
 # dot
-accum_binary "mulsum" unless is_half
+accum_binary "mulsum"
 if (is_float || is_complex) && !is_object && !is_half
   def_method "gemm"
 end
