@@ -21,6 +21,11 @@ set is_double_precision: true
 set is_half:             false
 set need_align:          true
 
+set cudnn_dtype:         "CUDNN_DATA_DOUBLE"
+set cudnn_compute_dtype: "CUDNN_DATA_DOUBLE"
+set cudnn_scalar_t:      "dtype"
+set cudnn_param_class:   "cT"
+
 upcast_rb "Integer"
 upcast_rb "Float"
 upcast_rb "Complex", "DComplex"

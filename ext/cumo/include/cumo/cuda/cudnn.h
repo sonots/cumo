@@ -172,7 +172,7 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
         size_t ndim,
         int* int_stride,
         int* int_pad,
-        cudnnDataType_t cudnn_dtype);
+        cudnnDataType_t compute_dtype);
 
 cudnnStatus_t
 cumo_cuda_cudnn_CreatePoolingDescriptor(

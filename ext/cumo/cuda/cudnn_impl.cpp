@@ -158,7 +158,7 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
         size_t ndim,
         int* int_stride,
         int* int_pad,
-        cudnnDataType_t cudnn_dtype) {
+        cudnnDataType_t compute_dtype) {
     cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
     int int_dilation[CUMO_NA_MAX_DIMENSION];
     for (size_t idim = 0; idim < ndim; ++idim) {
@@ -178,7 +178,7 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
                 int_dilation[0],
                 int_dilation[1],
                 CUDNN_CROSS_CORRELATION,
-                cudnn_dtype);
+                compute_dtype);
     } else {
         status = cudnnSetConvolutionNdDescriptor(
                 *desc,
@@ -187,7 +187,7 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
                 int_stride,
                 int_dilation,
                 CUDNN_CROSS_CORRELATION,
-                cudnn_dtype);
+                compute_dtype);
     }
 
     return status;

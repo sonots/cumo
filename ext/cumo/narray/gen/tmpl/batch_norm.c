@@ -1,17 +1,5 @@
 #ifdef CUDNN_FOUND
 
-<%
-  cudnn_dtype =
-    case type_name
-    when 'sfloat'
-      'CUDNN_DATA_FLOAT'
-    when 'dfloat'
-      'CUDNN_DATA_DOUBLE'
-    else
-      # CUDNN_DATA_HALF
-      raise 'not supported'
-    end
-%>
 
 // y = x.batch_norm(gamma, beta, running_mean:, running_var:, eps:, decay:, axis:, mean:, inv_std:)
 static VALUE
@@ -20,8 +8,8 @@ static VALUE
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
     cudnnStatus_t status = 0;
     cudnnHandle_t handle = 0;
-    dtype coef_one = 1;
-    dtype coef_zero = 0;
+    <%=cudnn_scalar_t%> coef_one = 1;
+    <%=cudnn_scalar_t%> coef_zero = 0;
 
     VALUE x=self, gamma, beta, running_mean, running_var, eps, decay, axis, mean, inv_std, y;
     VALUE kw_hash = Qnil;
@@ -126,12 +114,12 @@ static VALUE
     }
 
     CUMO_CHECK_NARRAY_TYPE(x, cT);
-    CUMO_CHECK_NARRAY_TYPE(gamma, cT);
-    CUMO_CHECK_NARRAY_TYPE(beta, cT);
-    if (running_mean != Qnil) CUMO_CHECK_NARRAY_TYPE(running_mean, cT);
-    if (running_var != Qnil) CUMO_CHECK_NARRAY_TYPE(running_var, cT);
-    if (mean != Qnil) CUMO_CHECK_NARRAY_TYPE(mean, cT);
-    if (inv_std != Qnil) CUMO_CHECK_NARRAY_TYPE(inv_std, cT);
+    CUMO_CHECK_NARRAY_TYPE(gamma, <%=cudnn_param_class%>);
+    CUMO_CHECK_NARRAY_TYPE(beta, <%=cudnn_param_class%>);
+    if (running_mean != Qnil) CUMO_CHECK_NARRAY_TYPE(running_mean, <%=cudnn_param_class%>);
+    if (running_var != Qnil) CUMO_CHECK_NARRAY_TYPE(running_var, <%=cudnn_param_class%>);
+    if (mean != Qnil) CUMO_CHECK_NARRAY_TYPE(mean, <%=cudnn_param_class%>);
+    if (inv_std != Qnil) CUMO_CHECK_NARRAY_TYPE(inv_std, <%=cudnn_param_class%>);
 
     x_cont = cumo_na_as_contiguous_array(x);
     gamma_cont = cumo_na_as_contiguous_array(gamma);
@@ -166,9 +154,9 @@ static VALUE
     mode = cumo_cuda_cudnn_GetBatchNormMode(axis_ndim, int_axis);
     status = cumo_cuda_cudnn_CreateBNTensorDescriptor(&bn_desc, x_desc, mode);
     if (status != CUDNN_STATUS_SUCCESS) goto BATCH_NORM_ERROR;
-    // The derived descriptor carries x's own type -- cuDNN widens only for
-    // half, which these templates are never generated for -- and the checks
-    // above hold every parameter to x's class, so none of them needs a cast.
+    // cuDNN derives the parameter descriptor as float for a half x and as x's
+    // own type otherwise, and the checks above hold every parameter to exactly
+    // that class, so none of them needs a cast.
 
     handle = cumo_cuda_cudnn_handle();
 
