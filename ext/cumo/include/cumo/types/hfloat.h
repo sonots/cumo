@@ -7,6 +7,8 @@ typedef cumo_half rtype;
 #define mTM cumo_mHFloatMath
 
 #include "half_macro.h"
+#include "cublas_v2.h"
+#include "cumo/cuda/cublas.h"
 
 #define m_extract(x) rb_float_new(cumo_half2float(*(cumo_half*)x))
 #define m_nearly_eq(x,y) (fabsf(cumo_half2float(x)-cumo_half2float(y))<=(fabsf(cumo_half2float(x))+fabsf(cumo_half2float(y)))*CUMO_HALF_EPSILON*2)

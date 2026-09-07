@@ -1193,16 +1193,25 @@ module Cumo
 
     @@warn_slow_dot = false
 
+    # The dtypes whose dot reaches cuBLAS through gemm. Every other dtype falls
+    # to mulsum, which answers within an ulp but is orders of magnitude slower.
+    GEMM_TYPES = [HFloat, SFloat, DFloat, SComplex, DComplex].freeze
+    private_constant :GEMM_TYPES
+
     # Dot product of two arrays.
     # @param b [Cumo::NArray]
     # @return [Cumo::NArray]  return dot product
 
     def dot(b)
       t = self.class::UPCAST[b.class]
+      # A type's UPCAST table only names the classes initialised before it, so
+      # half of every pair is missing from one side. cumo_na_upcast reads both
+      # tables; do the same here, or the pair silently takes the slow route.
+      t ||= b.class::UPCAST[self.class] if b.is_a?(NArray)
       if self.ndim == 0 and b.ndim == 0
         return self * b
       end
-      if [SFloat, DFloat, SComplex, DComplex].include?(t)
+      if GEMM_TYPES.include?(t)
         a = t.cast(self)
         b = t.asarray(t.cast(b))
         case a.ndim
@@ -1241,7 +1250,7 @@ module Cumo
               if am > nx && an > nx && bm > nx && bn > nx &&
                   size > ns && b.size > ns
                 @@warn_slow_dot = true
-                warn "\nwarning: matrix dot for #{t} is slow. Consider SFloat, DFloat, SComplex, or DComplex to use cuBLAS.\n\n"
+                warn "\nwarning: matrix dot for #{t} is slow. Consider SFloat, DFloat, SComplex, or DComplex to use cuBLAS, or HFloat where half precision is enough.\n\n"
               end
             end
             self[false, :new].mulsum(b[false, :new, true, true], axis:-2)
