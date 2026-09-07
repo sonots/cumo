@@ -21,6 +21,12 @@ set is_double_precision: false
 set is_half:             true
 set need_align:          true
 
+set cudnn_dtype:         "CUDNN_DATA_HALF"
+set cudnn_compute_dtype: "CUDNN_DATA_FLOAT"
+set cudnn_scalar_t:      "float"
+set cudnn_param_class:   "cumo_cSFloat"
+set cudnn_math_type:     "CUDNN_TENSOR_OP_MATH"
+
 upcast_rb "Integer"
 upcast_rb "Float"
 upcast_rb "Complex", "SComplex"

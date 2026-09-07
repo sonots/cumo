@@ -21,7 +21,14 @@ extern VALUE cumo_cuda_eCUDNNError;
 
 extern VALUE cumo_na_eShapeError;
 
-#define CUMO_CUDA_CUDNN_DEFAULT_MAX_WORKSPACE_SIZE 8 * 1024 * 1024
+#define CUMO_CUDA_CUDNN_DEFAULT_MAX_WORKSPACE_SIZE (8 * 1024 * 1024)
+
+// How much scratch cuDNN may use to pick a convolution algorithm. The fastest
+// half algorithms are the ones that need the most, so the default keeps every
+// dtype on the algorithms it has always used and CUMO_CUDNN_MAX_WORKSPACE_SIZE
+// raises the ceiling for whoever wants them.
+size_t
+cumo_cuda_cudnn_max_workspace_size();
 
 // An output array given by the caller is written through a descriptor built
 // from another operand, or as if it were contiguous, so cuDNN never learns how
@@ -73,6 +80,17 @@ cumo_cuda_cudnn_check_input(VALUE in, VALUE type, size_t ndim, size_t *shape)
     CUMO_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
     for (size_t idim = 0; idim < ndim; ++idim) {
         CUMO_CHECK_SIZE_EQ(na->shape[idim], shape[idim]);
+    }
+}
+
+// cuDNN derives the batch norm parameter descriptor from x, and widens it to
+// float for a half x, so the parameters do not always take x's own class.
+static inline void
+cumo_cuda_cudnn_check_param_type(VALUE param, VALUE type, const char* name)
+{
+    if (rb_obj_class(param) != type) {
+        rb_raise(rb_eTypeError, "%s must be %s, not %s",
+                 name, rb_class2name(type), rb_obj_classname(param));
     }
 }
 
@@ -172,7 +190,8 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
         size_t ndim,
         int* int_stride,
         int* int_pad,
-        cudnnDataType_t compute_dtype);
+        cudnnDataType_t compute_dtype,
+        cudnnMathType_t math_type);
 
 cudnnStatus_t
 cumo_cuda_cudnn_CreatePoolingDescriptor(

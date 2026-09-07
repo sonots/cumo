@@ -73,10 +73,10 @@ static VALUE
     }
 
     CUMO_CHECK_NARRAY_TYPE(x, cT);
-    CUMO_CHECK_NARRAY_TYPE(gamma, <%=cudnn_param_class%>);
-    CUMO_CHECK_NARRAY_TYPE(beta, <%=cudnn_param_class%>);
-    CUMO_CHECK_NARRAY_TYPE(mean, <%=cudnn_param_class%>);
-    CUMO_CHECK_NARRAY_TYPE(var, <%=cudnn_param_class%>);
+    cumo_cuda_cudnn_check_param_type(gamma, <%=cudnn_param_class%>, "gamma");
+    cumo_cuda_cudnn_check_param_type(beta, <%=cudnn_param_class%>, "beta");
+    cumo_cuda_cudnn_check_param_type(mean, <%=cudnn_param_class%>, "mean");
+    cumo_cuda_cudnn_check_param_type(var, <%=cudnn_param_class%>, "var");
 
     x_cont = cumo_na_as_contiguous_array(x);
     gamma_cont = cumo_na_as_contiguous_array(gamma);

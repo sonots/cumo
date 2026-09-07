@@ -59,7 +59,7 @@ if (is_float || is_complex) && !is_object
   def_id "gemm"
 end
 # cudnn
-if is_float && !is_complex && !is_object && !is_half
+if is_float && !is_complex && !is_object
   def_id "conv"
   def_id "conv_transpose"
   def_id "conv_grad_w"
@@ -367,7 +367,7 @@ if (is_float || is_complex) && !is_object
 end
 
 # cudnn
-if is_float && !is_complex && !is_object && !is_half
+if is_float && !is_complex && !is_object
   def_method "conv"
   def_method "conv_transpose" # conv_backward_data
   def_method "conv_grad_w" # conv_backward_filter

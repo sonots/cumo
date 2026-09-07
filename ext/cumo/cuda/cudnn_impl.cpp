@@ -158,7 +158,8 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
         size_t ndim,
         int* int_stride,
         int* int_pad,
-        cudnnDataType_t compute_dtype) {
+        cudnnDataType_t compute_dtype,
+        cudnnMathType_t math_type) {
     cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
     int int_dilation[CUMO_NA_MAX_DIMENSION];
     for (size_t idim = 0; idim < ndim; ++idim) {
@@ -189,8 +190,12 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
                 CUDNN_CROSS_CORRELATION,
                 compute_dtype);
     }
+    if (status != CUDNN_STATUS_SUCCESS) return status;
 
-    return status;
+    // Tensor cores are not reached under CUDNN_DEFAULT_MATH, and asking for
+    // them where they do not apply is not an error, so every dtype names what
+    // it wants.
+    return cudnnSetConvolutionMathType(*desc, math_type);
 }
 
 cudnnStatus_t
@@ -304,9 +309,49 @@ struct AlgoCacheKeyHash {
     }
 };
 
-using FwdAlgoCacheMap = std::unordered_map<AlgoCacheKey, std::pair<cudnnConvolutionFwdAlgo_t, size_t>, AlgoCacheKeyHash>;
-using BwdDataAlgoCacheMap = std::unordered_map<AlgoCacheKey, std::pair<cudnnConvolutionBwdDataAlgo_t, size_t>, AlgoCacheKeyHash>;
-using BwdFilterAlgoCacheMap = std::unordered_map<AlgoCacheKey, std::pair<cudnnConvolutionBwdFilterAlgo_t, size_t>, AlgoCacheKeyHash>;
+// The math type belongs with the algorithm: the descriptor's own setting is
+// only a permission, and cuDNN reports which one the chosen algorithm actually
+// used. Handing that algorithm to the convolution under a different math type
+// is rejected, or answers something else.
+// A template cannot be declared with C linkage, and this file's exports are
+// wrapped in extern "C".
+extern "C++" {
+template <typename Algo>
+struct AlgoCacheEntry {
+    Algo algo;
+    size_t memory;
+    cudnnMathType_t math_type;
+};
+}
+
+using FwdAlgoCacheMap = std::unordered_map<AlgoCacheKey, AlgoCacheEntry<cudnnConvolutionFwdAlgo_t>, AlgoCacheKeyHash>;
+using BwdDataAlgoCacheMap = std::unordered_map<AlgoCacheKey, AlgoCacheEntry<cudnnConvolutionBwdDataAlgo_t>, AlgoCacheKeyHash>;
+using BwdFilterAlgoCacheMap = std::unordered_map<AlgoCacheKey, AlgoCacheEntry<cudnnConvolutionBwdFilterAlgo_t>, AlgoCacheKeyHash>;
+
+// Every search builds the same key. Leaving each of the three to do it by hand
+// is how the device id came to be set in one of them and not the others.
+static AlgoCacheKey
+MakeAlgoCacheKey(
+        cumo_narray_t* nx, cumo_narray_t* nw, cumo_narray_t* ny,
+        int* int_stride, int* int_pad, size_t ndim,
+        cudnnDataType_t cudnn_dtype, size_t max_workspace_size)
+{
+    auto key = AlgoCacheKey{};
+    cumo_cuda_runtime_check_status(cudaGetDevice(&(key.device_id)));
+    key.ndim = ndim;
+    for (size_t idim = 0; idim < ndim + 2; ++idim) {
+        key.x_shape[idim] = nx->shape[idim];
+        key.w_shape[idim] = nw->shape[idim];
+        key.y_shape[idim] = ny->shape[idim];
+    }
+    for (size_t idim = 0; idim < ndim; ++idim) {
+        key.pad[idim] = int_pad[idim];
+        key.stride[idim] = int_stride[idim];
+    }
+    key.dtype = cudnn_dtype;
+    key.max_workspace_size = max_workspace_size;
+    return key;
+}
 
 static FwdAlgoCacheMap fwd_algo_cache_map_{};
 static BwdDataAlgoCacheMap bwd_data_algo_cache_map_{};
@@ -335,28 +380,19 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
     CumoGetNArray(w, nw);
     CumoGetNArray(y, ny);
 
-    auto key = AlgoCacheKey{};
-    cumo_cuda_runtime_check_status(cudaGetDevice(&(key.device_id)));
-    key.ndim = ndim;
-    for (size_t idim = 0; idim < ndim + 2; ++idim) {
-        key.x_shape[idim] = nx->shape[idim];
-        key.w_shape[idim] = nw->shape[idim];
-        key.y_shape[idim] = ny->shape[idim];
-    }
-    for (size_t idim = 0; idim < ndim; ++idim) {
-        key.pad[idim]= int_pad[idim];
-        key.stride[idim]= int_stride[idim];
-    }
-    key.dtype = cudnn_dtype;
-    key.max_workspace_size = max_workspace_size;
+    auto key = MakeAlgoCacheKey(nx, nw, ny, int_stride, int_pad, ndim,
+                                cudnn_dtype, max_workspace_size);
 
     auto& algo_cache_map = fwd_algo_cache_map_;
     // TODO: thread-safe
     auto it = algo_cache_map.find(key);
     if (it != algo_cache_map.end()) {
-        auto pair = it->second;
-        perf_result->algo = pair.first;
-        perf_result->memory = pair.second;
+        auto entry = it->second;
+        // clear the fields the search would have filled but the cache drops
+        *perf_result = {};
+        perf_result->algo = entry.algo;
+        perf_result->memory = entry.memory;
+        perf_result->mathType = entry.math_type;
         return CUDNN_STATUS_SUCCESS;
     }
 
@@ -382,10 +418,13 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
                 max_workspace_size);
     cumo_cuda_runtime_free(workspace);
     if (status != CUDNN_STATUS_SUCCESS) return status;
-    assert(returned_algo_count == 1);
+    // A search that answers success with nothing to report would leave
+    // perf_result untouched, and its algo and math type are used below.
+    if (returned_algo_count < 1) return CUDNN_STATUS_NOT_SUPPORTED;
+    if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
     // TODO: thread-safe
-    algo_cache_map[key] = {perf_result->algo, perf_result->memory};
+    algo_cache_map[key] = {perf_result->algo, perf_result->memory, perf_result->mathType};
     return status;
 }
 
@@ -412,27 +451,19 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
     CumoGetNArray(w, nw);
     CumoGetNArray(y, ny);
 
-    auto key = AlgoCacheKey{};
-    key.ndim = ndim;
-    for (size_t idim = 0; idim < ndim + 2; ++idim) {
-        key.x_shape[idim] = nx->shape[idim];
-        key.w_shape[idim] = nw->shape[idim];
-        key.y_shape[idim] = ny->shape[idim];
-    }
-    for (size_t idim = 0; idim < ndim; ++idim) {
-        key.pad[idim]= int_pad[idim];
-        key.stride[idim]= int_stride[idim];
-    }
-    key.dtype = cudnn_dtype;
-    key.max_workspace_size = max_workspace_size;
+    auto key = MakeAlgoCacheKey(nx, nw, ny, int_stride, int_pad, ndim,
+                                cudnn_dtype, max_workspace_size);
 
     auto& algo_cache_map = bwd_data_algo_cache_map_;
     // TODO: thread-safe
     auto it = algo_cache_map.find(key);
     if (it != algo_cache_map.end()) {
-        auto pair = it->second;
-        perf_result->algo = pair.first;
-        perf_result->memory = pair.second;
+        auto entry = it->second;
+        // clear the fields the search would have filled but the cache drops
+        *perf_result = {};
+        perf_result->algo = entry.algo;
+        perf_result->memory = entry.memory;
+        perf_result->mathType = entry.math_type;
         return CUDNN_STATUS_SUCCESS;
     }
 
@@ -458,10 +489,13 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
                 max_workspace_size);
     cumo_cuda_runtime_free(workspace);
     if (status != CUDNN_STATUS_SUCCESS) return status;
-    assert(returned_algo_count == 1);
+    // A search that answers success with nothing to report would leave
+    // perf_result untouched, and its algo and math type are used below.
+    if (returned_algo_count < 1) return CUDNN_STATUS_NOT_SUPPORTED;
+    if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
     // TODO: thread-safe
-    algo_cache_map[key] = {perf_result->algo, perf_result->memory};
+    algo_cache_map[key] = {perf_result->algo, perf_result->memory, perf_result->mathType};
     return status;
 }
 
@@ -488,27 +522,19 @@ cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
     CumoGetNArray(gy, ngy);
     CumoGetNArray(gw, ngw);
 
-    auto key = AlgoCacheKey{};
-    key.ndim = ndim;
-    for (size_t idim = 0; idim < ndim + 2; ++idim) {
-        key.x_shape[idim] = nx->shape[idim];
-        key.w_shape[idim] = ngw->shape[idim];
-        key.y_shape[idim] = ngy->shape[idim];
-    }
-    for (size_t idim = 0; idim < ndim; ++idim) {
-        key.pad[idim]= int_pad[idim];
-        key.stride[idim]= int_stride[idim];
-    }
-    key.dtype = cudnn_dtype;
-    key.max_workspace_size = max_workspace_size;
+    auto key = MakeAlgoCacheKey(nx, ngw, ngy, int_stride, int_pad, ndim,
+                                cudnn_dtype, max_workspace_size);
 
     auto& algo_cache_map = bwd_filter_algo_cache_map_;
     // TODO: thread-safe
     auto it = algo_cache_map.find(key);
     if (it != algo_cache_map.end()) {
-        auto pair = it->second;
-        perf_result->algo = pair.first;
-        perf_result->memory = pair.second;
+        auto entry = it->second;
+        // clear the fields the search would have filled but the cache drops
+        *perf_result = {};
+        perf_result->algo = entry.algo;
+        perf_result->memory = entry.memory;
+        perf_result->mathType = entry.math_type;
         return CUDNN_STATUS_SUCCESS;
     }
 
@@ -534,10 +560,13 @@ cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
                 max_workspace_size);
     cumo_cuda_runtime_free(workspace);
     if (status != CUDNN_STATUS_SUCCESS) return status;
-    assert(returned_algo_count == 1);
+    // A search that answers success with nothing to report would leave
+    // perf_result untouched, and its algo and math type are used below.
+    if (returned_algo_count < 1) return CUDNN_STATUS_NOT_SUPPORTED;
+    if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
     // TODO: thread-safe
-    algo_cache_map[key] = {perf_result->algo, perf_result->memory};
+    algo_cache_map[key] = {perf_result->algo, perf_result->memory, perf_result->mathType};
     return status;
 }
 

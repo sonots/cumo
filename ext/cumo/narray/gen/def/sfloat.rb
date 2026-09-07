@@ -25,6 +25,7 @@ set cudnn_dtype:         "CUDNN_DATA_FLOAT"
 set cudnn_compute_dtype: "CUDNN_DATA_FLOAT"
 set cudnn_scalar_t:      "dtype"
 set cudnn_param_class:   "cT"
+set cudnn_math_type:     "CUDNN_DEFAULT_MATH"
 
 upcast_rb "Integer"
 upcast_rb "Float"
