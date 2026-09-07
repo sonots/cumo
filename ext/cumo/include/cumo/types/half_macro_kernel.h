@@ -3,6 +3,7 @@
 
 #include "float_def_kernel.h"
 #include "half_def_kernel.h"
+#include <string.h>
 
 #define CUMO_HALF_EPSILON 9.765625e-04f
 
@@ -18,10 +19,23 @@
 #define m_from_uint64(x) cumo_double2half((double)(x))
 #define m_from_half(x)   (x)
 
-#define m_add(x,y) cumo_float2half(cumo_half2float(x)+cumo_half2float(y))
-#define m_sub(x,y) cumo_float2half(cumo_half2float(x)-cumo_half2float(y))
-#define m_mul(x,y) cumo_float2half(cumo_half2float(x)*cumo_half2float(y))
-#define m_div(x,y) cumo_float2half(cumo_half2float(x)/cumo_half2float(y))
+// Overloaded rather than substituted, so that a scan or a reduction can apply
+// the same rule to its own wider accumulator.
+__host__ __device__ static inline float cumo_half_add(float x, float y) { return x + y; }
+__host__ __device__ static inline float cumo_half_sub(float x, float y) { return x - y; }
+__host__ __device__ static inline float cumo_half_mul(float x, float y) { return x * y; }
+__host__ __device__ static inline float cumo_half_div(float x, float y) { return x / y; }
+__host__ __device__ static inline bool cumo_half_not_nan(float x) { return x == x; }
+__host__ __device__ static inline cumo_half cumo_half_add(cumo_half x, cumo_half y) { return cumo_float2half(cumo_half2float(x) + cumo_half2float(y)); }
+__host__ __device__ static inline cumo_half cumo_half_sub(cumo_half x, cumo_half y) { return cumo_float2half(cumo_half2float(x) - cumo_half2float(y)); }
+__host__ __device__ static inline cumo_half cumo_half_mul(cumo_half x, cumo_half y) { return cumo_float2half(cumo_half2float(x) * cumo_half2float(y)); }
+__host__ __device__ static inline cumo_half cumo_half_div(cumo_half x, cumo_half y) { return cumo_float2half(cumo_half2float(x) / cumo_half2float(y)); }
+__host__ __device__ static inline bool cumo_half_not_nan(cumo_half x) { return cumo_half2float(x) == cumo_half2float(x); }
+
+#define m_add(x,y) cumo_half_add(x,y)
+#define m_sub(x,y) cumo_half_sub(x,y)
+#define m_mul(x,y) cumo_half_mul(x,y)
+#define m_div(x,y) cumo_half_div(x,y)
 #define m_div_check(x,y) (cumo_half2float(y)==0)
 
 __host__ __device__ static inline float cumo_half_floored_mod(float x, float y)
@@ -72,7 +86,7 @@ __host__ __device__ static inline float cumo_half_floored_mod(float x, float y)
 #define m_isneginf(x) (isinf(cumo_half2float(x)) && signbit(cumo_half2float(x)))
 #define m_isfinite(x) isfinite(cumo_half2float(x))
 
-#define not_nan(x) (cumo_half2float(x)==cumo_half2float(x))
+#define not_nan(x) cumo_half_not_nan(x)
 
 #define m_mulsum_init m_zero
 
@@ -138,6 +152,22 @@ __host__ __device__ static inline float cumo_half_pow_int(float x, int p)
 {
     if (p < 0) return 1.0f / cumo_half_pow_positive_int(x, -(unsigned int)p);
     return cumo_half_pow_positive_int(x, (unsigned int)p);
+}
+
+// The bit-pattern intrinsics are device-only before CUDA 12, so the bits are
+// taken the way a host caller can take them too.
+__host__ __device__ static inline cumo_half cumo_half_step_down(cumo_half h)
+{
+    unsigned short b;
+    cumo_half r;
+    memcpy(&b, &h, sizeof(b));
+    if (b == 0x0000u) {
+        b = 0x8001u;
+    } else {
+        b = (unsigned short)((b & 0x8000u) ? (b + 1) : (b - 1));
+    }
+    memcpy(&r, &b, sizeof(b));
+    return r;
 }
 
 __host__ __device__ static inline float cumo_half_ldexp(float x, float y)

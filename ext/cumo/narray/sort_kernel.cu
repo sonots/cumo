@@ -1,6 +1,7 @@
 #include "cumo/narray_kernel.h"
 #include "cumo/indexer.h"
 #include "cumo/template_kernel.h"
+#include "cumo/types/half_def_kernel.h"
 
 #include <cub/cub.cuh>
 #include <thrust/iterator/counting_iterator.h>
@@ -33,22 +34,28 @@ inline auto row_ends(int64_t row_len) {
 // first, and numo puts every NaN last.
 template <typename Float> struct float_key;
 
+// The same construction at three widths: a NaN takes the largest key, a
+// negative value reverses, and a positive one has its sign bit set.
+template <typename U>
+__device__ static inline U order_key(U bits, U inf_bits) {
+    const U sign = (U)1 << (sizeof(U) * 8 - 1);
+    if ((U)(bits & (U)~sign) > inf_bits) return (U)~(U)0;
+    return (bits & sign) ? (U)~bits : (U)(bits | sign);
+}
+
 template <> struct float_key<float> {
     typedef uint32_t type;
-    __device__ static type of(float x) {
-        type u = __float_as_uint(x);
-        if ((u & 0x7fffffffu) > 0x7f800000u) return ~(type)0;
-        return (u & 0x80000000u) ? ~u : (u | 0x80000000u);
-    }
+    __device__ static type of(float x) { return order_key<type>(__float_as_uint(x), 0x7f800000u); }
+};
+
+template <> struct float_key<cumo_half> {
+    typedef uint16_t type;
+    __device__ static type of(cumo_half x) { return order_key<type>(__half_as_ushort(x), 0x7c00u); }
 };
 
 template <> struct float_key<double> {
     typedef uint64_t type;
-    __device__ static type of(double x) {
-        type u = (type)__double_as_longlong(x);
-        if ((u & 0x7fffffffffffffffull) > 0x7ff0000000000000ull) return ~(type)0;
-        return (u & 0x8000000000000000ull) ? ~u : (u | 0x8000000000000000ull);
-    }
+    __device__ static type of(double x) { return order_key<type>((type)__double_as_longlong(x), 0x7ff0000000000000ull); }
 };
 
 template <typename Float>
@@ -176,6 +183,16 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
 // The rows are already sorted, so the middle of each is the answer. Trailing
 // NaNs are dropped first, which is what the host loop this replaces does and
 // what numo 0.9 does; numo-narray-alt lost that in a rewrite.
+// A half carries no operator of its own below sm_53, and isnan does not take
+// one at all, so both go through the element type.
+template <typename T> __device__ static inline bool sorted_isnan(T x) { return isnan(x); }
+template <> __device__ inline bool sorted_isnan<cumo_half>(cumo_half x) { return isnan(cumo_half2float(x)); }
+
+template <typename T> __device__ static inline T sorted_midpoint(T a, T b) { return (a + b) / 2; }
+template <> __device__ inline cumo_half sorted_midpoint<cumo_half>(cumo_half a, cumo_half b) {
+    return cumo_float2half((cumo_half2float(a) + cumo_half2float(b)) / 2.0f);
+}
+
 template <typename T, bool IS_FLOAT>
 __global__ void median_kernel(const T* sorted, int64_t row_len, cumo_na_iarray_t out, cumo_na_indexer_t out_indexer) {
     for (uint64_t r = blockIdx.x * blockDim.x + threadIdx.x; r < out_indexer.total_size; r += blockDim.x * gridDim.x) {
@@ -183,12 +200,12 @@ __global__ void median_kernel(const T* sorted, int64_t row_len, cumo_na_iarray_t
         int64_t n = row_len;
         T v;
         if constexpr (IS_FLOAT) {
-            while (n > 0 && isnan(row[n - 1])) --n;
+            while (n > 0 && sorted_isnan(row[n - 1])) --n;
         }
         if (n == 0) {
             v = row[0];
         } else if (n % 2 == 0) {
-            v = (row[n / 2 - 1] + row[n / 2]) / 2;
+            v = sorted_midpoint(row[n / 2 - 1], row[n / 2]);
         } else {
             v = row[(n - 1) / 2];
         }
@@ -341,5 +358,6 @@ CUMO_DEF_SORT(uint8, u_int8_t, false)
 CUMO_DEF_SORT(uint16, u_int16_t, false)
 CUMO_DEF_SORT(uint32, u_int32_t, false)
 CUMO_DEF_SORT(uint64, u_int64_t, false)
+CUMO_DEF_SORT(hfloat, cumo_half, true)
 CUMO_DEF_SORT(sfloat, float, true)
 CUMO_DEF_SORT(dfloat, double, true)

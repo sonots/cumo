@@ -58,6 +58,11 @@ inline static dtype m_rand(uint32_t max, int shift)
 }
 <% end %>
 <%
+elsif is_half
+  m_rand = "m_rand(max)"
+  shift_def = ""
+  shift_set = ""
+  rand_type = "float"
 else
   m_rand = "m_rand(max)"
   shift_def = ""
@@ -157,7 +162,13 @@ static VALUE
 {
     rand_opt_t g;
     VALUE v1=Qnil, v2=Qnil;
+    <% if is_half %>
+    // The span is read in float: half cannot hold one wider than 65504, and
+    // subtracting the bounds in half would answer infinity for it.
+    float high;
+    <% else %>
     dtype high;
+    <% end %>
     cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
 
@@ -173,17 +184,24 @@ static VALUE
         if (v1==Qnil) {
             <% if is_complex %>
             g.max = high = c_new(1,1);
+            <% elsif is_half %>
+            g.max = high = 1.0f;
             <% else %>
             g.max = high = m_one;
             <% end %>
         } else {
-            g.max = high = m_num_to_data(v1);
+            g.max = high = <% if is_half %>(float)NUM2DBL(v1)<% else %>m_num_to_data(v1)<% end %>;
         }
     <% end %>
     } else {
         g.low = m_num_to_data(v1);
+        <% if is_half %>
+        high = (float)NUM2DBL(v2);
+        g.max = high - cumo_half2float(g.low);
+        <% else %>
         high = m_num_to_data(v2);
         g.max = m_sub(high,g.low);
+        <% end %>
     }
     <% if is_int && !is_object %>
     if (high <= g.low) {
