@@ -1,17 +1,5 @@
 #ifdef CUDNN_FOUND
 
-<%
-  cudnn_dtype =
-    case type_name
-    when 'sfloat'
-      'CUDNN_DATA_FLOAT'
-    when 'dfloat'
-      'CUDNN_DATA_DOUBLE'
-    else
-      # CUDNN_DATA_HALF
-      raise 'not supported'
-    end
-%>
 
 // VALUE is Ruby Array
 static void
@@ -47,8 +35,8 @@ static VALUE
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
     cudnnStatus_t status = 0;
     cudnnHandle_t handle = 0;
-    dtype alpha = 1;
-    dtype beta = 0;
+    <%=cudnn_scalar_t%> alpha = 1;
+    <%=cudnn_scalar_t%> beta = 0;
 
     VALUE x=self, w, b, stride, pad, out_size, y;
     VALUE kw_hash = Qnil;
@@ -140,7 +128,7 @@ static VALUE
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
     status = cumo_cuda_cudnn_CreateFilterDescriptor(&w_desc, w_cont, cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-    status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, cudnn_dtype);
+    status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, <%=cudnn_compute_dtype%>);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
 
     handle = cumo_cuda_cudnn_handle();

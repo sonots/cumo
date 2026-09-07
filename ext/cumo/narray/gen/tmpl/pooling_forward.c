@@ -1,17 +1,5 @@
 #ifdef CUDNN_FOUND
 
-<%
-  cudnn_dtype =
-    case type_name
-    when 'sfloat'
-      'CUDNN_DATA_FLOAT'
-    when 'dfloat'
-      'CUDNN_DATA_DOUBLE'
-    else
-      # CUDNN_DATA_HALF
-      raise 'not supported'
-    end
-%>
 
 // cover_all=true is not supported with CUDNN
 // x.pooling_forward(mode, kernel_size, stride: 1, pad: 0, y: nil)
@@ -25,8 +13,8 @@ static VALUE
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
     cudnnStatus_t status = 0;
     cudnnHandle_t handle = 0;
-    dtype alpha = 1;
-    dtype beta = 0;
+    <%=cudnn_scalar_t%> alpha = 1;
+    <%=cudnn_scalar_t%> beta = 0;
 
     VALUE x=self, mode, kernel_size, stride, pad, y;
     VALUE kw_hash = Qnil;

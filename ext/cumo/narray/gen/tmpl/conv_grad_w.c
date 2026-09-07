@@ -1,17 +1,5 @@
 #ifdef CUDNN_FOUND
 
-<%
-  cudnn_dtype =
-    case type_name
-    when 'sfloat'
-      'CUDNN_DATA_FLOAT'
-    when 'dfloat'
-      'CUDNN_DATA_DOUBLE'
-    else
-      # CUDNN_DATA_HALF
-      raise 'not supported'
-    end
-%>
 
 static void
 cumo_cuda_cudnn_get_sizet_ary(size_t *sizet_ary, VALUE ary, size_t ndim)
@@ -31,8 +19,8 @@ static VALUE
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
     cudnnStatus_t status = 0;
     cudnnHandle_t handle = 0;
-    dtype one = 1;
-    dtype zero = 0;
+    <%=cudnn_scalar_t%> one = 1;
+    <%=cudnn_scalar_t%> zero = 0;
 
     VALUE x=self, gy, w_shape, stride, pad, gw;
     VALUE kw_hash = Qnil;
@@ -124,7 +112,7 @@ static VALUE
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
     status = cumo_cuda_cudnn_CreateFilterDescriptor(&gw_desc, gw, cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
-    status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, cudnn_dtype);
+    status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, <%=cudnn_compute_dtype%>);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
 
     handle = cumo_cuda_cudnn_handle();

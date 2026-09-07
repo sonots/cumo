@@ -1,17 +1,5 @@
 #ifdef CUDNN_FOUND
 
-<%
-  cudnn_dtype =
-    case type_name
-    when 'sfloat'
-      'CUDNN_DATA_FLOAT'
-    when 'dfloat'
-      'CUDNN_DATA_DOUBLE'
-    else
-      # CUDNN_DATA_HALF
-      raise 'not supported'
-    end
-%>
 
 // y = x.fixed_batch_norm(gamma, beta, mean, var, eps:, axis:)
 static VALUE
@@ -20,8 +8,8 @@ static VALUE
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
     cudnnStatus_t status = 0;
     cudnnHandle_t handle = 0;
-    dtype coef_one = 1;
-    dtype coef_zero = 0;
+    <%=cudnn_scalar_t%> coef_one = 1;
+    <%=cudnn_scalar_t%> coef_zero = 0;
 
     VALUE x=self, gamma, beta, mean, var, eps, axis, y;
     VALUE kw_hash = Qnil;
@@ -85,10 +73,10 @@ static VALUE
     }
 
     CUMO_CHECK_NARRAY_TYPE(x, cT);
-    CUMO_CHECK_NARRAY_TYPE(gamma, cT);
-    CUMO_CHECK_NARRAY_TYPE(beta, cT);
-    CUMO_CHECK_NARRAY_TYPE(mean, cT);
-    CUMO_CHECK_NARRAY_TYPE(var, cT);
+    CUMO_CHECK_NARRAY_TYPE(gamma, <%=cudnn_param_class%>);
+    CUMO_CHECK_NARRAY_TYPE(beta, <%=cudnn_param_class%>);
+    CUMO_CHECK_NARRAY_TYPE(mean, <%=cudnn_param_class%>);
+    CUMO_CHECK_NARRAY_TYPE(var, <%=cudnn_param_class%>);
 
     x_cont = cumo_na_as_contiguous_array(x);
     gamma_cont = cumo_na_as_contiguous_array(gamma);
@@ -115,9 +103,9 @@ static VALUE
     mode = cumo_cuda_cudnn_GetBatchNormMode(axis_ndim, int_axis);
     status = cumo_cuda_cudnn_CreateBNTensorDescriptor(&bn_desc, x_desc, mode);
     if (status != CUDNN_STATUS_SUCCESS) goto FIXED_BATCH_NORM_ERROR;
-    // The derived descriptor carries x's own type -- cuDNN widens only for
-    // half, which these templates are never generated for -- and the checks
-    // above hold every parameter to x's class, so none of them needs a cast.
+    // cuDNN derives the parameter descriptor as float for a half x and as x's
+    // own type otherwise, and the checks above hold every parameter to exactly
+    // that class, so none of them needs a cast.
 
     handle = cumo_cuda_cudnn_handle();
 
