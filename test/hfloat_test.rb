@@ -271,7 +271,6 @@ class HFloatTest < Test::Unit::TestCase
   end
 
   test "the methods a later step brings are not claimed yet" do
-    assert_raise(NoMethodError) { dtype.new(2, 2).seq.gemm(dtype.new(2, 2).seq) }
     assert_raise(NoMethodError) { dtype.new(1, 1, 2, 2).seq.conv(dtype.new(1, 1, 2, 2).seq) }
   end
 
@@ -467,5 +466,195 @@ class HFloatTest < Test::Unit::TestCase
 
   test "logseq" do
     assert_equal [1.0, 2.0, 4.0, 8.0], dtype.new(4).logseq(0, 1, 2).to_a
+  end
+
+  # HFloat#seq stops counting exactly at 2048, so an operand built with it is
+  # mostly zeros. Count in Int32 and cast.
+  def self.seq_mod(klass, shape, modulo)
+    klass.cast(Cumo::Int32.new(*shape).seq % modulo)
+  end
+
+  def seq_mod(klass, shape, modulo)
+    self.class.seq_mod(klass, shape, modulo)
+  end
+
+  def sfloat_dot(a, b)
+    Cumo::SFloat.cast(a).dot(Cumo::SFloat.cast(b)).to_a
+  end
+
+  sub_test_case "#gemm" do
+    # every product and every partial sum stays a whole number no larger than
+    # 2048, which half holds exactly, so the answers compare exactly
+    test "answers what a float matrix answers, to the bit" do
+      a = seq_mod(dtype, [64, 128], 4)
+      b = seq_mod(dtype, [128, 32], 5)
+      c = a.gemm(b)
+      assert_equal [64, 32], c.shape
+      assert_operator a.eq(0).count_true.to_a.first, :<, a.size / 3
+      assert_equal sfloat_dot(a, b), c.to_a
+    end
+
+    test "takes either operand transposed" do
+      a = seq_mod(dtype, [64, 128], 4)
+      b = seq_mod(dtype, [128, 32], 5)
+      at = seq_mod(dtype, [128, 64], 4)
+      bt = seq_mod(dtype, [32, 128], 5)
+      assert_equal sfloat_dot(at.transpose, b), at.transpose.gemm(b).to_a
+      assert_equal sfloat_dot(a, bt.transpose), a.gemm(bt.transpose).to_a
+      assert_equal sfloat_dot(at.transpose, bt.transpose), at.transpose.gemm(bt.transpose).to_a
+      assert_equal a.gemm(b).transpose.to_a, b.transpose.gemm(a.transpose).to_a
+    end
+
+    test "takes a view that is not contiguous" do
+      a = seq_mod(dtype, [64, 128], 4)
+      b = seq_mod(dtype, [128, 32], 5)
+      assert_equal a[true, 0...64].dup.gemm(b[0...64, true].dup).to_a,
+                   a[true, 0...64].gemm(b[0...64, true]).to_a
+      # reversing the contracted axis of both operands leaves the product alone
+      idx = 127.step(0, -1).to_a
+      assert_equal a.gemm(b).to_a, a[true, idx].gemm(b[idx, true]).to_a
+      assert_equal a.gemm(b).to_a, a.reverse(1).gemm(b.reverse(0)).to_a
+    end
+
+    test "alpha and beta scale in float, not in half" do
+      a = dtype[[300.0]]
+      b = dtype[[300.0]]
+      # 300 * 300 overflows half, so an accumulator of half would answer inf
+      assert_equal 90.0, a.gemm(b, alpha: 0.001).to_a.first.first
+      assert_equal Float::INFINITY, a.gemm(b).to_a.first.first
+      assert_equal 91.0, a.gemm(b, dtype[[10.0]], alpha: 0.001, beta: 0.1).to_a.first.first
+      # an alpha half would round away, so the scalar reaches cuBLAS as a float
+      assert_equal 1000.5, dtype.ones(1, 1000).gemm(dtype.new(1000, 1).fill(1.0),
+                                                    alpha: 1.0 + 2.0**-11).to_a.first.first
+    end
+
+    test "beta accumulates into the c it is given" do
+      a = seq_mod(dtype, [4, 6], 4)
+      b = seq_mod(dtype, [6, 3], 5)
+      base = seq_mod(dtype, [4, 3], 7)
+      product = a.gemm(b)
+      assert_equal (product + base).to_a, a.gemm(b, base.dup, beta: 1).to_a
+      assert_equal (product - base).to_a, a.gemm(b, base.dup, beta: -1).to_a
+      assert_equal base.to_a, a.gemm(b, base.dup, alpha: 0, beta: 1).to_a
+      c = base.dup.inplace
+      assert { a.gemm(b, c, beta: 1).equal?(c) }
+      assert_equal (product + base).to_a, c.to_a
+      # a c that starts partway into its own buffer
+      whole = seq_mod(dtype, [8, 3], 7)
+      tail = whole[4...8, true].inplace
+      assert_equal (product + whole[4...8, true]).to_a, a.gemm(b, tail, beta: 1).to_a
+      assert_equal whole[0...4, true].to_a, seq_mod(dtype, [8, 3], 7)[0...4, true].to_a
+    end
+
+    test "accumulates over more terms than half can count" do
+      k = 40_000
+      a = dtype.new(1, k).fill(1.0)
+      b = dtype.new(k, 1).fill(1.0)
+      assert_equal 40_000.0, a.gemm(b).to_a.first.first
+      assert_equal 10_000.0, a.gemm(b, alpha: 0.25).to_a.first.first
+    end
+
+    test "a sum half cannot hold answers infinity" do
+      a = dtype.ones(1, 1024)
+      b = dtype.new(1024, 1).fill(100.0)
+      assert_equal Float::INFINITY, a.dot(b).to_a.first.first
+      assert_equal(-Float::INFINITY, a.dot(-b).to_a.first.first)
+      # the accumulator itself holds it, so scaling it back down works
+      assert_equal 102.375, a.gemm(b, alpha: 0.001).to_a.first.first
+    end
+
+    test "casts the other operand" do
+      a = seq_mod(dtype, [4, 6], 4)
+      ref = a.gemm(seq_mod(dtype, [6, 3], 5)).to_a
+      assert_equal ref, a.gemm(seq_mod(Cumo::Int32, [6, 3], 5)).to_a
+      assert_equal ref, a.gemm(seq_mod(Cumo::SFloat, [6, 3], 5)).to_a
+      assert_equal ref, a.gemm(seq_mod(Cumo::Int32, [6, 3], 5).to_a).to_a
+      assert_raise(Cumo::NArray::CastError) { a.gemm(Cumo::SComplex.new(6, 3).seq) }
+    end
+
+    test "batches" do
+      a = seq_mod(dtype, [10, 2, 3, 4], 4)
+      b = seq_mod(dtype, [4, 5], 5)
+      assert_equal [10, 2, 3, 5], a.gemm(b).shape
+      assert_equal sfloat_dot(a, b), a.gemm(b).to_a
+      batched = seq_mod(dtype, [20, 4, 5], 5)
+      flat = a.reshape(20, 3, 4)
+      assert_equal sfloat_dot(flat, batched), flat.gemm(batched).to_a
+      assert_raise(Cumo::NArray::ShapeError) do
+        seq_mod(dtype, [4, 3, 4], 4).gemm(seq_mod(dtype, [3, 4, 5], 5))
+      end
+    end
+
+    test "takes a transposed batch without copying it" do
+      a = seq_mod(dtype, [20, 3, 4], 4)
+      b = seq_mod(dtype, [20, 5, 4], 5).transpose(0, 2, 1)
+      assert_equal a.gemm(b.dup).to_a, a.gemm(b).to_a
+      assert_equal 20.times.map { |i| a[i, true, true].gemm(b[i, true, true]).to_a },
+                   a.gemm(b).to_a
+      four = seq_mod(dtype, [2, 3, 3, 4], 4)
+      assert_equal four.gemm(seq_mod(dtype, [2, 3, 5, 4], 5).transpose(0, 1, 3, 2).dup).to_a,
+                   four.gemm(seq_mod(dtype, [2, 3, 5, 4], 5).transpose(0, 1, 3, 2)).to_a
+    end
+
+    test "rejects an empty operand" do
+      assert_raise(Cumo::NArray::ShapeError) { seq_mod(dtype, [2, 3], 4).gemm(dtype.new(3, 0)) }
+      assert_raise(Cumo::NArray::ShapeError) { dtype.new(0, 3).gemm(seq_mod(dtype, [3, 4], 5)) }
+      assert_raise(Cumo::NArray::ShapeError) { dtype.new(2, 0).gemm(dtype.new(0, 4)) }
+    end
+
+    test "writes into the c that is given" do
+      a = seq_mod(dtype, [4, 6], 4)
+      b = seq_mod(dtype, [6, 3], 5)
+      c = dtype.zeros(4, 3).inplace
+      assert { a.gemm(b, c).equal?(c) }
+      assert_equal a.gemm(b).to_a, c.to_a
+      assert_raise(Cumo::NArray::ShapeError) { a.gemm(b, dtype.zeros(4, 3).reverse.inplace) }
+    end
+  end
+
+  sub_test_case "#dot" do
+    test "answers HFloat and matches gemm" do
+      a = seq_mod(dtype, [64, 128], 4)
+      b = seq_mod(dtype, [128, 32], 5)
+      assert_equal dtype, a.dot(b).class
+      assert_equal a.gemm(b).to_a, a.dot(b).to_a
+    end
+
+    test "the shapes that involve a vector" do
+      a = seq_mod(dtype, [64, 128], 4)
+      v = seq_mod(dtype, [128], 4)
+      w = seq_mod(dtype, [64], 4)
+      assert_equal [64], a.dot(v).shape
+      assert_equal sfloat_dot(a, v), a.dot(v).to_a
+      assert_equal [128], w.dot(a).shape
+      assert_equal sfloat_dot(w, a), w.dot(a).to_a
+      assert_equal [], v.dot(v).shape
+      assert_equal sfloat_dot(v, v), v.dot(v).to_a
+      # vector times vector is the one shape that falls to mulsum rather than
+      # gemm, so it needs its own check that the accumulator is wider than half
+      long = dtype.ones(40_000)
+      assert_equal 40_000.0, long.dot(long).to_a.first
+      assert_equal long.dot(long).to_a, long.reshape(1, 40_000).dot(long.reshape(40_000, 1)).to_a.first
+    end
+
+    test "is on the list of dtypes dot hands to cuBLAS" do
+      # the two routes answer within an ulp and allocate the same, so nothing
+      # but this pins the choice of the faster one
+      assert_includes Cumo::NArray.const_get(:GEMM_TYPES), dtype
+    end
+
+    test "resolves the pair whichever side names the other" do
+      a = seq_mod(dtype, [4, 6], 4)
+      assert_equal Cumo::SFloat, a.dot(seq_mod(Cumo::SFloat, [6, 3], 5)).class
+      assert_equal Cumo::DFloat, a.dot(seq_mod(Cumo::DFloat, [6, 3], 5)).class
+      assert_equal dtype, seq_mod(Cumo::Int32, [4, 6], 4).dot(a.transpose).class
+      assert_equal dtype, a.dot(seq_mod(Cumo::Int32, [6, 3], 5)).class
+      # UPCAST only names the classes initialised before its own type, so one
+      # direction of every pair resolves and the other has to fall back
+      assert_nil Cumo::SFloat::UPCAST[dtype]
+      assert_equal Cumo::SFloat, dtype::UPCAST[Cumo::SFloat]
+      lhs = seq_mod(Cumo::SFloat, [4, 6], 4)
+      assert_equal sfloat_dot(lhs, a.transpose), lhs.dot(a.transpose).to_a
+    end
   end
 end

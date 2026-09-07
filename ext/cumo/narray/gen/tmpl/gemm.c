@@ -12,6 +12,8 @@
     end
   cutype =
     case type_name
+    when 'hfloat'
+      'cumo_half'
     when 'sfloat'
       'float'
     when 'dfloat'
@@ -21,6 +23,12 @@
     when 'dcomplex'
       'cuDoubleComplex'
     end
+  # cublasGemmStridedBatchedEx multiplies in half and accumulates in float, and
+  # takes its scalars in the accumulator's type.
+  scalar_t = is_half ? 'float' : 'dtype'
+  num_to_scalar = is_half ? '(float)NUM2DBL' : 'm_num_to_data'
+  scalar_one = is_half ? '1.0f' : 'm_one'
+  scalar_zero = is_half ? '0.0f' : 'm_zero'
 %>
 
 #define ROW_SIZE(na) ((na)->shape[(na)->ndim-2])
@@ -103,7 +111,7 @@
     }
 
 typedef struct {
-    dtype alpha, beta;
+    <%=scalar_t%> alpha, beta;
     int m, n, k;
 } gemm_args_t;
 
@@ -275,6 +283,32 @@ static void
 
     if (cumo_na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
     handle = cumo_cuda_cublas_handle();
+<% if is_half %>
+    status = cublasGemmStridedBatchedEx(
+            handle,
+            b_layout.trans,
+            a_layout.trans,
+            g->n,
+            g->m,
+            g->k,
+            &g->alpha,
+            (const void*)(cumo_na_get_pointer_for_read(b_layout.a) + cumo_na_get_offset(b_layout.a)),
+            CUDA_R_16F,
+            b_layout.ld,
+            b_layout.stride,
+            (const void*)(cumo_na_get_pointer_for_read(a_layout.a) + cumo_na_get_offset(a_layout.a)),
+            CUDA_R_16F,
+            a_layout.ld,
+            a_layout.stride,
+            &g->beta,
+            (void*)(cumo_na_get_pointer_for_write(c) + cumo_na_get_offset(c)),
+            CUDA_R_16F,
+            g->n,
+            stridec,
+            batch_count,
+            CUBLAS_COMPUTE_32F,
+            CUBLAS_GEMM_DEFAULT);
+<% else %>
     status = cublas<%=func_prefix%>gemmStridedBatched(
             handle,
             b_layout.trans,
@@ -294,6 +328,7 @@ static void
             g->n,
             stridec,
             batch_count);
+<% end %>
     cumo_cuda_cublas_check_status(status);
 }
 
@@ -350,9 +385,9 @@ static VALUE
     rb_scan_args(argc, argv, "11:", &b, &c, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 2, opts);
     alpha = cumo_cuda_cublas_option_value(opts[0],Qnil);
-    g.alpha = RTEST(alpha) ? m_num_to_data(alpha) : m_one;
+    g.alpha = RTEST(alpha) ? <%=num_to_scalar%>(alpha) : <%=scalar_one%>;
     beta = cumo_cuda_cublas_option_value(opts[1],Qnil);
-    g.beta = RTEST(beta) ? m_num_to_data(beta) : m_zero;
+    g.beta = RTEST(beta) ? <%=num_to_scalar%>(beta) : <%=scalar_zero%>;
 
     // b is handed to cuBLAS as a raw <%=cutype%>*, so another dtype would be
     // reinterpreted, and a narrower one read past its end.

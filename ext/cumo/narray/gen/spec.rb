@@ -55,7 +55,7 @@ else
   def_id "eq"
   def_id "ne"
 end
-if (is_float || is_complex) && !is_object && !is_half
+if (is_float || is_complex) && !is_object
   def_id "gemm"
 end
 # cudnn
@@ -362,7 +362,7 @@ cum "cumprod", "mul"
 
 # dot
 accum_binary "mulsum"
-if (is_float || is_complex) && !is_object && !is_half
+if (is_float || is_complex) && !is_object
   def_method "gemm"
 end
 
