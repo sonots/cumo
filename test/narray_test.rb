@@ -625,6 +625,15 @@ class NArrayTest < Test::Unit::TestCase
             assert { dtype[nan, nan].ptp.to_f.nan? }
             assert { dtype[3, nan, 1, 7].ptp(nan: true).to_f.nan? }
             assert { dtype[3, 10, 1, 7].ptp(nan: true) == 9 }
+            # an array of one infinity spans nothing, and inf - inf is NaN. The
+            # two halves of the identity are independent, so both directions.
+            inf = Float::INFINITY
+            assert { dtype[inf, inf].ptp.to_f.nan? }
+            assert { dtype[-inf, -inf].ptp.to_f.nan? }
+            assert { dtype[inf, nan].ptp.to_f.nan? }
+            assert { dtype[inf, inf].ptp(nan: true).to_f.nan? }
+            assert { dtype[-inf, -inf].ptp(nan: true).to_f.nan? }
+            assert { dtype[1, inf].ptp == inf }
           end
         end
       end
@@ -681,6 +690,35 @@ class NArrayTest < Test::Unit::TestCase
           assert { dtype[3, nan, 1, 7].min(nan: true).to_f.nan? }
           assert { dtype[3, 10, 1, 7].max(nan: true) == 10 }
           assert { dtype[3, 10, 1, 7].min(nan: true) == 1 }
+        end
+
+        # The identity has to lose to an infinity too, not just to a finite
+        # value, or an array holding nothing else answers with the largest
+        # finite number instead.
+        test "max(nan: true) and min(nan: true) keep an infinity" do
+          inf = Float::INFINITY
+          assert { dtype[inf, inf].min(nan: true) == inf }
+          assert { dtype[-inf, -inf].max(nan: true) == -inf }
+          assert { dtype[inf, inf].max(nan: true) == inf }
+          assert { dtype[-inf, -inf].min(nan: true) == -inf }
+          assert { dtype[inf, inf].minmax(nan: true).map(&:to_f) == [inf, inf] }
+          assert { dtype[-inf, -inf].minmax(nan: true).map(&:to_f) == [-inf, -inf] }
+          assert { dtype[inf, nan].min(nan: true).to_f.nan? }
+          assert { dtype[1, inf].min(nan: true) == 1 }
+        end
+
+        # More than one block, so the identity reaches the tree reduction. The
+        # min half is only exercised by an array of +inf and the max half by
+        # one of -inf, the other direction winning against either seed.
+        test "max(nan: true) and min(nan: true) keep an infinity over a large reduction" do
+          inf = Float::INFINITY
+          assert { dtype.new(5000).fill(inf).min(nan: true) == inf }
+          assert { dtype.new(5000).fill(-inf).max(nan: true) == -inf }
+          assert { dtype.new(5000).fill(inf).minmax(nan: true).map(&:to_f) == [inf, inf] }
+          assert { dtype.new(5000).fill(-inf).minmax(nan: true).map(&:to_f) == [-inf, -inf] }
+          assert { dtype.new(5000).fill(inf).ptp(nan: true).to_f.nan? }
+          b = dtype[[inf, inf], [1, 2]]
+          assert { b.min(axis: 1, nan: true).to_a == [inf, 1] }
         end
 
         test "max and min keep the earlier of two equal elements" do

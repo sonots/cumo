@@ -91,7 +91,14 @@ struct cumo_<%=type_name%>_ptp_impl {
         dtype min;
         dtype max;
     };
+<% if is_float %>
+    // Infinities rather than the largest finite values, so that an element
+    // which is itself an infinity still wins its comparison. An array holding
+    // nothing but +inf then answers inf - inf, which is the NaN numo answers.
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)INFINITY, (dtype)(-INFINITY)}; }
+<% else %>
     __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
+<% end %>
     __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
     __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
         if (m_lt(next.min, accum.min)) { accum.min = next.min; }
@@ -161,6 +168,10 @@ struct cumo_<%=type_name%>_rms_impl {
 // NaN, so it maps to the identity and the tree never sees it. min and max go
 // the other way: numo answers NaN as soon as one element is NaN, and a NaN
 // absorbs in Reduce because it loses every comparison.
+//
+// min and max take an infinity for their identity rather than the largest
+// finite value, so that an element which is itself an infinity still wins.
+// numo seeds from the first element and never faces the question.
 struct cumo_<%=type_name%>_sum_nan_impl {
     __device__ <%=acc%> Identity(int64_t /*index*/) { return <%=acc_zero%>; }
     __device__ <%=acc%> MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? <%=to_acc%>(in) : <%=acc_zero%>; }
@@ -176,14 +187,14 @@ struct cumo_<%=type_name%>_prod_nan_impl {
 };
 
 struct cumo_<%=type_name%>_min_nan_impl {
-    __device__ dtype Identity(int64_t /*index*/) { return DATA_MAX; }
+    __device__ dtype Identity(int64_t /*index*/) { return (dtype)INFINITY; }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || m_lt(next, accum)) { accum = next; } }
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
 struct cumo_<%=type_name%>_max_nan_impl {
-    __device__ dtype Identity(int64_t /*index*/) { return DATA_MIN; }
+    __device__ dtype Identity(int64_t /*index*/) { return (dtype)(-INFINITY); }
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
     __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || m_lt(accum, next)) { accum = next; } }
     __device__ dtype MapOut(dtype accum) { return accum; }
@@ -194,7 +205,7 @@ struct cumo_<%=type_name%>_minmax_nan_impl {
         dtype min;
         dtype max;
     };
-    __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)INFINITY, (dtype)(-INFINITY)}; }
     __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
     __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
         if (!not_nan(next.min) || m_lt(next.min, accum.min)) { accum.min = next.min; }

@@ -410,6 +410,18 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal 0.25, dtype.new(n).fill(0.25).mean.to_a.first
   end
 
+  test "the nan-aware min and max keep an infinity" do
+    inf = Float::INFINITY
+    assert_equal inf, dtype[inf, inf].min(nan: true).to_a.first
+    assert_equal(-inf, dtype[-inf, -inf].max(nan: true).to_a.first)
+    assert_equal [inf, inf], dtype[inf, inf].minmax(nan: true).map { |x| x.to_a.first }
+    assert_equal true, dtype[inf, inf].ptp(nan: true).to_a.first.nan?
+    assert_equal true, dtype[inf, inf].ptp.to_a.first.nan?
+    # the identity was the largest finite half, which is where 65504 came from
+    assert_equal inf, dtype.new(5000).fill(inf).min(nan: true).to_a.first
+    assert_equal(-inf, dtype.new(5000).fill(-inf).max(nan: true).to_a.first)
+  end
+
   test "the nan-aware reductions skip a NaN" do
     a = dtype[1.0, Float::NAN, 3.0]
     assert_equal 4.0, a.sum(nan: true).to_a.first
