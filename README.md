@@ -363,6 +363,19 @@ export CUMO_SHOW_WARNING=ON
 export CUMO_SHOW_WARNING_ONCE=OFF
 ```
 
+### Raise the cuDNN workspace ceiling
+
+cuDNN picks a convolution algorithm by benchmarking the ones that fit in a scratch buffer, and the ceiling on that buffer is 8MB.
+The fastest half precision algorithms, the ones that reach the tensor cores, ask for more than that and are left out of the search.
+To let them in:
+
+```
+export CUMO_CUDNN_MAX_WORKSPACE_SIZE=67108864
+```
+
+The value is in bytes and only bounds the search; each convolution reserves what its chosen algorithm actually needs.
+`Cumo::CUDA::CUDNN.max_workspace_size` reads back the value in force.
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/sonots/cumo.

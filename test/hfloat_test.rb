@@ -270,10 +270,6 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal 0, a.ne(1.5).count_true
   end
 
-  test "the methods a later step brings are not claimed yet" do
-    assert_raise(NoMethodError) { dtype.new(1, 1, 2, 2).seq.conv(dtype.new(1, 1, 2, 2).seq) }
-  end
-
   test "sort orders as SFloat does" do
     a = dtype[3.0, -1.0, 2.5, 0.0]
     assert_equal [-1.0, 0.0, 2.5, 3.0], a.sort.to_a

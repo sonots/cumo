@@ -114,12 +114,12 @@ static VALUE
     }
 
     CUMO_CHECK_NARRAY_TYPE(x, cT);
-    CUMO_CHECK_NARRAY_TYPE(gamma, <%=cudnn_param_class%>);
-    CUMO_CHECK_NARRAY_TYPE(beta, <%=cudnn_param_class%>);
-    if (running_mean != Qnil) CUMO_CHECK_NARRAY_TYPE(running_mean, <%=cudnn_param_class%>);
-    if (running_var != Qnil) CUMO_CHECK_NARRAY_TYPE(running_var, <%=cudnn_param_class%>);
-    if (mean != Qnil) CUMO_CHECK_NARRAY_TYPE(mean, <%=cudnn_param_class%>);
-    if (inv_std != Qnil) CUMO_CHECK_NARRAY_TYPE(inv_std, <%=cudnn_param_class%>);
+    cumo_cuda_cudnn_check_param_type(gamma, <%=cudnn_param_class%>, "gamma");
+    cumo_cuda_cudnn_check_param_type(beta, <%=cudnn_param_class%>, "beta");
+    if (running_mean != Qnil) cumo_cuda_cudnn_check_param_type(running_mean, <%=cudnn_param_class%>, "running_mean");
+    if (running_var != Qnil) cumo_cuda_cudnn_check_param_type(running_var, <%=cudnn_param_class%>, "running_var");
+    if (mean != Qnil) cumo_cuda_cudnn_check_param_type(mean, <%=cudnn_param_class%>, "mean");
+    if (inv_std != Qnil) cumo_cuda_cudnn_check_param_type(inv_std, <%=cudnn_param_class%>, "inv_std");
 
     x_cont = cumo_na_as_contiguous_array(x);
     gamma_cont = cumo_na_as_contiguous_array(gamma);

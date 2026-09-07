@@ -4,6 +4,7 @@ require_relative "test_helper"
 
 class CUDNNTest < Test::Unit::TestCase
   float_types = [
+    Cumo::HFloat,
     Cumo::SFloat,
     Cumo::DFloat,
   ]
@@ -13,6 +14,10 @@ class CUDNNTest < Test::Unit::TestCase
   end
 
   float_types.each do |dtype|
+    # cuDNN derives the batch norm parameter descriptor from x and widens it to
+    # float for a half x, so those arrays take this class rather than x's own
+    param_type = dtype == Cumo::HFloat ? Cumo::SFloat : dtype
+
     sub_test_case "conv_2d" do
       setup do
         @batch_size = 2
@@ -248,8 +253,8 @@ class CUDNNTest < Test::Unit::TestCase
         @x_shape = [@batch_size, @in_channels].concat(@in_dims)
         @reduced_shape = [1].concat(@x_shape[1..-1])
         @x = dtype.ones(*@x_shape) * 3
-        @gamma = dtype.ones(*@reduced_shape) * 2
-        @beta = dtype.ones(*@reduced_shape)
+        @gamma = param_type.ones(*@reduced_shape) * 2
+        @beta = param_type.ones(*@reduced_shape)
       end
 
       test "x.batch_norm(gamma, beta) #{dtype}" do
@@ -264,23 +269,23 @@ class CUDNNTest < Test::Unit::TestCase
 
       test "x.batch_norm(gamma, beta, axis: [0, 2, 3]) #{dtype}" do
         reduced_shape = [1, @x_shape[1], 1, 1]
-        gamma = dtype.ones(reduced_shape) * 2
-        beta = dtype.ones(reduced_shape)
+        gamma = param_type.ones(reduced_shape) * 2
+        beta = param_type.ones(reduced_shape)
         y = @x.batch_norm(gamma, beta, axis: [0, 2, 3])
         assert { y.shape == @x_shape }
       end
 
       test "x.batch_norm(gamma, beta, running_mean, running_var) #{dtype}" do
-        running_mean = dtype.ones(*@reduced_shape)
-        running_var = dtype.ones(*@reduced_shape)
+        running_mean = param_type.ones(*@reduced_shape)
+        running_var = param_type.ones(*@reduced_shape)
         y = @x.batch_norm(@gamma, @beta, running_mean: running_mean, running_var: running_var)
         assert { y.shape == @x_shape }
         assert_in_delta(y, dtype.ones(*@x_shape), 1e-3)
       end
 
       test "x.batch_norm(gamma, beta, mean, inv_std) #{dtype}" do
-        mean = dtype.new(*@reduced_shape)
-        inv_std = dtype.new(*@reduced_shape)
+        mean = param_type.new(*@reduced_shape)
+        inv_std = param_type.new(*@reduced_shape)
         y = @x.batch_norm(@gamma, @beta, mean: mean, inv_std: inv_std)
         assert { y.shape == @x_shape }
         assert { mean.shape == @reduced_shape }
@@ -291,8 +296,8 @@ class CUDNNTest < Test::Unit::TestCase
     sub_test_case "batch_norm with an axis that folds the channel away" do
       setup do
         @x = dtype.new(8, 256).seq
-        @one = dtype.ones(1)
-        @zero = dtype.zeros(1)
+        @one = param_type.ones(1)
+        @zero = param_type.zeros(1)
       end
 
       # cuDNN derives its parameter descriptor from x with a SPATIAL mode and
@@ -317,8 +322,8 @@ class CUDNNTest < Test::Unit::TestCase
       end
 
       test "the same shapes with the default axis still go through #{dtype}" do
-        gamma = dtype.ones(1, 256)
-        beta = dtype.zeros(1, 256)
+        gamma = param_type.ones(1, 256)
+        beta = param_type.zeros(1, 256)
         assert { @x.batch_norm(gamma, beta).shape == [8, 256] }
         assert { @x.fixed_batch_norm(gamma, beta, beta, gamma).shape == [8, 256] }
         assert { @x.batch_norm_backward(gamma, dtype.ones(8, 256)).first.shape == [8, 256] }
@@ -329,16 +334,16 @@ class CUDNNTest < Test::Unit::TestCase
     # axis that names nothing in x answers as though a different one had been
     # given rather than failing. The sizes below are the ones that reach the
     # kernel, so nothing else can raise first.
-    # cuDNN derives the parameter descriptor from x and gives it x's own type,
-    # widening only for half, which these methods are never generated for. What
-    # makes that enough is that every parameter is held to x's class here, so
-    # the descriptor and the buffer behind it can never disagree.
+    # cuDNN derives the parameter descriptor from x, giving it x's own type
+    # except for a half x, where it widens to float. What keeps the descriptor
+    # and the buffer behind it in step is that every parameter is held to
+    # exactly the class that descriptor carries.
     sub_test_case "a parameter of another dtype" do
       setup do
-        @other = (dtype == Cumo::SFloat) ? Cumo::DFloat : Cumo::SFloat
+        @other = (param_type == Cumo::DFloat) ? Cumo::SFloat : Cumo::DFloat
         @x = dtype.new(2, 4, 3, 3).seq(1)
-        @gamma = dtype.ones(4)
-        @beta = dtype.zeros(4)
+        @gamma = param_type.ones(4)
+        @beta = param_type.zeros(4)
         @gy = dtype.ones(2, 4, 3, 3)
         @axis = [0, 2, 3]
       end
@@ -375,18 +380,18 @@ class CUDNNTest < Test::Unit::TestCase
     sub_test_case "an axis that does not name x's dimensions" do
       setup do
         @x = dtype.new(2, 4, 3, 3).seq(1)
-        @gamma = dtype.ones(4)
-        @beta = dtype.zeros(4)
+        @gamma = param_type.ones(4)
+        @beta = param_type.zeros(4)
         @gy = dtype.ones(2, 4, 3, 3)
       end
 
       test "batch_norm rejects an axis outside x #{dtype}" do
-        assert_raise(ArgumentError) { @x.batch_norm(dtype.ones(72), dtype.zeros(72), axis: [5]) }
-        assert_raise(ArgumentError) { @x.batch_norm(dtype.ones(72), dtype.zeros(72), axis: [-1]) }
+        assert_raise(ArgumentError) { @x.batch_norm(param_type.ones(72), param_type.zeros(72), axis: [5]) }
+        assert_raise(ArgumentError) { @x.batch_norm(param_type.ones(72), param_type.zeros(72), axis: [-1]) }
       end
 
       test "batch_norm rejects a repeated or unordered axis #{dtype}" do
-        assert_raise(ArgumentError) { @x.batch_norm(dtype.ones(36), dtype.zeros(36), axis: [0, 0]) }
+        assert_raise(ArgumentError) { @x.batch_norm(param_type.ones(36), param_type.zeros(36), axis: [0, 0]) }
         assert_raise(ArgumentError) { @x.batch_norm(@gamma, @beta, axis: [3, 0, 2]) }
         assert_raise(ArgumentError) { @x.batch_norm(@gamma, @beta, axis: [0, 3, 2]) }
       end
@@ -421,8 +426,8 @@ class CUDNNTest < Test::Unit::TestCase
         @x_shape = [@batch_size, @in_channels].concat(@in_dims)
         @reduced_shape = [1].concat(@x_shape[1..-1])
         @x = dtype.ones(*@x_shape) * 3
-        @gamma = dtype.ones(*@reduced_shape) * 2
-        @beta = dtype.ones(*@reduced_shape)
+        @gamma = param_type.ones(*@reduced_shape) * 2
+        @beta = param_type.ones(*@reduced_shape)
         @gy = dtype.ones(*@x_shape)
       end
 
@@ -436,8 +441,8 @@ class CUDNNTest < Test::Unit::TestCase
 
       test "x.batch_norm_backward(gamma, gy, axis: [0,2,3]) #{dtype}" do
         @reduced_shape = [1, @x_shape[1], 1, 1]
-        @gamma = dtype.ones(@reduced_shape) * 2
-        @beta = dtype.ones(@reduced_shape)
+        @gamma = param_type.ones(@reduced_shape) * 2
+        @beta = param_type.ones(@reduced_shape)
         @x.batch_norm(@gamma, @beta, axis: [0, 2, 3])
         gx, ggamma, gbeta = @x.batch_norm_backward(@gamma, @gy, axis: [0, 2, 3])
         assert { gx.shape == @x_shape }
@@ -446,8 +451,8 @@ class CUDNNTest < Test::Unit::TestCase
       end
 
       test "x.batch_norm_backward(gamma, gy, mean:, inv_std:) #{dtype}" do
-        mean = dtype.new(*@reduced_shape)
-        inv_std = dtype.new(*@reduced_shape)
+        mean = param_type.new(*@reduced_shape)
+        inv_std = param_type.new(*@reduced_shape)
         @x.batch_norm(@gamma, @beta, mean: mean, inv_std: inv_std)
         gx, ggamma, gbeta = @x.batch_norm_backward(@gamma, @gy, mean: mean, inv_std: inv_std)
         assert { gx.shape == @x_shape }
@@ -464,10 +469,10 @@ class CUDNNTest < Test::Unit::TestCase
         @x_shape = [@batch_size, @in_channels].concat(@in_dims)
         @reduced_shape = [1].concat(@x_shape[1..-1])
         @x = dtype.ones(*@x_shape) * 3
-        @gamma = dtype.ones(*@reduced_shape) * 2
-        @beta = dtype.ones(*@reduced_shape)
-        @mean = dtype.ones(*@reduced_shape)
-        @var = dtype.ones(*@reduced_shape)
+        @gamma = param_type.ones(*@reduced_shape) * 2
+        @beta = param_type.ones(*@reduced_shape)
+        @mean = param_type.ones(*@reduced_shape)
+        @var = param_type.ones(*@reduced_shape)
       end
 
       test "x.fixed_batch_norm(gamma, beta, mean, var) #{dtype}" do
@@ -482,10 +487,10 @@ class CUDNNTest < Test::Unit::TestCase
 
       test "x.fixed_batch_norm(gamma, beta, mean, var, axis: [0, 2, 3]) #{dtype}" do
         reduced_shape = [1, @x_shape[1], 1, 1]
-        gamma = dtype.ones(reduced_shape) * 2
-        beta = dtype.ones(reduced_shape)
-        mean = dtype.ones(reduced_shape) * 2
-        var = dtype.ones(reduced_shape)
+        gamma = param_type.ones(reduced_shape) * 2
+        beta = param_type.ones(reduced_shape)
+        mean = param_type.ones(reduced_shape) * 2
+        var = param_type.ones(reduced_shape)
         y = @x.fixed_batch_norm(gamma, beta, mean, var, axis: [0, 2, 3])
         assert { y.shape == @x_shape }
         # TODO: check output values
@@ -713,10 +718,10 @@ class CUDNNTest < Test::Unit::TestCase
         @w_shape = [2, 3, 2, 3]
         @ksize = [3, 3]
         @x = dtype.ones(*@x_shape) * 3
-        @gamma = dtype.ones(*@reduced_shape) * 2
-        @beta = dtype.ones(*@reduced_shape)
-        @mean = dtype.ones(*@reduced_shape)
-        @var = dtype.ones(*@reduced_shape)
+        @gamma = param_type.ones(*@reduced_shape) * 2
+        @beta = param_type.ones(*@reduced_shape)
+        @mean = param_type.ones(*@reduced_shape)
+        @var = param_type.ones(*@reduced_shape)
         @gy = dtype.ones(*@x_shape)
         @w = dtype.ones(*@w_shape)
       end
@@ -738,11 +743,11 @@ class CUDNNTest < Test::Unit::TestCase
       test "batch_norm_backward(gx:, ggamma:, gbeta:) #{dtype}" do
         @x.batch_norm(@gamma, @beta)
         assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm_backward(@gamma, @gy, gx: dtype.zeros(1)) }
-        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm_backward(@gamma, @gy, ggamma: dtype.zeros(1)) }
-        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm_backward(@gamma, @gy, gbeta: dtype.zeros(1)) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm_backward(@gamma, @gy, ggamma: param_type.zeros(1)) }
+        assert_raise(Cumo::NArray::ShapeError) { @x.batch_norm_backward(@gamma, @gy, gbeta: param_type.zeros(1)) }
         gx = dtype.zeros(*@x_shape)
-        ggamma = dtype.zeros(*@reduced_shape)
-        gbeta = dtype.zeros(*@reduced_shape)
+        ggamma = param_type.zeros(*@reduced_shape)
+        gbeta = param_type.zeros(*@reduced_shape)
         assert { @x.batch_norm_backward(@gamma, @gy, gx: gx, ggamma: ggamma, gbeta: gbeta) == [gx, ggamma, gbeta] }
       end
 
@@ -780,5 +785,86 @@ class CUDNNTest < Test::Unit::TestCase
         assert_raise(Cumo::NArray::ShapeError) { @x.conv_transpose(@w, y: dtype.zeros(1)) }
       end
     end
+  end
+
+  if float_types.include?(Cumo::HFloat)
+   hf = Cumo::HFloat
+   sf = Cumo::SFloat
+
+   sub_test_case "HFloat" do
+
+    def seq(klass, shape, modulo)
+      klass.cast(Cumo::Int32.new(*shape).seq % modulo)
+    end
+
+    # cuDNN picks its algorithm by benchmarking, and half is allowed tensor
+    # cores, so which one wins varies between processes and so does the last
+    # place of the answer. Everything here is compared against SFloat within
+    # half's own precision rather than to the bit.
+    def assert_close_to_sfloat(got, ref)
+      scale = [ref.abs.max.to_a.first, 1.0].max
+      assert_in_delta 0.0, (Cumo::SFloat.cast(got) - ref).abs.max.to_a.first, scale * 2.0**-9
+    end
+
+    test "a convolution answers what SFloat answers" do
+      x = seq(hf, [2, 8, 6, 6], 4)
+      w = seq(hf, [8, 8, 1, 1], 3)
+      b = seq(hf, [8], 3)
+      assert_close_to_sfloat x.conv(w), sf.cast(x).conv(sf.cast(w))
+      assert_close_to_sfloat x.conv(w, b: b), sf.cast(x).conv(sf.cast(w), b: sf.cast(b))
+    end
+
+    test "a 3x3 convolution and its two gradients answer what SFloat answers" do
+      x = seq(hf, [2, 8, 8, 8], 4)
+      w = seq(hf, [8, 8, 3, 3], 3)
+      assert_close_to_sfloat x.conv(w), sf.cast(x).conv(sf.cast(w))
+      gy = seq(hf, x.conv(w).shape, 3)
+      assert_close_to_sfloat x.conv_grad_w(gy, w.shape), sf.cast(x).conv_grad_w(sf.cast(gy), w.shape)
+      assert_close_to_sfloat gy.conv_transpose(w, out_size: [8, 8]),
+                             sf.cast(gy).conv_transpose(sf.cast(w), out_size: [8, 8])
+    end
+
+    test "pooling answers what SFloat answers, to the bit" do
+      x = seq(hf, [2, 3, 8, 8], 7)
+      y = x.max_pool(2, stride: 2)
+      assert_equal sf.cast(x).max_pool(2, stride: 2).to_a, y.to_a
+      gy = seq(hf, y.shape, 3)
+      assert_equal sf.cast(x).max_pool_backward(sf.cast(y), sf.cast(gy), 2, stride: 2).to_a,
+                   x.max_pool_backward(y, gy, 2, stride: 2).to_a
+      assert_equal sf.cast(x).avg_pool(2, stride: 2).to_a, x.avg_pool(2, stride: 2).to_a
+    end
+
+    test "the batch norm parameters are SFloat, not HFloat" do
+      x = seq(hf, [2, 4, 3, 3], 5)
+      g = sf.ones(4)
+      b = sf.zeros(4)
+      axis = [0, 2, 3]
+      assert_equal hf, x.batch_norm(g, b, axis: axis).class
+      assert_close_to_sfloat x.batch_norm(g, b, axis: axis), sf.cast(x).batch_norm(g, b, axis: axis)
+      gx, ggamma, gbeta = x.batch_norm_backward(g, seq(hf, x.shape, 3), axis: axis)
+      assert_equal [hf, sf, sf], [gx.class, ggamma.class, gbeta.class]
+    end
+
+    test "a parameter of x's own class is refused by name" do
+      x = seq(hf, [2, 4, 3, 3], 5)
+      e = assert_raise(TypeError) { x.batch_norm(hf.ones(4), sf.zeros(4), axis: [0, 2, 3]) }
+      assert_equal "gamma must be Cumo::SFloat, not Cumo::HFloat", e.message
+      e = assert_raise(TypeError) { x.batch_norm(sf.ones(4), hf.zeros(4), axis: [0, 2, 3]) }
+      assert_equal "beta must be Cumo::SFloat, not Cumo::HFloat", e.message
+    end
+
+    test "the workspace ceiling is a positive byte count or the default" do
+      assert_operator Cumo::CUDA::CUDNN.max_workspace_size, :>, 0
+      assert_equal ENV["CUMO_CUDNN_MAX_WORKSPACE_SIZE"].to_i, Cumo::CUDA::CUDNN.max_workspace_size if
+        ENV["CUMO_CUDNN_MAX_WORKSPACE_SIZE"].to_s =~ /\A[1-9][0-9]*\z/
+    end
+
+    test "the convolution accumulates over more channels than half can count" do
+      # 40000 ones summed in half would stop at 2048
+      x = hf.ones(1, 40_000, 1, 1)
+      w = hf.ones(1, 40_000, 1, 1)
+      assert_equal 40_000.0, x.conv(w).to_a.flatten.first
+    end
+   end
   end
 end

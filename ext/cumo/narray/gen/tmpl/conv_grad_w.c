@@ -39,7 +39,7 @@ static VALUE
 
     cudnnConvolutionBwdFilterAlgoPerf_t perf_result;
     cudnnConvolutionBwdFilterAlgo_t algo;
-    size_t max_workspace_size = CUMO_CUDA_CUDNN_DEFAULT_MAX_WORKSPACE_SIZE;
+    size_t max_workspace_size = cumo_cuda_cudnn_max_workspace_size();
     size_t workspace_size;
     char* workspace = 0;
 
@@ -112,7 +112,7 @@ static VALUE
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
     status = cumo_cuda_cudnn_CreateFilterDescriptor(&gw_desc, gw, cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
-    status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, <%=cudnn_compute_dtype%>);
+    status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, <%=cudnn_compute_dtype%>, <%=cudnn_math_type%>);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
 
     handle = cumo_cuda_cudnn_handle();
@@ -134,10 +134,16 @@ static VALUE
             ndim,
             cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
+    // The descriptor asked for a math type; use the one the search settled on.
+    status = cudnnSetConvolutionMathType(conv_desc, perf_result.mathType);
+    if (status != CUDNN_STATUS_SUCCESS) goto CONV_GRAD_W_ERROR;
+
     algo = perf_result.algo;
     workspace_size = perf_result.memory;
 
-    workspace = cumo_cuda_runtime_malloc(max_workspace_size);
+    // The search may look at algorithms needing up to max_workspace_size,
+    // but only the one it picked has to be paid for.
+    if (workspace_size > 0) workspace = cumo_cuda_runtime_malloc(workspace_size);
     status = cudnnConvolutionBackwardFilter(
             handle,
             (void*)&one,
