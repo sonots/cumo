@@ -222,6 +222,126 @@ Cumo::SFloat::Math.atan2(a, 2.0)   #=> Cumo::SFloat
 
 The 0-dimensional form has no effect under Numo, where `[]` returns a Ruby Float.
 
+### Half Precision
+
+`Cumo::HFloat`, also reachable as `Cumo::Float16`, holds IEEE binary16: one sign bit, five of exponent and ten of mantissa.
+It exists for the two things half is good at, moving half as many bytes and reaching the tensor cores, and it promotes exactly as `Cumo::SFloat` does, so an integer array or a Ruby Float mixed into an expression stays half while anything wider takes over.
+
+What it cannot hold is the thing to plan around.
+Integers are exact only to 2048, and the largest finite value is 65504:
+
+```ruby
+Cumo::HFloat[2049.0]        #=> 2048.0
+Cumo::HFloat[50257.0]       #=> 50272.0
+Cumo::HFloat[100000]        #=> Infinity
+```
+
+There is no exception on the way past the top; the value saturates, as it does in every other float type.
+Anything that carries an index rather than a measurement has to be built in a wider type and cast afterwards.
+
+Reductions do not inherit that limit, because they accumulate in single precision and round once at the end.
+A sum of forty thousand ones is forty thousand, not the 2048 a half accumulator would stop at:
+
+```ruby
+Cumo::HFloat.new(40_000).fill(1.0).sum   #=> 40000.0
+```
+
+`sum`, `mean`, `var`, `stddev`, `rms`, `mulsum`, `dot`, `gemm` and `cumsum` all widen this way.
+`prod` and `cumprod` do not: a product leaves half's range long before it loses precision, so widening the accumulator would only hide the overflow.
+
+The widening protects the accumulation, not the answer, which is still stored as half.
+A variance above 65504 therefore saturates even though nothing overflowed while it was being computed, and the standard deviation of the same array is fine because the square root brings it back into range:
+
+```ruby
+a = Cumo::HFloat[2000.0, -2000.0, 1000.0, -1000.0]
+a.var      #=> Infinity
+a.stddev   #=> 1826.0
+```
+
+That distinction is what makes half usable in a transformer's layer normalization, and getting it wrong is the first thing to go wrong there.
+Squaring overflows at 256, since 256 squared is already past the top, and a residual stream with one outlier feature reaches thousands.
+Writing the normalization out as `((x - mean) ** 2).mean` builds those squares as a half array and the answer is `Infinity`, while `x.var(axis: 1)` keeps them in its single-precision accumulator and answers 10208.0 against a single-precision 10209.
+`var` saturates only if the variance itself is out of range, which is a far higher bar than any one deviation being over 256, but it is still a bar.
+The quantity to check against 65504 is the largest variance a layer produces, not the largest activation in it.
+A single outlier of size d among n values contributes only d squared over n to the variance, so a row 768 wide divides it by 768: an activation of 3000 squares to nine million but raises the variance of its row by about twelve thousand.
+An activation that looks safe therefore says nothing about whether `var` overflows, in either direction.
+
+A `dot` whose answer does not fit still saturates, since the result is stored back as half.
+The accumulator itself is single precision, so scaling it down on the way out recovers the value:
+
+```ruby
+a = Cumo::HFloat.ones(1, 1024)
+b = Cumo::HFloat.new(1024, 1).fill(100.0)
+a.dot(b)                   #=> Infinity
+a.gemm(b, alpha: 0.001)    #=> 102.375, the true 102400 scaled down
+```
+
+#### What half is faster at
+
+`gemm` reaches the tensor cores. Square matrices on an RTX 5070 Ti Laptop, median of three runs each:
+
+```
+              HFloat              SFloat              DFloat
+1024x1024     0.043 ms  49.7 TF   0.161 ms  13.3 TF   5.370 ms  0.40 TF
+2048x2048     0.362 ms  47.4 TF   1.360 ms  12.6 TF   43.46 ms  0.40 TF
+4096x4096     3.335 ms  41.2 TF   10.40 ms  13.2 TF   328.1 ms  0.42 TF
+```
+
+An odd number of columns costs half far more than it costs the others, because a row then starts on a two-byte boundary and the vectorized path is gone.
+It is the column count of either operand that matters, not the row count.
+1024x1024 times 1024x1024, with one dimension made odd at a time:
+
+```
+             all even   M odd      K odd      N odd
+HFloat        51.8 TF   49.2 TF    23.3 TF    23.3 TF
+SFloat        11.9 TF      -       11.6 TF    10.8 TF
+```
+
+The run-to-run spread on these is a few per cent and reaches fifteen at the top end, so the M column says the row count does not matter rather than that it costs 5 per cent.
+
+The penalty is on the arithmetic, so it does not reach a matrix-vector product, which is bound by how fast the matrix can be read whatever its shape.
+A 1x768 by 768x50257 gemv takes 0.211 ms with that odd 50257 and 0.205 ms with 50256, a difference inside the noise; the same 768x50257 matrix against 256 rows takes 0.833 ms and 0.481 ms, which is not.
+Pad the inner dimensions of a real matrix product; leave a gemv alone.
+
+`conv` is a different story, and worth reading before reaching for half in a network.
+cuDNN chooses its algorithm from the ones that fit in a scratch buffer, and the half algorithms that use the tensor cores ask for more than the default 8MB ceiling allows.
+Left at the default, a half convolution is no faster than a single-precision one.
+N=32, C=K=64, 56x56, 3x3:
+
+```
+                              HFloat     SFloat
+CUMO_CUDNN_MAX_WORKSPACE_SIZE unset      1.13 ms    1.03 ms
+CUMO_CUDNN_MAX_WORKSPACE_SIZE=268435456  0.56 ms    0.68 ms
+```
+
+Tensor cores also want the channel counts to be multiples of eight, which the first layer of a network never satisfies.
+That layer is still faster in half, but for the other reason:
+
+```
+C=3, K=64, 56x56, 3x3     0.085 ms   0.170 ms
+C=K=64, 56x56, 1x1        0.037 ms   0.120 ms
+```
+
+Neither of those reaches a tensor core; they move half the bytes.
+
+#### Batch normalization takes single-precision parameters
+
+cuDNN derives the descriptor for the batch norm parameters from `x`, and widens it to float when `x` is half.
+`gamma`, `beta`, `running_mean`, `running_var`, `mean` and `inv_std` are therefore `Cumo::SFloat` where `x` is `Cumo::HFloat`, and `batch_norm_backward` answers `gx` in half with `ggamma` and `gbeta` in single:
+
+```ruby
+x = Cumo::HFloat.new(2, 4, 3, 3).seq
+gamma = Cumo::SFloat.ones(4)
+beta = Cumo::SFloat.zeros(4)
+x.batch_norm(gamma, beta, axis: [0, 2, 3])   #=> Cumo::HFloat
+```
+
+Passing half parameters raises `TypeError: gamma must be Cumo::SFloat, not Cumo::HFloat`.
+Keeping the running statistics in single precision is what the arithmetic wants in any case: a momentum update is a long chain of small corrections, and eleven bits of mantissa lose them.
+
+Gradients are the other place half runs out of room.
+Values below `Cumo::HFloat::MIN` of 6.1e-05 fall into the subnormals and then to zero, which is what loss scaling in a training loop exists to prevent.
+
 ### Select a GPU device ID
 
 Set the `CUDA_VISIBLE_DEVICES=id` environment variable, or
