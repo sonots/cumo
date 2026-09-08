@@ -57,38 +57,49 @@ struct cumo_<%=type_name%>_max_impl {
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
-// min and max fused, so that minmax reads the input once. The rules per
-// component are the two above verbatim: minmax must not answer differently
-// from min and max.
-struct cumo_<%=type_name%>_minmax_impl {
+// The pair minmax and ptp accumulate, without Identity or Reduce. Leaving
+// those out means a form that forgets to write its own does not compile,
+// where deriving the nan form from the default one would silently inherit
+// the wrong identity. That is how #372 happened.
+struct cumo_<%=type_name%>_minmax_pair {
     struct MinAndMax {
         dtype min;
         dtype max;
     };
-<% if is_float %>
-    __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)nan(""), (dtype)nan("")}; }
     __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
-    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        if (m_lt(next.min, accum.min) || !not_nan(accum.min)) { accum.min = next.min; }
-        if (m_lt(accum.max, next.max) || !not_nan(accum.max)) { accum.max = next.max; }
-    }
-<% else %>
-    __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
-    __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
-    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        accum.min = m_lt(next.min, accum.min) ? next.min : accum.min;
-        accum.max = m_lt(next.max, accum.max) ? accum.max : next.max;
-    }
-<% end %>
     __device__ void MapOut(MinAndMax accum, dtype* out_min, dtype* out_max) {
         *out_min = accum.min;
         *out_max = accum.max;
     }
 };
 
-struct cumo_<%=type_name%>_ptp_impl : cumo_<%=type_name%>_minmax_impl {
-    __device__ dtype MapOut(MinAndMax accum) { return m_sub(accum.max, accum.min); }
+// min and max fused, so that minmax reads the input once. The rules per
+// component are min_impl's and max_impl's verbatim: minmax must not answer
+// differently from min and max.
+struct cumo_<%=type_name%>_minmax_impl : cumo_<%=type_name%>_minmax_pair {
+<% if is_float %>
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)nan(""), (dtype)nan("")}; }
+    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
+        if (m_lt(next.min, accum.min) || !not_nan(accum.min)) { accum.min = next.min; }
+        if (m_lt(accum.max, next.max) || !not_nan(accum.max)) { accum.max = next.max; }
+    }
+<% else %>
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
+    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
+        accum.min = m_lt(next.min, accum.min) ? next.min : accum.min;
+        accum.max = m_lt(next.max, accum.max) ? accum.max : next.max;
+    }
+<% end %>
 };
+
+// ptp is its minmax with the pair subtracted. The one-argument MapOut hides
+// the two-output one it inherits.
+template <typename Base>
+struct cumo_<%=type_name%>_ptp_of : Base {
+    __device__ dtype MapOut(typename Base::MinAndMax accum) { return m_sub(accum.max, accum.min); }
+};
+
+using cumo_<%=type_name%>_ptp_impl = cumo_<%=type_name%>_ptp_of<cumo_<%=type_name%>_minmax_impl>;
 
 <% unless is_float %>
 // mean, var, stddev and rms answer in double for the integer types, so they
@@ -176,26 +187,15 @@ struct cumo_<%=type_name%>_max_nan_impl {
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
-struct cumo_<%=type_name%>_minmax_nan_impl {
-    struct MinAndMax {
-        dtype min;
-        dtype max;
-    };
+struct cumo_<%=type_name%>_minmax_nan_impl : cumo_<%=type_name%>_minmax_pair {
     __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)INFINITY, (dtype)(-INFINITY)}; }
-    __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
     __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
         if (!not_nan(next.min) || m_lt(next.min, accum.min)) { accum.min = next.min; }
         if (!not_nan(next.max) || m_lt(accum.max, next.max)) { accum.max = next.max; }
     }
-    __device__ void MapOut(MinAndMax accum, dtype* out_min, dtype* out_max) {
-        *out_min = accum.min;
-        *out_max = accum.max;
-    }
 };
 
-struct cumo_<%=type_name%>_ptp_nan_impl : cumo_<%=type_name%>_minmax_nan_impl {
-    __device__ dtype MapOut(MinAndMax accum) { return m_sub(accum.max, accum.min); }
-};
+using cumo_<%=type_name%>_ptp_nan_impl = cumo_<%=type_name%>_ptp_of<cumo_<%=type_name%>_minmax_nan_impl>;
 <% end %>
 
 #if defined(__cplusplus)
