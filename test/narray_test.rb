@@ -635,6 +635,35 @@ class NArrayTest < Test::Unit::TestCase
             assert { dtype[-inf, -inf].ptp(nan: true).to_f.nan? }
             assert { dtype[1, inf].ptp == inf }
           end
+
+          test "ptp and minmax keep an infinity over a large reduction" do
+            nan = Float::NAN
+            inf = Float::INFINITY
+            assert { dtype.new(5000).fill(inf).ptp.to_f.nan? }
+            assert { dtype.new(5000).fill(-inf).ptp.to_f.nan? }
+            assert { dtype.new(5000).fill(nan).ptp.to_f.nan? }
+            assert { dtype.new(5000).fill(inf).minmax.map(&:to_f) == [inf, inf] }
+            assert { dtype.new(5000).fill(-inf).minmax.map(&:to_f) == [-inf, -inf] }
+            assert { dtype.new(5000).fill(nan).minmax.map { |x| x.to_f.nan? } == [true, true] }
+
+            a = dtype.new(5000).fill(nan)
+            a[2500] = 7
+            assert { a.minmax.map(&:to_f) == [7, 7] }
+            assert { a.ptp == 0 }
+
+            b = dtype.new(5000).fill(-inf)
+            b[2500] = inf
+            assert { b.ptp.to_f == inf }
+            assert { b.minmax.map(&:to_f) == [-inf, inf] }
+
+            c = dtype.new(64, 500).fill(inf)
+            assert { c.ptp(axis: 0).to_a.all? { |x| x.nan? } }
+            assert { c.ptp(axis: 1).to_a.all? { |x| x.nan? } }
+            assert { c.minmax(axis: 0).map { |x| x.to_a.uniq } == [[inf], [inf]] }
+            d = dtype.new(64, 500).fill(nan)
+            assert { d.ptp(axis: 0).to_a.all? { |x| x.nan? } }
+            assert { d.ptp(axis: 1).to_a.all? { |x| x.nan? } }
+          end
         end
       end
     end

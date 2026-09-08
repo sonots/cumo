@@ -86,32 +86,8 @@ struct cumo_<%=type_name%>_minmax_impl {
     }
 };
 
-struct cumo_<%=type_name%>_ptp_impl {
-    struct MinAndMax {
-        dtype min;
-        dtype max;
-    };
-<% if is_float %>
-    // Infinities rather than the largest finite values, so that an element
-    // which is itself an infinity still wins its comparison. An array holding
-    // nothing but +inf then answers inf - inf, which is the NaN numo answers.
-    __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)INFINITY, (dtype)(-INFINITY)}; }
-<% else %>
-    __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
-<% end %>
-    __device__ MinAndMax MapIn(dtype in, int64_t /*index*/) { return {in, in}; }
-    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        if (m_lt(next.min, accum.min)) { accum.min = next.min; }
-        if (m_lt(accum.max, next.max)) { accum.max = next.max; }
-    }
-    __device__ dtype MapOut(MinAndMax accum) {
-    <% if is_float %>
-        // A NaN loses both comparisons above, so every element being NaN leaves
-        // the identity untouched. An empty reduction raises before it gets here.
-        if (m_lt(accum.max, accum.min)) { return (dtype)nan(""); }
-    <% end %>
-        return m_sub(accum.max, accum.min);
-    }
+struct cumo_<%=type_name%>_ptp_impl : cumo_<%=type_name%>_minmax_impl {
+    __device__ dtype MapOut(MinAndMax accum) { return m_sub(accum.max, accum.min); }
 };
 
 <% unless is_float %>

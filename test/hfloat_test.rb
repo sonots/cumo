@@ -422,6 +422,21 @@ class HFloatTest < Test::Unit::TestCase
     assert_equal(-inf, dtype.new(5000).fill(-inf).max(nan: true).to_a.first)
   end
 
+  test "ptp and minmax keep an infinity over a large reduction" do
+    inf = Float::INFINITY
+    nan = Float::NAN
+    assert_equal true, dtype.new(5000).fill(inf).ptp.to_a.first.nan?
+    assert_equal true, dtype.new(5000).fill(-inf).ptp.to_a.first.nan?
+    assert_equal true, dtype.new(5000).fill(nan).ptp.to_a.first.nan?
+    assert_equal [inf, inf], dtype.new(5000).fill(inf).minmax.map { |x| x.to_a.first }
+    assert_equal([-inf, -inf], dtype.new(5000).fill(-inf).minmax.map { |x| x.to_a.first })
+
+    a = dtype.new(5000).fill(nan)
+    a[2500] = 7.0
+    assert_equal [7.0, 7.0], a.minmax.map { |x| x.to_a.first }
+    assert_equal 0.0, a.ptp.to_a.first
+  end
+
   test "the nan-aware reductions skip a NaN" do
     a = dtype[1.0, Float::NAN, 3.0]
     assert_equal 4.0, a.sum(nan: true).to_a.first
