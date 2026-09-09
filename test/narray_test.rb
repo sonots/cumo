@@ -1910,6 +1910,42 @@ class NArrayTest < Test::Unit::TestCase
     assert { u[true, :new, true] == [[[1, 2]], [[5, 6]], [[9, 10]]] }
   end
 
+  test "adding a new axis in front of an index-backed dimension" do
+    b = Cumo::Int32.new(4, 3).seq
+    v = b[[3, 2, 1, 0], true]
+    assert { v.to_a == [[9, 10, 11], [6, 7, 8], [3, 4, 5], [0, 1, 2]] }
+
+    assert { v[:new, true, true].shape == [1, 4, 3] }
+    assert { v[:new, true, true] == [v.to_a] }
+    assert { v[:new, false] == [v.to_a] }
+    assert { v[:new, :new, true, true] == [[v.to_a]] }
+    assert { v[:new, 0, true] == [[9, 10, 11]] }
+    assert { v[:new, true, 1] == [[10, 7, 4, 1]] }
+    assert { v[:new, 1..2, true] == [[[6, 7, 8], [3, 4, 5]]] }
+
+    w = b[true, [2, 0]]
+    assert { w[true, :new, true] == w.to_a.map { |row| [row] } }
+
+    x = b[[2, 0], [1, 2]]
+    assert { x[:new, true, true] == [x.to_a] }
+
+    c = Cumo::Int32.new(8, 3).seq
+    u = c[7.step(0, -1).to_a, true]
+    assert { u[:new, true, true] == [u.to_a] }
+
+    a = Cumo::Int32.new(4, 8).seq
+    assert { a.dot(u) == a.dot(u.dup) }
+
+    y = Cumo::Int32.new(8, 3).seq
+    y[[3, 2, 1, 0], true][:new, true, true] = Cumo::Int32.new(1, 4, 3).seq(100)
+    assert { y[0..3, true] == [[109, 110, 111], [106, 107, 108], [103, 104, 105], [100, 101, 102]] }
+    assert { y[4..7, true] == [[12, 13, 14], [15, 16, 17], [18, 19, 20], [21, 22, 23]] }
+
+    assert { b[:new, 0, true].contiguous? }
+    assert { b[:new, :new, true, true].contiguous? }
+    assert { b[true, :new, :new, true].contiguous? }
+  end
+
   test "at() rejects :new" do
     # :new leaves q[i].orig_dim == ndim, which made cumo_na_index_at_naview read
     # one element past the end of the view's stridx array. That union member was
