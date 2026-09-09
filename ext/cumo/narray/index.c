@@ -519,24 +519,6 @@ cumo_na_get_strides_nadata(const cumo_narray_data_t *na, ssize_t *strides, ssize
 
 void cumo_na_index_aref_nadata_index_stride_kernel_launch(size_t *idx, ssize_t s1, uint64_t n);
 
-// A new axis holds one element, so any stride addresses it. Give it the size of
-// the block below it, to keep the chain cumo_na_check_ladder() walks: a break
-// there costs contiguous?, and cumo_na_flatten_dim() takes the last dimension's
-// stride as the flat one on the strength of that same chain.
-static void
-cumo_na_index_set_newaxis_strides(cumo_narray_view_t *na2, const int *newaxis, int n_newaxis, int ndim_new)
-{
-    int i, j;
-
-    for (i=n_newaxis-1; i>=0; i--) {
-        j = newaxis[i];
-        if (j+1 < ndim_new && CUMO_SDX_IS_STRIDE(na2->stridx[j+1])) {
-            CUMO_SDX_SET_STRIDE(na2->stridx[j],
-                    CUMO_SDX_GET_STRIDE(na2->stridx[j+1]) * (ssize_t)na2->base.shape[j+1]);
-        }
-    }
-}
-
 static void
 cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
                      cumo_na_index_arg_t *q, ssize_t elmsz, int ndim, int keep_dim)
@@ -596,7 +578,7 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
         j++;
         total *= size;
     }
-    cumo_na_index_set_newaxis_strides(na2, newaxis, n_newaxis, j);
+    cumo_na_set_newaxis_strides(na2, newaxis, n_newaxis, j, elmsz);
     na2->base.size = total;
 }
 
@@ -701,7 +683,7 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
         j++;
         total *= size;
     }
-    cumo_na_index_set_newaxis_strides(na2, newaxis, n_newaxis, j);
+    cumo_na_set_newaxis_strides(na2, newaxis, n_newaxis, j, elmsz);
     na2->base.size = total;
 }
 

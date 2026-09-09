@@ -5640,6 +5640,66 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(view.size, base.flatten.eq(9.0).count_true)
   end
 
+  test "expand_dims inserts an axis that keeps the view contiguous" do
+    b = Cumo::Int32.new(4, 3).seq
+    bases = [
+      b,
+      b[1..3, true],
+      b.reverse(0),
+      Cumo::Int32.new(4, 3, 2).seq[true, true, 0],
+      b[[3, 2, 1, 0], true],
+    ]
+
+    bases.each do |x|
+      (0..x.ndim).each do |k|
+        args = ([true] * k) + [:new] + ([true] * (x.ndim - k))
+        e = x.expand_dims(k)
+        assert { e.to_a == x[*args].to_a }
+        assert { e.contiguous? == x[*args].contiguous? }
+        assert { e.fortran_contiguous? == x[*args].fortran_contiguous? }
+        assert { e.flatten.to_a == x.flatten.to_a }
+        assert { e.to_binary == x.to_binary }
+      end
+    end
+
+    assert { b.expand_dims(0).contiguous? }
+    assert { b.expand_dims(2).contiguous? }
+    assert { !b[[3, 2, 1, 0], true].expand_dims(0).contiguous? }
+    assert { b.expand_dims(-3).to_a == b.expand_dims(0).to_a }
+    assert { Cumo::Int32.cast(5).expand_dims(0).to_a == [5] }
+    assert { b.expand_dims(1).reshape!(b.size).to_a == b.flatten.to_a }
+  end
+
+  test "a length-1 axis leaves flatten on the stride path" do
+    script = <<~'RUBY'
+      require "cumo/narray"
+      pool = Cumo::CUDA::MemoryPool
+      unless pool.enabled?
+        print "no-pool"
+        exit
+      end
+      a = Cumo::Int32.new(1024, 64).seq.reverse
+      a.flatten
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      pool.free_all_blocks
+      costs = (0..2).flat_map do |k|
+        args = ([true] * k) + [:new] + ([true] * (2 - k))
+        [a.expand_dims(k), a[*args]].map do |v|
+          Cumo::CUDA::Runtime.cudaDeviceSynchronize
+          before = pool.total_bytes
+          v.flatten
+          Cumo::CUDA::Runtime.cudaDeviceSynchronize
+          pool.total_bytes - before
+        end
+      end
+      print costs.inspect
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+    omit("memory pool is disabled") if out == "no-pool"
+    assert_equal "[0, 0, 0, 0, 0, 0]", out
+  end
+
   test "kahan_sum keeps what a plain sum loses, in parallel" do
     nan = Float::NAN
     flat = lambda do |v|
