@@ -28,39 +28,46 @@ struct cumo_<%=type_name%>_prod_impl {
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
-struct cumo_<%=type_name%>_min_impl {
+// One set of rules answers for both components, and min, max, minmax and ptp
+// all name a whole set rather than a rule each. A pair that mixes two sets --
+// the nan-aware min beside the default max -- is then not expressible, which
+// is the shape #372 had: #219 changed the identity in min and max and left the
+// copies inside the fused pair behind.
+struct cumo_<%=type_name%>_extremum_rules {
+    struct Min {
 <% if is_float %>
-    // A NaN loses the comparison, so it is skipped unless the accumulator is
-    // still the identity: the reduction then answers NaN only when every
-    // element was NaN, and equal elements keep the earlier one as numo does.
-    __device__ dtype Identity(int64_t /*index*/) { return (dtype)nan(""); }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { if (m_lt(next, accum) || !not_nan(accum)) { accum = next; } }
+        // A NaN loses the comparison, so it is skipped unless the accumulator
+        // is still the identity: the reduction then answers NaN only when every
+        // element was NaN, and equal elements keep the earlier one as numo does.
+        __device__ static dtype Identity() { return (dtype)nan(""); }
+        __device__ static void Reduce(dtype next, dtype& accum) { if (m_lt(next, accum) || !not_nan(accum)) { accum = next; } }
 <% else %>
-    __device__ dtype Identity(int64_t /*index*/) { return DATA_MAX; }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { accum = m_lt(next, accum) ? next : accum; }
+        __device__ static dtype Identity() { return DATA_MAX; }
+        __device__ static void Reduce(dtype next, dtype& accum) { accum = m_lt(next, accum) ? next : accum; }
 <% end %>
+    };
+    struct Max {
+<% if is_float %>
+        __device__ static dtype Identity() { return (dtype)nan(""); }
+        __device__ static void Reduce(dtype next, dtype& accum) { if (m_lt(accum, next) || !not_nan(accum)) { accum = next; } }
+<% else %>
+        __device__ static dtype Identity() { return DATA_MIN; }
+        __device__ static void Reduce(dtype next, dtype& accum) { accum = m_lt(next, accum) ? accum : next; }
+<% end %>
+    };
+};
+
+template <typename Rule>
+struct cumo_<%=type_name%>_extremum_of {
+    __device__ dtype Identity(int64_t /*index*/) { return Rule::Identity(); }
+    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
+    __device__ void Reduce(dtype next, dtype& accum) { Rule::Reduce(next, accum); }
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
-struct cumo_<%=type_name%>_max_impl {
-<% if is_float %>
-    __device__ dtype Identity(int64_t /*index*/) { return (dtype)nan(""); }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { if (m_lt(accum, next) || !not_nan(accum)) { accum = next; } }
-<% else %>
-    __device__ dtype Identity(int64_t /*index*/) { return DATA_MIN; }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { accum = m_lt(next, accum) ? accum : next; }
-<% end %>
-    __device__ dtype MapOut(dtype accum) { return accum; }
-};
-
-// The pair minmax and ptp accumulate, without Identity or Reduce. Leaving
-// those out means a form that forgets to write its own does not compile,
-// where deriving the nan form from the default one would silently inherit
-// the wrong identity. That is how #372 happened.
+// What minmax and ptp accumulate, and how it goes in and out. No Identity and
+// no Reduce: those come from the rules, so a form that names none does not
+// compile.
 struct cumo_<%=type_name%>_minmax_pair {
     struct MinAndMax {
         dtype min;
@@ -73,33 +80,27 @@ struct cumo_<%=type_name%>_minmax_pair {
     }
 };
 
-// min and max fused, so that minmax reads the input once. The rules per
-// component are min_impl's and max_impl's verbatim: minmax must not answer
-// differently from min and max.
-struct cumo_<%=type_name%>_minmax_impl : cumo_<%=type_name%>_minmax_pair {
-<% if is_float %>
-    __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)nan(""), (dtype)nan("")}; }
+// min and max fused, so that minmax reads the input once.
+template <typename Rules>
+struct cumo_<%=type_name%>_minmax_of : cumo_<%=type_name%>_minmax_pair {
+    __device__ MinAndMax Identity(int64_t /*index*/) { return {Rules::Min::Identity(), Rules::Max::Identity()}; }
     __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        if (m_lt(next.min, accum.min) || !not_nan(accum.min)) { accum.min = next.min; }
-        if (m_lt(accum.max, next.max) || !not_nan(accum.max)) { accum.max = next.max; }
+        Rules::Min::Reduce(next.min, accum.min);
+        Rules::Max::Reduce(next.max, accum.max);
     }
-<% else %>
-    __device__ MinAndMax Identity(int64_t /*index*/) { return {DATA_MAX, DATA_MIN}; }
-    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        accum.min = m_lt(next.min, accum.min) ? next.min : accum.min;
-        accum.max = m_lt(next.max, accum.max) ? accum.max : next.max;
-    }
-<% end %>
 };
 
 // ptp is its minmax with the pair subtracted. The one-argument MapOut hides
 // the two-output one it inherits.
-template <typename Base>
-struct cumo_<%=type_name%>_ptp_of : Base {
-    __device__ dtype MapOut(typename Base::MinAndMax accum) { return m_sub(accum.max, accum.min); }
+template <typename Rules>
+struct cumo_<%=type_name%>_ptp_of : cumo_<%=type_name%>_minmax_of<Rules> {
+    __device__ dtype MapOut(cumo_<%=type_name%>_minmax_pair::MinAndMax accum) { return m_sub(accum.max, accum.min); }
 };
 
-using cumo_<%=type_name%>_ptp_impl = cumo_<%=type_name%>_ptp_of<cumo_<%=type_name%>_minmax_impl>;
+using cumo_<%=type_name%>_min_impl = cumo_<%=type_name%>_extremum_of<cumo_<%=type_name%>_extremum_rules::Min>;
+using cumo_<%=type_name%>_max_impl = cumo_<%=type_name%>_extremum_of<cumo_<%=type_name%>_extremum_rules::Max>;
+using cumo_<%=type_name%>_minmax_impl = cumo_<%=type_name%>_minmax_of<cumo_<%=type_name%>_extremum_rules>;
+using cumo_<%=type_name%>_ptp_impl = cumo_<%=type_name%>_ptp_of<cumo_<%=type_name%>_extremum_rules>;
 
 <% unless is_float %>
 // mean, var, stddev and rms answer in double for the integer types, so they
@@ -173,29 +174,21 @@ struct cumo_<%=type_name%>_prod_nan_impl {
     __device__ dtype MapOut(dtype accum) { return accum; }
 };
 
-struct cumo_<%=type_name%>_min_nan_impl {
-    __device__ dtype Identity(int64_t /*index*/) { return (dtype)INFINITY; }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || m_lt(next, accum)) { accum = next; } }
-    __device__ dtype MapOut(dtype accum) { return accum; }
+struct cumo_<%=type_name%>_extremum_nan_rules {
+    struct Min {
+        __device__ static dtype Identity() { return (dtype)INFINITY; }
+        __device__ static void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || m_lt(next, accum)) { accum = next; } }
+    };
+    struct Max {
+        __device__ static dtype Identity() { return (dtype)(-INFINITY); }
+        __device__ static void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || m_lt(accum, next)) { accum = next; } }
+    };
 };
 
-struct cumo_<%=type_name%>_max_nan_impl {
-    __device__ dtype Identity(int64_t /*index*/) { return (dtype)(-INFINITY); }
-    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return in; }
-    __device__ void Reduce(dtype next, dtype& accum) { if (!not_nan(next) || m_lt(accum, next)) { accum = next; } }
-    __device__ dtype MapOut(dtype accum) { return accum; }
-};
-
-struct cumo_<%=type_name%>_minmax_nan_impl : cumo_<%=type_name%>_minmax_pair {
-    __device__ MinAndMax Identity(int64_t /*index*/) { return {(dtype)INFINITY, (dtype)(-INFINITY)}; }
-    __device__ void Reduce(MinAndMax next, MinAndMax& accum) {
-        if (!not_nan(next.min) || m_lt(next.min, accum.min)) { accum.min = next.min; }
-        if (!not_nan(next.max) || m_lt(accum.max, next.max)) { accum.max = next.max; }
-    }
-};
-
-using cumo_<%=type_name%>_ptp_nan_impl = cumo_<%=type_name%>_ptp_of<cumo_<%=type_name%>_minmax_nan_impl>;
+using cumo_<%=type_name%>_min_nan_impl = cumo_<%=type_name%>_extremum_of<cumo_<%=type_name%>_extremum_nan_rules::Min>;
+using cumo_<%=type_name%>_max_nan_impl = cumo_<%=type_name%>_extremum_of<cumo_<%=type_name%>_extremum_nan_rules::Max>;
+using cumo_<%=type_name%>_minmax_nan_impl = cumo_<%=type_name%>_minmax_of<cumo_<%=type_name%>_extremum_nan_rules>;
+using cumo_<%=type_name%>_ptp_nan_impl = cumo_<%=type_name%>_ptp_of<cumo_<%=type_name%>_extremum_nan_rules>;
 <% end %>
 
 #if defined(__cplusplus)
