@@ -3022,6 +3022,23 @@ class NArrayTest < Test::Unit::TestCase
         end
       end
     end
+
+    # the nan-aware pair keeps its own identity, which is the side #372 broke
+    tags = ->(val) { float_tags(reduction_to_a(val).flatten) }
+    [Cumo::DFloat, Cumo::SFloat].each do |dtype|
+      a = ((dtype.new(3000).seq * 37) % 251).reshape(30, 100)
+      a[5, true] = Float::NAN
+      a[true, 11] = Float::INFINITY
+      a[17, 3] = -Float::INFINITY
+      a[23, true] = Float::INFINITY
+      { whole: a, strided: a[true, (0...100).step(7)] }.each do |what, view|
+        (reductions + reductions.map { |opts| opts.merge(nan: true) }).each do |opts|
+          min, max = view.minmax(**opts)
+          assert_equal(tags.(view.min(**opts)), tags.(min), "#{dtype} #{what} #{opts}")
+          assert_equal(tags.(view.max(**opts)), tags.(max), "#{dtype} #{what} #{opts}")
+        end
+      end
+    end
   end
 
   test "minmax over several axes" do
