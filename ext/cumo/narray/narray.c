@@ -1192,6 +1192,40 @@ cumo_na_check_fortran_contiguous(VALUE self)
     return Qtrue;
 }
 
+// A length-1 axis addresses the same element whatever its stride, but one that
+// breaks the chain cumo_na_check_ladder() walks costs the view contiguous? and
+// makes cumo_na_flatten_dim() build an index array instead of taking a stride.
+// The value that keeps the chain is the size of the block below the axis, or
+// the last real dimension's stride when the axis sits at the end.
+void
+cumo_na_set_newaxis_strides(cumo_narray_view_t *na2, const int *newaxis,
+                            int n_newaxis, int ndim, ssize_t elmsz)
+{
+    int i, j, last;
+    ssize_t tail = elmsz;
+
+    if (n_newaxis == 0) {
+        return;
+    }
+    last = ndim - 1;
+    for (i=n_newaxis-1; i>=0 && newaxis[i]==last; i--) {
+        last--;
+    }
+    if (last >= 0 && CUMO_SDX_IS_STRIDE(na2->stridx[last])) {
+        tail = CUMO_SDX_GET_STRIDE(na2->stridx[last]);
+    }
+    for (i=0; i<n_newaxis; i++) {
+        CUMO_SDX_SET_STRIDE(na2->stridx[newaxis[i]], tail);
+    }
+    for (i=n_newaxis-1; i>=0; i--) {
+        j = newaxis[i];
+        if (j+1 < ndim && CUMO_SDX_IS_STRIDE(na2->stridx[j+1])) {
+            CUMO_SDX_SET_STRIDE(na2->stridx[j],
+                    CUMO_SDX_GET_STRIDE(na2->stridx[j+1]) * (ssize_t)na2->base.shape[j+1]);
+        }
+    }
+}
+
 VALUE
 cumo_na_as_contiguous_array(VALUE a)
 {
@@ -1326,6 +1360,8 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
         xfree(na2_shape);
     }
     na2->base.ndim++;
+    cumo_na_set_newaxis_strides(na2, &dim, 1, nd+1,
+            (ssize_t)cumo_na_element_stride(self));
     return view;
 }
 
