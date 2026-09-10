@@ -1502,6 +1502,40 @@ class NArrayTest < Test::Unit::TestCase
     assert { Cumo::NArray.cast(object) == [1, 2, 3] }
   end
 
+  test "UPCAST names the types initialised after it" do
+    types = [Cumo::DComplex, Cumo::DFloat, Cumo::SComplex, Cumo::SFloat, Cumo::HFloat,
+             Cumo::Int64, Cumo::UInt64, Cumo::Int32, Cumo::UInt32, Cumo::Int16,
+             Cumo::UInt16, Cumo::Int8, Cumo::UInt8, Cumo::Bit, Cumo::RObject]
+
+    missing = types.flat_map { |a| types.reject { |b| a::UPCAST[b] }.map { |b| [a, b] } }
+    undeclared = types.map { |a| [a, Cumo::Bit] } + [[Cumo::RObject, Cumo::RObject]]
+    assert_equal(undeclared.map(&:to_s).sort, missing.map(&:to_s).sort)
+    assert_equal([], types.reject { |a| a::UPCAST.frozen? })
+    assert_equal([], types.select { |a| a::UPCAST.key?(false) })
+
+    disagree = types.combination(2).select do |a, b|
+      a::UPCAST[b] && b::UPCAST[a] && a::UPCAST[b] != b::UPCAST[a]
+    end
+    assert_equal([], disagree)
+
+    assert_equal(Cumo::DFloat, Cumo::DFloat::UPCAST[Cumo::SFloat])
+    assert_equal(Cumo::SFloat, Cumo::SFloat::UPCAST[Cumo::HFloat])
+    assert_equal(Cumo::RObject, Cumo::Int8::UPCAST[Cumo::RObject])
+    assert_equal(Cumo::RObject, Cumo::Bit::UPCAST[Cumo::RObject])
+  end
+
+  test "an unsigned type and Int8 meet in a type that holds both" do
+    assert_equal(Cumo::Int16, Cumo::UInt8::UPCAST[Cumo::Int8])
+    assert_equal(Cumo::Int32, Cumo::UInt16::UPCAST[Cumo::Int8])
+    assert_equal(Cumo::Int64, Cumo::UInt32::UPCAST[Cumo::Int8])
+    assert_equal(Cumo::Int64, Cumo::UInt64::UPCAST[Cumo::Int8])
+
+    assert_equal([199], (Cumo::UInt8[200] + Cumo::Int8[-1]).to_a)
+    assert_equal([199], (Cumo::Int8[-1] + Cumo::UInt8[200]).to_a)
+    assert_equal([40001], (Cumo::UInt16[40000] + Cumo::Int8[1]).to_a)
+    assert_equal([3_000_000_001], (Cumo::UInt32[3_000_000_000] + Cumo::Int8[1]).to_a)
+  end
+
   sub_test_case "#dot between types" do
     dot_types = [
       Cumo::Int32,
