@@ -110,6 +110,9 @@ class ErbPP
   def init_def
   end
 
+  def upcast_def
+  end
+
   def find_tmpl(name)
     @parent.children.find { |x| x.name == name }
   end
@@ -211,6 +214,9 @@ class DefClass < DefModule
   end
   def init_erb
     @opts[:init_erb] || "init_class"
+  end
+  def upcast_def
+    load_erb("init_upcast").result(binding)
   end
   def super_class
     @opts[:super_class] || "rb_cObject"

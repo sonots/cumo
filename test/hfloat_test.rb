@@ -672,10 +672,9 @@ class HFloatTest < Test::Unit::TestCase
       assert_equal Cumo::DFloat, a.dot(seq_mod(Cumo::DFloat, [6, 3], 5)).class
       assert_equal dtype, seq_mod(Cumo::Int32, [4, 6], 4).dot(a.transpose).class
       assert_equal dtype, a.dot(seq_mod(Cumo::Int32, [6, 3], 5)).class
-      # UPCAST only names the classes initialised before its own type, so one
-      # direction of every pair resolves and the other has to fall back
-      assert_nil Cumo::SFloat::UPCAST[dtype]
+      assert_equal Cumo::SFloat, Cumo::SFloat::UPCAST[dtype]
       assert_equal Cumo::SFloat, dtype::UPCAST[Cumo::SFloat]
+      assert_equal dtype, Cumo::Bit::UPCAST[dtype]
       lhs = seq_mod(Cumo::SFloat, [4, 6], 4)
       assert_equal sfloat_dot(lhs, a.transpose), lhs.dot(a.transpose).to_a
     end

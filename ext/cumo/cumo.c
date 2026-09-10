@@ -26,6 +26,21 @@ void Init_cumo_scomplex();
 void Init_cumo_dfloat();
 void Init_cumo_dcomplex();
 void Init_cumo_robject();
+void Init_cumo_dcomplex_upcast();
+void Init_cumo_dfloat_upcast();
+void Init_cumo_scomplex_upcast();
+void Init_cumo_sfloat_upcast();
+void Init_cumo_hfloat_upcast();
+void Init_cumo_int64_upcast();
+void Init_cumo_uint64_upcast();
+void Init_cumo_int32_upcast();
+void Init_cumo_uint32_upcast();
+void Init_cumo_int16_upcast();
+void Init_cumo_uint16_upcast();
+void Init_cumo_int8_upcast();
+void Init_cumo_uint8_upcast();
+void Init_cumo_bit_upcast();
+void Init_cumo_robject_upcast();
 void Init_cumo_na_math();
 void Init_cumo_na_rand();
 void Init_cumo_na_array();
@@ -164,6 +179,23 @@ Init_cumo()
 
     Init_cumo_bit();
     Init_cumo_robject();
+
+    // Every class exists now, so the UPCAST tables can name all of them.
+    Init_cumo_dcomplex_upcast();
+    Init_cumo_dfloat_upcast();
+    Init_cumo_scomplex_upcast();
+    Init_cumo_sfloat_upcast();
+    Init_cumo_hfloat_upcast();
+    Init_cumo_int64_upcast();
+    Init_cumo_uint64_upcast();
+    Init_cumo_int32_upcast();
+    Init_cumo_uint32_upcast();
+    Init_cumo_int16_upcast();
+    Init_cumo_uint16_upcast();
+    Init_cumo_int8_upcast();
+    Init_cumo_uint8_upcast();
+    Init_cumo_bit_upcast();
+    Init_cumo_robject_upcast();
 
     Init_cumo_na_math();
 

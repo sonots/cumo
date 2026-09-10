@@ -1204,9 +1204,9 @@ module Cumo
 
     def dot(b)
       t = self.class::UPCAST[b.class]
-      # A type's UPCAST table only names the classes initialised before it, so
-      # half of every pair is missing from one side. cumo_na_upcast reads both
-      # tables; do the same here, or the pair silently takes the slow route.
+      # Cumo::Bit names every other type but no table names Bit, so a pair can be
+      # declared on one side only. cumo_na_upcast reads both tables; do the same
+      # here, or the pair silently takes the slow route.
       t ||= b.class::UPCAST[self.class] if b.is_a?(NArray)
       if self.ndim == 0 and b.ndim == 0
         return self * b

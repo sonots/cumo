@@ -37,7 +37,7 @@ extern VALUE cRT;
 void
 Init_<%=lib_name%>(void)
 {
-    VALUE hCast, <%=ns_var%>;
+    VALUE <%=ns_var%>;
 
     <%=ns_var%> = rb_define_module("Cumo");
 
@@ -47,4 +47,14 @@ Init_<%=lib_name%>(void)
 <% children.each do |c| %>
 <%= c.init_def %>
 <% end %>
+}
+
+// cumo.c runs this after the last Init_cumo_*. Any class defined after this
+// one is still 0 during Init, and its entry would land under the key false.
+void
+Init_<%=lib_name%>_upcast(void)
+{
+    VALUE hCast;
+
+<% children.each do |c| %><%= c.upcast_def %><% end %>
 }
