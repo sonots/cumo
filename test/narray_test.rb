@@ -4166,6 +4166,28 @@ class NArrayTest < Test::Unit::TestCase
     a
   end
 
+  test "flattening a Bit view that walks an axis backwards" do
+    b = Cumo::Bit.cast(Cumo::Int32.new(64).seq % 3).eq(0).reshape(8, 8)
+    views = [
+      b.reverse(0),
+      b.transpose(1, 0).reverse(1),
+      b.transpose(1, 0).reverse(1)[(0...8).step(2), true],
+      b[3..6, true].reverse(1),
+      Cumo::Bit.cast(Cumo::Int32.new(4096).seq % 3).eq(0).reshape(64, 64)
+        .transpose(1, 0).reverse(1)[(0...64).step(3), true],
+    ]
+    views.each do |v|
+      ref = v.dup
+      assert { v.to_a == ref.to_a }
+      assert { v.flatten.to_a == ref.flatten.to_a }
+      assert { v.flatten.where.to_a == ref.flatten.where.to_a }
+      assert { v.flatten.count_true.to_i == ref.count_true.to_i }
+      each = []
+      v.flatten.each { |x| each << x }
+      assert { each == ref.flatten.to_a }
+    end
+  end
+
   test "Bit results reach every element of a view they cannot flatten" do
     # A Bit element is one bit, so its position and steps are bit counts and
     # the byte indexer cannot address it. Comparisons, the isnan family and the
