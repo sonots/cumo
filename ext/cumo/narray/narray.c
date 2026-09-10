@@ -1088,11 +1088,26 @@ cumo_na_copy_flags(VALUE src, VALUE dst)
 }
 
 
+// The last dimension that advances, or -1 when every one of them holds a single
+// element. A length-1 dimension never advances, so its stride is free.
+int
+cumo_na_last_dim_with_elements(const cumo_narray_t *na, int start_dim)
+{
+    int i;
+
+    for (i=na->ndim; i-- > start_dim; ) {
+        if (na->shape[i] != 1) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 // fix name, ex, allow_stride_for_flatten_view
 VALUE
 cumo_na_check_ladder(VALUE self, int start_dim)
 {
-    int i;
+    int i, prev;
     ssize_t st0, st1;
     cumo_narray_t *na;
     CumoGetNArray(self,na);
@@ -1118,14 +1133,21 @@ cumo_na_check_ladder(VALUE self, int start_dim)
             if (CUMO_NA_IS_INDEX_AT(na,i))
                 return Qfalse;
         }
-        // check stride
-        st0 = CUMO_NA_STRIDE_AT(na,start_dim);
-        for (i=start_dim+1; i<CUMO_NA_NDIM(na); i++) {
-            st1 = CUMO_NA_STRIDE_AT(na,i);
-            if (st0 != (ssize_t)(st1 * CUMO_NA_SHAPE(na)[i])) {
-                return Qfalse;
+        // check stride. A dimension holding one element never advances, so its
+        // stride is free and the chain runs past it.
+        prev = -1;
+        for (i=start_dim; i<CUMO_NA_NDIM(na); i++) {
+            if (CUMO_NA_SHAPE(na)[i] == 1) {
+                continue;
             }
-            st0 = st1;
+            if (prev >= 0) {
+                st0 = CUMO_NA_STRIDE_AT(na,prev);
+                st1 = CUMO_NA_STRIDE_AT(na,i);
+                if (st0 != (ssize_t)(st1 * CUMO_NA_SHAPE(na)[i])) {
+                    return Qfalse;
+                }
+            }
+            prev = i;
         }
     }
     return Qtrue;
@@ -1134,6 +1156,7 @@ cumo_na_check_ladder(VALUE self, int start_dim)
 VALUE
 cumo_na_check_contiguous(VALUE self)
 {
+    int i;
     ssize_t elmsz;
     cumo_narray_t *na;
     CumoGetNArray(self,na);
@@ -1151,9 +1174,11 @@ cumo_na_check_contiguous(VALUE self)
         }
         if (cumo_na_check_ladder(self,0)==Qtrue) {
             elmsz = cumo_na_element_stride(self);
-            if (elmsz == CUMO_NA_STRIDE_AT(na,CUMO_NA_NDIM(na)-1)) {
+            i = cumo_na_last_dim_with_elements(na, 0);
+            if (i < 0) {
                 return Qtrue;
             }
+            return (elmsz == CUMO_NA_STRIDE_AT(na,i)) ? Qtrue : Qfalse;
         }
     }
     return Qfalse;
