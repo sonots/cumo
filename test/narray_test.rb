@@ -4167,25 +4167,49 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   test "flattening a Bit view that walks an axis backwards" do
-    b = Cumo::Bit.cast(Cumo::Int32.new(64).seq % 3).eq(0).reshape(8, 8)
-    views = [
-      b.reverse(0),
-      b.transpose(1, 0).reverse(1),
-      b.transpose(1, 0).reverse(1)[(0...8).step(2), true],
-      b[3..6, true].reverse(1),
-      Cumo::Bit.cast(Cumo::Int32.new(4096).seq % 3).eq(0).reshape(64, 64)
-        .transpose(1, 0).reverse(1)[(0...64).step(3), true],
-    ]
-    views.each do |v|
-      ref = v.dup
-      assert { v.to_a == ref.to_a }
-      assert { v.flatten.to_a == ref.flatten.to_a }
-      assert { v.flatten.where.to_a == ref.flatten.where.to_a }
-      assert { v.flatten.count_true.to_i == ref.count_true.to_i }
+    bit = ->(n) { Cumo::Bit.cast(Cumo::Int32.new(n).seq % 3).eq(0) }
+    rows = ->(r, c) { (0...r * c).map { |i| (i % 3).zero? ? 1 : 0 }.each_slice(c).to_a }
+
+    cases = {
+      "reverse(0)" => [
+        bit.(64).reshape(8, 8).reverse(0),
+        rows.(8, 8).reverse,
+      ],
+      "transpose then reverse(1)" => [
+        bit.(64).reshape(8, 8).transpose(1, 0).reverse(1),
+        rows.(8, 8).transpose.map(&:reverse),
+      ],
+      "every other row of that" => [
+        bit.(64).reshape(8, 8).transpose(1, 0).reverse(1)[(0...8).step(2), true],
+        rows.(8, 8).transpose.map(&:reverse).each_slice(2).map(&:first),
+      ],
+      # over CUMO_BIT_WHERE_MIN_KERNEL_SIZE, so where compacts on the device
+      "128x128 transpose then reverse(1)" => [
+        bit.(128 * 128).reshape(128, 128).transpose(1, 0).reverse(1),
+        rows.(128, 128).transpose.map(&:reverse),
+      ],
+    }
+
+    cases.each do |what, (v, want)|
+      flat = want.flatten
+      ones = flat.each_index.select { |i| flat[i] == 1 }
+      zeros = flat.each_index.select { |i| flat[i].zero? }
+
+      assert_equal(want, v.to_a, "to_a of #{what}")
+      assert_equal(flat, v.flatten.to_a, "flatten of #{what}")
+      assert_equal(ones, v.flatten.where.to_a, "where of #{what}")
+      idx1, idx0 = v.flatten.where2
+      assert_equal(ones, idx1.to_a, "where2 ones of #{what}")
+      assert_equal(zeros, idx0.to_a, "where2 zeros of #{what}")
+      assert_equal(ones, Cumo::Int32.new(flat.size).seq[v.flatten].to_a, "mask of #{what}")
       each = []
       v.flatten.each { |x| each << x }
-      assert { each == ref.flatten.to_a }
+      assert_equal(flat, each, "each of #{what}")
     end
+
+    v = bit.(64).reshape(8, 8).transpose(1, 0).reverse(1)
+    v.flatten.store(Cumo::Int32.new(64).seq % 2)
+    assert_equal((0...64).map { |i| i % 2 }, v.flatten.to_a, "store through the view")
   end
 
   test "Bit results reach every element of a view they cannot flatten" do

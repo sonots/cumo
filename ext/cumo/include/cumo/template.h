@@ -36,31 +36,33 @@
 
 // pos is the first position in iteration order, so a step below zero walks down
 // from there and rebasing the pointer onto pos would underflow the position of
-// every element past the first word.
+// every element past the first word. An index holds positions relative to pos
+// and one of them is below zero as soon as the view it came from walks an axis
+// backwards, so pos + idx is right in unsigned arithmetic only while pos is
+// whole. The test reads the iterator rather than the caller's copy of step,
+// which is how a template declaring it as size_t used to lose the sign.
+#define CUMO_REBASE_BIT_PTR( lp, i, ad, ps )                 \
+    if (((lp)->args[i].iter[0]).step >= 0 &&                 \
+        ((lp)->args[i].iter[0]).idx == NULL) {               \
+        ad += ps/CUMO_NB;                                    \
+        ps %= CUMO_NB;                                       \
+    }
+
 #define CUMO_INIT_PTR_BIT( lp, i, ad, ps, st )               \
     {                                                   \
         ps = ((lp)->args[i].iter[0]).pos;                       \
         st = ((lp)->args[i].iter[0]).step;                      \
         ad = (CUMO_BIT_DIGIT*)(((lp)->args[i]).ptr);            \
-        if (st >= 0) {                                       \
-            ad += ps/CUMO_NB;                                \
-            ps %= CUMO_NB;                                   \
-        }                                                    \
+        CUMO_REBASE_BIT_PTR(lp, i, ad, ps);                     \
     }
 
-// An index holds positions relative to pos, and one of them is below zero as
-// soon as the view it came from walks an axis backwards. pos + idx is right in
-// unsigned arithmetic only while pos is whole, so an indexed argument keeps it.
 #define CUMO_INIT_PTR_BIT_IDX( lp, i, ad, ps, st, id )       \
     {                                                   \
         ps = ((lp)->args[i].iter[0]).pos;                       \
         st = ((lp)->args[i].iter[0]).step;                      \
         id = ((lp)->args[i].iter[0]).idx;                       \
         ad = (CUMO_BIT_DIGIT*)(((lp)->args[i]).ptr);            \
-        if (st >= 0 && id == NULL) {                         \
-            ad += ps/CUMO_NB;                                \
-            ps %= CUMO_NB;                                   \
-        }                                                    \
+        CUMO_REBASE_BIT_PTR(lp, i, ad, ps);                     \
     }
 
 // A where compaction takes three launches, so below this many elements walking
