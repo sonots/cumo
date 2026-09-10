@@ -5721,6 +5721,55 @@ class NArrayTest < Test::Unit::TestCase
     assert { b.expand_dims(1).reshape!(b.size).to_a == b.flatten.to_a }
   end
 
+  test "a length-1 axis does not break contiguity" do
+    b = Cumo::Int32.new(6, 4).seq
+
+    assert { b.expand_dims(0).contiguous? }
+    assert { b.expand_dims(2).contiguous? }
+    assert { b.expand_dims(0).transpose(1, 0, 2).contiguous? }
+    assert { b[2..2, 3..3].contiguous? }
+    assert { !b[true, 1..2].contiguous? }
+    assert { !b.transpose.contiguous? }
+
+    v = b.expand_dims(1).transpose(0, 2, 1)
+    assert { v.shape == [6, 4, 1] }
+    assert { v.contiguous? }
+    assert { v.flatten.to_a == b.flatten.to_a }
+    assert { v.reshape(b.size).to_a == b.flatten.to_a }
+    assert { v.to_binary == b.to_binary }
+
+    w = b.expand_dims(0).transpose(1, 0, 2)
+    assert { w.reshape(b.size).to_a == b.flatten.to_a }
+
+    [b.expand_dims(0), b.expand_dims(2), v, w, b[2..2, 3..3],
+     b.reverse(0).expand_dims(2), b[true, 1..2].expand_dims(1)].each do |x|
+      assert { x.flatten.to_a == x.dup.flatten.to_a }
+      assert { x.to_binary == x.dup.to_binary }
+      assert { x.to_a == x.dup.to_a }
+    end
+
+    r = Cumo::DFloat.new(4, 1).seq.reverse(1)
+    assert { r.contiguous? }
+    r.reshape!(4)
+    assert { r.to_a == [0.0, 1.0, 2.0, 3.0] }
+
+    u = b.expand_dims(1).transpose(0, 2, 1)
+    u.reshape!(b.size)
+    assert { u.to_a == b.flatten.to_a }
+
+    part = Cumo::Int32.new(6, 4).seq
+    part[1..2, true].expand_dims(1).store(-7)
+    assert { part.to_a == [[0, 1, 2, 3], [-7, -7, -7, -7], [-7, -7, -7, -7],
+                           [12, 13, 14, 15], [16, 17, 18, 19], [20, 21, 22, 23]] }
+
+    c = Cumo::DFloat.new(4, 4).seq
+    t = c.expand_dims(1).transpose(0, 2, 1)
+    ref = t.dup
+    t.triu!
+    ref.triu!
+    assert { t.to_a == ref.to_a }
+  end
+
   test "a length-1 axis leaves flatten on the stride path" do
     script = <<~'RUBY'
       require "cumo/narray"

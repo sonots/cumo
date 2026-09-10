@@ -473,11 +473,11 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
         } else {
             stridx = na2->stridx;
         }
-        if (na->ndim == 0) {
-            stride = cumo_na_element_stride(self);
-        } else {
-            stride = CUMO_SDX_GET_STRIDE(na2->stridx[na->ndim-1]);
-        }
+        // A contiguous view holds its elements one after another from its
+        // offset, so the step between them is the element size whatever the
+        // strides say: a length-1 dimension may carry any stride, including a
+        // negative one.
+        stride = cumo_na_element_stride(self);
         for (i=argc; i--;) {
             CUMO_SDX_SET_STRIDE(stridx[i],stride);
             stride *= shape[i];
@@ -588,9 +588,16 @@ cumo_na_flatten_dim(VALUE self, int sd)
                 na2->stridx[i] = na1->stridx[i];
             }
         }
-        // flat dimenion == last dimension
+        // flat dimension == last dimension that advances. A length-1 dimension
+        // is not part of the chain cumo_na_check_ladder() walks, so the stride
+        // at nd-1 may be any value.
         if (RTEST(cumo_na_check_ladder(self,sd))) {
-            na2->stridx[sd] = na1->stridx[nd-1];
+            i = cumo_na_last_dim_with_elements(na, sd);
+            if (i < 0) {
+                CUMO_SDX_SET_STRIDE(na2->stridx[sd], (ssize_t)cumo_na_element_stride(self));
+            } else {
+                na2->stridx[sd] = na1->stridx[i];
+            }
         } else {
             cumo_na_iarray_stridx_t iarray;
             cumo_na_indexer_t indexer;
