@@ -1483,23 +1483,35 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
     return results;
 }
 
+// The md-loop dimensions only. An index on one of the argument's own user
+// dimensions sits past lp->ndim and is not reported here.
 static bool
-loop_is_using_idx(cumo_na_md_loop_t *lp)
+loop_arg_is_using_idx(cumo_na_md_loop_t *lp, int j)
 {
-    int  i, j;
-    int  nd = lp->ndim;
+    int  i;
 
-    if (nd<0) {
+    if (lp->ndim<0) {
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
     }
 
     // i-th dimension
-    for (i=0; i<nd; i++) {
-        // j-th argument
-        for (j=0; j<lp->narg; j++) {
-            if (LITER(lp,i,j).idx) {
-                return true;
-            }
+    for (i=0; i<lp->ndim; i++) {
+        if (LITER(lp,i,j).idx) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool
+loop_is_using_idx(cumo_na_md_loop_t *lp)
+{
+    int  j;
+
+    // j-th argument
+    for (j=0; j<lp->narg; j++) {
+        if (loop_arg_is_using_idx(lp, j)) {
+            return true;
         }
     }
     return false;
@@ -1510,13 +1522,19 @@ loop_is_using_idx(cumo_na_md_loop_t *lp)
 // ndloop_sync_user_index covers the dimensions the user function walks; these
 // are the ones ndloop walks itself.
 static void
+ndloop_sync_device(void)
+{
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("ndloop", "any");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+}
+
+static void
 ndloop_sync_md_index(cumo_na_md_loop_t *lp)
 {
     if (!loop_is_using_idx(lp)) {
         return;
     }
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("ndloop", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    ndloop_sync_device();
 }
 
 static void
@@ -1971,8 +1989,14 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     LARG(lp,1).shape = &lp->sub_narray_len;
 
     // The sub-narray binds its own index array here, after the entry point
-    // looked, so the wait for the kernel that filled it belongs here too.
-    ndloop_sync_md_index(lp);
+    // looked, so the wait for the kernel that filled it belongs here too. The
+    // destination was waited for at the entry point, so a row that binds no
+    // index the loop below walks has nothing left to wait for. An index on the
+    // row's last dimension goes to the per-dtype store iterator, which waits
+    // for itself where it reads one on the host.
+    if (loop_arg_is_using_idx(lp, 1)) {
+        ndloop_sync_device();
+    }
 
     // loop body
     reach = ALLOCA_N(bool, nd+1);
