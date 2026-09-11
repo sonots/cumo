@@ -6742,6 +6742,44 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([(100..107).to_a, [0] * 8, [0] * 8], d[1, true, true].to_a)
     end
 
+    test "a row shorter than the plane is zero filled along every axis" do
+      zeros = lambda { |shape| shape.size == 1 ? Array.new(shape[0], 0) : Array.new(shape[0]) { zeros.call(shape[1..]) } }
+      pad = lambda do |a, shape|
+        head = shape.size == 1 ? a : a.map { |x| pad.call(x, shape[1..]) }
+        head + Array.new(shape[0] - a.size) { shape.size == 1 ? 0 : zeros.call(shape[1..]) }
+      end
+      selections = [[0...2, true, true], [true, 0...2, true], [true, true, 0...5], [[0, 1], true, true]]
+
+      store_types.each do |dtype|
+        src = dtype.new(3, 4, 8).seq
+        selections.each do |sel|
+          row = src[*sel]
+          d = dtype.new(2, 3, 4, 8).fill(9)
+          d.store([src, row])
+          assert_equal(src.to_a, d[0, true, true, true].to_a)
+          assert_equal(pad.call(row.to_a, [3, 4, 8]), d[1, true, true, true].to_a)
+        end
+      end
+
+      bsrc = Cumo::Int32.new(3, 4, 8).seq.gt(20)
+      selections.each do |sel|
+        brow = bsrc[*sel]
+        b = Cumo::Bit.new(2, 3, 4, 8).fill(1)
+        b.store([bsrc, brow])
+        assert_equal(bsrc.to_a, b[0, true, true, true].to_a)
+        assert_equal(pad.call(brow.to_a, [3, 4, 8]), b[1, true, true, true].to_a)
+      end
+
+      deep = Cumo::Int32.new(3, 4, 2, 8).seq
+      [[true, 0...2, true, true], [true, [0, 1], true, true]].each do |sel|
+        row = deep[*sel]
+        d = Cumo::Int32.new(2, 3, 4, 2, 8).fill(9)
+        d.store([deep, row])
+        assert_equal(deep.to_a, d[0, true, true, true, true].to_a)
+        assert_equal(pad.call(row.to_a, [3, 4, 2, 8]), d[1, true, true, true, true].to_a)
+      end
+    end
+
     test "a sub-narray shorter than the row leaves the rest of it zero" do
       want = [[1, 2, 3, 0, 0, 0, 0, 0], [4, 5, 6, 0, 0, 0, 0, 0]]
       rows = [Cumo::Int32[1, 2, 3], Cumo::Int32[4, 5, 6]]

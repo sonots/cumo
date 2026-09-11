@@ -1938,7 +1938,7 @@ static void
 loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VALUE a)
 {
     int nd = lp->ndim;
-    int i, j;
+    int i, j, k;
     cumo_narray_t *na;
     int *dim_map;
     VALUE a_type;
@@ -1973,16 +1973,21 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     // loop body
     for (i=i0;;) {
         LARG(lp,1).value = Qtrue;
+        for (k=i0; k<nd; k++) {
+            if (c[k] >= na->shape[k-i0]) {
+                LARG(lp,1).value = Qfalse;
+                break;
+            }
+        }
         for (; i<nd; i++) {
-            for (j=0; j<2; j++) {
-                if (LITER(lp,i,j).idx) {
+            for (j=0; j<lp->narg; j++) {
+                if (j==1 && c[i] >= na->shape[i-i0]) {
+                    LITER(lp,i+1,j).pos = LITER(lp,i,j).pos;
+                } else if (LITER(lp,i,j).idx) {
                     LITER(lp,i+1,j).pos = LITER(lp,i,j).pos + LITER(lp,i,j).idx[c[i]];
                 } else {
                     LITER(lp,i+1,j).pos = LITER(lp,i,j).pos + LITER(lp,i,j).step*c[i];
                 }
-            }
-            if (c[i] >= na->shape[i-i0]) {
-                LARG(lp,1).value = Qfalse;
             }
         }
 
