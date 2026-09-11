@@ -1957,7 +1957,13 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
         dim_map[i] = lp->trans_map[i+i0];
         //printf("dim_map[i=%d] = %d, i0=%d\n", i, dim_map[i], i0);
     }
+    for (i=0; i<=nd+lp->user.ndim; i++) {
+        LITER(lp,i,1).pos = 0;
+        LITER(lp,i,1).step = 0;
+        LITER(lp,i,1).idx = NULL;
+    }
     ndloop_set_stepidx(lp, 1, a, dim_map, CUMO_NDL_READ);
+    LITER(lp,i0,1).pos = LITER(lp,0,1).pos;
     LARG(lp,1).shape = &(na->shape[na->ndim-1]);
 
     // The sub-narray binds its own index array here, after the entry point

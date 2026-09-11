@@ -21,10 +21,12 @@ class NArrayTest < Test::Unit::TestCase
     Cumo::DFloat,
     Cumo::DComplex,
   ]
+  store_types = types + [Cumo::HFloat, Cumo::RObject]
 
   if ENV['DTYPE']
     types.select! { |type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
     float_types.select! { |type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
+    store_types.select! { |type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
   end
 
   def setup
@@ -1503,17 +1505,17 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   test "UPCAST names the types initialised after it" do
-    types = [Cumo::DComplex, Cumo::DFloat, Cumo::SComplex, Cumo::SFloat, Cumo::HFloat,
-             Cumo::Int64, Cumo::UInt64, Cumo::Int32, Cumo::UInt32, Cumo::Int16,
-             Cumo::UInt16, Cumo::Int8, Cumo::UInt8, Cumo::Bit, Cumo::RObject]
+    all_types = [Cumo::DComplex, Cumo::DFloat, Cumo::SComplex, Cumo::SFloat, Cumo::HFloat,
+                 Cumo::Int64, Cumo::UInt64, Cumo::Int32, Cumo::UInt32, Cumo::Int16,
+                 Cumo::UInt16, Cumo::Int8, Cumo::UInt8, Cumo::Bit, Cumo::RObject]
 
-    missing = types.flat_map { |a| types.reject { |b| a::UPCAST[b] }.map { |b| [a, b] } }
-    undeclared = types.map { |a| [a, Cumo::Bit] } + [[Cumo::RObject, Cumo::RObject]]
+    missing = all_types.flat_map { |a| all_types.reject { |b| a::UPCAST[b] }.map { |b| [a, b] } }
+    undeclared = all_types.map { |a| [a, Cumo::Bit] } + [[Cumo::RObject, Cumo::RObject]]
     assert_equal(undeclared.map(&:to_s).sort, missing.map(&:to_s).sort)
-    assert_equal([], types.reject { |a| a::UPCAST.frozen? })
-    assert_equal([], types.select { |a| a::UPCAST.key?(false) })
+    assert_equal([], all_types.reject { |a| a::UPCAST.frozen? })
+    assert_equal([], all_types.select { |a| a::UPCAST.key?(false) })
 
-    disagree = types.combination(2).select do |a, b|
+    disagree = all_types.combination(2).select do |a, b|
       a::UPCAST[b] && b::UPCAST[a] && a::UPCAST[b] != b::UPCAST[a]
     end
     assert_equal([], disagree)
@@ -6697,5 +6699,68 @@ class NArrayTest < Test::Unit::TestCase
       "marshal_load=TypeError"
     ]
     assert_equal(want.join(","), reader.value)
+  end
+
+  sub_test_case "storing a Ruby Array of NArrays" do
+    test "each sub-narray keeps its own offset" do
+      store_types.each do |dtype|
+        src = dtype.new(2, 8).seq
+        rows = [src[1, true], src[0, true]]
+        want = rows.map(&:to_a)
+        assert_equal(want, dtype.zeros(2, 8).store(rows).to_a)
+        assert_equal(want, dtype.cast(rows).to_a)
+        assert_equal(want, dtype[*rows].to_a)
+      end
+
+      deep = Cumo::Int32.new(2, 3, 8).seq
+      planes = [deep[1, true, true], deep[0, true, true]]
+      assert_equal(planes.map(&:to_a), Cumo::Int32.zeros(2, 3, 8).store(planes).to_a)
+
+      bits = Cumo::Int32.new(2, 8).seq.gt(3)
+      brows = [bits[1, true], bits[0, true]]
+      assert_equal(brows.map(&:to_a), Cumo::Bit.cast(brows).to_a)
+    end
+
+    test "an index-backed sub-narray does not lend its index to the next row" do
+      store_types.each do |dtype|
+        src = dtype.new(2, 8).seq
+        rows = [src[0, [7, 6, 5, 4, 3, 2, 1, 0]], src[1, true]]
+        assert_equal(rows.map(&:to_a), dtype.zeros(2, 8).store(rows).to_a)
+      end
+
+      bits = Cumo::Int32.new(2, 8).seq.gt(3)
+      brows = [bits[0, [7, 6, 5, 4, 3, 2, 1, 0]], bits[1, true]]
+      assert_equal(brows.map(&:to_a), Cumo::Bit.new(2, 8).store(brows).to_a)
+    end
+
+    test "a row shorter in an outer axis does not inherit the index of the row before" do
+      src = Cumo::Int32.new(3, 8).seq
+      rows = [src[[2, 0, 1], true], Cumo::Int32.new(1, 8).seq(100)]
+      d = Cumo::Int32.zeros(2, 3, 8)
+      d.store(rows)
+      assert_equal(rows[0].to_a, d[0, true, true].to_a)
+      assert_equal([(100..107).to_a, [0] * 8, [0] * 8], d[1, true, true].to_a)
+    end
+
+    test "a sub-narray shorter than the row leaves the rest of it zero" do
+      want = [[1, 2, 3, 0, 0, 0, 0, 0], [4, 5, 6, 0, 0, 0, 0, 0]]
+      rows = [Cumo::Int32[1, 2, 3], Cumo::Int32[4, 5, 6]]
+      assert_equal(want, Cumo::Int32.new(2, 8).fill(9).store(rows).to_a)
+
+      src = Cumo::Int32.new(2, 300).seq
+      long = [src[0, (0...64).to_a.reverse], src[1, true]]
+      d = Cumo::Int32.new(2, 300).fill(9)
+      d.store(long)
+      assert_equal(long[0].to_a + ([0] * 236), d[0, true].to_a)
+      assert_equal(long[1].to_a, d[1, true].to_a)
+
+      bsrc = Cumo::Int32.new(3, 300).seq.gt(100)
+      brows = [bsrc[0, 0...64], bsrc[1, [3, 1, 2, 0]], bsrc[2, true]]
+      b = Cumo::Bit.new(3, 300).fill(1)
+      b.store(brows)
+      assert_equal(brows[0].to_a + ([0] * 236), b[0, true].to_a)
+      assert_equal(brows[1].to_a + ([0] * 296), b[1, true].to_a)
+      assert_equal(brows[2].to_a, b[2, true].to_a)
+    end
   end
 end
