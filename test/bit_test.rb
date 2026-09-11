@@ -823,4 +823,32 @@ class BitTest < Test::Unit::TestCase
     assert { Process.last_status.success? }
     assert_equal("swap_byte,hton,to_network,to_swapped", reader.value)
   end
+
+  test "store_binary on a bit view that does not start at bit 0 is refused" do
+    a = Cumo::Bit.new(16).fill(0)
+    assert_raise(ArgumentError) { a[8..15].store_binary("\xFF".b) }
+    assert_equal 0, Integer(a.count_true)
+  end
+
+  # A byte is the smallest thing memcpy moves, so a view ending mid-byte would
+  # take the bits after it along, and those belong to the rest of the base.
+  test "store_binary on a bit view that ends mid-byte is refused" do
+    a = Cumo::Bit.new(16).fill(0)
+    assert_raise(ArgumentError) { a[0..3].store_binary("\xFF".b) }
+    assert_raise(ArgumentError) { a[0..11].store_binary("\xFF\xFF".b) }
+    assert_equal 0, Integer(a.count_true)
+  end
+
+  test "store_binary fills a whole byte of a bit view" do
+    a = Cumo::Bit.new(16).fill(0)
+    a[0..7].store_binary("\xFF".b)
+    assert_equal 8, Integer(a.count_true)
+    assert_equal "1111111100000000", a.to_a.join
+  end
+
+  test "store_binary fills a whole bit array" do
+    a = Cumo::Bit.new(8).fill(0)
+    a[true].store_binary("\xFF".b)
+    assert_equal 8, Integer(a.count_true)
+  end
 end
