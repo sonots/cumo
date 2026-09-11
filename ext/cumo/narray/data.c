@@ -851,6 +851,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         }
         break;
     }
+    cumo_na_index_mark_filled(na2);
     return view;
 }
 

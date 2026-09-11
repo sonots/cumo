@@ -1318,6 +1318,7 @@ cumo_na_make_view(VALUE self)
         break;
     }
 
+    cumo_na_index_mark_filled(na2);
     return view;
 }
 
@@ -1486,6 +1487,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
         break;
     }
 
+    cumo_na_index_mark_filled(na2);
     return view;
 }
 
