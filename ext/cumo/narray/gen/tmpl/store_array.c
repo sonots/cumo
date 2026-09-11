@@ -24,29 +24,29 @@ static void
     v1 = lp->args[1].value;
     i = 0;
 
-    if (lp->args[1].ptr) {
-        if (v1 == Qtrue) {
-            // The loop counter is the destination length, but the sub-narray
-            // may be shorter. Copy only what the source actually holds, or the
-            // kernel would read past its end; the rest is zero-filled below.
-            i = lp->args[1].shape[0];
-            if (i > n) {
-                i = n;
-            }
+    if (CumoIsNArray(v1)) {
+        // shape[0] is how many elements the sub-narray offers at this row,
+        // which is zero where it does not reach. The loop counter is the
+        // destination length, so copying more would read past the row's end.
+        i = lp->args[1].shape[0];
+        if (i > n) {
+            i = n;
+        }
+        if (i > 0) {
             CUMO_NDL_CNT(lp) = i;
             iter_<%=type_name%>_store_<%=type_name%>(lp);
             CUMO_NDL_CNT(lp) = n;
-            //<% if c_iter.include? 'robject' %>
-            // The zero fill below walks from here. The kernel the other branch
-            // launches takes the offset of the first element left to fill as an
-            // argument instead, so advancing for it would count i twice.
-            if (idx1) {
-                idx1 += i;
-            } else {
-                p1 += s1 * i;
-            }
-            //<% end %>
         }
+        //<% if c_iter.include? 'robject' %>
+        // The zero fill below walks from here. The kernel the other branch
+        // launches takes the offset of the first element left to fill as an
+        // argument instead, so advancing for it would count i twice.
+        if (idx1) {
+            idx1 += i;
+        } else {
+            p1 += s1 * i;
+        }
+        //<% end %>
         goto loop_end;
     }
 

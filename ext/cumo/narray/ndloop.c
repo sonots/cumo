@@ -52,6 +52,7 @@ typedef struct CUMO_NA_MD_LOOP {
     int    reduce_dim;        // number of dimensions to reduce in reduction kernel, e.g., for an array of shape: [2,3,4],
                               // 3 for sum(), 1 for sum(axis: 1), 2 for sum(axis: [1,2])
     int   *trans_map;
+    size_t sub_narray_len;    // elements the sub-narray of the current row reaches with, for loop_store_subnarray
     VALUE  vargs;
     VALUE  reduce;            // dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
                               // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
@@ -1939,8 +1940,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
 {
     int nd = lp->ndim;
     int i, j;
-    int empty;
-    int *reach;
+    bool *reach;
     cumo_narray_t *na;
     int *dim_map;
     size_t *saved_shape = LARG(lp,1).shape;
@@ -1968,16 +1968,15 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     }
     ndloop_set_stepidx(lp, 1, a, dim_map, CUMO_NDL_READ);
     LITER(lp,i0,1).pos = LITER(lp,0,1).pos;
-    LARG(lp,1).shape = &(na->shape[na->ndim-1]);
+    LARG(lp,1).shape = &lp->sub_narray_len;
 
     // The sub-narray binds its own index array here, after the entry point
     // looked, so the wait for the kernel that filled it belongs here too.
     ndloop_sync_md_index(lp);
 
     // loop body
-    empty = (CUMO_NA_SIZE(na) == 0);
-    reach = ALLOCA_N(int, nd+1);
-    reach[i0] = 1;
+    reach = ALLOCA_N(bool, nd+1);
+    reach[i0] = true;
     for (i=i0;;) {
         for (; i<nd; i++) {
             reach[i+1] = reach[i] && (c[i] < na->shape[i-i0]);
@@ -1991,7 +1990,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
                 }
             }
         }
-        LARG(lp,1).value = empty ? Qnil : (reach[nd] ? Qtrue : Qfalse);
+        lp->sub_narray_len = reach[nd] ? na->shape[na->ndim-1] : 0;
 
         (*(nf->func))(&(lp->user));
 
