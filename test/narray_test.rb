@@ -1496,6 +1496,51 @@ class NArrayTest < Test::Unit::TestCase
           assert_raise(TypeError) { a.store_binary(bad) }
         end
       end
+
+      test "a view is written at its own offset" do
+        a = dtype.new(8).seq
+        a[4..5].store_binary(dtype[9, 9].to_binary)
+        assert_equal dtype[0, 1, 2, 3, 9, 9, 6, 7].to_a, a.to_a
+      end
+
+      test "a frozen string is copied into a view instead of replacing the base" do
+        a = dtype.new(8).seq
+        a[4..5].store_binary(dtype[7, 7].to_binary.freeze)
+        assert_equal dtype[0, 1, 2, 3, 7, 7, 6, 7].to_a, a.to_a
+        assert_equal 8 * dtype::ELEMENT_BYTE_SIZE, a.to_binary.bytesize
+      end
+
+      test "a non-contiguous view is refused" do
+        a = dtype.new(8).seq
+        assert_raise(ArgumentError) do
+          a[(0..7).step(2)].store_binary(dtype[9, 9, 9, 9].to_binary)
+        end
+        assert_equal dtype.new(8).seq.to_a, a.to_a
+      end
+
+      test "an index view, which can name more elements than its base holds, is refused" do
+        a = dtype.new(1).seq
+        v = a[[0] * 4096]
+        assert_false v.contiguous?
+        error = assert_raise(ArgumentError) do
+          v.store_binary("\xAA".b * (4096 * dtype::ELEMENT_BYTE_SIZE))
+        end
+        assert_equal "cannot store binary data into a non-contiguous view", error.message
+        assert_equal dtype.new(1).seq.to_a, a.to_a
+      end
+
+      test "a zero-dimensional view is written at its own element" do
+        a = dtype.new(4).seq
+        a[2].store_binary(dtype[42].to_binary)
+        assert_equal dtype[0, 1, 42, 3].to_a, a.to_a
+      end
+
+      test "freezing is reported before the shape of the view is" do
+        a = dtype.new(8).seq
+        v = a[(0..7).step(2)]
+        v.freeze
+        assert_raise(RuntimeError) { v.store_binary(dtype[9, 9, 9, 9].to_binary) }
+      end
     end
   end
 

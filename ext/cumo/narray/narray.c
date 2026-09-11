@@ -1697,14 +1697,29 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
         rb_raise(rb_eArgError, "string is too short to store");
     }
 
-    if (OBJ_FROZEN(vstr)) {
+    // Holding the string instead of copying it replaces the whole buffer,
+    // which is only self's to replace when self is that buffer.
+    if (OBJ_FROZEN(vstr) && CUMO_NA_TYPE(na) == CUMO_NARRAY_DATA_T) {
         cumo_na_set_pointer(self, RSTRING_PTR(vstr)+offset, byte_size);
         rb_ivar_set(self, cumo_id_source, vstr);
     } else {
-        void *ptr = cumo_na_get_pointer_for_write(self);
+        char *ptr = cumo_na_get_pointer_for_write(self);
+        if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+            // Whole bytes from one address reach the view's own elements only
+            // if it walks its base in order and, for Bit, begins and ends on a
+            // byte. Contiguity is also what keeps an index list, which can name
+            // more elements than the base holds, away from the copy below.
+            if (cumo_na_check_contiguous(self) != Qtrue) {
+                rb_raise(rb_eArgError, "cannot store binary data into a non-contiguous view");
+            }
+            if (RTEST(rb_obj_is_kind_of(self, cumo_cBit)) &&
+                (CUMO_NA_VIEW_OFFSET(na) != 0 || size % 8 != 0)) {
+                rb_raise(rb_eArgError, "cannot store binary data into a bit view that does not begin and end on a byte");
+            }
+        }
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_store_binary", "any");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-        memcpy(ptr, RSTRING_PTR(vstr)+offset, byte_size);
+        memcpy(ptr+cumo_na_get_offset(self), RSTRING_PTR(vstr)+offset, byte_size);
     }
 
     return SIZET2NUM(byte_size);
