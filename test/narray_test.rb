@@ -6780,6 +6780,60 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    test "a sub-narray with no elements leaves the row zero" do
+      zero3 = Array.new(3) { [0] * 4 }
+
+      store_types.each do |dtype|
+        src = dtype.new(3, 4).seq
+        want = src.to_a
+
+        [dtype.new(0), dtype.new(4).seq[[]]].each do |empty|
+          d = dtype.new(2, 4).fill(9)
+          d.store([dtype.new(4).seq, empty])
+          assert_equal([[0, 1, 2, 3], [0, 0, 0, 0]], d.to_a)
+        end
+
+        [[0, 4], [3, 0], [0, 0]].each do |shape|
+          plane = dtype.new(2, 3, 4).fill(9)
+          plane.store([src, dtype.new(*shape)])
+          assert_equal([want, zero3], plane.to_a)
+        end
+      end
+
+      b = Cumo::Bit.new(2, 4).fill(1)
+      b.store([Cumo::Int32.new(4).seq.gt(1), Cumo::Bit.new(0)])
+      assert_equal([[0, 0, 1, 1], [0, 0, 0, 0]], b.to_a)
+
+      bsrc = Cumo::Int32.new(3, 4).seq.gt(5)
+      [[0, 4], [3, 0], [0, 0]].each do |shape|
+        bp = Cumo::Bit.new(2, 3, 4).fill(1)
+        bp.store([bsrc, Cumo::Bit.new(*shape)])
+        assert_equal([bsrc.to_a, zero3], bp.to_a)
+      end
+    end
+
+    test "a Ruby true or false in the array is still stored as a value" do
+      r = Cumo::RObject.new(2, 4).fill(9)
+      r.store([Cumo::RObject.new(4).seq, [true, false]])
+      assert_equal([[0, 1, 2, 3], [true, false, 0, 0]], r.to_a)
+
+      r2 = Cumo::RObject.new(2, 4).fill(9)
+      r2.store([Cumo::RObject.new(4).seq, true])
+      assert_equal([[0, 1, 2, 3], [true, 0, 0, 0]], r2.to_a)
+
+      r3 = Cumo::RObject.new(2, 4).fill(9)
+      r3.store([Cumo::RObject.cast([true, false, 1, 2]), Cumo::RObject.new(0)])
+      assert_equal([[true, false, 1, 2], [0, 0, 0, 0]], r3.to_a)
+
+      b = Cumo::Bit.new(2, 4).fill(0)
+      b.store([Cumo::Bit.new(4).fill(1), true])
+      assert_equal([[1, 1, 1, 1], [1, 0, 0, 0]], b.to_a)
+
+      b2 = Cumo::Bit.new(2, 4).fill(1)
+      b2.store([Cumo::Bit.new(4).fill(1), false])
+      assert_equal([[1, 1, 1, 1], [0, 0, 0, 0]], b2.to_a)
+    end
+
     test "a sub-narray shorter than the row leaves the rest of it zero" do
       want = [[1, 2, 3, 0, 0, 0, 0, 0], [4, 5, 6, 0, 0, 0, 0, 0]]
       rows = [Cumo::Int32[1, 2, 3], Cumo::Int32[4, 5, 6]]

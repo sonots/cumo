@@ -55,8 +55,7 @@ static void
         n1 = RARRAY_LEN(v1);
         break;
     case T_NIL:
-        n1 = 0;
-        break;
+        goto loop_end;
     default:
         n1 = 1;
     }

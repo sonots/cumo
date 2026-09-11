@@ -1941,7 +1941,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     int i, j, k;
     cumo_narray_t *na;
     int *dim_map;
-    VALUE a_type;
+    VALUE a_type, reaches;
 
     a_type = rb_obj_class(LARG(lp,0).value);
     if (rb_obj_class(a) != a_type) {
@@ -1971,12 +1971,15 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     ndloop_sync_md_index(lp);
 
     // loop body
+    reaches = (CUMO_NA_SIZE(na) == 0) ? Qnil : Qtrue;
     for (i=i0;;) {
-        LARG(lp,1).value = Qtrue;
-        for (k=i0; k<nd; k++) {
-            if (c[k] >= na->shape[k-i0]) {
-                LARG(lp,1).value = Qfalse;
-                break;
+        LARG(lp,1).value = reaches;
+        if (reaches == Qtrue) {
+            for (k=i0; k<nd; k++) {
+                if (c[k] >= na->shape[k-i0]) {
+                    LARG(lp,1).value = Qfalse;
+                    break;
+                }
             }
         }
         for (; i<nd; i++) {
