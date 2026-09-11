@@ -1938,10 +1938,14 @@ static void
 loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c, VALUE a)
 {
     int nd = lp->ndim;
-    int i, j, k;
+    int i, j;
+    int empty;
+    int *reach;
     cumo_narray_t *na;
     int *dim_map;
-    VALUE a_type, reaches;
+    size_t *saved_shape = LARG(lp,1).shape;
+    ssize_t saved_elmsz = LARG(lp,1).elmsz;
+    VALUE a_type;
 
     a_type = rb_obj_class(LARG(lp,0).value);
     if (rb_obj_class(a) != a_type) {
@@ -1971,20 +1975,14 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     ndloop_sync_md_index(lp);
 
     // loop body
-    reaches = (CUMO_NA_SIZE(na) == 0) ? Qnil : Qtrue;
+    empty = (CUMO_NA_SIZE(na) == 0);
+    reach = ALLOCA_N(int, nd+1);
+    reach[i0] = 1;
     for (i=i0;;) {
-        LARG(lp,1).value = reaches;
-        if (reaches == Qtrue) {
-            for (k=i0; k<nd; k++) {
-                if (c[k] >= na->shape[k-i0]) {
-                    LARG(lp,1).value = Qfalse;
-                    break;
-                }
-            }
-        }
         for (; i<nd; i++) {
+            reach[i+1] = reach[i] && (c[i] < na->shape[i-i0]);
             for (j=0; j<lp->narg; j++) {
-                if (j==1 && c[i] >= na->shape[i-i0]) {
+                if (j==1 && !reach[i+1]) {
                     LITER(lp,i+1,j).pos = LITER(lp,i,j).pos;
                 } else if (LITER(lp,i,j).idx) {
                     LITER(lp,i+1,j).pos = LITER(lp,i,j).pos + LITER(lp,i,j).idx[c[i]];
@@ -1993,6 +1991,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
                 }
             }
         }
+        LARG(lp,1).value = empty ? Qnil : (reach[nd] ? Qtrue : Qfalse);
 
         (*(nf->func))(&(lp->user));
 
@@ -2005,6 +2004,8 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     }
  loop_end:
     LARG(lp,1).ptr = NULL;
+    LARG(lp,1).shape = saved_shape;
+    LARG(lp,1).elmsz = saved_elmsz;
 }
 
 
