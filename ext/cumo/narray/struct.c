@@ -167,6 +167,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
         na2->offset += NUM2SIZET(offset);
     }
 
+    cumo_na_index_mark_filled(na2);
     return view;
 }
 

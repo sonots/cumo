@@ -125,7 +125,7 @@ cumo_na_index_mark_filled(cumo_narray_view_t *nv)
 }
 
 void
-cumo_na_index_wait_fill(const cumo_narray_view_t *nv)
+cumo_na_index_wait_fill(cumo_narray_view_t *nv)
 {
     if (nv->index_sync_epoch < cumo_na_sync_epoch) {
         return;
@@ -133,6 +133,10 @@ cumo_na_index_wait_fill(const cumo_narray_view_t *nv)
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_index_wait_fill");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     cumo_na_sync_epoch++;
+    // This view is settled now whatever its constructor recorded. Without
+    // saying so, one that recorded nothing waits again on every read, and
+    // once per index dimension within a read.
+    nv->index_sync_epoch = cumo_na_sync_epoch - 1;
 }
 
 // copy ruby array to idx
