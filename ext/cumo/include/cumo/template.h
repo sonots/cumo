@@ -183,4 +183,16 @@ cumo_na_store_rary_fetch(VALUE ary, size_t i, VALUE *x)
     return true;
 }
 
+static inline VALUE
+cumo_na_yield_with_index(VALUE x, size_t *c, VALUE *a, int nd, int md)
+{
+    int j;
+
+    a[0] = x;
+    for (j=0; j<=nd; j++) {
+        a[j+1] = SIZET2NUM(c[j]);
+    }
+    return rb_yield(rb_ary_new4(md,a));
+}
+
 #endif /* ifndef CUMO_TEMPLATE_H */

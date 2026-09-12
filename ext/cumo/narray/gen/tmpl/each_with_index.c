@@ -1,16 +1,3 @@
-static inline void
-yield_each_with_index(dtype x, size_t *c, VALUE *a, int nd, int md)
-{
-    int j;
-
-    a[0] = m_data_to_num(x);
-    for (j=0; j<=nd; j++) {
-        a[j+1] = SIZET2NUM(c[j]);
-    }
-    rb_yield(rb_ary_new4(md,a));
-}
-
-
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
@@ -37,14 +24,14 @@ static void
         for (; i--;) {
             if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
-            yield_each_with_index(x,c,a,nd,md);
+            cumo_na_yield_with_index(m_data_to_num(x),c,a,nd,md);
             c[nd]++;
         }
     } else {
         for (; i--;) {
             if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
             CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
-            yield_each_with_index(x,c,a,nd,md);
+            cumo_na_yield_with_index(m_data_to_num(x),c,a,nd,md);
             c[nd]++;
         }
     }
