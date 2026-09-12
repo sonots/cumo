@@ -4760,6 +4760,37 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "a view that only passes an index through allocates nothing for it" do
+    pool = Cumo::CUDA::MemoryPool
+    a = Cumo::DFloat.new(1024, 4).seq
+    idx = Array.new(1024) { |i| 1023 - i }
+    v = a[idx, true]
+    cube = Cumo::DFloat.new(1024, 3, 3).seq[idx, true, true]
+
+    {
+      "reverse(1)" => -> { v.reverse(1) },
+      "diagonal" => -> { cube.diagonal },
+      "transpose" => -> { v.transpose },
+      "view" => -> { v.view },
+    }.each do |name, op|
+      3.times { op.call }
+      3.times { GC.start }
+      held = []
+      before = pool.used_bytes
+      20.times { held << op.call }
+      assert_equal(0, pool.used_bytes - before, name)
+    end
+
+    # a view borrows every index or none, so one that turns a dimension around
+    # builds the rest rather than holding the view it came from
+    3.times { v.reverse(0) }
+    3.times { GC.start }
+    held = []
+    before = pool.used_bytes
+    20.times { held << v.reverse(0) }
+    assert_operator(pool.used_bytes - before, :>, 0)
+  end
+
   test "a view frees the index arrays it owns" do
     pool = Cumo::CUDA::MemoryPool
     a = Cumo::DFloat.new(1024, 4).seq
@@ -4793,6 +4824,7 @@ class NArrayTest < Test::Unit::TestCase
     out = run_child(<<~RUBY, env: { "CUMO_MEMORY_POOL" => "OFF" })
       require "cumo/narray"
       want = Cumo::DFloat.new(8, 4).seq[[3, 1, 0, 2, 3, 1, 0, 2], true].to_a
+      diag = Cumo::DFloat.new(4, 3, 3).seq[[3, 1, 0, 2], true, true].diagonal.to_a
       held = {}
       5.times do
         v = Cumo::DFloat.new(8, 4).seq[[3, 1, 0, 2, 3, 1, 0, 2], true]
@@ -4801,6 +4833,9 @@ class NArrayTest < Test::Unit::TestCase
         held["swapaxes"] = v.swapaxes(0, 1)
         held["expand_dims"] = v.expand_dims(0)
         held["chain"] = v.transpose.view.transpose
+        held["reverse"] = v.reverse(1)
+        held["diagonal"] = Cumo::DFloat.new(4, 3, 3).seq[[3, 1, 0, 2], true, true].diagonal
+        held["mixed"] = Cumo::DFloat.new(4, 3).seq[[3, 1, 0], [2, 0, 1]].reverse(0)
       end
       5.times { GC.start }
       Cumo::DFloat.new(1 << 16).seq
@@ -4810,6 +4845,9 @@ class NArrayTest < Test::Unit::TestCase
       raise "swapaxes" unless held["swapaxes"].to_a == want.transpose
       raise "expand_dims" unless held["expand_dims"].to_a == [want]
       raise "chain" unless held["chain"].to_a == want
+      raise "reverse" unless held["reverse"].to_a == want.map(&:reverse)
+      raise "diagonal" unless held["diagonal"].to_a == diag
+      raise "mixed" unless held["mixed"].to_a == [[2.0, 0.0, 1.0], [5.0, 3.0, 4.0], [11.0, 9.0, 10.0]]
       puts "ok"
     RUBY
     assert_match(/^ok$/, out)

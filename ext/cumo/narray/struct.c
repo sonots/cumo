@@ -76,14 +76,12 @@ void cumo_na_copy_array_structure(VALUE self, VALUE view);
 static VALUE
 cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
 {
-    size_t n;
     int j, k, ndim;
     size_t *shape;
-    size_t *idx1, *idx2;
     ssize_t stride;
     cumo_stridx_t *stridx;
     cumo_narray_t *na, *nt;
-    cumo_narray_view_t *na1, *na2;
+    cumo_narray_view_t *na1 = NULL, *na2;
     VALUE klass;
     volatile VALUE view;
 
@@ -144,18 +142,9 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
     case CUMO_NARRAY_VIEW_T:
         CumoGetNArrayView(self, na1);
         for (j=na1->base.ndim; j--; ) {
+            na2->stridx[j] = na1->stridx[j];
             if (CUMO_SDX_IS_INDEX(na1->stridx[j])) {
-                n = na1->base.shape[j];
-                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[j]);
-                // idx2 = ALLOC_N(size_t, na1->base.shape[j]);
-                // for (i=0; i<n; i++) {
-                //     idx2[i] = idx1[i];
-                // }
-                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-                cumo_na_index_own(na2,j,idx2);
-                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
-            } else {
-                na2->stridx[j] = na1->stridx[j];
+                cumo_na_index_borrow(na2, self);
             }
         }
         na2->offset = na1->offset;
@@ -167,7 +156,11 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
         na2->offset += NUM2SIZET(offset);
     }
 
-    cumo_na_index_mark_filled(na2);
+    if (na1 != NULL) {
+        cumo_na_index_mark_derived(na2, na1);
+    } else {
+        cumo_na_index_mark_filled(na2);
+    }
     return view;
 }
 
