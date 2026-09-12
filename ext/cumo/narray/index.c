@@ -118,9 +118,41 @@ cumo_na_range_check(ssize_t pos, ssize_t size, int dim)
 // rather than correctness.
 static uint64_t cumo_na_sync_epoch = 0;
 
+// An index array a view holds is freed only through index_owned and kept alive
+// only through index_owner, so one that has neither leaks when this view is its
+// last reference and dangles when it is not. The free hook cannot tell those
+// apart, and never sees a view that is held for the life of the program, so ask
+// here instead: every constructor passes through on its way out.
+void
+cumo_na_index_check_stray(cumo_narray_view_t *nv)
+{
+    static uint64_t warned = 0;
+    uint64_t bit;
+    int i;
+
+    for (i = 0; i < nv->base.ndim; i++) {
+        bit = (uint64_t)1 << i;
+        if ((warned & bit) || !CUMO_SDX_IS_INDEX(nv->stridx[i])) {
+            continue;
+        }
+        if (CUMO_SDX_GET_INDEX(nv->stridx[i]) == NULL) {
+            continue;
+        }
+        if ((nv->index_owned & bit) || RTEST(nv->index_owner)) {
+            continue;
+        }
+        warned |= bit;
+        rb_warn("cumo: dimension %d of a view holds an index array it neither "
+                "owns nor borrows. Its constructor set stridx without "
+                "cumo_na_index_own or cumo_na_index_borrow, so the array leaks "
+                "if nothing else holds it, and dangles if something does.", i);
+    }
+}
+
 void
 cumo_na_index_mark_filled(cumo_narray_view_t *nv)
 {
+    cumo_na_index_check_stray(nv);
     nv->index_sync_epoch = cumo_na_sync_epoch;
 }
 
