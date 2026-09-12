@@ -174,7 +174,7 @@ static VALUE
     nidx->ptr = NULL;
     RB_GC_GUARD(idx_1);
 
-    nv->stridx = ALLOC_N(cumo_stridx_t,1);
+    nv->stridx = ZALLOC_N(cumo_stridx_t,1);
     nv->stridx[0] = stridx0;
     nv->offset = 0;
     cumo_na_index_mark_filled(nv);

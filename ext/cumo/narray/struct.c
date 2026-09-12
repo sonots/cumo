@@ -103,7 +103,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
             shape[j] = nt->shape[k];
         }
         klass = rb_obj_class(dtype);
-        stridx = ALLOC_N(cumo_stridx_t, ndim);
+        stridx = ZALLOC_N(cumo_stridx_t, ndim);
         stride = cumo_na_dtype_element_stride(klass);
         for (j=ndim,k=nt->ndim; k; ) {
             CUMO_SDX_SET_STRIDE(stridx[--j],stride);
@@ -121,7 +121,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
                 klass = dtype;
             }
         }
-        stridx = ALLOC_N(cumo_stridx_t, ndim);
+        stridx = ZALLOC_N(cumo_stridx_t, ndim);
     }
 
     view = cumo_na_s_allocate_view(klass);
@@ -152,8 +152,8 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
                 //     idx2[i] = idx1[i];
                 // }
                 idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
                 CUMO_SDX_SET_INDEX(na2->stridx[j],idx2);
+                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
             } else {
                 na2->stridx[j] = na1->stridx[j];
             }
@@ -360,7 +360,7 @@ nstruct_add_type(VALUE type, int argc, VALUE *argv, VALUE nst)
     type = cumo_na_view_new(type,ndim,shape);
     CumoGetNArrayView(type,nt);
 
-    nt->stridx = ALLOC_N(cumo_stridx_t,ndim);
+    nt->stridx = ZALLOC_N(cumo_stridx_t,ndim);
     stride = cumo_na_dtype_element_stride(rb_obj_class(type));
     for (j=ndim; j--; ) {
         CUMO_SDX_SET_STRIDE(nt->stridx[j], stride);
