@@ -2866,34 +2866,110 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(ArgumentError) { Cumo::DComplex.new(2**60).store_binary(("A" * 4096).freeze) }
   end
 
-  # Taking the pointer runs allocate, and a subclass can define it. Reshaping
-  # the array from inside it used to leave store_binary copying the byte count
-  # it measured before into whatever smaller buffer came back.
-  test "store_binary refuses an array that its own allocate reshaped" do
-    script = <<~RUBY
-      require "cumo/narray"
-      class Shrinker < Cumo::DFloat
-        def allocate
-          unless @done
-            @done = true
-            send(:initialize, 1)
-          end
-          super
+  # Taking a pointer runs allocate, which is a Ruby method. These check the
+  # three ways that can leave the copy that follows pointing somewhere else.
+  RESHAPING_ALLOCATE = <<~RUBY
+    module Reshaping
+      def allocate
+        unless @done
+          @done = true
+          send(:initialize, 1)
         end
+        super
       end
-      a = Shrinker.new(1 << 22)
-      begin
-        a.store_binary("A" * (1 << 25))
-        print "no error"
-      rescue RuntimeError
-        print "RuntimeError"
-      end
-    RUBY
+    end
+  RUBY
+
+  def run_child(script)
     lib = File.expand_path("../lib", __dir__)
     out = nil
     IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], err: [:child, :out]) { |io| out = io.read }
     assert(Process.last_status.success?, "child failed: #{out}")
-    assert_equal "RuntimeError", out
+    out
+  end
+
+  def assert_child_raises(expected, body)
+    script = <<~RUBY
+      require "cumo/narray"
+      #{RESHAPING_ALLOCATE}
+      begin
+        #{body}
+        print "no error"
+      rescue => e
+        print e.message
+      end
+    RUBY
+    assert_equal expected, run_child(script)
+  end
+
+  test "store_binary refuses an array its own allocate reshaped" do
+    assert_child_raises("NArray or string changed while storing binary data", <<~RUBY)
+      klass = Class.new(Cumo::DFloat) { prepend Reshaping }
+      klass.new(1 << 22).store_binary("A" * (1 << 25))
+    RUBY
+  end
+
+  test "from_binary refuses an array its own allocate reshaped" do
+    assert_child_raises("NArray or string changed while reading binary data", <<~RUBY)
+      klass = Class.new(Cumo::DFloat) { prepend Reshaping }
+      klass.from_binary("A" * (1 << 25), [1 << 22])
+    RUBY
+  end
+
+  # marshal_load reaches its RObject branch by exact class, so the reshaping
+  # allocate has to be a singleton method rather than a subclass.
+  test "marshal_load refuses an RObject its own allocate reshaped" do
+    assert_child_raises("RObject content size mismatch", <<~RUBY)
+      g = Cumo::RObject.new(4)
+      g.store([1, 2, 3, 4])
+      def g.allocate
+        send(:initialize, 1 << 20) unless @done
+        @done = true
+        super
+      end
+      g.marshal_load([1, [4], 0, [1, 2, 3, 4]])
+    RUBY
+  end
+
+  # An allocate that never takes a buffer leaves the pointer NULL, and every
+  # caller goes on to read or write through what it hands back.
+  test "taking a pointer refuses an allocate that took no buffer" do
+    ["klass.new(8).store_binary('A' * 64)",
+     "klass.from_binary('A' * 64, [8])",
+     "klass.new(8).seq.to_a"].each do |body|
+      assert_child_raises("allocate left the NArray without data", <<~RUBY)
+        klass = Class.new(Cumo::DFloat) { def allocate; self; end }
+        #{body}
+      RUBY
+    end
+  end
+
+  # byte_size comes from the class's ELEMENT_BYTE_SIZE, which a subclass can
+  # define as an object returning whatever it likes. The allocation goes by the
+  # type, so a larger claim used to run the copy past it.
+  test "a lying ELEMENT_BYTE_SIZE cannot stretch the copy past the allocation" do
+    ["klass.from_binary('A' * (4 * 1_000_000 + 16), [4])",
+     "klass.new(4).seq.store_binary('A' * (4 * 1_000_000 + 16))"].each do |body|
+      assert_child_raises("string is too long to store", <<~RUBY)
+        liar = Class.new do
+          def to_f = 1_000_000.0
+          def to_int = 1_000_000
+          def to_i = 1_000_000
+        end.new
+        klass = Class.new(Cumo::DFloat) { const_set(:ELEMENT_BYTE_SIZE, liar) }
+        #{body}
+      RUBY
+    end
+  end
+
+  # Taking a shape only rewrites the size, so an array that already holds data
+  # would keep a buffer laid out for the shape it had.
+  test "from_binary refuses an allocate that returns an array holding data" do
+    assert_child_raises("allocate did not return a new NArray", <<~RUBY)
+      held = Cumo::DFloat.new(2).fill(9.0)
+      klass = Class.new(Cumo::DFloat) { define_singleton_method(:allocate) { held } }
+      klass.from_binary("A" * (8 << 23), [1 << 23])
+    RUBY
   end
 
   # The bytes used to be borrowed from the marshalled string rather than
