@@ -459,6 +459,8 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
     if (OBJ_FROZEN(self)) {
         rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
     }
+    // A contiguous view has every dimension on a stride, so overwriting them
+    // below drops no index array this view owns.
     if (cumo_na_check_contiguous(self)==Qfalse) {
         rb_raise(rb_eStandardError, "cannot change shape of non-contiguous NArray");
     }

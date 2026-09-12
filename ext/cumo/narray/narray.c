@@ -1154,9 +1154,6 @@ cumo_na_check_contiguous(VALUE self)
     case CUMO_NARRAY_FILEMAP_T:
         return Qtrue;
     case CUMO_NARRAY_VIEW_T:
-        if (CUMO_NA_VIEW_STRIDX(na)==0) {
-            return Qtrue;
-        }
         if (CUMO_NA_NDIM(na)==0) {
             return Qtrue;
         }
