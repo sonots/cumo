@@ -429,6 +429,13 @@ cumo_na_new(VALUE klass, int ndim, size_t *shape)
     volatile VALUE obj;
 
     obj = rb_funcall(klass, cumo_id_allocate, 0);
+    // allocate is a Ruby method and can hand back an array that already holds
+    // data. Taking a shape only rewrites the size, so that one would keep a
+    // buffer laid out for the shape it had.
+    if (!CumoIsNArray(obj) || CUMO_RNARRAY_TYPE(obj) != CUMO_NARRAY_DATA_T ||
+        CUMO_NA_DATA_PTR(CUMO_RNARRAY(obj)) != NULL) {
+        rb_raise(rb_eRuntimeError, "allocate did not return a new NArray");
+    }
     cumo_na_setup(obj, ndim, shape);
     return obj;
 }
@@ -632,6 +639,30 @@ cumo_na_s_eye(int argc, VALUE *argv, VALUE klass)
 #define READ 1
 #define WRITE 2
 
+// What was allocated, measured by the type rather than by the class's
+// ELEMENT_BYTE_SIZE, which a subclass can define as anything. A view keeps its
+// own count and takes the element size from the array it reads.
+static size_t
+cumo_na_honest_byte_size(VALUE self)
+{
+    const cumo_narray_type_info_t *info;
+    cumo_narray_t *na;
+    VALUE obj = self;
+
+    CumoGetNArray(self,na);
+    if (na->size == 0) {
+        return 0;
+    }
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        obj = CUMO_NA_VIEW_DATA(na);
+    }
+    info = (const cumo_narray_type_info_t *)(RTYPEDDATA_TYPE(obj)->data);
+    if (info->element_bits > 0) {
+        return ((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
+    }
+    return na->size * info->element_bytes;
+}
+
 // Byte size of the data buffer self owns, the same expression allocate() sized
 // it with.
 size_t
@@ -751,6 +782,12 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
             if (flag & (READ|WRITE)) {
                 rb_funcall(self, cumo_id_allocate, 0);
                 ptr = CUMO_NA_DATA_PTR(na);
+                // allocate is a Ruby method, so it is free to return without
+                // taking a buffer. Every caller here goes on to read or write
+                // through what it hands back.
+                if (ptr == NULL) {
+                    rb_raise(rb_eRuntimeError, "allocate left the NArray without data");
+                }
             }
         }
         return ptr;
@@ -1549,13 +1586,24 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
 
     vna = cumo_na_new(type, nd, shape);
     ptr = cumo_na_get_pointer_for_write(vna);
+    // Taking the pointer runs allocate, which is a Ruby method a subclass can
+    // define, and it can give the array another shape or empty the string.
+    // Both were measured before it ran.
+    if (CUMO_RNARRAY_SIZE(vna) != len || (size_t)RSTRING_LEN(vstr) < byte_size) {
+        rb_raise(rb_eRuntimeError, "NArray or string changed while reading binary data");
+    }
+    if (byte_size > cumo_na_honest_byte_size(vna)) {
+        rb_raise(rb_eArgError, "string is too long to store");
+    }
 
     // The pool hands back chunks a still-running kernel may be writing, and a
     // host write into managed memory does not wait for the stream. to_binary
     // synchronizes for the same reason on the way out.
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_s_from_binary", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    memcpy(ptr, RSTRING_PTR(vstr), byte_size);
+    if (byte_size > 0) {
+        CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_s_from_binary", "any");
+        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        memcpy(ptr, RSTRING_PTR(vstr), byte_size);
+    }
 
     return vna;
 }
@@ -1614,6 +1662,9 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
     // Both were measured before it ran.
     if (CUMO_NA_SIZE(na) != size || (size_t)RSTRING_LEN(vstr) < offset + byte_size) {
         rb_raise(rb_eRuntimeError, "NArray or string changed while storing binary data");
+    }
+    if (byte_size > cumo_na_honest_byte_size(self)) {
+        rb_raise(rb_eArgError, "string is too long to store");
     }
 
     if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
@@ -1764,11 +1815,17 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         if (TYPE(v) != T_ARRAY) {
             rb_raise(rb_eArgError,"RObject content should be array");
         }
-        CumoGetNArray(self,na);
         if (RARRAY_LEN(v) != (long)CUMO_NA_SIZE(na)) {
             rb_raise(rb_eArgError,"RObject content size mismatch");
         }
         ptr = cumo_na_get_pointer_for_write(self);
+        // Again after the pointer: taking one runs allocate, and a singleton
+        // method there can reshape the array or empty the content. The check
+        // above stays so a payload that never fits is refused before a buffer
+        // is taken for it.
+        if (RARRAY_LEN(v) != (long)CUMO_NA_SIZE(na)) {
+            rb_raise(rb_eArgError,"RObject content size mismatch");
+        }
         memcpy(ptr, RARRAY_PTR(v), CUMO_NA_SIZE(na)*sizeof(VALUE));
     } else {
         Check_Type(v, T_STRING);
