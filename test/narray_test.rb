@@ -4759,6 +4759,61 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  sub_test_case "a block sees what it wrote into the array it walks" do
+    def walk(a, meth)
+      seen = []
+      i = 0
+      case meth
+      when :each            then a.each { |x| seen << Integer(x); a[i + 1] = 0 if i == 0; i += 1 }
+      when :each_with_index then a.each_with_index { |x, j| seen << Integer(x); a[j + 1] = 0 if j == 0 }
+      when :map             then a.map { |x| seen << Integer(x); a[i + 1] = 0 if i == 0; i += 1; x }
+      when :map_with_index  then a.map_with_index { |x, j| seen << Integer(x); a[j + 1] = 0 if j == 0; x }
+      end
+      seen
+    end
+
+    def walk_result(a, meth)
+      case meth
+      when :map            then a.map { |x| x + 1 }
+      when :map_with_index then a.map_with_index { |x, _j| x + 1 }
+      end
+    end
+
+    [Cumo::Int32, Cumo::DFloat].each do |dtype|
+      [:each, :each_with_index, :map, :map_with_index].each do |meth|
+        test "#{dtype}, #{meth}" do
+          assert_equal([1, 0, 1, 1], walk(dtype[1, 1, 1, 1], meth))
+        end
+      end
+    end
+
+    [:each, :each_with_index].each do |meth|
+      test "Cumo::Bit, #{meth}" do
+        assert_equal([1, 0, 1, 1], walk(Cumo::Bit[1, 1, 1, 1], meth))
+      end
+    end
+
+    [Cumo::Int32, Cumo::DFloat].each do |dtype|
+      [:map, :map_with_index].each do |meth|
+        test "#{dtype}, #{meth} answers what the block returned" do
+          a = dtype[1, 1, 1, 1]
+          assert_equal([2, 2, 2, 2], walk_result(a, meth).to_a.map { |x| Integer(x) })
+        end
+
+        test "#{dtype}, #{meth} in place keeps the block's write" do
+          a = dtype.cast([1] * 8)
+          i = 0
+          if meth == :map
+            a.inplace.map { |x| a[i] = 9; i += 1; x }
+          else
+            a.inplace.map_with_index { |x, j| a[j] = 9; x }
+          end
+          assert_equal([1] * 8, a.to_a.map { |x| Integer(x) })
+        end
+      end
+    end
+  end
+
   test "median(nan: true) answers NaN wherever a NaN sits" do
     nan = Float::NAN
     [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat].each do |dtype|

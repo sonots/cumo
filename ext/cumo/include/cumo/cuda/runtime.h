@@ -21,6 +21,18 @@ cumo_cuda_runtime_check_status(cudaError_t status)
     }
 }
 
+// Asking costs less than half of waiting, and there is nothing to wait for
+// whenever the block stayed off the device.
+static inline int
+cumo_cuda_runtime_sync_if_busy(void)
+{
+    if (cudaStreamQuery(0) == cudaSuccess) {
+        return 0;
+    }
+    cumo_cuda_runtime_check_status(cudaStreamSynchronize(0));
+    return 1;
+}
+
 static inline int
 cumo_cuda_runtime_get_device_count()
 {

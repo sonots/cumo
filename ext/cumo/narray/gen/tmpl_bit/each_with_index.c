@@ -34,18 +34,17 @@ static void
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     c[nd] = 0;
 
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
 
     if (idx1) {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
             CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             yield_each_with_index(x,c,a,nd,md);
             c[nd]++;
         }
     } else {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
             CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             yield_each_with_index(x,c,a,nd,md);
             c[nd]++;
