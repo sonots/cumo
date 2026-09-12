@@ -558,6 +558,7 @@ cumo_na_index_mark_derived(cumo_narray_view_t *nv, cumo_narray_view_t *nv1)
     if (nv->index_owned != 0) {
         cumo_na_index_mark_filled(nv);
     } else {
+        cumo_na_index_check_stray(nv);
         nv->index_sync_epoch = nv1->index_sync_epoch;
     }
 }

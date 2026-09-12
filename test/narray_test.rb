@@ -4760,6 +4760,25 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "no view holds an index array nobody owns" do
+    out = run_child(<<~RUBY)
+      require "cumo/narray"
+      a = Cumo::DFloat.new(64, 4).seq
+      idx = Array.new(64) { |i| 63 - i }
+      v = a[idx, true]
+      cube = Cumo::DFloat.new(64, 3, 3).seq[idx, true, true]
+      col = a[true, 0]
+      [v, v.reverse, v.reverse(1), v.transpose, v.view, v.swapaxes(0, 1),
+       v.expand_dims(0), v.flatten, cube.diagonal, col[col > 30],
+       a[Cumo::Int32.cast(idx), true], a.at([idx, [0] * 64])].each(&:to_a)
+      5.times { GC.start }
+      puts "done"
+    RUBY
+    assert_match(/^done$/, out)
+    assert_no_match(/neither owns nor borrows/, out)
+    assert_no_match(/failed to free device memory/, out)
+  end
+
   test "a view that only passes an index through allocates nothing for it" do
     pool = Cumo::CUDA::MemoryPool
     a = Cumo::DFloat.new(1024, 4).seq

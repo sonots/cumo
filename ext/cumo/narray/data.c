@@ -256,6 +256,8 @@ cumo_na_swapaxes(VALUE self, VALUE a1, VALUE a2)
     cumo_narray_view_t *na;
     volatile VALUE view;
 
+    // cumo_na_make_view borrows, so index_owned is zero and the swap below
+    // has no ownership bits to carry with the strides.
     view = cumo_na_make_view(self);
     CumoGetNArrayView(view,na);
 
