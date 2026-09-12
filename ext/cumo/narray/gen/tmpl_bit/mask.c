@@ -113,7 +113,6 @@ static VALUE
     cumo_narray_data_t *nidx;
     cumo_narray_view_t *nv, *nv_val;
     cumo_narray_t      *na, *na_mask;
-    cumo_stridx_t stridx0;
     size_t n_1;
     uint64_t cur[1];
     cudaError_t st = cudaSuccess;
@@ -170,12 +169,11 @@ static VALUE
     cumo_na_setup_shape((cumo_narray_t*)nv, 1, &g.cap1);
 
     CumoGetNArrayData(idx_1,nidx);
-    CUMO_SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
+    nv->stridx = ZALLOC_N(cumo_stridx_t,1);
+    cumo_na_index_own(nv,0,(size_t*)nidx->ptr);
     nidx->ptr = NULL;
     RB_GC_GUARD(idx_1);
 
-    nv->stridx = ZALLOC_N(cumo_stridx_t,1);
-    nv->stridx[0] = stridx0;
     nv->offset = 0;
     cumo_na_index_mark_filled(nv);
 

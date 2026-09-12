@@ -33,10 +33,10 @@ module CumoChildProcess
     end
   RUBY
 
-  def run_child(script, timeout: 120)
+  def run_child(script, timeout: 120, env: {})
     lib = File.expand_path("../lib", __dir__)
     out = nil
-    IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], err: [:child, :out]) do |io|
+    IO.popen([env, RbConfig.ruby, "-I#{lib}", "-e", script], err: [:child, :out]) do |io|
       begin
         Timeout.timeout(timeout) { out = io.read }
       rescue Timeout::Error

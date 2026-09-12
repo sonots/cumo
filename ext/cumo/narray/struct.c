@@ -152,7 +152,7 @@ cumo_na_make_view_struct(VALUE self, VALUE dtype, VALUE offset)
                 //     idx2[i] = idx1[i];
                 // }
                 idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-                CUMO_SDX_SET_INDEX(na2->stridx[j],idx2);
+                cumo_na_index_own(na2,j,idx2);
                 cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
             } else {
                 na2->stridx[j] = na1->stridx[j];

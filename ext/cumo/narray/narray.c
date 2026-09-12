@@ -149,7 +149,7 @@ cumo_na_view_memsize(const void* ptr)
 
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
-            if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
+            if (CUMO_SDX_IS_INDEX(na->stridx[i]) && (na->index_owned & ((uint64_t)1 << i))) {
                 size += sizeof(size_t) * na->base.shape[i];
             }
         }
@@ -176,7 +176,7 @@ cumo_na_view_free(void* ptr)
     // that can raise. A zero reads as an index of NULL, which frees nothing.
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
-            if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
+            if (CUMO_SDX_IS_INDEX(na->stridx[i]) && (na->index_owned & ((uint64_t)1 << i))) {
                 void *idx = CUMO_SDX_GET_INDEX(na->stridx[i]);
                 cumo_cuda_runtime_free_no_raise(idx);
             }
@@ -196,6 +196,7 @@ cumo_na_view_gc_mark(void* na)
 {
     if (((cumo_narray_t*)na)->type == CUMO_NARRAY_VIEW_T) {
         rb_gc_mark(((cumo_narray_view_t*)na)->data);
+        rb_gc_mark(((cumo_narray_view_t*)na)->index_owner);
     }
 }
 
@@ -222,6 +223,8 @@ cumo_na_s_allocate_view(VALUE klass)
     na->stridx = NULL;
     na->reach_end = 0;
     na->index_sync_epoch = UINT64_MAX;
+    na->index_owner = Qnil;
+    na->index_owned = 0;
     return TypedData_Wrap_Struct(klass, &cumo_na_data_type_view, (void*)na);
 }
 
@@ -1254,7 +1257,6 @@ VALUE
 cumo_na_make_view(VALUE self)
 {
     int i, nd;
-    size_t *idx1, *idx2;
     ssize_t stride;
     cumo_narray_t *na;
     cumo_narray_view_t *na1, *na2;
@@ -1285,25 +1287,18 @@ cumo_na_make_view(VALUE self)
     case CUMO_NARRAY_VIEW_T:
         CumoGetNArrayView(self, na1);
         for (i=0; i<nd; i++) {
-            if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
-                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                // idx2 = ALLOC_N(size_t,na1->base.shape[i]);
-                // for (j=0; j<na1->base.shape[i]; j++) {
-                //     idx2[j] = idx1[j];
-                // }
-                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*na1->base.shape[i]);
-                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
-                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*na1->base.shape[i],cudaMemcpyDeviceToDevice,0));
-            } else {
-                na2->stridx[i] = na1->stridx[i];
-            }
+            na2->stridx[i] = na1->stridx[i];
         }
         na2->offset = na1->offset;
         na2->data = na1->data;
         break;
     }
 
-    cumo_na_index_mark_filled(na2);
+    if (na->type == CUMO_NARRAY_VIEW_T) {
+        cumo_na_index_borrow_all(na2, self);
+    } else {
+        cumo_na_index_mark_filled(na2);
+    }
     return view;
 }
 
@@ -1439,7 +1434,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                 idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
+                cumo_na_index_own(na2,i,idx2);
                 if (cumo_na_test_reduce(reduce,i)) {
                     cumo_na_index_reverse_kernel_launch(idx2,idx1,n);
                 } else {
