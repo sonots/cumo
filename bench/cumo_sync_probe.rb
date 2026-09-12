@@ -90,8 +90,8 @@ end
 
 PROBES = []
 
-def probe(group, name, &setup)
-  PROBES << { group: group, name: name, setup: setup }
+def probe(group, name, counts_only: false, &setup)
+  PROBES << { group: group, name: name, setup: setup, counts_only: counts_only }
 end
 
 # Reading data back is meant to synchronize. The question is whether it says so.
@@ -283,6 +283,47 @@ probe('compute', 'index aref a[idx, true]') do
 end
 
 # Host to device
+# A block walks the array on the host and can queue work on it, so the walk has
+# to wait between elements. It only has to wait when the block queued something,
+# which is what the idle count says: nothing for a block that stays off the
+# device, once per touched element for one that does not.
+BLOCK_N = 32
+
+probe('block', 'each (block off the device)', counts_only: true) do
+  a = Cumo::SFloat.new(BLOCK_N).seq
+  -> { a.each { |x| x } }
+end
+
+probe('block', 'each (block writes)', counts_only: true) do
+  a = Cumo::SFloat.new(BLOCK_N).seq
+  -> { i = 0; a.each { |_x| a[i] = 1; i += 1 } }
+end
+
+probe('block', 'each_with_index (block writes)', counts_only: true) do
+  a = Cumo::SFloat.new(BLOCK_N).seq
+  -> { a.each_with_index { |_x, i| a[i] = 1 } }
+end
+
+probe('block', 'map (block writes)', counts_only: true) do
+  a = Cumo::SFloat.new(BLOCK_N).seq
+  -> { i = 0; a.map { |x| a[i] = 1; i += 1; x } }
+end
+
+probe('block', 'map_with_index (block writes)', counts_only: true) do
+  a = Cumo::SFloat.new(BLOCK_N).seq
+  -> { a.map_with_index { |x, i| a[i] = 1; x } }
+end
+
+probe('block', 'Bit each (block writes)', counts_only: true) do
+  a = Cumo::Bit.new(BLOCK_N).fill(1)
+  -> { i = 0; a.each { |_x| a[i] = 0; i += 1 } }
+end
+
+probe('block', 'Bit each_with_index (block writes)', counts_only: true) do
+  a = Cumo::Bit.new(BLOCK_N).fill(1)
+  -> { a.each_with_index { |_x, i| a[i] = 0 } }
+end
+
 probe('h2d', 'from_binary') do
   bin = Array.new(BIG_N / 4, 1.0).pack('f*')
   -> { Cumo::SFloat.from_binary(bin, [BIG_N / 4]) }
@@ -347,8 +388,8 @@ puts
 
 results = []
 
-puts format('  %-26s %10s %12s  %-9s %s', 'probe', 'idle', 'behind queue', 'verdict', 'warning')
-puts "  #{'-' * 84}"
+puts format('  %-34s %10s %6s %12s  %-9s %s', 'probe', 'idle', 'waits', 'behind queue', 'verdict', 'warning')
+puts "  #{'-' * 99}"
 
 current_group = nil
 PROBES.each do |p|
@@ -363,7 +404,22 @@ PROBES.each do |p|
   begin
     call = p[:setup].call
     if call.nil?
-      puts format('  %-26s %10s %12s  %-9s %s', p[:name], '-', '-', 'skip', '(no such API)')
+      puts format('  %-34s %10s %6s %12s  %-9s %s', p[:name], '-', '-', '-', 'skip', '(no such API)')
+      next
+    end
+
+    # (1b) how many times it waits with nothing queued. With the warning left
+    # on every occurrence this is the wait count, not a yes or no.
+    sync
+    idle_text = capture_stdio { call.call }
+    idle_warns = idle_text.to_s.lines.grep(/warn|sync|Sync|WARN/i).size
+
+    if p[:counts_only]
+      # Timing these would measure the warning writes, not the call.
+      puts format('  %-34s %10s %6d %12s  %-9s %s',
+                  p[:name], '-', idle_warns, '-', 'waits', '-')
+      results << { name: p[:name], group: p[:group], sync: idle_warns.positive?,
+                   warned: idle_warns.positive? }
       next
     end
 
@@ -412,12 +468,12 @@ PROBES.each do |p|
         format('x%d %s', warns.size, warns.first.to_s.strip[0, 40])
       end
 
-    puts format('  %-26s %8.1f us %10.2f ms  %-9s %s',
-                p[:name], idle * 1e6, blocked * 1e3,
+    puts format('  %-34s %8.1f us %6d %10.2f ms  %-9s %s',
+                p[:name], idle * 1e6, idle_warns, blocked * 1e3,
                 is_sync ? 'SYNC' : 'async', note)
   rescue StandardError, NotImplementedError => e
     msg = e.message.to_s.split("\n").first.to_s[0, 40]
-    puts format('  %-26s %10s %12s  %-9s %s', p[:name], '-', '-', 'ERROR', "#{e.class}: #{msg}")
+    puts format('  %-34s %10s %6s %12s  %-9s %s', p[:name], '-', '-', '-', 'ERROR', "#{e.class}: #{msg}")
   end
 end
 
@@ -440,3 +496,10 @@ puts '  The first line is what this is for: those calls stall the pipeline and'
 puts '  CUMO_SHOW_WARNING will not tell you. Either add the warning or, where'
 puts '  the synchronization is avoidable, remove it.'
 puts '  A SYNC in the meta group is waste with nothing to show for it.'
+puts
+puts '  The block group counts waits rather than timing them: a walk that hands'
+puts '  every element to a Ruby block has to wait between elements, since the'
+puts '  block can queue work on the array being walked. A block that stays off'
+puts '  the device should cost none, and one that writes should cost about one'
+puts '  per element. A count of one there means the walk waits once for the whole'
+puts '  row, which is what made Bit#each and map answer differently from numo.'
