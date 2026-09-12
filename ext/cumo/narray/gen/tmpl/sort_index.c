@@ -50,6 +50,12 @@ static void
 
     ptr = (char**)(lp->opt_ptr);
 
+    // The row is managed memory that ndloop may have just filled with a copy
+    // kernel, and everything below reads it on the host. Per row rather than
+    // once for the call, because that copy happens per row.
+    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+
     //printf("(ptr=%lx, d_ptr=%lx,d_step=%ld, i_ptr=%lx,i_step=%ld, o_ptr=%lx,o_step=%ld)\n",(size_t)ptr,(size_t)d_ptr,(ssize_t)d_step,(size_t)i_ptr,(ssize_t)i_step,(size_t)o_ptr,(ssize_t)o_step);
 
     if (n==1) {
@@ -152,9 +158,6 @@ static VALUE
 
     size = na->size*sizeof(void*); // max capa
     buf = rb_alloc_tmp_buffer(&tmp, size);
-
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cudaDeviceSynchronize();
 
     res = cumo_na_ndloop3(&ndf, buf, 3, self, idx, reduce);
     rb_free_tmp_buffer(&tmp);
