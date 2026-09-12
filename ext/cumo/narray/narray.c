@@ -1647,8 +1647,22 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
     return vna;
 }
 
+// A view whose elements are packed measures its offset in bits, so only a zero
+// one can be added to a char pointer. By the type, as the byte sizes above are.
+static int
+cumo_na_view_offset_reaches_bytes(VALUE self)
+{
+    cumo_narray_t *na;
+
+    CumoGetNArray(self,na);
+    if (na->type != CUMO_NARRAY_VIEW_T) {
+        return 1;
+    }
+    return cumo_na_type_info(self)->element_bits == 0 || CUMO_NA_VIEW_OFFSET(na) == 0;
+}
+
 /*
-  Returns a new 1-D array initialized from binary raw data in a string.
+  Stores binary raw data from a string into NArray.
   @overload store_binary(string,[offset])
   @param [String] string  Binary raw data.
   @param [Integer] (optional) offset  Byte offset in string.
@@ -1714,9 +1728,11 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
         if (cumo_na_check_contiguous(self) != Qtrue) {
             rb_raise(rb_eArgError, "cannot store binary data into a non-contiguous view");
         }
-        if (RTEST(rb_obj_is_kind_of(self, cumo_cBit)) &&
-            (CUMO_NA_VIEW_OFFSET(na) != 0 || size % 8 != 0)) {
-            rb_raise(rb_eArgError, "cannot store binary data into a bit view that does not begin and end on a byte");
+        if (!cumo_na_view_offset_reaches_bytes(self)) {
+            rb_raise(rb_eArgError, "cannot store binary data into a bit view that does not begin at bit 0");
+        }
+        if (cumo_na_type_info(self)->element_bits > 0 && size % 8 != 0) {
+            rb_raise(rb_eArgError, "cannot store binary data into a bit view that does not end on a byte");
         }
     }
 
@@ -1741,14 +1757,10 @@ cumo_na_to_binary(VALUE self)
     char *ptr;
     VALUE str;
     cumo_narray_t *na;
-    int offset_in_bits;
 
     CumoGetNArray(self,na);
     if (na->type == CUMO_NARRAY_VIEW_T) {
-        // Cumo::Bit measures the offset in bits, so it cannot be added to a
-        // char pointer; kind_of because a subclass must not slip past either.
-        offset_in_bits = RTEST(rb_obj_is_kind_of(self, cumo_cBit)) && CUMO_NA_VIEW_OFFSET(na) != 0;
-        if (!offset_in_bits && cumo_na_check_contiguous(self)==Qtrue) {
+        if (cumo_na_view_offset_reaches_bytes(self) && cumo_na_check_contiguous(self)==Qtrue) {
             offset = CUMO_NA_VIEW_OFFSET(na);
         } else {
             self = rb_funcall(self,cumo_id_dup,0);
