@@ -1,10 +1,11 @@
-void cumo_<%=type_name%>_median_kernel_launch(cumo_na_reduction_arg_t* arg, int flat);
+void cumo_<%=type_name%>_median_kernel_launch(cumo_na_reduction_arg_t* arg, int flat, int prnan);
 
 // The rows are sorted with one cub call and the middle of each is picked by a
-// kernel of its own. nan:true keeps the host path, as sort does: its comparator
-// leaves NaN unordered, so there is no sorted array to take a middle of.
+// kernel of its own. The sort keys put every NaN last, so nan:true only has to
+// notice that one is there.
+<% (is_float ? ["_ignan","_prnan"] : [""]).each do |j| %>
 static void
-<%=c_iter%>_kernel(cumo_na_loop_t *const lp)
+<%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
 {
     cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 1);
     ssize_t expect = sizeof(dtype);
@@ -19,46 +20,7 @@ static void
         expect *= (ssize_t)arg.in_indexer.shape[i];
     }
 
-    cumo_<%=type_name%>_median_kernel_launch(&arg, flat);
-}
-
-<% (is_float ? ["_ignan","_prnan"] : [""]).each do |j| %>
-static void
-<%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
-{
-    size_t n;
-    char *p1, *p2;
-    dtype *buf;
-
-    CUMO_INIT_COUNTER(lp, n);
-    p1 = (lp->args[0]).ptr + (lp->args[0].iter[0]).pos;
-    p2 = (lp->args[1]).ptr + (lp->args[1].iter[0]).pos;
-    buf = (dtype*)p1;
-
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    <%=type_name%>_qsort<%=j%>(buf, n, sizeof(dtype));
-
-    <% if is_float %>
-    for (; n; n--) {
-        if (!m_isnan(buf[n-1])) break;
-    }
-    <% end %>
-
-    if (n==0) {
-        *(dtype*)p2 = buf[0];
-    }
-    else if (n%2==0) {
-<% if is_half %>
-        // Adding the pair in half overflows where the midpoint itself fits.
-        *(dtype*)p2 = cumo_float2half((cumo_half2float(buf[n/2-1]) + cumo_half2float(buf[n/2])) / 2.0f);
-<% else %>
-        *(dtype*)p2 = m_div(m_add(buf[n/2-1],buf[n/2]),m_from_real(2));
-<% end %>
-    }
-    else {
-        *(dtype*)p2 = buf[(n-1)/2];
-    }
+    cumo_<%=type_name%>_median_kernel_launch(&arg, flat, <%= j == "_prnan" ? 1 : 0 %>);
 }
 <% end %>
 
@@ -87,18 +49,13 @@ static VALUE
   <% if is_float %>
     ndf.func = <%=c_iter%>_ignan;
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_prnan);
-    if (ndf.func == <%=c_iter%>_ignan) {
-        ndf.func = <%=c_iter%>_kernel;
-        // or rather than assign: cumo_na_reduce_dimension may have set
-        // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
-        ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
-    }
   <% else %>
     ndf.func = <%=c_iter%>;
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
-    ndf.func = <%=c_iter%>_kernel;
-    ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
   <% end %>
+    // or rather than assign: cumo_na_reduce_dimension may have set
+    // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
+    ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
     v = cumo_na_ndloop(&ndf, 2, self, reduce);
     return <%=type_name%>_extract(v);
 }

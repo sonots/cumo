@@ -4710,10 +4710,8 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   test "median takes the middle of every row, whatever the axis" do
-    # median sorted on the host, one row at a time, behind a device
-    # synchronization. The expectations are worked out in Ruby, and the values
-    # stay small so that the average of the middle two cannot overflow the
-    # narrower integer types.
+    # The expectations are worked out in Ruby, and the values stay small so that
+    # the average of the middle two cannot overflow the narrower integer types.
     rows = 12
     cols = 25
     xs = Array.new(rows * cols) { |i| (i * 37) % 53 }
@@ -4759,6 +4757,48 @@ class NArrayTest < Test::Unit::TestCase
       assert(dtype.cast([nan, nan]).median.to_a.first.nan?, "#{dtype} all NaN")
       assert_equal([5.0], dtype.cast([5.0]).median.to_a, "#{dtype} one element")
     end
+  end
+
+  test "median(nan: true) answers NaN wherever a NaN sits" do
+    nan = Float::NAN
+    [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat].each do |dtype|
+      (2..7).each do |len|
+        (0...len).each do |pos|
+          src = (1..len).map(&:to_f)
+          src[pos] = nan
+          assert(dtype[*src].median(nan: true).to_a.first.nan?, "#{dtype} len=#{len} pos=#{pos}")
+        end
+      end
+      assert_equal([3.0], dtype[1, 2, 3, 4, 5].median(nan: true).to_a, "#{dtype} no NaN, odd")
+      assert_equal([2.5], dtype[1, 2, 3, 4].median(nan: true).to_a, "#{dtype} no NaN, even")
+    end
+  end
+
+  test "median(nan: true) reduces a row of a view on its own" do
+    nan = Float::NAN
+    a = Cumo::DFloat[[1, 2, nan], [4, 5, 6], [nan, nan, nan]]
+    got = a.median(axis: 1, nan: true).to_a
+    assert_equal([true, false, true], got.map { |x| x.nan? })
+    assert_equal(5.0, got[1])
+    assert_equal([true, true, true], a.median(axis: 0, nan: true).to_a.map(&:nan?))
+
+    assert_equal([5.0, 1.5], a[[1, 0], true].median(axis: 1).to_a)
+    assert_equal([5.0, true], [a[[1, 0], true].median(axis: 1, nan: true).to_a.first,
+                               a[[1, 0], true].median(axis: 1, nan: true).to_a.last.nan?])
+    assert_equal([1.5, 4.5], a[0..1, 0..1].median(axis: 1, nan: true).to_a)
+
+    back = Cumo::DFloat[[1, 2, nan], [4, 5, 6]][true, [2, 1, 0]]
+    assert_equal([1.5, 5.0], back.median(axis: 1).to_a)
+    assert_equal([true, false], back.median(axis: 1, nan: true).to_a.map { |x| x.nan? })
+    assert(a[true, 1].median(nan: true).to_a.first.nan?)
+    assert_equal([3.5], a[true, 1].median.to_a)
+  end
+
+  test "median of a long row with one NaN" do
+    a = Cumo::DFloat.new(20_000).seq
+    a[12_345] = Float::NAN
+    assert_equal([9999.0], a.median.to_a)
+    assert(a.median(nan: true).to_a.first.nan?)
   end
 
   # Where each element of a row sits once the row is in order, ties left in the

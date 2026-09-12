@@ -194,7 +194,7 @@ template <> __device__ inline cumo_half sorted_midpoint<cumo_half>(cumo_half a, 
 }
 
 template <typename T, bool IS_FLOAT>
-__global__ void median_kernel(const T* sorted, int64_t row_len, cumo_na_iarray_t out, cumo_na_indexer_t out_indexer) {
+__global__ void median_kernel(const T* sorted, int64_t row_len, int prnan, cumo_na_iarray_t out, cumo_na_indexer_t out_indexer) {
     for (uint64_t r = blockIdx.x * blockDim.x + threadIdx.x; r < out_indexer.total_size; r += blockDim.x * gridDim.x) {
         const T* row = sorted + (int64_t)r * row_len;
         int64_t n = row_len;
@@ -202,7 +202,9 @@ __global__ void median_kernel(const T* sorted, int64_t row_len, cumo_na_iarray_t
         if constexpr (IS_FLOAT) {
             while (n > 0 && sorted_isnan(row[n - 1])) --n;
         }
-        if (n == 0) {
+        if (prnan && n < row_len) {
+            v = row[row_len - 1];
+        } else if (n == 0) {
             v = row[0];
         } else if (n % 2 == 0) {
             v = sorted_midpoint(row[n / 2 - 1], row[n / 2]);
@@ -217,7 +219,7 @@ __global__ void median_kernel(const T* sorted, int64_t row_len, cumo_na_iarray_t
 // median throws the sorted rows away, so unlike sort it never has to put them
 // back where they came from.
 template <typename T, bool IS_FLOAT>
-void median_rows(cumo_na_reduction_arg_t* arg, int flat) {
+void median_rows(cumo_na_reduction_arg_t* arg, int flat, int prnan) {
     int64_t total = (int64_t)arg->in_indexer.total_size;
     int64_t n_rows = (int64_t)arg->out_indexer.total_size;
     if (total == 0 || n_rows == 0) return;
@@ -250,7 +252,7 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat) {
     }
 
     median_kernel<T, IS_FLOAT><<<cumo_get_grid_dim(n_rows), cumo_get_block_dim(n_rows)>>>(
-        sorted, row_len, arg->out, arg->out_indexer);
+        sorted, row_len, prnan, arg->out, arg->out_indexer);
     cumo_cuda_runtime_check_kernel_launch();
 
     cumo_cuda_runtime_free((char*)sorted);
@@ -335,9 +337,10 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
     {                                                                                           \
         sort_rows<type, is_float>(a, indexer, n_rows, row_len, flat);                           \
     }                                                                                           \
-    extern "C" void cumo_##name##_median_kernel_launch(cumo_na_reduction_arg_t* arg, int flat)  \
+    extern "C" void cumo_##name##_median_kernel_launch(                                         \
+        cumo_na_reduction_arg_t* arg, int flat, int prnan)                                       \
     {                                                                                           \
-        median_rows<type, is_float>(arg, flat);                                                 \
+        median_rows<type, is_float>(arg, flat, prnan);                                          \
     }                                                                                           \
     extern "C" void cumo_##name##_sort_index_kernel_launch(                                     \
         cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_iarray_t* idx,                 \
