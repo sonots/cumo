@@ -1463,7 +1463,7 @@ class NArrayTest < Test::Unit::TestCase
         restored_a = dtype.new(*shape).seq
         restored_a.store_binary(data)
         assert { restored_a == a }
-        assert { !restored_a.free }
+        assert { restored_a.free }
       end
 
       test "not frozen string" do
@@ -2862,10 +2862,65 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   test "store_binary rejects a size whose byte count overflows" do
-    # A frozen String takes cumo_na_set_pointer, which never allocates, so the
-    # allocator check does not cover this path.
     assert_raise(ArgumentError) { Cumo::DFloat.new(2**61).store_binary(("A" * 4096).freeze) }
     assert_raise(ArgumentError) { Cumo::DComplex.new(2**60).store_binary(("A" * 4096).freeze) }
+  end
+
+  # Taking the pointer runs allocate, and a subclass can define it. Reshaping
+  # the array from inside it used to leave store_binary copying the byte count
+  # it measured before into whatever smaller buffer came back.
+  test "store_binary refuses an array that its own allocate reshaped" do
+    script = <<~RUBY
+      require "cumo/narray"
+      class Shrinker < Cumo::DFloat
+        def allocate
+          unless @done
+            @done = true
+            send(:initialize, 1)
+          end
+          super
+        end
+      end
+      a = Shrinker.new(1 << 22)
+      begin
+        a.store_binary("A" * (1 << 25))
+        print "no error"
+      rescue RuntimeError
+        print "RuntimeError"
+      end
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = nil
+    IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], err: [:child, :out]) { |io| out = io.read }
+    assert(Process.last_status.success?, "child failed: #{out}")
+    assert_equal "RuntimeError", out
+  end
+
+  # The bytes used to be borrowed from the marshalled string rather than
+  # copied, and nothing pinned it, so a compaction moved it out from under the
+  # array. Four elements on purpose: past about 512 bytes a String keeps its
+  # bytes in an allocation of their own, which a compaction does not move, so a
+  # larger array would pass whether or not it is copied. Runs in a child
+  # process because reading the moved buffer can take the process down.
+  test "a marshalled array survives a compaction that moves every object" do
+    script = <<~RUBY
+      require "cumo/narray"
+      a = Cumo::Int32[1, 2, 3, 4]
+      b = Marshal.load(Marshal.dump(a))
+      3.times do
+        begin
+          GC.verify_compaction_references(expand_heap: true, toward: :empty)
+        rescue ArgumentError
+          GC.verify_compaction_references(double_heap: true, toward: :empty)
+        end
+      end
+      print(b.to_a == a.to_a)
+    RUBY
+    lib = File.expand_path("../lib", __dir__)
+    out = err = nil
+    IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], err: [:child, :out]) { |io| out = io.read }
+    assert(Process.last_status.success?, "child failed: #{out}")
+    assert_equal "true", out
   end
 
   test "marshal_load rejects a non-array shape" do

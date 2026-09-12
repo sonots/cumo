@@ -38,7 +38,6 @@ static ID cumo_id_count_false_cpu;
 static ID cumo_id_axis;
 static ID cumo_id_nan;
 static ID cumo_id_keepdims;
-static ID cumo_id_source;
 
 VALUE cumo_sym_reduce;
 VALUE cumo_sym_option;
@@ -670,89 +669,6 @@ cumo_na_free_owned_ptr(VALUE self, void *ptr, size_t byte_size)
     }
 }
 
-static void
-cumo_na_set_pointer(VALUE self, char *ptr, size_t byte_size)
-{
-    VALUE obj;
-    cumo_narray_t *na;
-
-    if (OBJ_FROZEN(self)) {
-        rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
-    }
-
-    CumoGetNArray(self,na);
-
-    switch(CUMO_NA_TYPE(na)) {
-    case CUMO_NARRAY_DATA_T:
-        if (CUMO_NA_SIZE(na) > 0) {
-            if (CUMO_NA_DATA_PTR(na) != NULL && CUMO_NA_DATA_OWNED(na)) {
-                cumo_na_free_owned_ptr(self, CUMO_NA_DATA_PTR(na), cumo_na_data_byte_size(self));
-            }
-            CUMO_NA_DATA_PTR(na) = ptr;
-            CUMO_NA_DATA_OWNED(na) = FALSE;
-        }
-        return;
-    case CUMO_NARRAY_VIEW_T:
-        obj = CUMO_NA_VIEW_DATA(na);
-        if (OBJ_FROZEN(obj)) {
-            rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
-        }
-        CumoGetNArray(obj,na);
-        switch(CUMO_NA_TYPE(na)) {
-        case CUMO_NARRAY_DATA_T:
-            if (CUMO_NA_SIZE(na) > 0) {
-                if (CUMO_NA_DATA_PTR(na) != NULL && CUMO_NA_DATA_OWNED(na)) {
-                    cumo_na_free_owned_ptr(obj, CUMO_NA_DATA_PTR(na), cumo_na_data_byte_size(obj));
-                }
-                CUMO_NA_DATA_PTR(na) = ptr;
-                CUMO_NA_DATA_OWNED(na) = FALSE;
-            }
-            return;
-        default:
-            rb_raise(rb_eRuntimeError,"invalid NA_TYPE of view: %d",CUMO_NA_TYPE(na));
-        }
-    default:
-        rb_raise(rb_eRuntimeError,"invalid NA_TYPE: %d",CUMO_NA_TYPE(na));
-    }
-}
-
-static void
-cumo_na_pointer_copy_on_write(VALUE self)
-{
-    cumo_narray_t *na;
-    void *ptr;
-    VALUE velmsz;
-    size_t byte_size;
-
-    CumoGetNArray(self,na);
-    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
-        self = CUMO_NA_VIEW_DATA(na);
-        CumoGetNArray(self,na);
-    }
-
-    ptr = CUMO_NA_DATA_PTR(na);
-    if (ptr == NULL) {
-        return;
-    }
-
-    if (CUMO_NA_DATA_OWNED(na)) {
-        return;
-    }
-
-    velmsz = rb_const_get(rb_obj_class(self), cumo_id_element_byte_size);
-    if (FIXNUM_P(velmsz)) {
-        byte_size = CUMO_NA_SIZE(na) * NUM2SIZET(velmsz);
-    } else {
-        byte_size = ceil(CUMO_NA_SIZE(na) * NUM2DBL(velmsz));
-    }
-    CUMO_NA_DATA_PTR(na) = NULL;
-    rb_funcall(self, cumo_id_allocate, 0);
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_pointer_copy_on_write", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    memcpy(CUMO_NA_DATA_PTR(na), ptr, byte_size);
-    rb_ivar_set(self, cumo_id_source, Qnil);
-}
-
 // One past the furthest position self can reach, in the units its offset and
 // strides are in. A view is laid out against the shape its base had when it
 // was made, and it reads the data through the base's pointer, so a base that
@@ -825,9 +741,6 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
 
     switch(CUMO_NA_TYPE(na)) {
     case CUMO_NARRAY_DATA_T:
-        if (flag & WRITE) {
-            cumo_na_pointer_copy_on_write(self);
-        }
         ptr = CUMO_NA_DATA_PTR(na);
         if (CUMO_NA_SIZE(na) > 0 && ptr == NULL) {
             // A scalar cast lazily holds its value on the Ruby side, so it can
@@ -845,9 +758,6 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
         obj = CUMO_NA_VIEW_DATA(na);
         if ((flag & WRITE) && OBJ_FROZEN(obj)) {
             rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
-        }
-        if (flag & WRITE) {
-            cumo_na_pointer_copy_on_write(self);
         }
         // Only a base that has been made smaller can leave a view reaching
         // past it, and measuring a view costs a pass over its index lists, so
@@ -1662,6 +1572,7 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
 {
     size_t size, str_len, byte_size, offset;
     int   narg;
+    char *ptr;
     VALUE vstr, voffset;
     VALUE velmsz;
     cumo_narray_t *na;
@@ -1697,26 +1608,29 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
         rb_raise(rb_eArgError, "string is too short to store");
     }
 
-    // Holding the string instead of copying it replaces the whole buffer,
-    // which is only self's to replace when self is that buffer.
-    if (OBJ_FROZEN(vstr) && CUMO_NA_TYPE(na) == CUMO_NARRAY_DATA_T) {
-        cumo_na_set_pointer(self, RSTRING_PTR(vstr)+offset, byte_size);
-        rb_ivar_set(self, cumo_id_source, vstr);
-    } else {
-        char *ptr = cumo_na_get_pointer_for_write(self);
-        if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
-            // Whole bytes from one address reach the view's own elements only
-            // if it walks its base in order and, for Bit, begins and ends on a
-            // byte. Contiguity is also what keeps an index list, which can name
-            // more elements than the base holds, away from the copy below.
-            if (cumo_na_check_contiguous(self) != Qtrue) {
-                rb_raise(rb_eArgError, "cannot store binary data into a non-contiguous view");
-            }
-            if (RTEST(rb_obj_is_kind_of(self, cumo_cBit)) &&
-                (CUMO_NA_VIEW_OFFSET(na) != 0 || size % 8 != 0)) {
-                rb_raise(rb_eArgError, "cannot store binary data into a bit view that does not begin and end on a byte");
-            }
+    ptr = cumo_na_get_pointer_for_write(self);
+    // Taking the pointer runs allocate, which is a Ruby method a subclass can
+    // define, and it can give the array another shape or empty the string.
+    // Both were measured before it ran.
+    if (CUMO_NA_SIZE(na) != size || (size_t)RSTRING_LEN(vstr) < offset + byte_size) {
+        rb_raise(rb_eRuntimeError, "NArray or string changed while storing binary data");
+    }
+
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        // Whole bytes from one address reach the view's own elements only if it
+        // walks its base in order and, for Bit, begins and ends on a byte.
+        // Contiguity is also what keeps an index list, which can name more
+        // elements than the base holds, away from the copy below.
+        if (cumo_na_check_contiguous(self) != Qtrue) {
+            rb_raise(rb_eArgError, "cannot store binary data into a non-contiguous view");
         }
+        if (RTEST(rb_obj_is_kind_of(self, cumo_cBit)) &&
+            (CUMO_NA_VIEW_OFFSET(na) != 0 || size % 8 != 0)) {
+            rb_raise(rb_eArgError, "cannot store binary data into a bit view that does not begin and end on a byte");
+        }
+    }
+
+    if (byte_size > 0) {
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_store_binary", "any");
         cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
         memcpy(ptr+cumo_na_get_offset(self), RSTRING_PTR(vstr)+offset, byte_size);
@@ -1858,7 +1772,6 @@ cumo_na_marshal_load(VALUE self, VALUE a)
         memcpy(ptr, RARRAY_PTR(v), CUMO_NA_SIZE(na)*sizeof(VALUE));
     } else {
         Check_Type(v, T_STRING);
-        rb_str_freeze(v);
         cumo_na_store_binary(1,&v,self);
         if (CUMO_TEST_BYTE_SWAPPED(self)) {
             rb_funcall(cumo_na_inplace(self),cumo_id_to_host,0);
@@ -2290,8 +2203,6 @@ cumo_na_free_data(VALUE self)
 
     if (na->type == CUMO_NARRAY_DATA_T) {
         void *ptr = CUMO_NA_DATA_PTR(na);
-        // Not owned means the data belongs to something else -- store_binary()
-        // points a frozen String's bytes at it -- so there is nothing to free.
         if (ptr != NULL && CUMO_NA_DATA_OWNED(na)) {
             cumo_na_free_owned_ptr(self, ptr, cumo_na_data_byte_size(self));
             CUMO_NA_DATA_PTR(na) = NULL;
@@ -2425,7 +2336,6 @@ Init_cumo_narray()
     cumo_id_axis            = rb_intern("axis");
     cumo_id_nan             = rb_intern("nan");
     cumo_id_keepdims        = rb_intern("keepdims");
-    cumo_id_source          = rb_intern("source");
 
     cumo_sym_reduce   = ID2SYM(rb_intern("reduce"));
     cumo_sym_option   = ID2SYM(rb_intern("option"));
