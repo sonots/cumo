@@ -110,6 +110,8 @@
         }                                               \
     }
 
+#include <limits.h>
+
 typedef struct {
     <%=scalar_t%> alpha, beta;
     int m, n, k;
@@ -117,10 +119,21 @@ typedef struct {
 
 typedef struct {
     int ld;
-    int stride; // in element count
+    long long int stride; // in element count
     cublasOperation_t trans;
     VALUE a;
 } gemm_layout_t;
+
+// cuBLAS takes these as int, so a shape that does not fit has to be refused
+// rather than wrapped into a smaller or negative one.
+static int
+gemm_int(size_t v, const char *name)
+{
+    if (v > INT_MAX) {
+        rb_raise(rb_eRangeError, "%s=%"SZF"u is too large for cuBLAS", name, v);
+    }
+    return (int)v;
+}
 
 static bool
 is_f_contiguous(VALUE a)
@@ -200,7 +213,7 @@ static int
 gemm_batch_count(cumo_narray_t *na)
 {
     size_t matrix_size = ROW_SIZE(na) * COL_SIZE(na);
-    return matrix_size == 0 ? 0 : (int)(CUMO_NA_SIZE(na) / matrix_size);
+    return matrix_size == 0 ? 0 : gemm_int(CUMO_NA_SIZE(na) / matrix_size, "batch count");
 }
 
 static gemm_layout_t
@@ -218,27 +231,27 @@ make_gemm_layout(VALUE a)
     }
 
     if ((CUMO_NA_NDIM(na) == 2 && is_f_contiguous(a)) || is_batched_f_contiguous(a)) {
-        layout.ld = ROW_SIZE(na);
+        layout.ld = (int)ROW_SIZE(na);
         layout.trans = CUBLAS_OP_T;
         layout.a = a;
     } else {
-        layout.ld = COL_SIZE(na);
+        layout.ld = (int)COL_SIZE(na);
         layout.trans = CUBLAS_OP_N;  // transposed
         // force c-contiguous
         layout.a = is_c_contiguous(a) ? a : rb_funcall(a, rb_intern("dup"), 0);
     }
     // cuBLAS walks the operand by this stride once per batch, so an operand that
     // holds a single matrix has to be re-read rather than advanced past its end.
-    layout.stride = gemm_batch_count(na) == 1 ? 0 : ROW_SIZE(na) * COL_SIZE(na);
+    layout.stride = gemm_batch_count(na) == 1 ? 0 : (long long int)(ROW_SIZE(na) * COL_SIZE(na));
     return layout;
 }
 
 extern int cumo_na_debug_flag;  // narray.c
 
 static void
-print_gemm_args(gemm_args_t* g, gemm_layout_t* a_layout, gemm_layout_t* b_layout, int stridec, int batch_count)
+print_gemm_args(gemm_args_t* g, gemm_layout_t* a_layout, gemm_layout_t* b_layout, long long int stridec, int batch_count)
 {
-    printf("transb=%d transa=%d, n=%d, m=%d, k=%d, ldb=%d, lda=%d, ldc=n=%d, strideb=%d, stridea=%d stridec=%d batch_count=%d\n",
+    printf("transb=%d transa=%d, n=%d, m=%d, k=%d, ldb=%d, lda=%d, ldc=n=%d, strideb=%lld, stridea=%lld stridec=%lld batch_count=%d\n",
             (int)b_layout->trans,
             (int)a_layout->trans,
             (int)g->n,
@@ -247,9 +260,9 @@ print_gemm_args(gemm_args_t* g, gemm_layout_t* a_layout, gemm_layout_t* b_layout
             (int)b_layout->ld,
             (int)a_layout->ld,
             (int)g->n,
-            (int)b_layout->stride,
-            (int)a_layout->stride,
-            (int)stridec,
+            b_layout->stride,
+            a_layout->stride,
+            stridec,
             (int)batch_count);
 }
 
@@ -260,7 +273,8 @@ static void
     cublasHandle_t handle = 0;
     cublasStatus_t status = 0;
     cumo_narray_t* nc;
-    int stridec = 0;
+    size_t matrix_size;
+    long long int stridec = 0;
     int batch_count = 0;
 
     // Note that cuBLAS uses the column major matrix representation.
@@ -278,8 +292,9 @@ static void
     b_layout = make_gemm_layout(b);
 
     CumoGetNArray(c, nc);
-    stridec = ROW_SIZE(nc) * COL_SIZE(nc);
-    batch_count = CUMO_NA_SIZE(nc) / stridec;
+    matrix_size = ROW_SIZE(nc) * COL_SIZE(nc);
+    stridec = (long long int)matrix_size;
+    batch_count = gemm_int(CUMO_NA_SIZE(nc) / matrix_size, "batch count");
 
     if (cumo_na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
     handle = cumo_cuda_cublas_handle();
@@ -403,13 +418,13 @@ static VALUE
     CHECK_NON_EMPTY(nb);
 
     if (ROW_SIZE(nb) != COL_SIZE(na)) {
-        rb_raise(cumo_na_eShapeError,"ROW_SIZE(b)=%d must equal to COL_SIZE(a)=%d",
-                (int)ROW_SIZE(nb), (int)COL_SIZE(na));
+        rb_raise(cumo_na_eShapeError,"ROW_SIZE(b)=%"SZF"u must equal to COL_SIZE(a)=%"SZF"u",
+                ROW_SIZE(nb), COL_SIZE(na));
     }
 
-    g.m = ROW_SIZE(na);
-    g.k = COL_SIZE(na);
-    g.n = COL_SIZE(nb);
+    g.m = gemm_int(ROW_SIZE(na), "row size of a");
+    g.k = gemm_int(COL_SIZE(na), "column size of a");
+    g.n = gemm_int(COL_SIZE(nb), "column size of b");
 
     // The batch dimensions reach cuBLAS as one stride per operand, so both
     // operands must hold the same number of matrices. An operand holding a
@@ -437,16 +452,17 @@ static VALUE
         CumoGetNArray(c, nc);
         CHECK_DIM_GE(nc, 2);
         if (ROW_SIZE(nc) != ROW_SIZE(na)) {
-            rb_raise(cumo_na_eShapeError,"ROW_SIZE(c)=%d must equal to ROW_SIZE(a)=%d",
-                    (int)ROW_SIZE(nc), (int)ROW_SIZE(na));
+            rb_raise(cumo_na_eShapeError,"ROW_SIZE(c)=%"SZF"u must equal to ROW_SIZE(a)=%"SZF"u",
+                    ROW_SIZE(nc), ROW_SIZE(na));
         }
         if (COL_SIZE(nc) != COL_SIZE(nb)) {
-            rb_raise(cumo_na_eShapeError,"COL_SIZE(c)=%d must equal to COL_SIZE(b)=%d",
-                    (int)COL_SIZE(nc), (int)COL_SIZE(nb));
+            rb_raise(cumo_na_eShapeError,"COL_SIZE(c)=%"SZF"u must equal to COL_SIZE(b)=%"SZF"u",
+                    COL_SIZE(nc), COL_SIZE(nb));
         }
-        if (gemm_batch_count(nc) != batch) {
+        int c_batch = gemm_batch_count(nc);
+        if (c_batch != batch) {
             rb_raise(cumo_na_eShapeError,"batch count of c=%d must equal to %d",
-                    gemm_batch_count(nc), batch);
+                    c_batch, batch);
         }
         // a and b are duplicated when they are not contiguous, but c is written
         // in place, and cuBLAS writes it as ldc=n stridec=m*n from its offset
