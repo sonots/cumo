@@ -4760,6 +4760,31 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "reverse of a view an index array backs" do
+    a = Cumo::DFloat.new(4, 3).seq
+    v = a[[3, 1, 0], [2, 0, 1]]
+    assert { v == [[11, 9, 10], [5, 3, 4], [2, 0, 1]] }
+    assert { v.reverse == [[1, 0, 2], [4, 3, 5], [10, 9, 11]] }
+    assert { v.reverse(0) == [[2, 0, 1], [5, 3, 4], [11, 9, 10]] }
+    assert { v.reverse(1) == [[10, 9, 11], [4, 3, 5], [1, 0, 2]] }
+
+    w = a[[3, 1, 0], true]
+    assert { w.reverse == [[2, 1, 0], [5, 4, 3], [11, 10, 9]] }
+    assert { w.reverse(0) == [[0, 1, 2], [3, 4, 5], [9, 10, 11]] }
+    assert { w.reverse(1) == [[11, 10, 9], [5, 4, 3], [2, 1, 0]] }
+
+    n = 1 << 16
+    idx = Array.new(n) { |i| (i * 7 + 3) % n }
+    assert_equal(idx.reverse.map(&:to_f), Cumo::DFloat.new(n).seq[idx].reverse.to_a)
+  end
+
+  test "reverse orders after the kernel that fills the index it reads" do
+    n = 1 << 16
+    idx = Array.new(n) { |i| n - 1 - i }
+    r = Cumo::DFloat.new(n).seq[idx].reverse
+    assert_equal((0...n).map(&:to_f), r.to_a)
+  end
+
   sub_test_case "a block sees what it wrote into the array it walks" do
     def walk(a, meth)
       seen = []
