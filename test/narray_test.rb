@@ -2944,6 +2944,59 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # to_binary asked the class how wide an element is, so a subclass claiming
+  # more than the type allocates read past the end and returned the bytes.
+  test "a lying ELEMENT_BYTE_SIZE cannot stretch to_binary past the allocation" do
+    liar = Class.new do
+      def to_f = 4096.0
+      def to_int = 4096
+      def to_i = 4096
+    end.new
+    klass = Class.new(Cumo::DFloat) { const_set(:ELEMENT_BYTE_SIZE, liar) }
+    assert_equal 32, klass.new(4).seq.to_binary.bytesize
+  end
+
+  # A size whose byte count wraps used to leave to_binary reporting an empty
+  # string rather than refusing.
+  test "a byte count that overflows is refused rather than wrapped" do
+    klass = Class.new(Cumo::DFloat) { const_set(:ELEMENT_BYTE_SIZE, 2**61) }
+    a = klass.new(8).seq
+    assert_raise(RangeError) { a.byte_size }
+    assert_equal 64, a.to_binary.bytesize
+  end
+
+  # The pointer is taken after the length used to be measured, and taking one
+  # runs allocate.
+  test "to_binary refuses an array its own allocate left without data" do
+    assert_child_raises("allocate left the NArray without data", <<~RUBY)
+      x = Cumo::DFloat.cast(1.0)
+      x.send(:initialize, 4)
+      v = x[1..2]
+      def x.allocate; self; end
+      v.to_a
+    RUBY
+  end
+
+  # The reach check measures a view against its base in element units, and took
+  # that unit from the class. Claiming less than the type made it under-measure.
+  test "a view is measured against its base in the element the type gives" do
+    assert_child_raises("this view was made when its base was larger and no longer fits in it", <<~RUBY)
+      klass = Class.new(Cumo::Int8) { const_set(:ELEMENT_BYTE_SIZE, 0) }
+      base = klass.new(4).seq
+      v = base[0..3]
+      base.send(:initialize, 3)
+      v.to_a
+    RUBY
+  end
+
+  # Cumo::Bit packs its elements, so its byte_size is smaller than the digits
+  # holding them. The guard above must not take that for a lie.
+  test "to_binary keeps the packed length for a bit array" do
+    assert_equal [1, 2, 5, 8], [8, 16, 33, 64].map { |n| Cumo::Bit.new(n).fill(1).to_binary.bytesize }
+    a = Cumo::Bit.new(16).fill(1)
+    assert_equal 16, Integer(Cumo::Bit.from_binary(a.to_binary, [16]).count_true)
+  end
+
   # byte_size comes from the class's ELEMENT_BYTE_SIZE, which a subclass can
   # define as an object returning whatever it likes. The allocation goes by the
   # type, so a larger claim used to run the copy past it.

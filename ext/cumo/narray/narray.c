@@ -639,26 +639,66 @@ cumo_na_s_eye(int argc, VALUE *argv, VALUE klass)
 #define READ 1
 #define WRITE 2
 
+// A view reads through the array it was made from, so that is where its type
+// lives.
+static const cumo_narray_type_info_t *
+cumo_na_type_info(VALUE self)
+{
+    cumo_narray_t *na;
+    VALUE obj = self;
+
+    CumoGetNArray(self,na);
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        obj = CUMO_NA_VIEW_DATA(na);
+    }
+    return (const cumo_narray_type_info_t *)(RTYPEDDATA_TYPE(obj)->data);
+}
+
+static size_t
+cumo_na_alloc_byte_size_with(cumo_narray_t *na, const cumo_narray_type_info_t *info)
+{
+    if (na->size == 0) {
+        return 0;
+    }
+    if (info->element_bits > 0) {
+        return ((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
+    }
+    if (na->size > SIZE_MAX / info->element_bytes) {
+        rb_raise(rb_eRangeError, "total byte size of data is too large");
+    }
+    return na->size * info->element_bytes;
+}
+
 // What was allocated, measured by the type rather than by the class's
-// ELEMENT_BYTE_SIZE, which a subclass can define as anything. A view keeps its
-// own count and takes the element size from the array it reads.
+// ELEMENT_BYTE_SIZE, which a subclass can define as anything.
 static size_t
 cumo_na_honest_byte_size(VALUE self)
 {
-    const cumo_narray_type_info_t *info;
     cumo_narray_t *na;
-    VALUE obj = self;
+    CumoGetNArray(self,na);
+    return cumo_na_alloc_byte_size_with(na, cumo_na_type_info(self));
+}
+
+// How many bytes the elements themselves come to, again by the type. Cumo::Bit
+// packs its elements, so this is shorter than the digits holding them.
+static size_t
+cumo_na_type_byte_size(VALUE self)
+{
+    const cumo_narray_type_info_t *info = cumo_na_type_info(self);
+    cumo_narray_t *na;
 
     CumoGetNArray(self,na);
     if (na->size == 0) {
         return 0;
     }
-    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
-        obj = CUMO_NA_VIEW_DATA(na);
-    }
-    info = (const cumo_narray_type_info_t *)(RTYPEDDATA_TYPE(obj)->data);
     if (info->element_bits > 0) {
-        return ((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
+        if (na->size > (SIZE_MAX - 7) / info->element_bits) {
+            rb_raise(rb_eRangeError, "total byte size of data is too large");
+        }
+        return (na->size * info->element_bits + 7) / 8;
+    }
+    if (na->size > SIZE_MAX / info->element_bytes) {
+        rb_raise(rb_eRangeError, "total byte size of data is too large");
     }
     return na->size * info->element_bytes;
 }
@@ -668,18 +708,10 @@ cumo_na_honest_byte_size(VALUE self)
 size_t
 cumo_na_data_byte_size(VALUE self)
 {
-    const cumo_narray_type_info_t *info;
     cumo_narray_t *na;
-
     CumoGetNArray(self,na);
-    if (na->size == 0) {
-        return 0;
-    }
-    info = (const cumo_narray_type_info_t *)(RTYPEDDATA_TYPE(self)->data);
-    if (info->element_bits > 0) {
-        return ((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
-    }
-    return na->size * info->element_bytes;
+    return cumo_na_alloc_byte_size_with(
+        na, (const cumo_narray_type_info_t *)(RTYPEDDATA_TYPE(self)->data));
 }
 
 // allocate() takes xmalloc for RObject and the CUDA allocator for every other
@@ -804,7 +836,7 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
             is_bit = RTEST(rb_obj_is_kind_of(self, cumo_cBit));
             reach_end = cumo_na_view_reach_end(
                 (cumo_narray_view_t*)na,
-                is_bit ? 1 : NUM2SIZET(rb_const_get(rb_obj_class(self), cumo_id_element_byte_size)));
+                is_bit ? 1 : cumo_na_type_info(self)->element_bytes);
         } else {
             is_bit = 0;
             reach_end = 0;
@@ -825,6 +857,9 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
                     }
                     rb_funcall(obj, cumo_id_allocate, 0);
                     ptr = CUMO_NA_DATA_PTR(na);
+                    if (ptr == NULL) {
+                        rb_raise(rb_eRuntimeError, "allocate left the NArray without data");
+                    }
                 }
             }
             return ptr;
@@ -1495,7 +1530,11 @@ cumo_na_byte_size(VALUE self)
     CumoGetNArray(self,na);
     velmsz = rb_const_get(rb_obj_class(self), cumo_id_element_byte_size);
     if (FIXNUM_P(velmsz)) {
-        return SIZET2NUM(NUM2SIZET(velmsz) * na->size);
+        size_t elmsz = NUM2SIZET(velmsz);
+        if (elmsz != 0 && na->size > SIZE_MAX / elmsz) {
+            rb_raise(rb_eRangeError, "total byte size of data is too large");
+        }
+        return SIZET2NUM(elmsz * na->size);
     }
     return SIZET2NUM(ceil(NUM2DBL(velmsz) * na->size));
 }
@@ -1715,14 +1754,15 @@ cumo_na_to_binary(VALUE self)
             self = rb_funcall(self,cumo_id_dup,0);
         }
     }
-    len = NUM2SIZET(cumo_na_byte_size(self));
-
     // After the dup above, not before it: the copy is a kernel and the string
     // is built by reading its result from the host.
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     ptr = cumo_na_get_pointer_for_read(self);
+    // Measured after the pointer, since taking one runs allocate, and by the
+    // type rather than by byte_size, which asks the class.
+    len = cumo_na_type_byte_size(self);
     str = rb_usascii_str_new(ptr+offset,len);
     RB_GC_GUARD(self);
     return str;
