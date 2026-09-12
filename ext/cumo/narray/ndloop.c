@@ -1273,7 +1273,7 @@ ndloop_sync_src_index(cumo_na_buffer_copy_t *lp)
     for (i=0; i<lp->ndim; i++) {
         if (LITER_SRC(lp,i).idx) {
             CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("ndloop buffer copy", "any");
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            cumo_cuda_runtime_device_synchronize();
             return;
         }
     }
@@ -1291,7 +1291,7 @@ ndloop_sync_user_index(cumo_na_md_loop_t *lp)
             if (LARG(lp,j).iter[i].idx == NULL) continue;
             if (cumo_cuda_runtime_is_device_memory(LARG(lp,j).ptr)) break;
             CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("ndloop", "any");
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            cumo_cuda_runtime_device_synchronize();
             return;
         }
     }
@@ -1525,7 +1525,7 @@ static void
 ndloop_sync_device(void)
 {
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("ndloop", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 }
 
 static void

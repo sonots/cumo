@@ -30,7 +30,7 @@ static void
     }
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 
     if (idx1) {
         if (idx2) {

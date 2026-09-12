@@ -26,7 +26,7 @@ static void
   <% end %>
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 
 <% if is_half && name == 'cumsum' %>
     // The scan this stands in for carries float, and a running sum of halves

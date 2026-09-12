@@ -14,14 +14,14 @@ static void
 
     if (idx1) {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            cumo_cuda_runtime_device_synchronize();
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             y = m_data_to_num(x);
             rb_yield(y);
         }
     } else {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            cumo_cuda_runtime_device_synchronize();
             CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
             y = m_data_to_num(x);
             rb_yield(y);

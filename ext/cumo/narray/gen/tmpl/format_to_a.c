@@ -44,6 +44,6 @@ static VALUE
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP_NIP, 3, 1, ain, aout };
 
     rb_scan_args(argc, argv, "01", &fmt);
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
     return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, fmt);
 }

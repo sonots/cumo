@@ -27,7 +27,7 @@ static void
     dtype  x, y, a;
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
     n = lp->narg - 2;
     x = *(dtype*)CUMO_NDL_PTR(lp,0);
     y = *(dtype*)CUMO_NDL_PTR(lp,n);

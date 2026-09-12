@@ -107,36 +107,33 @@ cumo_na_range_check(ssize_t pos, ssize_t size, int dim)
 
 // A view's index arrays are written once, by the kernels that build the view,
 // and never again, so a host read of one entry has to wait for those and for
-// nothing else. cudaDeviceSynchronize is the only way to ask, and it waits for
-// everything queued: a scalar read of a[idx, true] cost 70us behind twenty
-// kernels, against 0.2us for the same read on a view built from a range.
+// nothing else. Waiting for the device to idle is the only way to ask, and it
+// waits for everything queued: a scalar read of a[idx, true] cost 70us behind
+// twenty kernels, against 0.2us for the same read on a view built from a range.
 //
-// What it does give is that one of them settles every view built before it. So
-// count them, have a view remember the count its fills were issued at, and skip
-// the wait once the count has moved on. A view whose count is unknown waits as
-// it did before, which is what makes missing a place that builds one cost speed
+// What it does give is that one of them settles every view built before it, so
+// a view that remembers the count its fills were issued at can skip the wait
+// once the count has moved on. A view whose count is unknown waits as it did
+// before, which is what makes missing a place that builds one cost speed
 // rather than correctness.
-static uint64_t cumo_na_sync_epoch = 0;
-
 void
 cumo_na_index_mark_filled(cumo_narray_view_t *nv)
 {
-    nv->index_sync_epoch = cumo_na_sync_epoch;
+    nv->index_sync_epoch = cumo_cuda_runtime_sync_epoch;
 }
 
 void
 cumo_na_index_wait_fill(cumo_narray_view_t *nv)
 {
-    if (nv->index_sync_epoch < cumo_na_sync_epoch) {
+    if (nv->index_sync_epoch < cumo_cuda_runtime_sync_epoch) {
         return;
     }
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("index", "cumo_na_index_wait_fill");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    cumo_na_sync_epoch++;
+    cumo_cuda_runtime_device_synchronize();
     // This view is settled now whatever its constructor recorded. Without
     // saying so, one that recorded nothing waits again on every read, and
     // once per index dimension within a read.
-    nv->index_sync_epoch = cumo_na_sync_epoch - 1;
+    nv->index_sync_epoch = cumo_cuda_runtime_sync_epoch - 1;
 }
 
 // copy ruby array to idx

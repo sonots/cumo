@@ -12,7 +12,7 @@ static void
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
 
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 
     if (idx1) {
         for (; i--;) {

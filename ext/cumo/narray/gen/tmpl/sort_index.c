@@ -154,7 +154,7 @@ static VALUE
     buf = rb_alloc_tmp_buffer(&tmp, size);
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cudaDeviceSynchronize();
+    cumo_cuda_runtime_device_synchronize();
 
     res = cumo_na_ndloop3(&ndf, buf, 3, self, idx, reduce);
     rb_free_tmp_buffer(&tmp);

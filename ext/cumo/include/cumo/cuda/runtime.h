@@ -13,12 +13,24 @@ extern "C" {
 
 extern VALUE cumo_cuda_eRuntimeError;
 
+// Counts the times the device has been waited to idle. Anything queued before
+// one of those has finished by the time the next starts, which is what lets a
+// reader of something the device filled skip a wait of its own.
+extern uint64_t cumo_cuda_runtime_sync_epoch;
+
 static inline void
 cumo_cuda_runtime_check_status(cudaError_t status)
 {
     if (status != 0) {
         rb_raise(cumo_cuda_eRuntimeError, "%s (error=%d)", cudaGetErrorString(status), status);
     }
+}
+
+static inline void
+cumo_cuda_runtime_device_synchronize(void)
+{
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_sync_epoch++;
 }
 
 static inline int

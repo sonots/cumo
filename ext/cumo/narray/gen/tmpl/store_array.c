@@ -63,7 +63,7 @@ static void
     //<% if c_iter.include? 'robject' %>
     {
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("store_<%=name%>", "<%=type_name%>");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        cumo_cuda_runtime_device_synchronize();
 
         if (idx1) {
             for (i=i1=0; i1<n1 && i<n; i1++) {

@@ -126,7 +126,7 @@ static void
         r,
         swaptype,
         presorted;
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 
  loop:SWAPINIT(a, es);
     if (n < 7)

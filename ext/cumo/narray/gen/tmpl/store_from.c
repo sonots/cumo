@@ -34,7 +34,7 @@ static void
     // until that has finished. Cumo::RObject is the only dtype whose loop runs
     // on the host and still sees the index; every other one hands it to a
     // kernel of its own, which the stream already orders.
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
     {
         <%=dtype%> x;
         dtype y;

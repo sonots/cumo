@@ -50,7 +50,7 @@ static VALUE
     } else {
         ptr = cumo_na_get_pointer_for_read(self);
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        cumo_cuda_runtime_device_synchronize();
         CUMO_LOAD_BIT(ptr,pos,x);
         return m_data_to_num(x);
     }

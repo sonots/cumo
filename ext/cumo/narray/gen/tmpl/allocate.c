@@ -48,7 +48,7 @@ static VALUE
                 // Callers that read on the host synchronize before they ask for
                 // the pointer, which is before this fill was even launched.
                 CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("allocate", "<%=type_name%>");
-                cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+                cumo_cuda_runtime_device_synchronize();
             }
         }
         <% end %>

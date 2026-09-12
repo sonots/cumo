@@ -37,14 +37,14 @@ static void
 
     if (idx1) {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            cumo_cuda_runtime_device_synchronize();
             CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             yield_each_with_index(x,c,a,nd,md);
             c[nd]++;
         }
     } else {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+            cumo_cuda_runtime_device_synchronize();
             CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             yield_each_with_index(x,c,a,nd,md);
             c[nd]++;

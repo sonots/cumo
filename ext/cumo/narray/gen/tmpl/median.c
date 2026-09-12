@@ -36,7 +36,7 @@ static void
     buf = (dtype*)p1;
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
     <%=type_name%>_qsort<%=j%>(buf, n, sizeof(dtype));
 
     <% if is_float %>

@@ -35,7 +35,7 @@ static void
     CUMO_INIT_PTR_IDX(lp, 1, p2, s2, idx2);
 
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 
     c[nd] = 0;
     if (idx1) {

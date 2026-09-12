@@ -1374,7 +1374,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
                 idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
                 if (cumo_na_test_reduce(reduce,i)) {
                     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_reverse", "any");
-                    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+                    cumo_cuda_runtime_device_synchronize();
                     for (j=0; j<n; j++) {
                         idx2[n-1-j] = idx1[j];
                     }
@@ -1554,7 +1554,7 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
     // host write into managed memory does not wait for the stream. to_binary
     // synchronizes for the same reason on the way out.
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_s_from_binary", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
     memcpy(ptr, RSTRING_PTR(vstr), byte_size);
 
     return vna;
@@ -1632,7 +1632,7 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
 
     if (byte_size > 0) {
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_store_binary", "any");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        cumo_cuda_runtime_device_synchronize();
         memcpy(ptr+cumo_na_get_offset(self), RSTRING_PTR(vstr)+offset, byte_size);
     }
 
@@ -1669,7 +1669,7 @@ cumo_na_to_binary(VALUE self)
     // After the dup above, not before it: the copy is a kernel and the string
     // is built by reading its result from the host.
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 
     ptr = cumo_na_get_pointer_for_read(self);
     str = rb_usascii_str_new(ptr+offset,len);
@@ -1688,7 +1688,7 @@ cumo_na_marshal_dump(VALUE self)
     VALUE a;
 
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_marshal_dump", "any");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 
     a = rb_ary_new();
     rb_ary_push(a, INT2FIX(1));     // version

@@ -77,7 +77,7 @@ iter_copy_bytes(cumo_na_loop_t *const lp)
     // with nothing ordering that against the host reading it back.
     if (idx1 || idx2) {
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("copy", "any");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        cumo_cuda_runtime_device_synchronize();
     }
     e = lp->args[0].elmsz;
     LOOP_UNARY_PTR(lp,m_memcpy);

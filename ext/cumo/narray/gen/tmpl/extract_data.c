@@ -12,7 +12,7 @@ static dtype
     VALUE  r, klass;
 
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
 
     if (CumoIsNArray(obj)) {
         CumoGetNArray(obj,na);

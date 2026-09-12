@@ -10,6 +10,8 @@ VALUE cumo_cuda_mRuntime;
 
 #define check_status(status) (cumo_cuda_runtime_check_status((status)))
 
+uint64_t cumo_cuda_runtime_sync_epoch = 0;
+
 // Called right after a <<<>>> launch. cudaGetLastError() reports errors the
 // launch itself was rejected for; a fault while the kernel runs is asynchronous
 // and still surfaces at a later call.
@@ -42,7 +44,7 @@ cumo_cuda_runtime_error_flag_new(void)
 bool
 cumo_cuda_runtime_error_flag_get(int *flag)
 {
-    check_status(cudaDeviceSynchronize());
+    cumo_cuda_runtime_device_synchronize();
     return (*flag != 0);
 }
 
@@ -189,9 +191,7 @@ rb_cudaSetDevice(VALUE self, VALUE device)
 static VALUE
 rb_cudaDeviceSynchronize(VALUE self)
 {
-    cudaError_t status;
-    status = cudaDeviceSynchronize();
-    check_status(status);
+    cumo_cuda_runtime_device_synchronize();
     return Qnil;
 }
 

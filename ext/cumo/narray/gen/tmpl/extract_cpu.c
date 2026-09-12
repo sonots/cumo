@@ -17,7 +17,7 @@ static VALUE
     if (na->ndim==0) {
         ptr = cumo_na_get_pointer_for_read(self) + cumo_na_get_offset(self);
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
+        cumo_cuda_runtime_device_synchronize();
         v = m_extract(ptr);
         cumo_na_release_lock(self);
         return v;
