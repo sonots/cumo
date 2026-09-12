@@ -3,6 +3,8 @@
 require_relative "test_helper"
 
 class NArrayTest < Test::Unit::TestCase
+  include CumoChildProcess
+
   types = [
     Cumo::DFloat,
     Cumo::SFloat,
@@ -2868,40 +2870,6 @@ class NArrayTest < Test::Unit::TestCase
 
   # Taking a pointer runs allocate, which is a Ruby method. These check the
   # three ways that can leave the copy that follows pointing somewhere else.
-  RESHAPING_ALLOCATE = <<~RUBY
-    module Reshaping
-      def allocate
-        unless @done
-          @done = true
-          send(:initialize, 1)
-        end
-        super
-      end
-    end
-  RUBY
-
-  def run_child(script)
-    lib = File.expand_path("../lib", __dir__)
-    out = nil
-    IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], err: [:child, :out]) { |io| out = io.read }
-    assert(Process.last_status.success?, "child failed: #{out}")
-    out
-  end
-
-  def assert_child_raises(expected, body)
-    script = <<~RUBY
-      require "cumo/narray"
-      #{RESHAPING_ALLOCATE}
-      begin
-        #{body}
-        print "no error"
-      rescue => e
-        print e.message
-      end
-    RUBY
-    assert_equal expected, run_child(script)
-  end
-
   test "store_binary refuses an array its own allocate reshaped" do
     assert_child_raises("NArray or string changed while storing binary data", <<~RUBY)
       klass = Class.new(Cumo::DFloat) { prepend Reshaping }

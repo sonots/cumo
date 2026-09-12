@@ -1,4 +1,4 @@
-void cumo_bit_mask_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, size_t *out, size_t p2, ssize_t s2, size_t *idx2, char *scratch);
+void cumo_bit_mask_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, size_t *out, size_t p2, ssize_t s2, size_t *idx2, uint64_t cap, char *scratch);
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
@@ -9,11 +9,13 @@ static void
     ssize_t s1, s2;
     size_t *idx1, *idx2, *pidx;
     CUMO_BIT_DIGIT x=0;
-    size_t  count;
+    size_t  count, cap, wrote;
     where_opt_t *g;
 
     g = (where_opt_t*)(lp->opt_ptr);
     count = g->count;
+    cap   = g->cap1;
+    wrote = g->wrote1;
     pidx  = (size_t*)(g->idx1);
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a, p1, s1, idx1);
@@ -22,10 +24,11 @@ static void
     s2 = lp->args[1].iter[0].step;
     idx2 = lp->args[1].iter[0].idx;
 
-    if (i >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
+    if (i >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE && g->scratch) {
         // pidx stays put: the device-side cursor in the scratch orders the
         // writes of successive calls instead.
-        cumo_bit_mask_kernel_launch(a,p1,s1,idx1,i,pidx,p2,s2,idx2,g->scratch);
+        cumo_bit_mask_kernel_launch(a,p1,s1,idx1,i,pidx,p2,s2,idx2,cap,g->scratch);
+        g->used_kernel = 1;
         return;
     }
 
@@ -38,7 +41,8 @@ static void
                 CUMO_LOAD_BIT(a, p1+*idx1, x);
                 idx1++;
                 if (x) {
-                    *(pidx++) = p2+*idx2;
+                    if (wrote < cap) { *(pidx++) = p2+*idx2; }
+                    wrote++;
                     count++;
                 }
                 idx2++;
@@ -48,7 +52,8 @@ static void
                 CUMO_LOAD_BIT(a, p1+*idx1, x);
                 idx1++;
                 if (x) {
-                    *(pidx++) = p2;
+                    if (wrote < cap) { *(pidx++) = p2; }
+                    wrote++;
                     count++;
                 }
                 p2 += s2;
@@ -60,7 +65,8 @@ static void
                 CUMO_LOAD_BIT(a, p1, x);
                 p1 += s1;
                 if (x) {
-                    *(pidx++) = p2+*idx2;
+                    if (wrote < cap) { *(pidx++) = p2+*idx2; }
+                    wrote++;
                     count++;
                 }
                 idx2++;
@@ -70,15 +76,17 @@ static void
                 CUMO_LOAD_BIT(a, p1, x);
                 p1 += s1;
                 if (x) {
-                    *(pidx++) = p2;
+                    if (wrote < cap) { *(pidx++) = p2; }
+                    wrote++;
                     count++;
                 }
                 p2 += s2;
             }
         }
     }
-    g->count = count;
-    g->idx1  = (char*)pidx;
+    g->count  = count;
+    g->idx1   = (char*)pidx;
+    g->wrote1 = wrote;
 }
 
 #if   SIZEOF_VOIDP == 8
@@ -107,6 +115,8 @@ static VALUE
     cumo_narray_t      *na, *na_mask;
     cumo_stridx_t stridx0;
     size_t n_1;
+    uint64_t cur[1];
+    cudaError_t st = cudaSuccess;
     where_opt_t g;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{Qnil,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0};
@@ -115,6 +125,9 @@ static VALUE
     if (!rb_obj_is_kind_of(val, cumo_cNArray)) {
         val = rb_funcall(cumo_cNArray, cumo_id_cast, 1, val);
     }
+    // ndloop takes this pointer too, and for a lazily cast scalar taking it runs
+    // allocate. Doing it here keeps that Ruby call before the shape check below.
+    cumo_na_get_pointer_for_read(val);
     // shapes of mask and val must be same
     CumoGetNArray(val, na);
     CumoGetNArray(mask, na_mask);
@@ -131,20 +144,30 @@ static VALUE
     idx_1 = cumo_na_new(cIndex, 1, &n_1);
     g.count = 0;
     g.elmsz = SIZEOF_VOIDP;
-    g.idx1 = cumo_na_get_pointer_for_write(idx_1);
+    bit_where_take(idx_1, &g.idx1, &g.cap1);
+    g.wrote1 = 0;
     g.idx0 = NULL;
+    g.cap0 = 0;
+    g.wrote0 = 0;
     g.scratch = NULL;
+    g.used_kernel = 0;
     if (CUMO_RNARRAY_SIZE(mask) >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
         g.scratch = cumo_bit_where_scratch_new();
     }
     cumo_na_ndloop3(&ndf, &g, 2, mask, val);
+    if (g.used_kernel) {
+        st = bit_where_cursors(g.scratch, cur, 1);
+        if (st == cudaSuccess) { g.wrote1 += (size_t)cur[0]; }
+    }
     if (g.scratch) {
         cumo_cuda_runtime_free(g.scratch);
     }
+    cumo_cuda_runtime_check_status(st);
+    bit_where_check(g.wrote1, g.cap1);
 
     view = cumo_na_s_allocate_view(rb_obj_class(val));
     CumoGetNArrayView(view, nv);
-    cumo_na_setup_shape((cumo_narray_t*)nv, 1, &n_1);
+    cumo_na_setup_shape((cumo_narray_t*)nv, 1, &g.cap1);
 
     CumoGetNArrayData(idx_1,nidx);
     CUMO_SDX_SET_INDEX(stridx0,(size_t*)nidx->ptr);
