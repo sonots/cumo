@@ -694,7 +694,8 @@ class HFloatTest < Test::Unit::TestCase
       test "#{dtype}, a row count cuBLAS cannot take is refused" do
         a = dtype.new(2_147_483_648, 2)
         b = dtype.new(2, 1)
-        assert_raise(RangeError) { a.dot(b) }
+        e = assert_raise(RangeError) { a.dot(b) }
+        assert_equal("row size of a=2147483648 is too large for cuBLAS", e.message)
       end
     end
 
