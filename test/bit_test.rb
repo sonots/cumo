@@ -828,7 +828,10 @@ class BitTest < Test::Unit::TestCase
 
   test "store_binary on a bit view that does not start at bit 0 is refused" do
     a = Cumo::Bit.new(16).fill(0)
-    assert_raise(ArgumentError) { a[8..15].store_binary("\xFF".b) }
+    e = assert_raise(ArgumentError) { a[8..15].store_binary("\xFF".b) }
+    assert_equal("cannot store binary data into a bit view that does not begin at bit 0", e.message)
+    e = assert_raise(ArgumentError) { a[1..8].store_binary("\xFF".b) }
+    assert_equal("cannot store binary data into a bit view that does not begin at bit 0", e.message)
     assert_equal 0, Integer(a.count_true)
   end
 
@@ -836,8 +839,10 @@ class BitTest < Test::Unit::TestCase
   # take the bits after it along, and those belong to the rest of the base.
   test "store_binary on a bit view that ends mid-byte is refused" do
     a = Cumo::Bit.new(16).fill(0)
-    assert_raise(ArgumentError) { a[0..3].store_binary("\xFF".b) }
-    assert_raise(ArgumentError) { a[0..11].store_binary("\xFF\xFF".b) }
+    e = assert_raise(ArgumentError) { a[0..3].store_binary("\xFF".b) }
+    assert_equal("cannot store binary data into a bit view that does not end on a byte", e.message)
+    e = assert_raise(ArgumentError) { a[0..11].store_binary("\xFF\xFF".b) }
+    assert_equal("cannot store binary data into a bit view that does not end on a byte", e.message)
     assert_equal 0, Integer(a.count_true)
   end
 
@@ -846,6 +851,21 @@ class BitTest < Test::Unit::TestCase
     a[0..7].store_binary("\xFF".b)
     assert_equal 8, Integer(a.count_true)
     assert_equal "1111111100000000", a.to_a.join
+  end
+
+  test "to_binary reads a whole-byte bit view from its own offset" do
+    a = Cumo::Bit.new(24).fill(0)
+    a[0..7] = 1                       # byte 0 = 0xFF
+    a[8] = 1
+    a[9] = 1                          # byte 1 = 0x03
+    a[16] = 1                         # byte 2 = 0x01
+    assert_equal([255], a[0..7].to_binary.bytes)
+    assert_equal([3], a[8..15].to_binary.bytes)
+    assert_equal([1], a[16..23].to_binary.bytes)
+    assert_equal([255], a[1..8].to_binary.bytes)
+    a[7] = 0
+    assert_equal([127], a[0..7].to_binary.bytes)
+    assert_equal([191], a[1..8].to_binary.bytes)
   end
 
   test "store_binary fills a whole bit array" do
