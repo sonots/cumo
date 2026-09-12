@@ -501,33 +501,6 @@ cumo_na_has_idx_p(VALUE obj)
     return false;
 }
 
-// An index array a view holds is freed only if it was set through here, so a
-// view that puts one in stridx any other way leaks it.
-static inline void
-cumo_na_index_own(cumo_narray_view_t *nv, int i, size_t *idx)
-{
-    CUMO_SDX_SET_INDEX(nv->stridx[i], idx);
-    nv->index_owned |= (uint64_t)1 << i;
-}
-
-// Every dimension of nv now points at an index array that from reaches, so from
-// has to outlive nv. A lender that owns nothing itself is skipped for its own
-// lender, which keeps the common chain one link long. A lender that owns even
-// one dimension is named directly, since only it keeps that one alive.
-static inline void
-cumo_na_index_borrow_all(cumo_narray_view_t *nv, VALUE from)
-{
-    cumo_narray_view_t *nv1;
-
-    CumoGetNArrayView(from, nv1);
-    nv->index_sync_epoch = nv1->index_sync_epoch;
-    if (!cumo_na_has_idx_p(from)) {
-        return;
-    }
-    nv->index_owner = (nv1->index_owned == 0 && RTEST(nv1->index_owner))
-        ? nv1->index_owner : from;
-}
-
 #define CUMO_NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
 #define CUMO_NUM2IMAG(v)  NUM2DBL( rb_funcall((v),cumo_na_id_imag,0) )
 
@@ -543,6 +516,51 @@ typedef unsigned int CUMO_BIT_DIGIT;
 
 #include "cumo/ndloop.h"
 #include "cumo/intern.h"
+
+// An index array a view holds is freed only if it was set through here, so a
+// view that puts one in stridx any other way leaks it. The bit names the slot,
+// so code that permutes stridx has to permute index_owned with it.
+static inline void
+cumo_na_index_own(cumo_narray_view_t *nv, int i, size_t *idx)
+{
+    CUMO_SDX_SET_INDEX(nv->stridx[i], idx);
+    nv->index_owned |= (uint64_t)1 << i;
+}
+
+// One dimension of nv now points at an index array that from reaches, so from
+// has to outlive nv. A lender that owns nothing itself is skipped for its own
+// lender, which keeps the common chain one link long. A lender that owns even
+// one dimension is named directly, since only it keeps that one alive.
+//
+// A view borrows every index array or none. Borrowing some while building
+// others holds the lender for arrays this view has already replaced, which
+// costs more memory than the copy it saves. One lender is recorded, so a view
+// may not borrow from two.
+static inline void
+cumo_na_index_borrow(cumo_narray_view_t *nv, VALUE from)
+{
+    cumo_narray_view_t *nv1;
+
+    if (RTEST(nv->index_owner)) {
+        return;
+    }
+    CumoGetNArrayView(from, nv1);
+    nv->index_owner = (nv1->index_owned == 0 && RTEST(nv1->index_owner))
+        ? nv1->index_owner : from;
+}
+
+// Called once a view built from another one has all its dimensions. A view that
+// owns index arrays built them here, so a fill is in flight and the first read
+// waits. One that borrows them all is as settled as the view it borrowed from.
+static inline void
+cumo_na_index_mark_derived(cumo_narray_view_t *nv, cumo_narray_view_t *nv1)
+{
+    if (nv->index_owned != 0) {
+        cumo_na_index_mark_filled(nv);
+    } else {
+        nv->index_sync_epoch = nv1->index_sync_epoch;
+    }
+}
 
 // for Ractor support code
 #ifndef HAVE_RB_EXT_RACTOR_SAFE

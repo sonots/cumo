@@ -1256,7 +1256,7 @@ cumo_na_make_view(VALUE self)
     int i, nd;
     ssize_t stride;
     cumo_narray_t *na;
-    cumo_narray_view_t *na1, *na2;
+    cumo_narray_view_t *na1 = NULL, *na2;
     volatile VALUE view;
 
     CumoGetNArray(self,na);
@@ -1285,14 +1285,17 @@ cumo_na_make_view(VALUE self)
         CumoGetNArrayView(self, na1);
         for (i=0; i<nd; i++) {
             na2->stridx[i] = na1->stridx[i];
+            if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                cumo_na_index_borrow(na2, self);
+            }
         }
         na2->offset = na1->offset;
         na2->data = na1->data;
         break;
     }
 
-    if (na->type == CUMO_NARRAY_VIEW_T) {
-        cumo_na_index_borrow_all(na2, self);
+    if (na1 != NULL) {
+        cumo_na_index_mark_derived(na2, na1);
     } else {
         cumo_na_index_mark_filled(na2);
     }
@@ -1381,14 +1384,14 @@ void cumo_na_index_reverse_kernel_launch(size_t *idx, size_t *idx1, uint64_t n);
 static VALUE
 cumo_na_reverse(int argc, VALUE *argv, VALUE self)
 {
-    int i, nd;
+    int i, nd, borrow;
     size_t  n;
     size_t  offset;
     size_t *idx1, *idx2;
     ssize_t stride;
     ssize_t sign;
     cumo_narray_t *na;
-    cumo_narray_view_t *na1, *na2;
+    cumo_narray_view_t *na1 = NULL, *na2;
     VALUE view;
     VALUE reduce;
 
@@ -1426,15 +1429,28 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
     case CUMO_NARRAY_VIEW_T:
         CumoGetNArrayView(self, na1);
         offset = na1->offset;
+        borrow = 1;
+        for (i=0; i<nd; i++) {
+            if (CUMO_SDX_IS_INDEX(na1->stridx[i]) && cumo_na_test_reduce(reduce,i)) {
+                borrow = 0;
+                break;
+            }
+        }
         for (i=0; i<nd; i++) {
             n = na1->base.shape[i];
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
-                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-                cumo_na_index_own(na2,i,idx2);
-                if (cumo_na_test_reduce(reduce,i)) {
+                if (borrow) {
+                    na2->stridx[i] = na1->stridx[i];
+                    cumo_na_index_borrow(na2, self);
+                } else if (cumo_na_test_reduce(reduce,i)) {
+                    idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
+                    idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+                    cumo_na_index_own(na2,i,idx2);
                     cumo_na_index_reverse_kernel_launch(idx2,idx1,n);
                 } else {
+                    idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
+                    idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+                    cumo_na_index_own(na2,i,idx2);
                     cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
                 }
             } else {
@@ -1452,7 +1468,11 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
         break;
     }
 
-    cumo_na_index_mark_filled(na2);
+    if (na1 != NULL) {
+        cumo_na_index_mark_derived(na2, na1);
+    } else {
+        cumo_na_index_mark_filled(na2);
+    }
     return view;
 }
 

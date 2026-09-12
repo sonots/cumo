@@ -528,11 +528,11 @@ VALUE
 cumo_na_flatten_dim(VALUE self, int sd)
 {
     int i, nd, fd;
-    size_t *idx1, *idx2;
+    size_t *idx2;
     size_t stride;
     size_t  *shape, size;
     cumo_narray_t *na;
-    cumo_narray_view_t *na1, *na2;
+    cumo_narray_view_t *na1 = NULL, *na2;
     volatile VALUE view;
 
     CumoGetNArray(self,na);
@@ -580,14 +580,11 @@ cumo_na_flatten_dim(VALUE self, int sd)
         CumoGetNArrayView(self, na1);
         na2->data = na1->data;
         na2->offset = na1->offset;
+        // Every caller passes sd == 0 today, so this loop does not run.
         for (i=0; i<sd; i++) {
+            na2->stridx[i] = na1->stridx[i];
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
-                idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*shape[i]);
-                cumo_na_index_own(na2,i,idx2);
-                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*shape[i],cudaMemcpyDeviceToDevice,0));
-            } else {
-                na2->stridx[i] = na1->stridx[i];
+                cumo_na_index_borrow(na2, self);
             }
         }
         // flat dimension == last dimension that advances. A length-1 dimension
@@ -618,7 +615,11 @@ cumo_na_flatten_dim(VALUE self, int sd)
         }
         break;
     }
-    cumo_na_index_mark_filled(na2);
+    if (na1 != NULL) {
+        cumo_na_index_mark_derived(na2, na1);
+    } else {
+        cumo_na_index_mark_filled(na2);
+    }
     return view;
 }
 
@@ -676,13 +677,13 @@ void cumo_na_diagonal_stride_index_kernel_launch(size_t *idx, ssize_t s0, size_t
 static VALUE
 cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
 {
-    int  i, k, nd;
+    int  i, k, nd, borrow;
     size_t *idx0, *idx1, *diag_idx;
     size_t *shape;
     size_t  diag_size;
     ssize_t stride, stride0, stride1;
     cumo_narray_t *na;
-    cumo_narray_view_t *na1, *na2;
+    cumo_narray_view_t *na1 = NULL, *na2;
     VALUE view;
     VALUE vofs=0, vaxes=0;
     ssize_t kofs;
@@ -808,19 +809,19 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         CumoGetNArrayView(self, na1);
         na2->data = na1->data;
         na2->offset = na1->offset;
+        borrow = !CUMO_SDX_IS_INDEX(na1->stridx[ax[0]]) && !CUMO_SDX_IS_INDEX(na1->stridx[ax[1]]);
         for (i=k=0; i<nd; i++) {
             if (i != ax[0] && i != ax[1]) {
-                if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                if (borrow || !CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                    na2->stridx[k] = na1->stridx[i];
+                    if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
+                        cumo_na_index_borrow(na2, self);
+                    }
+                } else {
                     idx0 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
-                    // idx1 = ALLOC_N(size_t, na->shape[i]);
-                    // for (j=0; j<na->shape[i]; j++) {
-                    //     idx1[j] = idx0[j];
-                    // }
                     idx1 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*na->shape[i]);
                     cumo_na_index_own(na2,k,idx1);
                     cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx1,idx0,sizeof(size_t)*na->shape[i],cudaMemcpyDeviceToDevice,0));
-                } else {
-                    na2->stridx[k] = na1->stridx[i];
                 }
                 k++;
             }
@@ -853,7 +854,11 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
         }
         break;
     }
-    cumo_na_index_mark_filled(na2);
+    if (na1 != NULL) {
+        cumo_na_index_mark_derived(na2, na1);
+    } else {
+        cumo_na_index_mark_filled(na2);
+    }
     return view;
 }
 
