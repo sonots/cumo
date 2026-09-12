@@ -8,6 +8,7 @@ class NArrayTest < Test::Unit::TestCase
   types = [
     Cumo::DFloat,
     Cumo::SFloat,
+    Cumo::HFloat,
     Cumo::DComplex,
     Cumo::SComplex,
     Cumo::Int64,
@@ -23,7 +24,7 @@ class NArrayTest < Test::Unit::TestCase
     Cumo::DFloat,
     Cumo::DComplex,
   ]
-  store_types = types + [Cumo::HFloat, Cumo::RObject]
+  store_types = types + [Cumo::RObject]
 
   if ENV['DTYPE']
     types.select! { |type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
@@ -193,7 +194,7 @@ class NArrayTest < Test::Unit::TestCase
         assert { a[2..-1][[1]] == [5] }
         assert { a.reverse == [11, 7, 5, 3, 2, 1] }
         assert { a.sum == 29 }
-        assert { (a.mean.extract_cpu - 29.0 / 6).abs < 1e-6 }
+        assert { (a.mean.extract_cpu - 29.0 / 6).abs < (dtype == Cumo::HFloat ? 1e-2 : 1e-6) }
         if float_types.include?(dtype)
           assert { a.mean == 29.0 / 6 }
           assert_in_delta(13.766666666666667, a.var.extract_cpu, 1e-13)
