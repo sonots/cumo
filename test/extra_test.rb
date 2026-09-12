@@ -668,7 +668,7 @@ class NArrayExtraTest < CumoTestBase
       assert_equal(dtype[1, 5],           a.percentile(0, axis: 1))
       assert_equal(dtype[2, 7],           a.percentile(50, axis: 1))
       assert_equal(dtype[3, 11],          a.percentile(100, axis: 1))
-      if [Cumo::DFloat, Cumo::SFloat].include?(dtype)
+      if [Cumo::DFloat, Cumo::SFloat, Cumo::HFloat].include?(dtype)
         assert_equal(dtype[3, 4.5, 7],      a.percentile(50, axis: 0))
         assert_equal(dtype[4.6, 6.5, 10.2], a.percentile(90, axis: 0))
         assert_equal(dtype[2.8, 10.2],      a.percentile(90, axis: 1))
