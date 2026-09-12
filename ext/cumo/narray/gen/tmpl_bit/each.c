@@ -11,8 +11,6 @@ static void
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
 
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 
     if (idx1) {
         for (; i--;) {
@@ -43,6 +41,11 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 1,0, ain,0};
 
+    // The rows are managed memory a kernel may still be writing, and the
+    // walk below reads them on the host. ndloop calls the iterator once
+    // per row, so waiting there waits once per row.
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     cumo_na_ndloop(&ndf, 1, self);
     return self;
 }

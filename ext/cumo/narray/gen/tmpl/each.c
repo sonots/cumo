@@ -1,28 +1,26 @@
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
-    size_t i, s1;
-    char *p1;
-    size_t *idx1;
-    dtype x;
-    VALUE y;
+    size_t   i;
+    CUMO_BIT_DIGIT *a1, x=0;
+    size_t   p1;
+    ssize_t  s1;
+    size_t  *idx1;
+    VALUE  y;
 
     CUMO_INIT_COUNTER(lp, i);
-    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
 
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
 
     if (idx1) {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-            CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
+            CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             y = m_data_to_num(x);
             rb_yield(y);
         }
     } else {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             y = m_data_to_num(x);
             rb_yield(y);
         }
@@ -34,10 +32,8 @@ static void
   passing that element as a parameter.
   @overload <%=name%>
   @return [Cumo::NArray] self
-  For a block `{|x| ... }`,
-  @yieldparam [Numeric] x  an element of NArray.
-  @see #each_with_index
-  @see #map
+  For a block {|x| ... }
+  @yield [x]  x is element of NArray.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)
@@ -45,6 +41,11 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 1,0, ain,0};
 
+    // The rows are managed memory a kernel may still be writing, and the
+    // walk below reads them on the host. ndloop calls the iterator once
+    // per row, so waiting there waits once per row.
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     cumo_na_ndloop(&ndf, 1, self);
     return self;
 }

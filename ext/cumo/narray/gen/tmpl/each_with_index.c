@@ -14,37 +14,35 @@ yield_each_with_index(dtype x, size_t *c, VALUE *a, int nd, int md)
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
-    size_t i, s1;
-    char *p1;
-    size_t *idx1;
-    dtype x;
+    size_t   i;
+    CUMO_BIT_DIGIT *a1, x=0;
+    size_t   p1;
+    ssize_t  s1;
+    size_t  *idx1;
+
     VALUE *a;
     size_t *c;
     int nd, md;
 
     c = (size_t*)(lp->opt_ptr);
-    nd = lp->ndim;
-    if (nd > 0) {nd--;}
-    md = nd + 2;
+    nd = lp->ndim - 1;
+    md = lp->ndim + 1;
     a = ALLOCA_N(VALUE,md);
 
     CUMO_INIT_COUNTER(lp, i);
-    CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
+    CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
     c[nd] = 0;
 
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
 
     if (idx1) {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-            CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
+            CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             yield_each_with_index(x,c,a,nd,md);
             c[nd]++;
         }
     } else {
         for (; i--;) {
-            cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-            CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
+            CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             yield_each_with_index(x,c,a,nd,md);
             c[nd]++;
         }
@@ -55,12 +53,9 @@ static void
   Invokes the given block once for each element of self,
   passing that element and indices along each axis as parameters.
   @overload <%=name%>
-  For a block `{|x,i,j,...| ... }`,
-  @yieldparam [Numeric] x  an element
-  @yieldparam [Integer] i,j,...  multitimensional indices
   @return [Cumo::NArray] self
-  @see #each
-  @see #map_with_index
+  For a block {|x,i,j,...| ... }
+  @yield [x,i,j,...]  x is an element, i,j,... are multidimensional indices.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)
@@ -68,6 +63,11 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 1,0, ain,0};
 
+    // The rows are managed memory a kernel may still be writing, and the
+    // walk below reads them on the host. ndloop calls the iterator once
+    // per row, so waiting there waits once per row.
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
+    cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
     cumo_na_ndloop_with_index(&ndf, 1, self);
     return self;
 }
