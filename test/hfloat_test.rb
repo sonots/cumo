@@ -679,4 +679,44 @@ class HFloatTest < Test::Unit::TestCase
       assert_equal sfloat_dot(lhs, a.transpose), lhs.dot(a.transpose).to_a
     end
   end
+  sub_test_case "gemm past what an int holds" do
+    def teardown
+      Cumo::CUDA::MemoryPool.free_all_blocks
+    end
+
+    def omit_unless_room(gb)
+      omit "needs /proc/meminfo" unless File.readable?("/proc/meminfo")
+      line = File.readlines("/proc/meminfo").find { |l| l.start_with?("MemAvailable:") }
+      omit "needs about #{gb} GB of free memory" if line.split[1].to_i / 1_048_576.0 < gb
+    end
+
+    [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat].each do |dtype|
+      test "#{dtype}, a row count cuBLAS cannot take is refused" do
+        a = dtype.new(2_147_483_648, 2)
+        b = dtype.new(2, 1)
+        assert_raise(RangeError) { a.dot(b) }
+      end
+    end
+
+    test "a batch stride over 2^31 elements reaches the right matrix" do
+      omit_unless_room(20)
+      m = 1_073_741_825 # m * k = 2_147_483_650, one past what an int holds
+      a = Cumo::HFloat.new(2, m, 2).fill(1)
+      a[1, true, true] = 3
+      b = Cumo::HFloat.new(2, 2, 1).fill(1)
+      c = a.dot(b)
+      assert_equal([2.0] * 3, c[0, 0..2, 0].to_a)
+      assert_equal([6.0] * 3, c[1, 0..2, 0].to_a)
+    end
+
+    test "an output of over 2^31 elements is written" do
+      omit_unless_room(10)
+      m = 65_536
+      n = 32_768 # m * n = 2_147_483_648, one past what an int holds
+      c = Cumo::HFloat.new(m, 1).fill(1).dot(Cumo::HFloat.new(1, n).fill(3))
+      got = [c[0, 0], c[m / 2, n / 2], c[m - 1, n - 1]].map { |x| x.to_a.first }
+      assert_equal([3.0, 3.0, 3.0], got)
+    end
+  end
+
 end
