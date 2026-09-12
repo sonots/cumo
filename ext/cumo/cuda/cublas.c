@@ -76,46 +76,6 @@ cumo_cuda_cublas_option_value(VALUE value, VALUE default_value)
     return value;
 }
 
-#if 0
-cublasOperation_t
-cumo_cuda_cublas_option_trans(VALUE trans)
-{
-    int opt;
-    char *ptr;
-
-    switch(TYPE(trans)) {
-    case T_NIL:
-    case T_UNDEF:
-    case T_FALSE:
-        return CUBLAS_OP_N;
-    case T_TRUE:
-        return CUBLAS_OP_T;
-    case T_FIXNUM:
-        opt = FIX2INT(trans);
-        if (opt >= CUBLAS_OP_N && opt <= CUBLAS_OP_C) {
-            return opt;
-        }
-        break;
-    case T_SYMBOL:
-        trans = rb_sym2str(trans);
-    case T_STRING:
-        ptr = RSTRING_PTR(trans);
-        if (RSTRING_LEN(trans) > 0) {
-            switch(ptr[0]){
-            case 'N': case 'n':
-                return CUBLAS_OP_N;
-            case 'T': case 't':
-                return CUBLAS_OP_T;
-            case 'C': case 'c':
-                return CUBLAS_OP_C;
-            }
-        }
-        break;
-    }
-    rb_raise(rb_eArgError, "invalid value for cublasOperation_t");
-    return 0;
-}
-#endif
 
 void
 Init_cumo_cuda_cublas(void)
