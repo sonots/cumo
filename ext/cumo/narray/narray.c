@@ -171,6 +171,9 @@ cumo_na_view_free(void* ptr)
 
     assert(na->base.type == CUMO_NARRAY_VIEW_T);
 
+    // A constructor that raises partway through still reaches here, so stridx
+    // is always allocated zeroed, and a fresh index is stored before anything
+    // that can raise. A zero reads as an index of NULL, which frees nothing.
     if (na->stridx != NULL) {
         for (i=0; i<na->base.ndim; i++) {
             if (CUMO_SDX_IS_INDEX(na->stridx[i])) {
@@ -1266,7 +1269,7 @@ cumo_na_make_view(VALUE self)
     CumoGetNArrayView(view, na2);
 
     cumo_na_setup_shape((cumo_narray_t*)na2, nd, na->shape);
-    na2->stridx = ALLOC_N(cumo_stridx_t,nd);
+    na2->stridx = ZALLOC_N(cumo_stridx_t,nd);
 
     switch(na->type) {
     case CUMO_NARRAY_DATA_T:
@@ -1289,8 +1292,8 @@ cumo_na_make_view(VALUE self)
                 //     idx2[j] = idx1[j];
                 // }
                 idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*na1->base.shape[i]);
-                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*na1->base.shape[i],cudaMemcpyDeviceToDevice,0));
                 CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
+                cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*na1->base.shape[i],cudaMemcpyDeviceToDevice,0));
             } else {
                 na2->stridx[i] = na1->stridx[i];
             }
@@ -1346,7 +1349,7 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
     CumoGetNArrayView(view, na2);
 
     shape = ALLOC_N(size_t,nd+1);
-    stridx = ALLOC_N(cumo_stridx_t,nd+1);
+    stridx = ZALLOC_N(cumo_stridx_t,nd+1);
     na2_shape = na2->base.shape;
     na2_stridx = na2->stridx;
 
@@ -1408,7 +1411,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
     CumoGetNArrayView(view, na2);
 
     cumo_na_setup_shape((cumo_narray_t*)na2, nd, na->shape);
-    na2->stridx = ALLOC_N(cumo_stridx_t,nd);
+    na2->stridx = ZALLOC_N(cumo_stridx_t,nd);
 
     switch(na->type) {
     case CUMO_NARRAY_DATA_T:
@@ -1436,12 +1439,12 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                 idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
                 if (cumo_na_test_reduce(reduce,i)) {
                     cumo_na_index_reverse_kernel_launch(idx2,idx1,n);
                 } else {
                     cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
                 }
-                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
             } else {
                 stride = CUMO_SDX_GET_STRIDE(na1->stridx[i]);
                 if (cumo_na_test_reduce(reduce,i)) {
