@@ -851,4 +851,45 @@ class BitTest < Test::Unit::TestCase
     a[true].store_binary("\xFF".b)
     assert_equal 8, Integer(a.count_true)
   end
+
+  test "each_with_index on a zero-dimensional bit array yields one index" do
+    yielded = []
+    Cumo::Bit.cast(1).each_with_index { |x, *i| yielded << [x, i] }
+    assert_equal [[1, [0]]], yielded
+  end
+
+  test "each_with_index on a zero-dimensional bit view yields one index" do
+    omit "compatible mode answers with an Integer" if Cumo.compatible_mode_enabled?
+
+    yielded = []
+    Cumo::Bit[1, 0, 1][1].each_with_index { |x, *i| yielded << [x, i] }
+    assert_equal [[0, [0]]], yielded
+
+    a = Cumo::Bit.new(40).fill(0)
+    a[33] = 1
+    yielded = []
+    a[33].each_with_index { |x, *i| yielded << [x, i] }
+    assert_equal [[1, [0]]], yielded
+
+    yielded = []
+    (Cumo::DFloat[1.0, 2.0, 3.0][1] > 0).each_with_index { |x, *i| yielded << [x, i] }
+    assert_equal [[1, [0]]], yielded
+  end
+
+  test "each_with_index on a bit array yields one index per axis" do
+    a = Cumo::Bit[[1, 0, 1], [0, 1, 1]]
+
+    yielded = []
+    a.each_with_index { |x, *i| yielded << [x, i] }
+    assert_equal [[1, [0, 0]], [0, [0, 1]], [1, [0, 2]],
+                  [0, [1, 0]], [1, [1, 1]], [1, [1, 2]]], yielded
+
+    yielded = []
+    a[true, 1..2].each_with_index { |x, *i| yielded << [x, i] }
+    assert_equal [[0, [0, 0]], [1, [0, 1]], [1, [1, 0]], [1, [1, 1]]], yielded
+
+    yielded = []
+    a[[1, 0], [2, 0]].each_with_index { |x, *i| yielded << [x, i] }
+    assert_equal [[1, [0, 0]], [0, [0, 1]], [1, [1, 0]], [1, [1, 1]]], yielded
+  end
 end
