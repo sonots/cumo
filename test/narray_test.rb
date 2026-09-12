@@ -4760,6 +4760,61 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "a view frees the index arrays it owns" do
+    pool = Cumo::CUDA::MemoryPool
+    a = Cumo::DFloat.new(1024, 4).seq
+    idx = Array.new(1024) { |i| 1023 - i }
+    col = a[true, 0]
+    bit = col > 100
+    cube = Cumo::DFloat.new(64, 64, 4).seq
+    cidx = Array.new(64) { |i| 63 - i }
+
+    {
+      "aref" => -> { a[idx, true] },
+      "aref by narray" => -> { a[Cumo::Int32.cast(idx), true] },
+      "reverse" => -> { a[idx, true].reverse },
+      "flatten" => -> { a[idx, true].flatten },
+      "diagonal" => -> { cube[cidx, true, true].diagonal },
+      "mask" => -> { col[bit] },
+      "transpose" => -> { a[idx, true].transpose },
+    }.each do |name, op|
+      3.times { op.call }
+      3.times { GC.start }
+      before = pool.used_bytes
+      60.times { op.call }
+      3.times { GC.start }
+      assert_operator(pool.used_bytes - before, :<, 1024 * 8 * 8, name)
+    end
+  end
+
+  test "a derived view keeps the index arrays it borrows alive" do
+    # The pool hands a freed index array straight back, so one that outlived its
+    # owner still reads right. Turning the pool off makes the free real.
+    out = run_child(<<~RUBY, env: { "CUMO_MEMORY_POOL" => "OFF" })
+      require "cumo/narray"
+      want = Cumo::DFloat.new(8, 4).seq[[3, 1, 0, 2, 3, 1, 0, 2], true].to_a
+      held = {}
+      5.times do
+        v = Cumo::DFloat.new(8, 4).seq[[3, 1, 0, 2, 3, 1, 0, 2], true]
+        held["view"] = v.view
+        held["transpose"] = v.transpose
+        held["swapaxes"] = v.swapaxes(0, 1)
+        held["expand_dims"] = v.expand_dims(0)
+        held["chain"] = v.transpose.view.transpose
+      end
+      5.times { GC.start }
+      Cumo::DFloat.new(1 << 16).seq
+      5.times { GC.start }
+      raise "view" unless held["view"].to_a == want
+      raise "transpose" unless held["transpose"].to_a == want.transpose
+      raise "swapaxes" unless held["swapaxes"].to_a == want.transpose
+      raise "expand_dims" unless held["expand_dims"].to_a == [want]
+      raise "chain" unless held["chain"].to_a == want
+      puts "ok"
+    RUBY
+    assert_match(/^ok$/, out)
+  end
+
   test "reverse of a view an index array backs" do
     a = Cumo::DFloat.new(4, 3).seq
     v = a[[3, 1, 0], [2, 0, 1]]

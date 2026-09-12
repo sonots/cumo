@@ -582,7 +582,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
             if (CUMO_SDX_IS_INDEX(na1->stridx[i])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                 idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*shape[i]);
-                CUMO_SDX_SET_INDEX(na2->stridx[i],idx2);
+                cumo_na_index_own(na2,i,idx2);
                 cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*shape[i],cudaMemcpyDeviceToDevice,0));
             } else {
                 na2->stridx[i] = na1->stridx[i];
@@ -603,7 +603,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
             cumo_na_indexer_t indexer;
 
             idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*((shape[sd]==0) ? 1 : shape[sd]));
-            CUMO_SDX_SET_INDEX(na2->stridx[sd],idx2);
+            cumo_na_index_own(na2,sd,idx2);
             fd = nd-sd;
             iarray.ptr = NULL;
             indexer.ndim = fd;
@@ -815,7 +815,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
                     //     idx1[j] = idx0[j];
                     // }
                     idx1 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*na->shape[i]);
-                    CUMO_SDX_SET_INDEX(na2->stridx[k],idx1);
+                    cumo_na_index_own(na2,k,idx1);
                     cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx1,idx0,sizeof(size_t)*na->shape[i],cudaMemcpyDeviceToDevice,0));
                 } else {
                     na2->stridx[k] = na1->stridx[i];
@@ -827,7 +827,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
             idx0 = CUMO_SDX_GET_INDEX(na1->stridx[ax[0]]);
             // diag_idx = ALLOC_N(size_t, diag_size);
             diag_idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*diag_size);
-            CUMO_SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
+            cumo_na_index_own(na2,nd-2,diag_idx);
             if (CUMO_SDX_IS_INDEX(na1->stridx[ax[1]])) {
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
                 cumo_na_diagonal_index_index_kernel_launch(diag_idx, idx0, idx1, k0, k1, diag_size);
@@ -841,7 +841,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
                 idx1 = CUMO_SDX_GET_INDEX(na1->stridx[ax[1]]);
                 // diag_idx = ALLOC_N(size_t, diag_size);
                 diag_idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*diag_size);
-                CUMO_SDX_SET_INDEX(na2->stridx[nd-2],diag_idx);
+                cumo_na_index_own(na2,nd-2,diag_idx);
                 cumo_na_diagonal_stride_index_kernel_launch(diag_idx, stride0, idx1, k0, k1, diag_size);
             } else {
                 stride1 = CUMO_SDX_GET_STRIDE(na1->stridx[ax[1]]);

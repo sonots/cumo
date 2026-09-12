@@ -256,6 +256,12 @@ typedef struct {
     size_t   reach_end;
     uint64_t index_sync_epoch; // synchronizes counted when the index fills were
                                // issued; UINT64_MAX when that is not known
+    // A view made from another one can point at the index arrays it already
+    // has rather than copy them. index_owner keeps that view alive for as long
+    // as this one borrows from it, and index_owned says which dimensions are
+    // this view's own to free.
+    VALUE    index_owner;
+    uint64_t index_owned;
 } cumo_narray_view_t;
 
 
@@ -493,6 +499,33 @@ cumo_na_has_idx_p(VALUE obj)
         }
     }
     return false;
+}
+
+// An index array a view holds is freed only if it was set through here, so a
+// view that puts one in stridx any other way leaks it.
+static inline void
+cumo_na_index_own(cumo_narray_view_t *nv, int i, size_t *idx)
+{
+    CUMO_SDX_SET_INDEX(nv->stridx[i], idx);
+    nv->index_owned |= (uint64_t)1 << i;
+}
+
+// Every dimension of nv now points at an index array that from reaches, so from
+// has to outlive nv. A lender that owns nothing itself is skipped for its own
+// lender, which keeps the common chain one link long. A lender that owns even
+// one dimension is named directly, since only it keeps that one alive.
+static inline void
+cumo_na_index_borrow_all(cumo_narray_view_t *nv, VALUE from)
+{
+    cumo_narray_view_t *nv1;
+
+    CumoGetNArrayView(from, nv1);
+    nv->index_sync_epoch = nv1->index_sync_epoch;
+    if (!cumo_na_has_idx_p(from)) {
+        return;
+    }
+    nv->index_owner = (nv1->index_owned == 0 && RTEST(nv1->index_owner))
+        ? nv1->index_owner : from;
 }
 
 #define CUMO_NUM2REAL(v)  NUM2DBL( rb_funcall((v),cumo_na_id_real,0) )
