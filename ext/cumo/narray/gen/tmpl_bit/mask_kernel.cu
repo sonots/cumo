@@ -3,7 +3,7 @@
 // that offset from one loop segment to the next on the device. Only the
 // scatter differs -- it writes the position of the masked array's element
 // rather than the flat index, so the result indexes that array's data.
-__global__ void cumo_bit_mask_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, uint64_t nw, int contiguous, uint64_t nchunks, uint64_t cpb, size_t *out, size_t p2, ssize_t s2, size_t *idx2, uint64_t *block_sums)
+__global__ void cumo_bit_mask_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, uint64_t nw, int contiguous, uint64_t nchunks, uint64_t cpb, size_t *out, size_t p2, ssize_t s2, size_t *idx2, uint64_t cap, uint64_t *block_sums)
 {
     uint64_t startc = blockIdx.x * cpb;
     uint64_t endc = (nchunks - startc < cpb) ? nchunks : startc + cpb;
@@ -23,7 +23,7 @@ __global__ void cumo_bit_mask_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize_
             CUMO_LOAD_BIT(a, cumo_bit_pos(p, s, idx, i), x);
         }
         pre = cumo_bit_block_exscan(x, &total);
-        if (x) {
+        if (x && off + pre < cap) {
             out[off + pre] = idx2 ? p2 + idx2[i] : (size_t)((ssize_t)p2 + (ssize_t)i * s2);
         }
         off += total;
@@ -31,7 +31,7 @@ __global__ void cumo_bit_mask_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize_
     }
 }
 
-void cumo_bit_mask_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, size_t *out, size_t p2, ssize_t s2, size_t *idx2, char *scratch)
+void cumo_bit_mask_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, size_t *out, size_t p2, ssize_t s2, size_t *idx2, uint64_t cap, char *scratch)
 {
     uint64_t nchunks = (n + CUMO_NB - 1) / CUMO_NB;
     int contiguous = (idx == NULL && s == 1);
@@ -47,6 +47,6 @@ void cumo_bit_mask_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t 
     cpb = (nchunks + nblocks - 1) / nblocks;
     cumo_bit_where_partial_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,0,nchunks,cpb,block_sums);
     cumo_bit_where_scan_kernel<<<1, CUMO_BIT_CHUNK_BLOCK>>>(block_sums,nblocks,running);
-    cumo_bit_mask_scatter_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,nchunks,cpb,out,p2,s2,idx2,block_sums);
+    cumo_bit_mask_scatter_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,nchunks,cpb,out,p2,s2,idx2,cap,block_sums);
     cumo_cuda_runtime_check_kernel_launch();
 }

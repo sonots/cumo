@@ -2,8 +2,8 @@
 // order: each block counts the hits of a contiguous range of chunks, one scan
 // block turns the counts into output positions, and each block scatters its
 // range from its position. *running carries the output cursor from one ndloop
-// iteration to the next entirely on the device, so no launch reads anything
-// back to the host.
+// iteration to the next entirely on the device, and the caller reads it back
+// once at the end to see whether the walk filled the room it was given.
 
 // The scan kernel is one block, so it bounds the scratch the caller allocates
 // and the sequential work it does itself.
@@ -53,7 +53,7 @@ __global__ void cumo_bit_where_scan_kernel(uint64_t *block_sums, uint64_t nblock
 // The scatter takes an element per lane rather than a chunk, so that the lanes
 // that do write land next to each other. A thread that owned a whole chunk wrote
 // a run of its own, which put the lanes of a warp a run apart.
-__global__ void cumo_bit_where_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, uint64_t nw, int contiguous, int invert, uint64_t nchunks, uint64_t cpb, char *out, size_t elmsz, uint64_t count, uint64_t *block_sums)
+__global__ void cumo_bit_where_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, uint64_t nw, int contiguous, int invert, uint64_t nchunks, uint64_t cpb, char *out, size_t elmsz, uint64_t cap, uint64_t count, uint64_t *block_sums)
 {
     uint64_t startc = blockIdx.x * cpb;
     uint64_t endc = (nchunks - startc < cpb) ? nchunks : startc + cpb;
@@ -74,7 +74,7 @@ __global__ void cumo_bit_where_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize
             if (invert) x = !x;
         }
         pre = cumo_bit_block_exscan(x, &total);
-        if (x) {
+        if (x && off + pre < cap) {
             cumo_bit_store_index(out, elmsz, off + pre, count + i);
         }
         off += total;
@@ -90,7 +90,7 @@ char *cumo_bit_where_scratch_new(void)
     return scratch;
 }
 
-void cumo_bit_where_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, int invert, char *out, size_t elmsz, uint64_t count, char *scratch)
+void cumo_bit_where_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, int invert, char *out, size_t elmsz, uint64_t cap, uint64_t count, char *scratch)
 {
     uint64_t nchunks = (n + CUMO_NB - 1) / CUMO_NB;
     int contiguous = (idx == NULL && s == 1);
@@ -104,6 +104,6 @@ void cumo_bit_where_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t
     cpb = (nchunks + nblocks - 1) / nblocks;
     cumo_bit_where_partial_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,invert,nchunks,cpb,block_sums);
     cumo_bit_where_scan_kernel<<<1, CUMO_BIT_CHUNK_BLOCK>>>(block_sums,nblocks,running);
-    cumo_bit_where_scatter_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,invert,nchunks,cpb,out,elmsz,count,block_sums);
+    cumo_bit_where_scatter_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,invert,nchunks,cpb,out,elmsz,cap,count,block_sums);
     cumo_cuda_runtime_check_kernel_launch();
 }

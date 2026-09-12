@@ -3,6 +3,8 @@
 require_relative "test_helper"
 
 class BitTest < Test::Unit::TestCase
+  include CumoChildProcess
+
   dtype = Cumo::Bit
 
   test dtype do
@@ -850,6 +852,62 @@ class BitTest < Test::Unit::TestCase
     a = Cumo::Bit.new(8).fill(0)
     a[true].store_binary("\xFF".b)
     assert_equal 8, Integer(a.count_true)
+  end
+
+  def assert_where_refuses(n, body, setup: "")
+    assert_child_raises("the bit array and its index array no longer agree", <<~RUBY, prelude: MUTATING_ALLOCATE)
+      $a = Cumo::Bit.new(#{n}).fill(1)
+      #{setup}
+      [Cumo::Int32, Cumo::Int64].each { |k| k.prepend(Mutating) }
+      #{body}
+    RUBY
+  end
+
+  { 1024 => "host loop", 16384 => "scatter kernel" }.each do |n, path|
+    test "where refuses an index array its own allocate shrank, #{path}" do
+      assert_where_refuses(n, "$mutate = ->(idx) { idx.send(:initialize, 1) }\n$a.where")
+    end
+
+    test "where refuses a bit array its index array's allocate shrank, #{path}" do
+      assert_where_refuses(n, "$mutate = ->(_) { $a.send(:initialize, [4]); $a.fill(1) }\n$a.where")
+    end
+
+    test "where refuses a bit array whose bits its index array's allocate turned on, #{path}" do
+      assert_where_refuses(n, "$mutate = ->(_) { $a.fill(1) }\n$a.where", setup: "$a.fill(0); $a[0] = 1")
+    end
+
+    test "where refuses a bit array whose bits its index array's allocate turned off, #{path}" do
+      assert_where_refuses(n, "$mutate = ->(_) { $a.fill(0) }\n$a.where")
+    end
+
+    test "where2 refuses a bit array whose bits its index arrays' allocate turned off, #{path}" do
+      assert_where_refuses(n, "$mutate = ->(_) { $a.fill(0) }\n$a.where2")
+    end
+
+    test "masked aref refuses a bit array whose bits its index array's allocate turned on, #{path}" do
+      assert_where_refuses(n, "$mutate = ->(_) { $a.fill(1) }\nCumo::DFloat.new(#{n}).seq[$a]",
+                           setup: "$a.fill(0); $a[0] = 1")
+    end
+
+    test "where still answers when allocate replaced the index array's buffer, #{path}" do
+      assert_child_raises("no error", <<~RUBY, prelude: MUTATING_ALLOCATE)
+        a = Cumo::Bit.new(#{n}).fill(1)
+        $mutate = ->(idx) { idx.send(:initialize, idx.size) }
+        [Cumo::Int32, Cumo::Int64].each { |k| k.prepend(Mutating) }
+        raise "wrong" unless a.where.to_a == (0...#{n}).to_a
+        raise "allocate never ran" unless $fired
+      RUBY
+    end
+  end
+
+  test "masked aref allocates a lazily cast operand before it counts" do
+    assert_child_raises("no error", <<~RUBY, prelude: MUTATING_ALLOCATE)
+      $a = Cumo::Bit.cast(0)
+      $mutate = ->(_) { $a.fill(1) }
+      Cumo::DFloat.prepend(Mutating)
+      Cumo::DFloat.cast(1.0)[$a]
+      raise "allocate never ran" unless $fired
+    RUBY
   end
 
   test "each_with_index on a zero-dimensional bit array yields one index" do
