@@ -17,9 +17,7 @@ static void
     int nd, md;
 
     c = (size_t*)(lp->opt_ptr);
-    nd = lp->ndim;
-    if (nd > 0) {nd--;}
-    md = nd + 2;
+    cumo_na_with_index_dims(lp->ndim, &nd, &md);
     a = ALLOCA_N(VALUE,md);
 
     CUMO_INIT_COUNTER(lp, i);

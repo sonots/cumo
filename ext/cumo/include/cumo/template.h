@@ -183,6 +183,15 @@ cumo_na_store_rary_fetch(VALUE ary, size_t i, VALUE *x)
     return true;
 }
 
+// A 0-dimensional walk still yields one index, so the depth floors at 0 rather
+// than going negative and writing c[-1].
+static inline void
+cumo_na_with_index_dims(int ndim, int *nd, int *md)
+{
+    *nd = (ndim > 0) ? ndim - 1 : ndim;
+    *md = *nd + 2;
+}
+
 static inline VALUE
 cumo_na_yield_with_index(VALUE x, size_t *c, VALUE *a, int nd, int md)
 {
