@@ -6,6 +6,7 @@ require_relative "test_helper"
 # covers that cumo's own narray_test.rb never touches.
 class NArrayAltCoverageTest < CumoTestBase
   FLOAT_TYPES = [
+    Cumo::HFloat,
     Cumo::SFloat,
     Cumo::SComplex,
     Cumo::DFloat,
