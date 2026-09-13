@@ -3,15 +3,16 @@
 require_relative "test_helper"
 
 class FusedTest < CumoTestBase
-  # Fires once, and only once armed, so the allocate it catches is the one the
-  # method under test makes rather than the ones the setup makes.
+  # Fires on the next allocate after it is armed, so what it catches is the one
+  # the method under test makes rather than the ones the setup makes.
   ARMED_ALLOCATE = <<~RUBY
-    $armed = false
+    $armed = nil
     module Armed
       def allocate
         if $armed
-          $armed = false
-          send(:initialize, 1)
+          act = $armed
+          $armed = nil
+          act.call(self)
         end
         super
       end
@@ -152,58 +153,48 @@ class FusedTest < CumoTestBase
 
   # Taking a pointer runs allocate, and a class is free to redefine it, so the
   # sizes the launch is built from have to be the ones left behind afterwards.
-  test "layer_norm refuses an allocate that resizes the output under it" do
-    assert_child_raises("size mismatch: 1 != 1048576", <<~RUBY, prelude: ARMED_ALLOCATE)
-      Cumo::DFloat.prepend(Armed)
-      x = Cumo::DFloat.new(1 << 20).seq
-      g = Cumo::DFloat.new(1 << 20).fill(1)
-      b = Cumo::DFloat.new(1 << 20).fill(0)
-      Cumo::CUDA::Runtime.cudaDeviceSynchronize
-      $armed = true
-      x.layer_norm(g, b)
-    RUBY
-  end
-
-  # The output's own allocate runs after the input's pointer is taken, so it can
-  # free the buffer the launch is about to read. The size still matches, which
-  # is why the pointers themselves have to be looked at again.
-  FREEING_ALLOCATE = <<~RUBY
-    $victim = nil
-    module FreeIt
-      def allocate
-        if $victim
-          v = $victim
-          $victim = nil
-          v.free
-        end
-        super
-      end
+  {"resizes the output under it" =>
+     ["Cumo::DFloat.new(1 << 20)", "$armed = ->(a) { a.send(:initialize, 1) }",
+      "self or the result was reshaped while it was measured"],
+   "frees the input under it" =>
+     ["Cumo::DFloat.new(1 << 20)", "$armed = ->(_) { x.free }",
+      "cannot read unallocated NArray"],
+   "reshapes to the same size" =>
+     ["Cumo::DFloat.new(4, 6)", "$armed = ->(a) { a.reshape!(24) }",
+      "self or the result was reshaped while it was measured"],
+  }.each do |what, (make, arm, message)|
+    test "layer_norm refuses an allocate that #{what}" do
+      assert_child_raises(message, <<~RUBY, prelude: ARMED_ALLOCATE)
+        Cumo::DFloat.prepend(Armed)
+        x = #{make}.seq
+        cols = x.shape[-1]
+        g = Cumo::DFloat.new(cols).fill(1)
+        b = Cumo::DFloat.new(cols).fill(0)
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+        #{arm}
+        x.layer_norm(g, b)
+      RUBY
     end
-  RUBY
-
-  test "layer_norm refuses an allocate that frees the input under it" do
-    assert_child_raises("cannot read unallocated NArray", <<~RUBY, prelude: FREEING_ALLOCATE)
-      Cumo::DFloat.prepend(FreeIt)
-      x = Cumo::DFloat.new(1 << 18).seq
-      g = Cumo::DFloat.new(1 << 18).fill(1)
-      b = Cumo::DFloat.new(1 << 18).fill(0)
-      Cumo::CUDA::Runtime.cudaDeviceSynchronize
-      $victim = x
-      x.layer_norm(g, b)
-    RUBY
   end
 
-  # cumo_na_as_contiguous_array answers what dup gave it, so the class checked
-  # up front is not the one whose bytes the kernel reads.
-  test "layer_norm refuses a dup that answers another dtype" do
-    assert_child_raises("invalid NArray type (class)", <<~RUBY, prelude: "")
-      class Cumo::DFloat
-        def dup
-          Cumo::Int32.new(4, 6).seq
+  # Contiguity, the shape and the class are what cumo_na_as_contiguous_array is
+  # asked for and what dup is free not to answer with.
+  # The trailing axis of one is the case only the dimension count catches: every
+  # axis the original has agrees, and so does the element count.
+  {"a contiguous array" => "Cumo::DFloat.new(128, 64).seq.reverse",
+   "an array shaped like the one it was given" => "Cumo::DFloat.new(128 * 64).seq",
+   "an array shaped like the one it was given, one axis deeper" => "Cumo::DFloat.new(128, 64, 1).seq",
+   "a Cumo::DFloat" => "Cumo::Int32.new(128, 64).seq"}.each do |message, body|
+    test "layer_norm refuses a dup that does not answer #{message}" do
+      assert_child_raises("dup did not answer #{message.sub(/, one axis deeper\z/, "")}", <<~RUBY, prelude: "")
+        class Cumo::DFloat
+          def dup
+            #{body}
+          end
         end
-      end
-      x = Cumo::DFloat.new(6, 4).seq.transpose
-      x.layer_norm(Cumo::DFloat.new(6).fill(1), Cumo::DFloat.new(6).fill(0))
-    RUBY
+        x = Cumo::DFloat.new(64, 128).seq.transpose
+        x.layer_norm(Cumo::DFloat.new(64).fill(1), Cumo::DFloat.new(64).fill(0))
+      RUBY
+    end
   end
 end
