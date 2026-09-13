@@ -381,6 +381,7 @@ end
 # fused
 if is_float && !is_complex && !is_object
   def_method "layer_norm"
+  def_method "softmax"
 end
 
 # rmsdev
