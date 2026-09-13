@@ -777,7 +777,8 @@ cumo_na_view_reach_end(cumo_narray_view_t *nv, size_t unit)
             size_t *host = (size_t*)RSTRING_PTR(buf);
             size_t k, max = 0;
 
-            cumo_na_index_wait_fill(nv);
+            // A blocking cudaMemcpy queues behind stream 0, the only stream
+            // cumo uses, so the fill of idx is done by the time it returns.
             cumo_cuda_runtime_check_status(
                 cudaMemcpy(host, idx, sizeof(size_t)*n, cudaMemcpyDeviceToHost));
             for (k=0; k<n; k++) {
