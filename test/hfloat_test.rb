@@ -684,12 +684,6 @@ class HFloatTest < Test::Unit::TestCase
       Cumo::CUDA::MemoryPool.free_all_blocks
     end
 
-    def omit_unless_room(gb)
-      omit "needs /proc/meminfo" unless File.readable?("/proc/meminfo")
-      line = File.readlines("/proc/meminfo").find { |l| l.start_with?("MemAvailable:") }
-      omit "needs about #{gb} GB of free memory" if line.split[1].to_i / 1_048_576.0 < gb
-    end
-
     [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat].each do |dtype|
       test "#{dtype}, a row count cuBLAS cannot take is refused" do
         a = dtype.new(2_147_483_648, 2)

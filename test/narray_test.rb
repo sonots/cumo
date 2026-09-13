@@ -3594,6 +3594,7 @@ class NArrayTest < Test::Unit::TestCase
   test "a bit count over more than 2**32 bits" do
     # in the window where a grid-stride step of blockDim * gridDim wraps past
     # an unsigned int, an uncapped grid loops forever
+    omit_unless_room(2)
     n = 1 << 32
     a = Cumo::Bit.new(n).fill(0)
     ones = [0, n / 2, n - 1]
@@ -3605,6 +3606,7 @@ class NArrayTest < Test::Unit::TestCase
     # below 2**32 elements the flat index is split into per-dimension indices
     # in 32 bits, and this shape is the first one past that. The transpose is
     # what keeps the kernel from walking the array as one contiguous run.
+    omit_unless_room(6)
     cols = (1 << 31) + 512
     a = Cumo::UInt8.new(2, cols).fill(0)
     a[1, true] = 2
@@ -3616,6 +3618,7 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   test "a range subscript longer than 2**31" do
+    omit_unless_room(4)
     cols = (1 << 31) + 512
     a = Cumo::UInt8.new(1, cols).fill(0)
     a[0, 0] = 7
@@ -4826,18 +4829,18 @@ class NArrayTest < Test::Unit::TestCase
 
   test "a copy of a transposed view reaches past one grid of tiles" do
     # gridDim.y stops at 65535, which is 2**21 rows of tiles. Both sides have to
-    # reach a tile or the copy takes the plain loop and never gets there.
-    # 2**24 elements no longer land on distinct SFloat values, and this needs
-    # 2**26 of them to reach past the cap
+    # reach a tile or the copy takes the plain loop and never gets there. That
+    # is 2**26 elements, more than an SFloat tells apart but well inside Int32.
+    omit_unless_room(2)
     rows = 2_097_153
     cols = 32
-    src = Cumo::DFloat.new(cols, rows).seq
+    src = Cumo::Int32.new(cols, rows).seq
     got = src.transpose.dup
 
     assert_equal([rows, cols], got.shape)
-    assert_equal((0...cols).map { |c| (c * rows).to_f }, got[0, true].to_a)
-    assert_equal((0...cols).map { |c| (c * rows + rows - 1).to_f }, got[rows - 1, true].to_a)
-    assert_equal((0...cols).map { |c| (c * rows + 1_048_576).to_f }, got[1_048_576, true].to_a)
+    assert_equal((0...cols).map { |c| c * rows }, got[0, true].to_a)
+    assert_equal((0...cols).map { |c| c * rows + rows - 1 }, got[rows - 1, true].to_a)
+    assert_equal((0...cols).map { |c| c * rows + 1_048_576 }, got[1_048_576, true].to_a)
   end
 
   test "a view waits for the index array its constructor queued" do

@@ -63,6 +63,19 @@ module CumoChildProcess
   end
 end
 
+# A test that reaches past a 2**31 or 2**32 boundary has to allocate that far.
+# Managed memory spills to the host once the device is full, so what has to be
+# free is host memory, whatever the card holds.
+module CumoBigAllocation
+  def omit_unless_room(gb)
+    omit "needs /proc/meminfo" unless File.readable?("/proc/meminfo")
+    line = File.readlines("/proc/meminfo").find { |l| l.start_with?("MemAvailable:") }
+    omit "needs about #{gb} GB of free memory" if line.split[1].to_i / 1_048_576.0 < gb
+  end
+end
+
+Test::Unit::TestCase.include(CumoBigAllocation)
+
 class CumoTestBase < Test::Unit::TestCase
   include CumoChildProcess
 
