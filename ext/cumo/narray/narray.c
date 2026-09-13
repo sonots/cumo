@@ -663,7 +663,7 @@ cumo_na_alloc_byte_size_with(cumo_narray_t *na, const cumo_narray_type_info_t *i
         return 0;
     }
     if (info->element_bits > 0) {
-        return ((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
+        return CUMO_BIT_BYTES(na->size);
     }
     if (na->size > SIZE_MAX / info->element_bytes) {
         rb_raise(rb_eRangeError, "total byte size of data is too large");

@@ -511,6 +511,12 @@ typedef unsigned int CUMO_BIT_DIGIT;
 #define CUMO_BALL   (~(CUMO_BIT_DIGIT)0)
 #define CUMO_SLB(n) (((n)==CUMO_NB)?~(CUMO_BIT_DIGIT)0:(~(~(CUMO_BIT_DIGIT)0<<(n))))
 
+// Bits are packed into digits, so a buffer holding n of them is as long as the
+// digits they fill, rounded up. n has to be positive: an empty array has no
+// buffer, and the subtraction below would wrap.
+#define CUMO_BIT_BYTES(n) \
+    ((((n) - 1) / 8 / sizeof(CUMO_BIT_DIGIT) + 1) * sizeof(CUMO_BIT_DIGIT))
+
 #include "cumo/ndloop.h"
 #include "cumo/intern.h"
 
