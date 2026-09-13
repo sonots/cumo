@@ -2,6 +2,7 @@
 <% unless type_name == 'robject' %>
 #include "cumo/indexer.h"
 #include "cumo/reduce_kernel.h"
+#include "cumo/row_kernel.h"
 <% end %>
 #include <<%="cumo/types/#{type_name}_kernel.h"%>>
 

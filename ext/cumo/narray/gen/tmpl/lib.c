@@ -15,6 +15,7 @@
 #include "SFMT.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
+#include "cumo/row_method.h"
 <% unless type_name == 'robject' %>
 #include "cumo/indexer.h"
 <% end %>

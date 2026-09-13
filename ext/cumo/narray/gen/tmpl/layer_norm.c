@@ -8,6 +8,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *pg, char *pb, char *py,
   @param [Cumo::<%=class_name%>] gamma  scale, one-dimensional and as long as the last axis.
   @param [Cumo::<%=class_name%>] beta  shift, one-dimensional and as long as the last axis.
   @param [Float] eps  added to the variance before the square root.
+  Answers a new array: inplace! is not honoured.
   @return [Cumo::<%=class_name%>] returns the normalized array, shaped like self.
 */
 static VALUE
@@ -44,10 +45,10 @@ static VALUE
     }
     y = cumo_na_new(cT, nx->ndim, nx->shape);
 
-    // Taking a pointer runs allocate, which is Ruby and free to resize any of
-    // these or hand back a buffer of its own, so all four are taken before
-    // anything is measured and nothing runs between the last of them and the
-    // checks below.
+    // Taking a pointer runs allocate, which is Ruby, so all four are taken
+    // before anything is measured and the checks below run over what is left.
+    // See row_method.h for why the pointers themselves have to be looked at
+    // again.
     x_ptr = cumo_na_get_offset_pointer_for_read(x_cont);
     gamma_ptr = cumo_na_get_offset_pointer_for_read(gamma_cont);
     beta_ptr = cumo_na_get_offset_pointer_for_read(beta_cont);
@@ -74,6 +75,10 @@ static VALUE
         rb_raise(cumo_na_eShapeError, "beta must be 1-dimensional and %"SZF"u long", cols);
     }
     CUMO_CHECK_SIZE_EQ(ny->size, nx->size);
+    CUMO_ROW_CHECK_READ_BUFFER(x_cont, x_ptr, "self");
+    CUMO_ROW_CHECK_READ_BUFFER(gamma_cont, gamma_ptr, "gamma");
+    CUMO_ROW_CHECK_READ_BUFFER(beta_cont, beta_ptr, "beta");
+    CUMO_ROW_CHECK_WRITE_BUFFER(y, y_ptr, "the result");
 
     if (nx->size == 0) {
         return y;
