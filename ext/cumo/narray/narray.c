@@ -1236,7 +1236,33 @@ cumo_na_set_newaxis_strides(cumo_narray_view_t *na2, const int *newaxis,
 VALUE
 cumo_na_as_contiguous_array(VALUE a)
 {
-    return cumo_na_check_contiguous(a) == Qtrue ? a : rb_funcall(a, rb_intern("dup"), 0);
+    VALUE b;
+    cumo_narray_t *na, *nb;
+    int i;
+
+    if (cumo_na_check_contiguous(a) == Qtrue) {
+        return a;
+    }
+    b = rb_funcall(a, rb_intern("dup"), 0);
+    // dup is Ruby, so the one property this is asked for is the one it is free
+    // not to have. Callers go on to walk the answer from a single pointer.
+    if (!CumoIsNArray(b) || rb_obj_class(b) != rb_obj_class(a)) {
+        rb_raise(rb_eTypeError, "dup did not answer a %s", rb_obj_classname(a));
+    }
+    CumoGetNArray(a, na);
+    CumoGetNArray(b, nb);
+    if (nb->ndim != na->ndim) {
+        rb_raise(cumo_na_eShapeError, "dup did not answer an array shaped like the one it was given");
+    }
+    for (i = 0; i < na->ndim; ++i) {
+        if (nb->shape[i] != na->shape[i]) {
+            rb_raise(cumo_na_eShapeError, "dup did not answer an array shaped like the one it was given");
+        }
+    }
+    if (cumo_na_check_contiguous(b) != Qtrue) {
+        rb_raise(rb_eRuntimeError, "dup did not answer a contiguous array");
+    }
+    return b;
 }
 
 //----------------------------------------------------------------------

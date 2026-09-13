@@ -74,7 +74,7 @@ static VALUE
     if (nbeta->ndim != 1 || nbeta->shape[0] != cols) {
         rb_raise(cumo_na_eShapeError, "beta must be 1-dimensional and %"SZF"u long", cols);
     }
-    CUMO_CHECK_SIZE_EQ(ny->size, nx->size);
+    CUMO_ROW_CHECK_SAME_SHAPE(ny, nx);
     CUMO_ROW_CHECK_READ_BUFFER(x_cont, x_ptr, "self");
     CUMO_ROW_CHECK_READ_BUFFER(gamma_cont, gamma_ptr, "gamma");
     CUMO_ROW_CHECK_READ_BUFFER(beta_cont, beta_ptr, "beta");
