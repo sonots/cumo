@@ -29,7 +29,6 @@ static VALUE
             ptr = cumo_cuda_runtime_malloc(sizeof(dtype) * na->size);
             <% end %>
             CUMO_NA_DATA_PTR(na) = ptr;
-            CUMO_NA_DATA_OWNED(na) = TRUE;
             <% unless is_object %>
             // Device memory never passes through ruby_xmalloc, so the GC sees a
             // few-byte object holding an arbitrarily large buffer and does not

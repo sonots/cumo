@@ -16,7 +16,7 @@ VALUE cumo_na_eDimensionError;
 VALUE cumo_na_eValueError;
 
 size_t cumo_na_data_byte_size(VALUE self);
-static void cumo_na_free_owned_ptr(VALUE self, void *ptr, size_t byte_size);
+static void cumo_na_free_data_ptr(VALUE self, void *ptr, size_t byte_size);
 
 static ID cumo_id_contiguous_stride;
 static ID cumo_id_allocate;
@@ -378,7 +378,6 @@ cumo_na_initialize(VALUE self, VALUE args)
     cumo_narray_t *na;
     void *old_ptr;
     size_t old_byte_size;
-    bool old_owned;
 
     // Taking a shape lets go of what is held now, which is a write by any
     // other name.
@@ -415,14 +414,11 @@ cumo_na_initialize(VALUE self, VALUE args)
     // runs between the two, and a shape the array refuses leaves it as it was.
     old_ptr = CUMO_NA_DATA_PTR(na);
     old_byte_size = cumo_na_data_byte_size(self);
-    old_owned = CUMO_NA_DATA_OWNED(na);
 
     cumo_na_setup(self, ndim, shape);
     if (old_ptr != NULL) {
-        if (old_owned) {
-            cumo_na_free_owned_ptr(self, old_ptr, old_byte_size);
-        }
         CUMO_NA_DATA_PTR(na) = NULL;
+        cumo_na_free_data_ptr(self, old_ptr, old_byte_size);
     }
 
     return self;
@@ -728,7 +724,7 @@ cumo_na_data_byte_size(VALUE self)
 // taken a new shape can no longer ask the array how large the buffer it is
 // letting go was.
 static void
-cumo_na_free_owned_ptr(VALUE self, void *ptr, size_t byte_size)
+cumo_na_free_data_ptr(VALUE self, void *ptr, size_t byte_size)
 {
     if (rb_obj_is_kind_of(self, cumo_cRObject)) {
         xfree(ptr);
@@ -2316,9 +2312,18 @@ cumo_na_free_data(VALUE self)
 
     if (na->type == CUMO_NARRAY_DATA_T) {
         void *ptr = CUMO_NA_DATA_PTR(na);
-        if (ptr != NULL && CUMO_NA_DATA_OWNED(na)) {
-            cumo_na_free_owned_ptr(self, ptr, cumo_na_data_byte_size(self));
+        if (ptr != NULL) {
+            size_t byte_size = cumo_na_data_byte_size(self);
+
+            // Reading what is freed here raises, and writing it back is what a
+            // frozen array refuses, so freeing one would leave it unusable.
+            if (OBJ_FROZEN(self)) {
+                rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
+            }
+            // Let go of the pointer first: releasing it can raise, and the
+            // array would keep a buffer the pool has taken back.
             CUMO_NA_DATA_PTR(na) = NULL;
+            cumo_na_free_data_ptr(self, ptr, byte_size);
             return Qtrue;
         }
     }
