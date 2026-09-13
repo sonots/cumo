@@ -164,6 +164,35 @@ class FusedTest < CumoTestBase
     RUBY
   end
 
+  # The output's own allocate runs after the input's pointer is taken, so it can
+  # free the buffer the launch is about to read. The size still matches, which
+  # is why the pointers themselves have to be looked at again.
+  FREEING_ALLOCATE = <<~RUBY
+    $victim = nil
+    module FreeIt
+      def allocate
+        if $victim
+          v = $victim
+          $victim = nil
+          v.free
+        end
+        super
+      end
+    end
+  RUBY
+
+  test "layer_norm refuses an allocate that frees the input under it" do
+    assert_child_raises("cannot read unallocated NArray", <<~RUBY, prelude: FREEING_ALLOCATE)
+      Cumo::DFloat.prepend(FreeIt)
+      x = Cumo::DFloat.new(1 << 18).seq
+      g = Cumo::DFloat.new(1 << 18).fill(1)
+      b = Cumo::DFloat.new(1 << 18).fill(0)
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      $victim = x
+      x.layer_norm(g, b)
+    RUBY
+  end
+
   # cumo_na_as_contiguous_array answers what dup gave it, so the class checked
   # up front is not the one whose bytes the kernel reads.
   test "layer_norm refuses a dup that answers another dtype" do
