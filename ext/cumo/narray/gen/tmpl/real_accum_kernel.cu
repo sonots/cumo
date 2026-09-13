@@ -116,10 +116,13 @@ struct cumo_<%=type_name%>_moments_impl {
     __device__ void Reduce(Moments next, Moments& accum) {
         if (next.n == 0) { return; }
         if (accum.n == 0) { accum = next; return; }
+        // The two quotients share a denominator, and one reciprocal is much
+        // cheaper than two double divides on a GeForce card.
         double n = accum.n + next.n;
+        double r = 1.0 / n;
         double delta = next.mean - accum.mean;
-        accum.mean += delta * (next.n / n);
-        accum.m2 += next.m2 + delta * delta * accum.n * next.n / n;
+        accum.mean += delta * (next.n * r);
+        accum.m2 += next.m2 + delta * delta * accum.n * next.n * r;
         accum.n = n;
     }
 };
