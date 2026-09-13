@@ -4780,16 +4780,64 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(plane.call(cube, 0, 2, 1), cube.transpose(0, 2, 1).dup.to_a)
   end
 
+  test "an elementwise op with one transposed operand holds every element" do
+    [[31, 33], [32, 32], [33, 31], [64, 96], [100, 100]].each do |rows, cols|
+      lhs = Cumo::SFloat.new(cols, rows).seq
+      rhs = Cumo::SFloat.new(rows, cols).seq(100)
+      t = lhs.to_a.transpose
+      r = rhs.to_a
+      shape = "#{rows}x#{cols}"
+
+      want = t.each_with_index.map { |row, i| row.each_with_index.map { |v, j| v + r[i][j] } }
+      assert_equal(want, (lhs.transpose + rhs).to_a, "left #{shape}")
+      assert_equal(want, (rhs + lhs.transpose).to_a, "right #{shape}")
+
+      assert_equal(t.each_with_index.map { |row, i| row.each_with_index.map { |v, j| v - r[i][j] } },
+                   (lhs.transpose - rhs).to_a, "sub #{shape}")
+      assert_equal(r.each_with_index.map { |row, i| row.each_with_index.map { |v, j| v - t[i][j] } },
+                   (rhs - lhs.transpose).to_a, "rsub #{shape}")
+
+      dst = rhs.dup
+      dst.inplace + lhs.transpose
+      assert_equal(want, dst.to_a, "inplace #{shape}")
+    end
+
+    [Cumo::Int32, Cumo::Int64, Cumo::DFloat, Cumo::DComplex].each do |dtype|
+      lhs = dtype.new(40, 40).seq
+      rhs = dtype.new(40, 40).seq(7)
+      t = lhs.to_a.transpose
+      r = rhs.to_a
+      assert_equal(t.each_with_index.map { |row, i| row.each_with_index.map { |v, j| v * r[i][j] } },
+                   (lhs.transpose * rhs).to_a, "mul #{dtype}")
+      assert_equal(r.each_with_index.map { |row, i| row.each_with_index.map { |v, j| v - t[i][j] } },
+                   (rhs - lhs.transpose).to_a, "sub #{dtype}")
+    end
+
+    # ndloop normalizes the output to row-major, so a transposed output arrives
+    # here as a transposed operand instead
+    out = Cumo::SFloat.new(64, 64).seq
+    view = out.transpose
+    view.inplace + Cumo::SFloat.new(64, 64).fill(1)
+    assert_equal(Cumo::SFloat.new(64, 64).seq.to_a.transpose.map { |r| r.map { |v| v + 1 } }, view.to_a)
+
+    zeros = Cumo::Int32.new(40, 40).fill(0)
+    assert_raise(ZeroDivisionError) { Cumo::Int32.new(40, 40).seq(1) / zeros.transpose }
+  end
+
   test "a copy of a transposed view reaches past one grid of tiles" do
-    # gridDim.y stops at 65535, which is 2**21 rows of tiles.
+    # gridDim.y stops at 65535, which is 2**21 rows of tiles. Both sides have to
+    # reach a tile or the copy takes the plain loop and never gets there.
+    # 2**24 elements no longer land on distinct SFloat values, and this needs
+    # 2**26 of them to reach past the cap
     rows = 2_097_153
-    src = Cumo::SFloat.new(2, rows).seq
+    cols = 32
+    src = Cumo::DFloat.new(cols, rows).seq
     got = src.transpose.dup
 
-    assert_equal([rows, 2], got.shape)
-    assert_equal([0.0, rows.to_f], got[0, true].to_a)
-    assert_equal([(rows - 1).to_f, (2 * rows - 1).to_f], got[rows - 1, true].to_a)
-    assert_equal([1048576.0, (rows + 1048576).to_f], got[1048576, true].to_a)
+    assert_equal([rows, cols], got.shape)
+    assert_equal((0...cols).map { |c| (c * rows).to_f }, got[0, true].to_a)
+    assert_equal((0...cols).map { |c| (c * rows + rows - 1).to_f }, got[rows - 1, true].to_a)
+    assert_equal((0...cols).map { |c| (c * rows + 1_048_576).to_f }, got[1_048_576, true].to_a)
   end
 
   test "a view waits for the index array its constructor queued" do
