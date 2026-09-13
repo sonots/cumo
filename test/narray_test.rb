@@ -4843,6 +4843,19 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal((0...cols).map { |c| c * rows + 1_048_576 }, got[1_048_576, true].to_a)
   end
 
+  test "free refuses a frozen array" do
+    a = Cumo::DFloat.new(3).seq
+    a.freeze
+
+    assert_raise(RuntimeError) { a.free }
+    assert_equal([0.0, 1.0, 2.0], a.to_a)
+
+    b = Cumo::DFloat.new(3).seq
+    assert_true(b.free)
+    assert_false(b.free)
+    assert_raise(RuntimeError) { b.to_a }
+  end
+
   test "a view waits for the index array its constructor queued" do
     n = 1 << 16
     a = Cumo::DFloat.new(n).seq
@@ -6783,9 +6796,8 @@ class NArrayTest < Test::Unit::TestCase
         "ArgumentError"
       end
 
-      # A buffer that belongs to a frozen String is not this array's to free,
-      # but keeping it while the shape grows makes the copy that comes next
-      # read a megabyte out of sixteen bytes.
+      # A buffer sized for sixteen bytes is not what the copy after a grown
+      # shape reads a megabyte out of.
       f = Cumo::RObject.new(2)
       f.store([+"a", +"b"])
       f.store_binary(("\\x01" * 16).freeze)

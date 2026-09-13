@@ -38,14 +38,12 @@ static void
     assert(na->base.type == CUMO_NARRAY_DATA_T);
 
     if (na->ptr != NULL) {
-        if (na->owned) {
   <% if is_object %>
-            xfree(na->ptr);
+        xfree(na->ptr);
   <% else %>
-            cumo_cuda_runtime_free_no_raise(na->ptr);
-            rb_gc_adjust_memory_usage(-(ssize_t)<%=type_name%>_data_bytes(na));
+        cumo_cuda_runtime_free_no_raise(na->ptr);
+        rb_gc_adjust_memory_usage(-(ssize_t)<%=type_name%>_data_bytes(na));
   <% end %>
-        }
         na->ptr = NULL;
     }
     if (na->base.shape != NULL && na->base.shape != &(na->base.size)) {
@@ -117,6 +115,5 @@ static VALUE
     na->base.shape = NULL;
     na->base.reduce = INT2FIX(0);
     na->ptr = NULL;
-    na->owned = FALSE;
     return TypedData_Wrap_Struct(klass, &<%=type_name%>_data_type, (void*)na);
 }
