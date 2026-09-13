@@ -43,6 +43,28 @@ class FusedTest < CumoTestBase
     end
   end
 
+  # exp(x - max) / sum(exp(x - max)), in double for the same reason.
+  def ref_softmax(x)
+    x = Cumo::DFloat.cast(x)
+    e = Cumo::NMath.exp(x - x.max(axis: -1, keepdims: true))
+    e / e.sum(axis: -1, keepdims: true)
+  end
+
+  def assert_softmax(x)
+    actual = x.softmax
+    expected = ref_softmax(x)
+    assert_kind_of(x.class, actual)
+    assert_equal(x.shape, actual.shape)
+    rtol = rtol_for(x.class)
+    # A softmax over a long row is all small numbers, so a bound that does not
+    # scale with them passes for any answer at all: over 20000 columns in half
+    # the whole result is five times under a flat 1e-2.
+    scale = expected.abs.max.extract_cpu
+    assert_operator((expected - Cumo::DFloat.cast(actual)).abs.max.extract_cpu, :<, rtol * scale)
+    # Every row is a distribution, which the reference cannot vouch for.
+    assert_operator((Cumo::DFloat.cast(actual).sum(axis: -1) - 1.0).abs.max.extract_cpu, :<, rtol)
+  end
+
   def assert_layer_norm(x, gamma, beta, eps: 1e-5)
     actual = eps == 1e-5 ? x.layer_norm(gamma, beta) : x.layer_norm(gamma, beta, eps: eps)
     expected = ref_layer_norm(x, gamma, beta, eps)
@@ -124,6 +146,89 @@ class FusedTest < CumoTestBase
       y = x.layer_norm(dtype.new(3).seq, dtype.new(3).seq)
       assert_kind_of(dtype, y)
       assert_equal([0, 3], y.shape)
+    end
+
+    # 8192 columns is the last shape one block walks and 8193 the first the split
+    # machinery takes, so the pair is the only place the two paths meet.
+    [[4], [3, 5], [2, 3, 7], [1, 1], [6, 1], [4, 32], [2, 512],
+     [1, 8192], [1, 8193], [2, 9_000], [255, 9_000], [256, 9_000], [70_000, 8]].each do |shape|
+      test "softmax #{shape.inspect} #{dtype}" do
+        assert_softmax(dtype.new(*shape).rand_norm)
+      end
+    end
+
+    test "softmax reads a non-contiguous view #{dtype}" do
+      assert_softmax(dtype.new(5, 4).rand_norm.transpose)
+    end
+
+    # Masking with -Infinity is what attention does with it, and a row of them
+    # is what the two sides of a reduction combine into: taking the maximum of
+    # two of those and rescaling by exp of their difference asks for exp(NaN).
+    [512, 8192, 8193, 20_000].each do |cols|
+      test "softmax takes a row masked with -Infinity, #{cols} wide #{dtype}" do
+        x = dtype.new(1, cols).fill(-Float::INFINITY)
+        x[0, cols - 2] = 1.0
+        x[0, cols - 1] = 2.0
+        y = x.softmax
+        assert_equal(0, y.to_a.flatten.count { |v| v.nan? }, "softmax answered NaN for a masked row")
+        assert_in_delta(0.26894142136999516, y[0, cols - 2].extract_cpu, rtol_for(dtype))
+        assert_in_delta(0.7310585786300049, y[0, cols - 1].extract_cpu, rtol_for(dtype))
+      end
+    end
+
+    # Both paths answer what exp(x - max) / sum answers, which is NaN: the
+    # largest term is exp(Infinity - Infinity), and a row with nothing finite
+    # in it has no maximum to measure against.
+    [512, 20_000].each do |cols|
+      test "softmax answers NaN where the reference does, #{cols} wide #{dtype}" do
+        plus = dtype.new(1, cols).fill(0.0)
+        plus[0, 0] = Float::INFINITY
+        assert(plus.softmax.to_a.flatten.all? { |v| v.nan? })
+        assert(dtype.new(1, cols).fill(-Float::INFINITY).softmax.to_a.flatten.all? { |v| v.nan? })
+      end
+    end
+
+    # Taking the row maximum out is what keeps exp from overflowing, and it has
+    # to be the maximum: softmax is the same answer whatever is subtracted, so
+    # only a row whose spread overflows tells the maximum from anything else.
+    test "softmax stays finite where a bare exp would not #{dtype}" do
+      far = dtype == Cumo::HFloat ? 20.0 : 1.0e3
+      x = dtype[[-far, 0.0, far]]
+      y = x.softmax
+      assert(y.to_a.flatten.all? { |v| v.finite? }, "softmax answered #{y.to_a.inspect}")
+      assert(Cumo::NMath.exp(x).to_a.flatten.any? { |v| v.infinite? },
+             "a bare exp is expected to overflow #{dtype} here")
+      assert_softmax(x)
+    end
+
+    test "softmax keeps the row maximum through a long row #{dtype}" do
+      far = dtype == Cumo::HFloat ? 20.0 : 1.0e3
+      [512, 20_000].each do |cols|
+        x = dtype.new(1, cols).fill(-far)
+        x[0, cols - 1] = far
+        y = x.softmax
+        assert(y.to_a.flatten.all? { |v| v.finite? })
+        assert_in_delta(1.0, y[0, cols - 1].extract_cpu, rtol_for(dtype))
+      end
+    end
+
+    test "softmax answers one for a row of one #{dtype}" do
+      assert_equal([[1.0], [1.0]], dtype[[5.0], [7.0]].softmax.to_a)
+    end
+
+    test "softmax answers an empty array for an empty one #{dtype}" do
+      y = dtype.new(0, 3).seq.softmax
+      assert_kind_of(dtype, y)
+      assert_equal([0, 3], y.shape)
+    end
+
+    test "softmax takes a NaN through the whole row #{dtype}" do
+      y = dtype[[1.0, Float::NAN, 3.0]].softmax
+      assert(y.to_a.flatten.all? { |v| v.nan? }, "softmax answered #{y.to_a.inspect}")
+    end
+
+    test "softmax refuses what it cannot run along #{dtype}" do
+      assert_raise(Cumo::NArray::ShapeError) { dtype.cast(1.0).softmax }
     end
 
     test "layer_norm refuses what it cannot normalize #{dtype}" do
