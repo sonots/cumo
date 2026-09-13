@@ -10,9 +10,9 @@ static VALUE
     case CUMO_NARRAY_DATA_T:
         ptr = CUMO_NA_DATA_PTR(na);
         if (na->size > 0 && ptr == NULL) {
-            ptr = cumo_cuda_runtime_malloc(((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT));
+            ptr = cumo_cuda_runtime_malloc(CUMO_BIT_BYTES(na->size));
             CUMO_NA_DATA_PTR(na) = ptr;
-            rb_gc_adjust_memory_usage(((na->size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT));
+            rb_gc_adjust_memory_usage(CUMO_BIT_BYTES(na->size));
         }
         break;
     case CUMO_NARRAY_VIEW_T:

@@ -5,7 +5,7 @@ static size_t
         return 0;
     }
   <% if is_bit %>
-    return ((na->base.size-1)/8/sizeof(CUMO_BIT_DIGIT)+1)*sizeof(CUMO_BIT_DIGIT);
+    return CUMO_BIT_BYTES(na->base.size);
   <% else %>
     return na->base.size * sizeof(dtype);
   <% end %>
