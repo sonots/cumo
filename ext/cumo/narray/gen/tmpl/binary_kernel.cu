@@ -52,40 +52,20 @@ __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cum
 // either its read or the write strided whichever way the loop walks. Stage that
 // operand through a shared memory tile so all three arrays are touched in rows.
 // t_side says which operand is the transposed one.
-__global__ void <%="cumo_#{c_iter}_transpose_kernel"%>(char *p1, char *p2, char *p3, uint64_t rows, uint64_t cols, int* divzero, int t_side)
+__global__ void <%="cumo_#{c_iter}_transpose_kernel"%>(char *p1, char *p2, char *p3, int* divzero, int t_side, uint64_t rows, uint64_t cols)
 {
-    __shared__ dtype tile[CUMO_TRANSPOSE_TILE][CUMO_TRANSPOSE_TILE + 1];
+    CUMO_TRANSPOSE_TILE_DECL(dtype, tile);
     char *tp = (t_side == 1) ? p1 : p2;
     char *sp = (t_side == 1) ? p2 : p1;
-    uint64_t base;
 
-    for (base = (uint64_t)blockIdx.y * CUMO_TRANSPOSE_TILE; base < rows;
-         base += (uint64_t)gridDim.y * CUMO_TRANSPOSE_TILE) {
-        uint64_t x = base + threadIdx.x;
-        uint64_t y = (uint64_t)blockIdx.x * CUMO_TRANSPOSE_TILE + threadIdx.y;
-        int j;
-
-        __syncthreads();
-        for (j = 0; threadIdx.y + j < CUMO_TRANSPOSE_TILE; j += CUMO_TRANSPOSE_ROWS) {
-            if (x < rows && y + j < cols) {
-                tile[threadIdx.y + j][threadIdx.x] = *(dtype*)(tp + ((y + j) * rows + x) * sizeof(dtype));
-            }
-        }
-        __syncthreads();
-        x = (uint64_t)blockIdx.x * CUMO_TRANSPOSE_TILE + threadIdx.x;
-        y = base + threadIdx.y;
-        for (j = 0; threadIdx.y + j < CUMO_TRANSPOSE_TILE; j += CUMO_TRANSPOSE_ROWS) {
-            if (x < cols && y + j < rows) {
-                uint64_t off = ((y + j) * cols + x) * sizeof(dtype);
-                dtype t = tile[threadIdx.x][threadIdx.y + j];
-                dtype o = *(dtype*)(sp + off);
-                dtype lhs = (t_side == 1) ? t : o;
-                dtype rhs = (t_side == 1) ? o : t;
-                cumo_check_intdivzero(rhs);
-                *(dtype*)(p3 + off) = m_<%=name%>(lhs, rhs);
-            }
-        }
-    }
+    CUMO_TRANSPOSE_TILE_LOOP(tile, rows, cols,
+        *(dtype*)(tp + cumo_tile_src * sizeof(dtype)),
+        dtype o = *(dtype*)(sp + cumo_tile_dst * sizeof(dtype));
+        dtype lhs = (t_side == 1) ? cumo_tile_val : o;
+        dtype rhs = (t_side == 1) ? o : cumo_tile_val;
+        cumo_check_intdivzero(rhs);
+        *(dtype*)(p3 + cumo_tile_dst * sizeof(dtype)) = m_<%=name%>(lhs, rhs);
+    );
 }
 
 // Launches the tiled kernel and answers 1 when it did. It takes over when one
@@ -96,13 +76,11 @@ static int
 <%="cumo_#{c_iter}_launch_transpose"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* divzero)
 {
     ssize_t esz = (ssize_t)sizeof(dtype);
-    uint64_t rows, cols, tiles_y;
+    uint64_t rows, cols;
     ssize_t row, col;
     int rows_a1, rows_a2, t_side;
 
-    if (indexer->ndim != 2 ||
-        indexer->shape[0] < CUMO_TRANSPOSE_TILE ||
-        indexer->shape[1] < CUMO_TRANSPOSE_TILE) {
+    if (!CUMO_TRANSPOSE_TILE_FITS(indexer)) {
         return 0;
     }
     rows = indexer->shape[0];
@@ -122,12 +100,8 @@ static int
         return 0;
     }
 
-    tiles_y = (rows + CUMO_TRANSPOSE_TILE - 1) / CUMO_TRANSPOSE_TILE;
-    dim3 grid((unsigned int)((cols + CUMO_TRANSPOSE_TILE - 1) / CUMO_TRANSPOSE_TILE),
-              (unsigned int)(tiles_y > CUMO_MAX_GRID_DIM_Y ? CUMO_MAX_GRID_DIM_Y : tiles_y));
-    dim3 block(CUMO_TRANSPOSE_TILE, CUMO_TRANSPOSE_ROWS);
-
-    <%="cumo_#{c_iter}_transpose_kernel"%><<<grid, block>>>(a1->ptr, a2->ptr, a3->ptr, rows, cols, divzero, t_side);
+    CUMO_TRANSPOSE_LAUNCH(<%="cumo_#{c_iter}_transpose_kernel"%>, rows, cols,
+                          a1->ptr, a2->ptr, a3->ptr, divzero, t_side);
     cumo_cuda_runtime_check_kernel_launch();
     return 1;
 }

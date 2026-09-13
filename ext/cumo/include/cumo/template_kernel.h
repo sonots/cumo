@@ -73,6 +73,91 @@
 // gridDim.y and gridDim.z stop at 65535, unlike gridDim.x.
 #define CUMO_MAX_GRID_DIM_Y 65535
 
+// The tile a CUMO_TRANSPOSE_TILE_LOOP stages through. The extra column is what
+// spreads its rows over the banks, so the loop reads it back along either axis
+// without conflicting with itself.
+#define CUMO_TRANSPOSE_TILE_DECL(type, name) \
+    __shared__ type name[CUMO_TRANSPOSE_TILE][CUMO_TRANSPOSE_TILE + 1]
+
+// Tiles only pay off once both sides reach one. A shorter side leaves most of
+// each warp idle, while the plain loop already reads or writes it in one go.
+#define CUMO_TRANSPOSE_TILE_FITS(indexer)                                      \
+    ((indexer)->ndim == 2 &&                                                   \
+     (indexer)->shape[0] >= CUMO_TRANSPOSE_TILE &&                             \
+     (indexer)->shape[1] >= CUMO_TRANSPOSE_TILE)
+
+// Walks a rows-by-cols transpose one tile at a time.
+//
+// STAGE reads one element of the transposed side, which sits at cumo_tile_src
+// of that side's own layout, and lands in cumo_tile_val. The body then runs
+// once per output element, at cumo_tile_dst of the row-major layout the output
+// and any other operand share.
+//
+// The body runs inside two nested loops, after a __syncthreads(). A continue
+// there skips one output element, a break leaves the current tile but not the
+// walk, and a return deadlocks the block on the next __syncthreads().
+#define CUMO_TRANSPOSE_TILE_LOOP(tile, rows, cols, STAGE, ...)                 \
+    do {                                                                       \
+        uint64_t cumo_tile_rows = (rows);                                      \
+        uint64_t cumo_tile_cols = (cols);                                      \
+        uint64_t cumo_tile_base;                                               \
+                                                                               \
+        for (cumo_tile_base = (uint64_t)blockIdx.y * CUMO_TRANSPOSE_TILE;      \
+             cumo_tile_base < cumo_tile_rows;                                  \
+             cumo_tile_base += (uint64_t)gridDim.y * CUMO_TRANSPOSE_TILE) {    \
+            uint64_t cumo_tile_x = cumo_tile_base + threadIdx.x;               \
+            uint64_t cumo_tile_y =                                             \
+                (uint64_t)blockIdx.x * CUMO_TRANSPOSE_TILE + threadIdx.y;      \
+            int cumo_tile_j;                                                   \
+                                                                               \
+            __syncthreads();                                                   \
+            for (cumo_tile_j = 0;                                              \
+                 threadIdx.y + cumo_tile_j < CUMO_TRANSPOSE_TILE;              \
+                 cumo_tile_j += CUMO_TRANSPOSE_ROWS) {                         \
+                if (cumo_tile_x < cumo_tile_rows &&                            \
+                    cumo_tile_y + cumo_tile_j < cumo_tile_cols) {              \
+                    uint64_t cumo_tile_src =                                   \
+                        (cumo_tile_y + cumo_tile_j) * cumo_tile_rows + cumo_tile_x; \
+                    (tile)[threadIdx.y + cumo_tile_j][threadIdx.x] = STAGE;    \
+                }                                                              \
+            }                                                                  \
+            __syncthreads();                                                   \
+            cumo_tile_x = (uint64_t)blockIdx.x * CUMO_TRANSPOSE_TILE + threadIdx.x; \
+            cumo_tile_y = cumo_tile_base + threadIdx.y;                        \
+            for (cumo_tile_j = 0;                                              \
+                 threadIdx.y + cumo_tile_j < CUMO_TRANSPOSE_TILE;              \
+                 cumo_tile_j += CUMO_TRANSPOSE_ROWS) {                         \
+                if (cumo_tile_x < cumo_tile_cols &&                            \
+                    cumo_tile_y + cumo_tile_j < cumo_tile_rows) {              \
+                    uint64_t cumo_tile_dst =                                   \
+                        (cumo_tile_y + cumo_tile_j) * cumo_tile_cols + cumo_tile_x; \
+                    auto cumo_tile_val =                                       \
+                        (tile)[threadIdx.x][threadIdx.y + cumo_tile_j];        \
+                    __VA_ARGS__                                                \
+                }                                                              \
+            }                                                                  \
+        }                                                                      \
+    } while (0)
+
+// Launches such a kernel, which takes its own arguments and then rows and cols.
+// gridDim.y walks tile rows on its own, but gridDim.x has to cover every tile
+// column: a short grid there drops the columns past it without an error.
+#define CUMO_TRANSPOSE_LAUNCH(kernel, rows, cols, ...)                         \
+    do {                                                                       \
+        uint64_t cumo_launch_rows = (rows);                                    \
+        uint64_t cumo_launch_cols = (cols);                                    \
+        uint64_t cumo_launch_tiles_y =                                         \
+            (cumo_launch_rows + CUMO_TRANSPOSE_TILE - 1) / CUMO_TRANSPOSE_TILE; \
+        dim3 cumo_launch_grid(                                                 \
+            (unsigned int)((cumo_launch_cols + CUMO_TRANSPOSE_TILE - 1) / CUMO_TRANSPOSE_TILE), \
+            (unsigned int)(cumo_launch_tiles_y > CUMO_MAX_GRID_DIM_Y           \
+                           ? CUMO_MAX_GRID_DIM_Y : cumo_launch_tiles_y));      \
+        dim3 cumo_launch_block(CUMO_TRANSPOSE_TILE, CUMO_TRANSPOSE_ROWS);      \
+                                                                               \
+        kernel<<<cumo_launch_grid, cumo_launch_block>>>(                       \
+            __VA_ARGS__, cumo_launch_rows, cumo_launch_cols);                  \
+    } while (0)
+
 static inline size_t
 cumo_get_grid_dim(size_t n)
 {
