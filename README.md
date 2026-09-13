@@ -222,6 +222,50 @@ Cumo::SFloat::Math.atan2(a, 2.0)   #=> Cumo::SFloat
 
 The 0-dimensional form has no effect under Numo, where `[]` returns a Ruby Float.
 
+### Fused Operations
+
+`layer_norm` and `softmax` normalize along the last axis in one kernel each.
+Written out of the operators they take nine launches and five, and a launch costs about two microseconds whatever it is handed, so a short row pays for the launches rather than for its bytes.
+
+```ruby
+y = x.layer_norm(gamma, beta, eps: 1e-5)   # (x - mean) / sqrt(var + eps) * gamma + beta
+probs = scores.softmax                     # exp(x - max) / sum(exp(x - max))
+```
+
+On an RTX 5070 Ti Laptop, against the same arithmetic spelled with operators, in microseconds:
+
+```
+layer_norm              SFloat            DFloat            HFloat
+shape              fused  written    fused  written    fused  written
+1 x 768              3.9     30.1      9.7     30.3      3.9     29.8
+256 x 768            6.6     22.5     22.0     35.4      7.8     22.4
+4096 x 768          32.7    177.4    300.7    610.5     28.2    142.9
+1 x 1000000         19.0     59.4    125.4    175.4     22.3     68.5
+
+softmax                 SFloat            DFloat            HFloat
+shape              fused  written    fused  written    fused  written
+1 x 768              4.3     19.8      7.4     26.5      6.3     34.4
+256 x 768            8.8     13.9     23.4     35.1      6.8     18.5
+4096 x 768          49.2    122.7    318.3    549.0     28.2    109.8
+1 x 1000000         27.8     44.0    108.6    148.5     32.1     53.8
+```
+
+Both pay off in every precision, by the most where the row is short enough that the launches were all it was doing, and by the least in double, where the reduction itself costs more than the launches ever did.
+The memory clock on this card steps between 9001 and 11001 MHz under a benchmark this short, and the absolute figures move with it.
+The ratios hold across the steps.
+
+Both methods normalize along the last axis only.
+Other axes are reachable through `transpose`.
+`layer_norm` divides the variance by the row length and not by one less, which is how the layer is defined and unlike `var`.
+Both answer a new array and ignore `inplace!`, and a non-contiguous receiver is copied once rather than walked.
+`gamma` and `beta` must be one-dimensional, as long as the last axis, and of the same class as the receiver.
+
+`softmax` subtracts the row maximum before exponentiating, so a row masked with `-Float::INFINITY` answers zeros rather than `NaN`.
+A row that is entirely `-Float::INFINITY` answers `NaN`, as the written-out form does.
+
+Those two and `gelu_tanh` from the section below are where a transformer spends most of its launches.
+Decoding one token of GPT-2 124M written against Numo's API takes 640 of them, and calling these three instead removes 332: 200 for the layer norms, 84 for the activations and 48 for the softmaxes.
+
 ### Two Spellings Of gelu
 
 `Cumo::NMath` answers both definitions of the GELU activation, under names of
