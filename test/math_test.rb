@@ -4,6 +4,7 @@ require_relative "test_helper"
 
 class NArrayMathTest < CumoTestBase
   FLOAT_TYPES = [
+    Cumo::HFloat,
     Cumo::SFloat,
     Cumo::SComplex,
     Cumo::DFloat,
@@ -530,7 +531,9 @@ class NArrayMathTest < CumoTestBase
 
   private
 
-  def assert_close(expected, actual, rtol = 1e-6)
+  def assert_close(expected, actual, rtol = nil)
+    # half keeps 11 bits of significand, so it cannot hold a result to 1e-6
+    rtol ||= expected.is_a?(Cumo::HFloat) ? 1e-3 : 1e-6
     scale = [1.0, expected.abs.max.extract_cpu].max
     assert_operator((expected - actual).abs.max.extract_cpu, :<, rtol * scale)
   end
