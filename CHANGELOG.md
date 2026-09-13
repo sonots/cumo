@@ -1,3 +1,45 @@
+# 0.7.0 (2026/09/13)
+
+Breaking changes:
+
+* `cumo_narray_data_t` no longer carries `owned` and `cumo_narray_t` no longer carries `elmsz`. Both ship in `narray.h`, so an extension compiled against 0.6.0 has to be rebuilt. `NArray#free` also refuses a frozen array, as the other release paths already did (PR #421)
+* `gemm` raises `RangeError` for the sizes cuBLAS takes as `int`, where they wrapped and the call read outside its operands (PR #399)
+* Taking a pointer refuses an `allocate` that leaves the array without a buffer, or hands back one already holding data, and `to_binary` measures the array by its type rather than by the `ELEMENT_BYTE_SIZE` its class names (PR #393, PR #392)
+* `store_binary` refuses a non-contiguous view, and a `Cumo::Bit` view that does not begin and end on a byte. It copies the string it is given, so `NArray#free` answers true after a frozen one where it answered false (PR #390, PR #389)
+* `Cumo::Int8.upcast(Cumo::UInt8)` answers `Cumo::Int16` where it answered `Cumo::Int8`, and `Cumo::Bit.upcast(Cumo::RObject)` answers rather than `nil`, the tables having been built before the classes they name existed (PR #378)
+
+Fixes:
+
+* Fix a view constructor that raises partway leaving `stridx` unreadable for the free hook, and leaking the index array it had just built (PR #407)
+* Fix `Cumo::Bit#each`, `map` and `map_with_index` reading what the block queued before the device had run it, 7 of the 18 dtype and method pairs having answered differently from numo (PR #401)
+* Fix `gemm` reading and writing far outside its operands when a matrix holds more than 2**31 elements, the batch strides reaching cuBLAS as `int` where cuBLAS takes `long long int` (PR #399)
+* Fix `median(nan: true)` answering with a number when a NaN is present, the host quicksort it used leaving NaN unordered (PR #398)
+* Fix `where`, `where2` and a masked `aref` writing past the index array they sized, `allocate` being free to resize it between the count and the walk (PR #397)
+* Fix `Cumo::Bit#each_with_index` writing in front of the counter array on a zero-dimensional array, which ordinary code reaches since indexing a Bit answers a zero-dimensional Bit (PR #396)
+* Fix the segfaults an `allocate` that takes no buffer, reshapes the array, or claims its own element size leaves behind, and `to_binary` handing back a 16KB String from a 32 byte allocation (PR #393, PR #392)
+* Fix `store_binary` writing at the start of the base rather than through the view, and pointing the array at a frozen String's bytes, which a compaction moves out from under it (PR #390, PR #389)
+* Fix storing a Ruby Array of sub-narrays: the rows came back as the first one repeated, a row short in an outer axis copied past its own end, and a row with no elements stored the loop's flag as a value, 8.5us a row down to 1.6 (PR #384, PR #383, PR #382)
+* Fix flattening a `Cumo::Bit` view that walks an axis backwards reading near address zero, which `to_a`, `where`, `where2` and `mask` all reach (PR #380)
+* Fix a length-1 axis costing a view its contiguity, and `reshape!` on one carrying a negative stride walking out of the allocation; of 288 views measured, 92 more answer `contiguous?` and none fewer (PR #379, PR #376)
+* Fix `:new` in front of an index-backed dimension reading and writing outside the array, only a trailing new axis having been recognized as one (PR #375)
+* Fix `min`, `max`, `minmax` and `ptp` answering a finite number for an array of infinities, the nan-aware forms seeding with the largest finite value the dtype holds (PR #372)
+
+Changes:
+
+* Add `Cumo::HFloat`, the 16-bit float dtype the GPU has had since Maxwell: the four operations, the comparisons, the reductions, `Cumo::NMath`, `sort`, `rand`, `dot` through cuBLAS with a float compute type, and the cuDNN methods, which now reach the tensor cores. A 1024x1024 `dot` fell to the mulsum fallback and was 285x slower before it, and `cumsum` stays undefined for half until the scan carries a wider accumulator (issue #107, PR #371, PR #370, PR #368, PR #367, PR #366, PR #365)
+* Copy a transposed 2-d view, and run an elementwise op with a transposed operand, through a 32x32 shared memory tile; on 16M SFloat the copy goes from 177 to 380 GB/s and the op from 247 to 396 GB/s (PR #416, PR #415)
+* Point a derived view at the index arrays it would have copied, one device allocation and one copy per dimension, and let `reverse` and `diagonal` borrow the dimensions they only pass through; on a 2**20 index `transpose` goes from 394us to 0.3us, `reverse(1)` from 327us to 0.2us and `diagonal` from 329us to 0.1us (PR #412, PR #410)
+* Let any device synchronize settle a view's index rather than only the one the index code makes, and record the epoch in every constructor that fills an index; storing sub-narrays into an index-backed view goes from 11.7-18.0us to 5.9-8.9us, and a reversed, expanded or diagonal index view stops waiting once per read (PR #414, PR #388)
+* Wait for a sub-narray index only when the row binds one, rather than whenever any argument uses one; a store into an index-backed destination goes from 6.3us to 1.7us a row (PR #387)
+* Reverse a view's index array with a kernel instead of a host loop that stopped the whole device first; a 2**20 index turns around in 480us rather than 1600us (PR #406)
+* Wait for the device once per row of a host sort instead of once per recursion, a 20000 element row having cost 4003 waits; over 200000 elements `sort(nan: true)` goes from 18.95 to 13.03 ms, `median` from 18.15 to 12.41 and `sort_index` from 20.99 to 14.39 (PR #394)
+* Warn when a view is built holding an index array that nothing owns, which leaks it when that view is the last reference and dangles when it is not (PR #413)
+* Say once what the duplicated templates and kernels had each grown a copy of: the transpose tile walk, the `with_index` block argument and its 0-dimensional clamp, the Bit pointer rebase rule, the min and max rules, the minmax pair, and the byte size a packed bit array takes (PR #422, PR #418, PR #409, PR #408, PR #381, PR #377, PR #374, PR #373)
+* Carry the sub-narray reach per dimension and through the row's own shape rather than through the value channel the store templates read (PR #386, PR #385)
+* Separate the cuDNN scalar, compute and parameter types from the tensor's dtype, so a dtype whose compute type differs is named in `gen/def` rather than in eight templates (PR #369)
+* Delete the `dot` and cuBLAS option code no build compiles, the branch that called a view with no strides contiguous, the second spelling of whether a view's offset reaches a char pointer, and the wait in front of a blocking copy that already queues behind the fill it waited for (PR #417, PR #411, PR #404, PR #403)
+* Count the waits a call makes in the sync probe and probe the block walks, run `Cumo::HFloat` through the structural, math and alt-coverage suites, skip the boundary tests on a machine too small for them, and name the message the gemm row count tests are there for (PR #420, PR #419, PR #405, PR #402, PR #400)
+
 # 0.6.0 (2026/09/06)
 
 Breaking changes:
