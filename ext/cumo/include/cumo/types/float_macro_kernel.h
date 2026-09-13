@@ -134,6 +134,8 @@ __host__ __device__ static inline dtype m_floored_mod(dtype x, dtype y) {
 
 #define m_erf(x)     erf(x)
 #define m_erfc(x)    erfc(x)
+#define m_gelu(x)      cumo_gelu(x)
+#define m_gelu_tanh(x) cumo_gelu_tanh(x)
 #define m_ldexp(x,y) ldexp(x,y)
 #define m_frexp(x,exp) frexp(x,exp)
 
@@ -171,5 +173,20 @@ __host__ __device__ static inline dtype f_seq(dtype x, dtype y, double c)
 }
 
 #include "real_accum_kernel.h"
+
+// Typed by the dtype so that a float array reaches erff and tanhf. A helper
+// taking double instead widens every element and runs the fp64 routines, which
+// this card answers an order of magnitude slower than the fp32 ones.
+__host__ __device__ static inline dtype cumo_gelu(dtype x)
+{
+    return (dtype)0.5 * x * ((dtype)1 + erf(x * (dtype)CUMO_M_SQRT1_2));
+}
+
+// The approximation GPT-2 and the transformers after it were trained with.
+__host__ __device__ static inline dtype cumo_gelu_tanh(dtype x)
+{
+    return (dtype)0.5 * x * ((dtype)1 + tanh((dtype)CUMO_M_SQRT_2_OVER_PI *
+                                             (x + (dtype)CUMO_GELU_TANH_CUBIC * x * x * x)));
+}
 
 #endif // CUMO_FLOAT_MACRO_KERNEL_H

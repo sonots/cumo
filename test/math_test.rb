@@ -488,6 +488,79 @@ class NArrayMathTest < CumoTestBase
     end
   end
 
+  # Values from an independent source rather than the kernel's own spelling:
+  # torch.nn.functional.gelu in double, which is the definition cumo follows.
+  GELU_EXACT = {
+    -6.0 => -5.9195258694799691e-09,
+    -2.0 => -0.04550026389635842,
+    -1.0 => -0.15865525393145707,
+    0.0 => 0.0,
+    1.0 => 0.8413447460685429,
+    2.0 => 1.9544997361036416,
+    6.0 => 5.999999994080474,
+  }.freeze
+
+  GELU_TANH = {
+    -6.0 => -0.0,
+    -2.0 => -0.04540230330138159,
+    -1.0 => -0.15880800939172324,
+    0.0 => 0.0,
+    1.0 => 0.8411919906082768,
+    2.0 => 1.9545976966986184,
+    6.0 => 6.0,
+  }.freeze
+
+  def test_gelu
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      b = Cumo::NMath.gelu(dtype[*GELU_EXACT.keys])
+      assert_kind_of(dtype, b)
+      assert_close(dtype[*GELU_EXACT.values], b)
+    end
+  end
+
+  def test_gelu_tanh
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      b = Cumo::NMath.gelu_tanh(dtype[*GELU_TANH.keys])
+      assert_kind_of(dtype, b)
+      assert_close(dtype[*GELU_TANH.values], b)
+      # The two are different functions, not two roundings of one. Checked per
+      # dtype, since wiring one to the other is a per-dtype macro.
+      a = dtype[-2, -1, 1, 2]
+      assert_operator((Cumo::NMath.gelu(a) - Cumo::NMath.gelu_tanh(a)).abs.max.extract_cpu,
+                      :>, dtype == Cumo::HFloat ? 1e-4 : 1e-5)
+    end
+  end
+
+  # Both forms are x * (something that goes to zero), so a negative infinity
+  # reaches infinity times zero. torch answers NaN here too, and cumo follows
+  # the framework rather than the limit, which is zero.
+  def test_gelu_at_infinity
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      inf = dtype[-Float::INFINITY, Float::INFINITY]
+      %i[gelu gelu_tanh].each do |name|
+        y = Cumo::NMath.send(name, inf).to_a
+        assert(y[0].nan?, "#{name} #{dtype} at -Infinity answered #{y[0]}")
+        assert(y[1].infinite? == 1, "#{name} #{dtype} at +Infinity answered #{y[1]}")
+        assert(Cumo::NMath.send(name, dtype[Float::NAN]).to_a.first.nan?)
+      end
+    end
+  end
+
+  # 1 + erf(x/sqrt(2)) cancels for a large negative x, so the answer runs out of
+  # significant digits and reaches exactly zero well before the true value does.
+  # torch answers the same, and matching it is worth more here than the digits.
+  def test_gelu_underflows_like_torch
+    assert_equal(0.0, Cumo::NMath.gelu(Cumo::DFloat[-10.0]).to_a.first.abs)
+    assert_in_delta(-4.884981308350689e-15, Cumo::NMath.gelu(Cumo::DFloat[-8.0]).to_a.first, 1e-29)
+  end
+
+  def test_gelu_reads_a_non_contiguous_view
+    base = Cumo::DFloat.new(4, 3).seq(-6) / 2
+    view = base.transpose
+    assert_close(Cumo::NMath.gelu(view.dup), Cumo::NMath.gelu(view))
+    assert_close(Cumo::NMath.gelu_tanh(view.dup), Cumo::NMath.gelu_tanh(view))
+  end
+
   def test_log1p
     FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
       a = dtype[-0.5, 0, 1, 2]

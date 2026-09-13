@@ -32,3 +32,11 @@
 #ifndef M_LN10
 #define M_LN10         2.30258509299404568402  /* log_e 10 */
 #endif
+
+/* The constants the two gelu forms are written with, spelled once on each side
+   so the macro headers cannot drift a digit apart. */
+#ifndef CUMO_M_SQRT1_2
+#define CUMO_M_SQRT1_2        0.70710678118654752440  /* 1/sqrt(2) */
+#define CUMO_M_SQRT_2_OVER_PI 0.79788456080286535588  /* sqrt(2/pi) */
+#define CUMO_GELU_TANH_CUBIC  0.044715                /* fitted, not a closed form */
+#endif

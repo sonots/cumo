@@ -128,6 +128,8 @@ static inline float cumo_half_floored_mod(float x, float y)
 
 #define m_erf(x)     cumo_float2half(erff(cumo_half2float(x)))
 #define m_erfc(x)    cumo_float2half(erfcf(cumo_half2float(x)))
+#define m_gelu(x)      cumo_float2half(cumo_half_gelu(cumo_half2float(x)))
+#define m_gelu_tanh(x) cumo_float2half(cumo_half_gelu_tanh(cumo_half2float(x)))
 #define m_ldexp(x,y) cumo_float2half(cumo_half_ldexp(cumo_half2float(x),cumo_half2float(y)))
 #define m_frexp(x,exp) cumo_float2half(frexpf(cumo_half2float(x),exp))
 
@@ -186,3 +188,14 @@ static inline cumo_half f_seq(cumo_half x, cumo_half y, double c)
 }
 
 #include "real_accum.h"
+
+static inline float cumo_half_gelu(float x)
+{
+    return 0.5f * x * (1.0f + erff(x * (float)CUMO_M_SQRT1_2));
+}
+
+// The approximation GPT-2 and the transformers after it were trained with.
+static inline float cumo_half_gelu_tanh(float x)
+{
+    return 0.5f * x * (1.0f + tanhf((float)CUMO_M_SQRT_2_OVER_PI * (x + (float)CUMO_GELU_TANH_CUBIC * x * x * x)));
+}

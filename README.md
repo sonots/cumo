@@ -222,6 +222,24 @@ Cumo::SFloat::Math.atan2(a, 2.0)   #=> Cumo::SFloat
 
 The 0-dimensional form has no effect under Numo, where `[]` returns a Ruby Float.
 
+### Two Spellings Of gelu
+
+`Cumo::NMath` answers both definitions of the GELU activation, under names of
+their own rather than a keyword, since a unary NMath function takes none.
+
+| method | formula | matches |
+| --- | --- | --- |
+| `gelu` | `0.5 * x * (1 + erf(x / sqrt(2)))` | PyTorch's default, `approximate='none'` |
+| `gelu_tanh` | `0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x**3)))` | PyTorch's `approximate='tanh'`, and what GPT-2 was trained with |
+
+They differ by at most 4.1e-4, which is small enough to mistake one for the
+other and far too large to swap under a set of trained weights, so pick the one
+the weights were trained with.
+
+Both follow PyTorch at the edges rather than the limit: a large negative `x`
+runs out of significant digits and answers zero, and `-Float::INFINITY` answers
+`NaN`.
+
 ### Half Precision
 
 `Cumo::HFloat`, also reachable as `Cumo::Float16`, holds IEEE binary16: one sign bit, five of exponent and ten of mantissa.
