@@ -378,6 +378,11 @@ if is_float && !is_complex && !is_object
   def_method "pooling_backward"
 end
 
+# fused
+if is_float && !is_complex && !is_object
+  def_method "layer_norm"
+end
+
 # rmsdev
 # prod
 
