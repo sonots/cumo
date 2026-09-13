@@ -62,6 +62,17 @@
 // limit of 2^31-1 is far above this.
 #define CUMO_MAX_GRID_DIM (4294967295ul / CUMO_MAX_BLOCK_DIM)
 
+// A transpose has one side strided whichever way it is walked, so it stages a
+// square tile in shared memory and reads and writes both sides in rows. The
+// extra column spreads a tile's rows over the banks: for a 4-byte element that
+// leaves no conflict at all, and it drops an 8-byte one to 2-way and a 16-byte
+// one to 4-way. TILE must stay a multiple of ROWS.
+#define CUMO_TRANSPOSE_TILE 32
+#define CUMO_TRANSPOSE_ROWS 8
+
+// gridDim.y and gridDim.z stop at 65535, unlike gridDim.x.
+#define CUMO_MAX_GRID_DIM_Y 65535
+
 static inline size_t
 cumo_get_grid_dim(size_t n)
 {

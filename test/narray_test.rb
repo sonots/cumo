@@ -4760,6 +4760,38 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "a copy of a transposed view holds every element" do
+    [[1, 1], [1, 5], [5, 1], [31, 33], [32, 32], [33, 31], [64, 96], [100, 100]].each do |rows, cols|
+      src = Cumo::SFloat.new(cols, rows).seq
+      want = src.to_a.transpose
+
+      assert_equal(want, src.transpose.dup.to_a, "dup #{rows}x#{cols}")
+
+      dst = Cumo::SFloat.new(rows, cols).fill(0)
+      dst.store(src.transpose)
+      assert_equal(want, dst.to_a, "store #{rows}x#{cols}")
+
+      assert_equal(want, Cumo::DFloat.cast(src.transpose).to_a, "cast #{rows}x#{cols}")
+    end
+
+    cube = Cumo::SFloat.new(2, 3, 4).seq
+    plane = lambda { |c, *axes| c.transpose(*axes).to_a }
+    assert_equal(plane.call(cube, 2, 1, 0), cube.transpose.dup.to_a)
+    assert_equal(plane.call(cube, 0, 2, 1), cube.transpose(0, 2, 1).dup.to_a)
+  end
+
+  test "a copy of a transposed view reaches past one grid of tiles" do
+    # gridDim.y stops at 65535, which is 2**21 rows of tiles.
+    rows = 2_097_153
+    src = Cumo::SFloat.new(2, rows).seq
+    got = src.transpose.dup
+
+    assert_equal([rows, 2], got.shape)
+    assert_equal([0.0, rows.to_f], got[0, true].to_a)
+    assert_equal([(rows - 1).to_f, (2 * rows - 1).to_f], got[rows - 1, true].to_a)
+    assert_equal([1048576.0, (rows + 1048576).to_f], got[1048576, true].to_a)
+  end
+
   test "a view waits for the index array its constructor queued" do
     n = 1 << 16
     a = Cumo::DFloat.new(n).seq
