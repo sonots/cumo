@@ -3,6 +3,21 @@
 require_relative "test_helper"
 
 class FusedTest < CumoTestBase
+  # Fires once, and only once armed, so the allocate it catches is the one the
+  # method under test makes rather than the ones the setup makes.
+  ARMED_ALLOCATE = <<~RUBY
+    $armed = false
+    module Armed
+      def allocate
+        if $armed
+          $armed = false
+          send(:initialize, 1)
+        end
+        super
+      end
+    end
+  RUBY
+
   FUSED_FLOAT_TYPES = [
     Cumo::HFloat,
     Cumo::SFloat,
@@ -93,7 +108,7 @@ class FusedTest < CumoTestBase
       end
     end
 
-    # The grid stops at 65535 blocks, so this is the only shape where a block
+    # The grid is held at 65536 blocks, so this is the only shape where a block
     # takes a second row and the barrier that guards the shared row total
     # between them has anything to guard.
     test "layer_norm walks more rows than the grid holds #{dtype}" do
@@ -116,6 +131,9 @@ class FusedTest < CumoTestBase
       assert_raise(Cumo::NArray::ShapeError) { x.layer_norm(dtype.new(3).seq, dtype.new(4).seq) }
       assert_raise(Cumo::NArray::ShapeError) { dtype.cast(1.0).layer_norm(dtype.new(1).seq, dtype.new(1).seq) }
       assert_raise(TypeError) { x.layer_norm(Cumo::Int32.new(3).seq, dtype.new(3).seq) }
+      # The right number of elements in the wrong shape is not the right gamma.
+      assert_raise(Cumo::NArray::ShapeError) { x.layer_norm(dtype.new(1, 3).seq, dtype.new(3).seq) }
+      assert_raise(Cumo::NArray::ShapeError) { x.layer_norm(dtype.new(3).seq, dtype.new(3, 1).seq) }
     end
   end
 
@@ -127,8 +145,36 @@ class FusedTest < CumoTestBase
     gamma = Cumo::HFloat.ones(4)
     beta = Cumo::HFloat.zeros(4)
     naive = (x - x.mean(axis: -1, keepdims: true))
-    assert(((naive * naive).mean(axis: -1) * 1.0).to_a.flatten.all? { |v| v.infinite? },
+    assert((naive * naive).mean(axis: -1).to_a.flatten.all? { |v| v.infinite? },
            "the naive HFloat variance is expected to overflow here")
     assert_layer_norm(x, gamma, beta)
+  end
+
+  # Taking a pointer runs allocate, and a class is free to redefine it, so the
+  # sizes the launch is built from have to be the ones left behind afterwards.
+  test "layer_norm refuses an allocate that resizes the output under it" do
+    assert_child_raises("size mismatch: 1 != 1048576", <<~RUBY, prelude: ARMED_ALLOCATE)
+      Cumo::DFloat.prepend(Armed)
+      x = Cumo::DFloat.new(1 << 20).seq
+      g = Cumo::DFloat.new(1 << 20).fill(1)
+      b = Cumo::DFloat.new(1 << 20).fill(0)
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      $armed = true
+      x.layer_norm(g, b)
+    RUBY
+  end
+
+  # cumo_na_as_contiguous_array answers what dup gave it, so the class checked
+  # up front is not the one whose bytes the kernel reads.
+  test "layer_norm refuses a dup that answers another dtype" do
+    assert_child_raises("invalid NArray type (class)", <<~RUBY, prelude: "")
+      class Cumo::DFloat
+        def dup
+          Cumo::Int32.new(4, 6).seq
+        end
+      end
+      x = Cumo::DFloat.new(6, 4).seq.transpose
+      x.layer_norm(Cumo::DFloat.new(6).fill(1), Cumo::DFloat.new(6).fill(0))
+    RUBY
   end
 end
