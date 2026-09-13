@@ -129,6 +129,8 @@ static inline dtype m_floored_mod(dtype x, dtype y) {
 
 #define m_erf(x)     erf(x)
 #define m_erfc(x)    erfc(x)
+#define m_gelu(x)      cumo_gelu(x)
+#define m_gelu_tanh(x) cumo_gelu_tanh(x)
 #define m_ldexp(x,y) ldexp(x,y)
 #define m_frexp(x,exp) frexp(x,exp)
 
@@ -209,3 +211,18 @@ static inline dtype f_kahan_sum_nan(size_t n, char *p, ssize_t stride)
 }
 
 #include "real_accum.h"
+
+// Typed by the dtype so that a float array reaches erff and tanhf. A helper
+// taking double instead widens every element and runs the fp64 routines, which
+// this card answers an order of magnitude slower than the fp32 ones.
+static inline dtype cumo_gelu(dtype x)
+{
+    return (dtype)0.5 * x * ((dtype)1 + erf(x * (dtype)CUMO_M_SQRT1_2));
+}
+
+// The approximation GPT-2 and the transformers after it were trained with.
+static inline dtype cumo_gelu_tanh(dtype x)
+{
+    return (dtype)0.5 * x * ((dtype)1 + tanh((dtype)CUMO_M_SQRT_2_OVER_PI *
+                                             (x + (dtype)CUMO_GELU_TANH_CUBIC * x * x * x)));
+}

@@ -467,6 +467,8 @@ def_module do
     math "hypot", 2
     math "erf"
     math "erfc"
+    math "gelu"
+    math "gelu_tanh"
     math "log1p"
     math "expm1"
     math "ldexp", 2
