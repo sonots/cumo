@@ -602,7 +602,7 @@ struct reduce_combine {
 // the partials so the caller can combine them with its own second pass. The
 // caller frees the returned buffer.
 template <typename TypeIn, typename TypeReduce, typename ReductionImpl, bool ARG = false>
-TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t ad, int64_t n_split, int64_t reduce_total_size, cumo_na_reduction_arg_t* arg2, ReductionImpl& impl) {
+TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t ad, int64_t n_split, int64_t reduce_total_size, cumo_na_reduction_arg_t* arg2, ReductionImpl& impl, char* held = 0) {
     int64_t chunk = (reduce_total_size + n_split - 1) / n_split;
     int64_t partial_total_size = arg.out_indexer.total_size * n_split;
     TypeReduce* partial = reinterpret_cast<TypeReduce*>(cumo_cuda_runtime_malloc(sizeof(TypeReduce) * partial_total_size));
@@ -618,6 +618,7 @@ TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t 
     } else {
         reduction_partial_kernel<false,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     }
+    cumo_check_launch_holding(partial, held);
 
     arg2->in.ptr = reinterpret_cast<char*>(partial);
     arg2->in.step[0] = sizeof(TypeReduce);
@@ -635,7 +636,7 @@ static inline bool zip_axes_are_flat(const cumo_reduce_addr_t& ad, const cumo_re
 
 // First pass of a split zip reduction. See reduce_partial_pass above.
 template <typename TypeIn, typename TypeReduce, typename ReductionImpl>
-TypeReduce* reduce_zip_partial_pass(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, cumo_reduce_addr_t ad, cumo_reduce_addr_t ad2, int64_t n_split, int64_t reduce_total_size, cumo_na_reduction_arg_t* arg2, ReductionImpl& impl) {
+TypeReduce* reduce_zip_partial_pass(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, cumo_reduce_addr_t ad, cumo_reduce_addr_t ad2, int64_t n_split, int64_t reduce_total_size, cumo_na_reduction_arg_t* arg2, ReductionImpl& impl, char* held = 0) {
     int64_t chunk = (reduce_total_size + n_split - 1) / n_split;
     int64_t partial_total_size = arg.out_indexer.total_size * n_split;
     TypeReduce* partial = reinterpret_cast<TypeReduce*>(cumo_cuda_runtime_malloc(sizeof(TypeReduce) * partial_total_size));
@@ -651,6 +652,7 @@ TypeReduce* reduce_zip_partial_pass(cumo_na_reduction_arg_t arg, cumo_na_iarray_
     } else {
         reduction_zip_partial_kernel<false,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     }
+    cumo_check_launch_holding(partial, held);
 
     arg2->in.ptr = reinterpret_cast<char*>(partial);
     arg2->in.step[0] = sizeof(TypeReduce);
@@ -662,8 +664,12 @@ TypeReduce* reduce_zip_partial_pass(cumo_na_reduction_arg_t arg, cumo_na_iarray_
 
 }  // cumo_detail
 
+// held0 and held1 are every scratch buffer still outstanding, the caller's
+// included. The checks free them before they raise, since rb_raise is a longjmp
+// and nothing written after it runs. The split forms pass their own partial as
+// well as whatever they were handed.
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, bool check_launch = true) {
+void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* held0 = 0, char* held1 = 0) {
     if (arg.out_indexer.total_size == 0) {
         return;
     }
@@ -684,21 +690,16 @@ void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, bool check_l
     } else {
         cumo_detail::reduction_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, ad, out_block_size, reduce_block_size, impl);
     }
-    if (check_launch) { cumo_cuda_runtime_check_kernel_launch(); }
+    cumo_check_launch_holding(held0, held1);
 }
 
-// rb_raise leaves through longjmp, which runs no destructor, so a check that
-// raises while a scratch buffer is held loses it to the pool. cudaGetLastError
-// keeps a rejected launch until it is read, so everything holding one passes
-// check_launch = false and takes the one check after the free.
-//
 // Runs the reduce axis of one output across several blocks and combines their
 // accumulators in a second launch, for the shapes where cumo_reduce would give
 // the grid almost no blocks. Falls back to cumo_reduce when that is not the
 // case. Only for an impl whose Identity ignores its index argument — see
 // reduce_combine above.
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, bool check_launch = true) {
+void cumo_reduce_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* held = 0) {
     using TypeReduce = decltype(impl.Identity(0));
 
     if (arg.out_indexer.total_size == 0) {
@@ -714,21 +715,20 @@ void cumo_reduce_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, bool c
 
     int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
     if (n_split < 2) {
-        cumo_reduce<TypeIn, TypeOut, ReductionImpl>(arg, std::forward<ReductionImpl>(impl), check_launch);
+        cumo_reduce<TypeIn, TypeOut, ReductionImpl>(arg, std::forward<ReductionImpl>(impl), held);
         return;
     }
 
     cumo_na_reduction_arg_t arg2 = arg;
-    TypeReduce* partial = cumo_detail::reduce_partial_pass<TypeIn, TypeReduce, ReductionImpl>(arg, ad, n_split, reduce_total_size, &arg2, impl);
-    cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(arg2, cumo_detail::reduce_combine<ReductionImpl>{impl}, false);
+    TypeReduce* partial = cumo_detail::reduce_partial_pass<TypeIn, TypeReduce, ReductionImpl>(arg, ad, n_split, reduce_total_size, &arg2, impl, held);
+    cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(arg2, cumo_detail::reduce_combine<ReductionImpl>{impl}, reinterpret_cast<char*>(partial), held);
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
-    if (check_launch) { cumo_cuda_runtime_check_kernel_launch(); }
 }
 
 // Variant of cumo_reduce reading two inputs, for mulsum. in2 describes the same
 // shape as arg.in, since the one in_indexer addresses both.
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce_zip(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, ReductionImpl&& impl, bool check_launch = true) {
+void cumo_reduce_zip(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, ReductionImpl&& impl, char* held0 = 0, char* held1 = 0) {
     if (arg.out_indexer.total_size == 0) {
         return;
     }
@@ -752,13 +752,13 @@ void cumo_reduce_zip(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, Reductio
     } else {
         cumo_detail::reduction_zip_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
     }
-    if (check_launch) { cumo_cuda_runtime_check_kernel_launch(); }
+    cumo_check_launch_holding(held0, held1);
 }
 
 // cumo_reduce_split for a zip reduction. The first pass reads both operands and
 // the combine pass has only accumulators left, so it is the plain one.
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce_zip_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, ReductionImpl&& impl, bool check_launch = true) {
+void cumo_reduce_zip_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, ReductionImpl&& impl, char* held = 0) {
     using TypeReduce = decltype(impl.Identity(0));
 
     if (arg.out_indexer.total_size == 0) {
@@ -777,22 +777,21 @@ void cumo_reduce_zip_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, Re
 
     int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
     if (n_split < 2) {
-        cumo_reduce_zip<TypeIn, TypeOut, ReductionImpl>(arg, in2, std::forward<ReductionImpl>(impl), check_launch);
+        cumo_reduce_zip<TypeIn, TypeOut, ReductionImpl>(arg, in2, std::forward<ReductionImpl>(impl), held);
         return;
     }
 
     cumo_na_reduction_arg_t combine = arg;
-    TypeReduce* partial = cumo_detail::reduce_zip_partial_pass<TypeIn, TypeReduce, ReductionImpl>(arg, in2, ad, ad2, n_split, reduce_total_size, &combine, impl);
-    cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(combine, cumo_detail::reduce_combine<ReductionImpl>{impl}, false);
+    TypeReduce* partial = cumo_detail::reduce_zip_partial_pass<TypeIn, TypeReduce, ReductionImpl>(arg, in2, ad, ad2, n_split, reduce_total_size, &combine, impl, held);
+    cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(combine, cumo_detail::reduce_combine<ReductionImpl>{impl}, reinterpret_cast<char*>(partial), held);
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
-    if (check_launch) { cumo_cuda_runtime_check_kernel_launch(); }
 }
 
 // Variant of cumo_reduce writing two results per output element, for minmax.
 // See reduction_pair_kernel above. out2 has to describe the same shape as
 // arg.out, since the one out_indexer addresses both.
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce_pair(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, ReductionImpl&& impl, bool check_launch = true) {
+void cumo_reduce_pair(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, ReductionImpl&& impl, char* held0 = 0, char* held1 = 0) {
     if (arg.out_indexer.total_size == 0) {
         return;
     }
@@ -814,12 +813,12 @@ void cumo_reduce_pair(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, Reduct
     } else {
         cumo_detail::reduction_pair_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, out2, ad, out_block_size, reduce_block_size, impl);
     }
-    if (check_launch) { cumo_cuda_runtime_check_kernel_launch(); }
+    cumo_check_launch_holding(held0, held1);
 }
 
 // cumo_reduce_split for the two-output form. Same constraint on Identity.
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce_pair_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, ReductionImpl&& impl, bool check_launch = true) {
+void cumo_reduce_pair_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, ReductionImpl&& impl, char* held = 0) {
     using TypeReduce = decltype(impl.Identity(0));
 
     if (arg.out_indexer.total_size == 0) {
@@ -835,21 +834,20 @@ void cumo_reduce_pair_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, 
 
     int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
     if (n_split < 2) {
-        cumo_reduce_pair<TypeIn, TypeOut, ReductionImpl>(arg, out2, std::forward<ReductionImpl>(impl), check_launch);
+        cumo_reduce_pair<TypeIn, TypeOut, ReductionImpl>(arg, out2, std::forward<ReductionImpl>(impl), held);
         return;
     }
 
     cumo_na_reduction_arg_t arg2 = arg;
-    TypeReduce* partial = cumo_detail::reduce_partial_pass<TypeIn, TypeReduce, ReductionImpl>(arg, ad, n_split, reduce_total_size, &arg2, impl);
-    cumo_reduce_pair<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(arg2, out2, cumo_detail::reduce_combine<ReductionImpl>{impl}, false);
+    TypeReduce* partial = cumo_detail::reduce_partial_pass<TypeIn, TypeReduce, ReductionImpl>(arg, ad, n_split, reduce_total_size, &arg2, impl, held);
+    cumo_reduce_pair<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(arg2, out2, cumo_detail::reduce_combine<ReductionImpl>{impl}, reinterpret_cast<char*>(partial), held);
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
-    if (check_launch) { cumo_cuda_runtime_check_kernel_launch(); }
 }
 
 // Variant of cumo_reduce for arg-reductions (argmax/argmin), which returns
 // indices along the reduction axis. See reduction_arg_kernel above.
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce_arg(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, bool check_launch = true) {
+void cumo_reduce_arg(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* held0 = 0, char* held1 = 0) {
     if (arg.out_indexer.total_size == 0) {
         return;
     }
@@ -870,14 +868,14 @@ void cumo_reduce_arg(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, bool che
     } else {
         cumo_detail::reduction_arg_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, ad, out_block_size, reduce_block_size, impl);
     }
-    if (check_launch) { cumo_cuda_runtime_check_kernel_launch(); }
+    cumo_check_launch_holding(held0, held1);
 }
 
 // cumo_reduce_split for the arg form. The partials already carry indices along
 // the reduce axis, so the second pass combines them with the plain kernel.
 // Only for an impl whose Identity ignores its index argument.
 template <typename TypeIn, typename TypeOut, typename ReductionImpl>
-void cumo_reduce_arg_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, bool check_launch = true) {
+void cumo_reduce_arg_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* held = 0) {
     using TypeReduce = decltype(impl.Identity(0));
 
     if (arg.out_indexer.total_size == 0) {
@@ -893,15 +891,14 @@ void cumo_reduce_arg_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, bo
 
     int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
     if (n_split < 2) {
-        cumo_reduce_arg<TypeIn, TypeOut, ReductionImpl>(arg, std::forward<ReductionImpl>(impl), check_launch);
+        cumo_reduce_arg<TypeIn, TypeOut, ReductionImpl>(arg, std::forward<ReductionImpl>(impl), held);
         return;
     }
 
     cumo_na_reduction_arg_t arg2 = arg;
-    TypeReduce* partial = cumo_detail::reduce_partial_pass<TypeIn, TypeReduce, ReductionImpl, true>(arg, ad, n_split, reduce_total_size, &arg2, impl);
-    cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(arg2, cumo_detail::reduce_combine<ReductionImpl>{impl}, false);
+    TypeReduce* partial = cumo_detail::reduce_partial_pass<TypeIn, TypeReduce, ReductionImpl, true>(arg, ad, n_split, reduce_total_size, &arg2, impl, held);
+    cumo_reduce<TypeReduce, TypeOut, cumo_detail::reduce_combine<ReductionImpl>>(arg2, cumo_detail::reduce_combine<ReductionImpl>{impl}, reinterpret_cast<char*>(partial), held);
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
-    if (check_launch) { cumo_cuda_runtime_check_kernel_launch(); }
 }
 
 #endif // CUMO_REDUCE_KERNEL_H

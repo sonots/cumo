@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <cuda_runtime.h>
 #include "cumo/cuda/runtime.h"
+#include "cumo/cuda/memory_pool.h"
+#include "cumo/template_kernel.h"
 
 VALUE cumo_cuda_eRuntimeError;
 VALUE cumo_cuda_mRuntime;
@@ -20,13 +22,44 @@ cumo_cuda_runtime_check_kernel_launch(void)
     check_status(cudaGetLastError());
 }
 
-// For a caller that had to take the status out of the slot itself, which is
-// what holding a buffer across a library call needs: CUB reads the slot too,
-// and whoever reads it first is the only one who sees the error.
-void
-cumo_cuda_runtime_check_taken_status(int status)
+// A pointer given twice would be freed twice, and the second free would reach
+// past the pool to a block it still owns, so each one goes back once.
+static void
+release_held(char *p[5])
 {
+    int i, j;
+    for (i = 0; i < 5; ++i) {
+        if (p[i] == NULL) { continue; }
+        for (j = 0; j < i; ++j) {
+            if (p[j] == p[i]) { break; }
+        }
+        if (j == i) { cumo_cuda_runtime_free_no_raise(p[i]); }
+    }
+}
+
+// What a launcher holding scratch has to call instead of the plain check, for a
+// status it already took out of the slot: a library call in the window takes it
+// first otherwise, and whoever reads it first is the only one who sees it.
+// Raising is a longjmp, so the frees written below the check never run, and
+// unwinding frees through the form that cannot raise so one failure cannot hide
+// another.
+void
+cumo_cuda_runtime_check_taken_status_holding(int status, char *p0, char *p1, char *p2, char *p3, char *p4)
+{
+    if ((cudaError_t)status != cudaSuccess) {
+        char *held[5];
+        held[0] = p0; held[1] = p1; held[2] = p2; held[3] = p3; held[4] = p4;
+        release_held(held);
+    }
     check_status((cudaError_t)status);
+}
+
+// The slot is read once here rather than peeked and read again: the frees below
+// can put a status of their own in it, and the launch is the one to report.
+void
+cumo_cuda_runtime_check_kernel_launch_holding(char *p0, char *p1, char *p2, char *p3, char *p4)
+{
+    cumo_cuda_runtime_check_taken_status_holding((int)cudaGetLastError(), p0, p1, p2, p3, p4);
 }
 
 int*

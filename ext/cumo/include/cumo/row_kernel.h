@@ -133,13 +133,11 @@ void cumo_row_reduce_apply(
         arg.out_indexer.total_size = rows;
         arg.out_indexer.shape[0] = rows;
 
-        cumo_reduce_split<TypeIn, Stats, Impl>(arg, Impl(impl), false);
+        cumo_reduce_split<TypeIn, Stats, Impl>(arg, Impl(impl), (char*)stats);
         cumo_detail::row_apply_kernel<TypeIn, Stats, Apply><<<apply_grid, apply_block>>>(
                 (const TypeIn*)px, (TypeIn*)py, stats, cols, apply);
-        // Released before the launch is asked about, since that raises and a
-        // raise here is a longjmp past anything below it.
+        cumo_check_launch_holding(stats);
         cumo_cuda_runtime_free((char*)stats);
-        cumo_cuda_runtime_check_kernel_launch();
         return;
     }
 
