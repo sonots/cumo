@@ -85,8 +85,7 @@ __global__ void cumo_bit_where_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize
 char *cumo_bit_where_scratch_new(void)
 {
     char *scratch = cumo_cuda_runtime_malloc((2 + CUMO_BIT_WHERE_MAX_BLOCKS) * sizeof(uint64_t));
-    cudaMemsetAsync(scratch, 0, 2 * sizeof(uint64_t), 0);
-    cumo_cuda_runtime_check_kernel_launch();
+    cumo_check_status_holding(cudaMemsetAsync(scratch, 0, 2 * sizeof(uint64_t), 0), scratch);
     return scratch;
 }
 

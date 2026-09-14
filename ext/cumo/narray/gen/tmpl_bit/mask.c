@@ -114,9 +114,8 @@ static VALUE
     cumo_narray_view_t *nv, *nv_val;
     cumo_narray_t      *na, *na_mask;
     size_t n_1;
-    uint64_t cur[1];
-    cudaError_t st = cudaSuccess;
     where_opt_t g;
+    where_run_t r;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{Qnil,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0};
 
@@ -153,15 +152,16 @@ static VALUE
     if (CUMO_RNARRAY_SIZE(mask) >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
         g.scratch = cumo_bit_where_scratch_new();
     }
-    cumo_na_ndloop3(&ndf, &g, 2, mask, val);
-    if (g.used_kernel) {
-        st = bit_where_cursors(g.scratch, cur, 1);
-        if (st == cudaSuccess) { g.wrote1 += (size_t)cur[0]; }
-    }
-    if (g.scratch) {
-        cumo_cuda_runtime_free(g.scratch);
-    }
-    cumo_cuda_runtime_check_status(st);
+    r.ndf = &ndf;
+    r.g = &g;
+    r.args[0] = mask;
+    r.args[1] = val;
+    r.nargs = 2;
+    r.ncur = 1;
+    r.st = cudaSuccess;
+    rb_ensure(bit_where_run, (VALUE)&r, bit_where_release, (VALUE)&r);
+    cumo_cuda_runtime_check_status(r.st);
+    if (g.used_kernel) { g.wrote1 += (size_t)r.cur[0]; }
     bit_where_check(g.wrote1, g.cap1);
 
     view = cumo_na_s_allocate_view(rb_obj_class(val));
