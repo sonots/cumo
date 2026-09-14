@@ -41,6 +41,51 @@ bit_where_check(size_t a, size_t b)
     }
 }
 
+typedef struct {
+    cumo_ndfunc_t *ndf;
+    where_opt_t   *g;
+    VALUE          args[2];
+    int            nargs;
+    int            ncur;
+    uint64_t       cur[2];
+    cudaError_t    st;
+} where_run_t;
+
+// ndloop can raise with the scratch still held, and rb_raise is a longjmp, so
+// the walk and its read-back run under an ensure that owns the scratch.
+static VALUE
+bit_where_run(VALUE arg)
+{
+    where_run_t *r = (where_run_t*)arg;
+
+    if (r->nargs == 2) {
+        cumo_na_ndloop3(r->ndf, r->g, 2, r->args[0], r->args[1]);
+    } else {
+        cumo_na_ndloop3(r->ndf, r->g, 1, r->args[0]);
+    }
+    if (r->g->used_kernel) {
+        r->st = bit_where_cursors(r->g->scratch, r->cur, r->ncur);
+    }
+    return Qnil;
+}
+
+// A launch that is rejected leaves whatever was queued before it still running,
+// and the pool hands a freed chunk straight out again, so the scratch waits for
+// the stream before it goes back. Neither call may raise from here: that would
+// replace the exception being carried out.
+static VALUE
+bit_where_release(VALUE arg)
+{
+    where_run_t *r = (where_run_t*)arg;
+
+    if (r->g->scratch) {
+        cudaStreamSynchronize(0);
+        cumo_cuda_runtime_free_no_raise(r->g->scratch);
+        r->g->scratch = NULL;
+    }
+    return Qnil;
+}
+
 // The number of ones, read back with a copy of the count rather than through
 // the managed pointer, which would fault the whole page. The one sync it costs
 // sizes the output; the compaction itself never reads anything back.
@@ -136,9 +181,8 @@ static VALUE
 {
     volatile VALUE idx_1;
     size_t size, n_1;
-    uint64_t cur[1];
-    cudaError_t st = cudaSuccess;
     where_opt_t *g;
+    where_run_t r;
 
     cumo_ndfunc_arg_in_t ain[1] = {{cT,0}};
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 1, 0, ain, 0 };
@@ -165,15 +209,15 @@ static VALUE
     if (size >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
         g->scratch = cumo_bit_where_scratch_new();
     }
-    cumo_na_ndloop3(&ndf, g, 1, self);
-    if (g->used_kernel) {
-        st = bit_where_cursors(g->scratch, cur, 1);
-        if (st == cudaSuccess) { g->wrote1 += (size_t)cur[0]; }
-    }
-    if (g->scratch) {
-        cumo_cuda_runtime_free(g->scratch);
-    }
-    cumo_cuda_runtime_check_status(st);
+    r.ndf = &ndf;
+    r.g = g;
+    r.args[0] = self;
+    r.nargs = 1;
+    r.ncur = 1;
+    r.st = cudaSuccess;
+    rb_ensure(bit_where_run, (VALUE)&r, bit_where_release, (VALUE)&r);
+    cumo_cuda_runtime_check_status(r.st);
+    if (g->used_kernel) { g->wrote1 += (size_t)r.cur[0]; }
     cumo_na_release_lock(idx_1);
     bit_where_check(g->wrote1, g->cap1);
     return idx_1;

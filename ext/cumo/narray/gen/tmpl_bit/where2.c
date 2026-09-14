@@ -92,9 +92,8 @@ static VALUE
 {
     volatile VALUE idx_1, idx_0;
     size_t size, n_1, n_0;
-    uint64_t cur[2];
-    cudaError_t st = cudaSuccess;
     where_opt_t *g;
+    where_run_t r;
 
     cumo_ndfunc_arg_in_t ain[1] = {{cT,0}};
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 1, 0, ain, 0 };
@@ -125,18 +124,18 @@ static VALUE
     if (size >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
         g->scratch = cumo_bit_where_scratch_new();
     }
-    cumo_na_ndloop3(&ndf, g, 1, self);
+    r.ndf = &ndf;
+    r.g = g;
+    r.args[0] = self;
+    r.nargs = 1;
+    r.ncur = 2;
+    r.st = cudaSuccess;
+    rb_ensure(bit_where_run, (VALUE)&r, bit_where_release, (VALUE)&r);
+    cumo_cuda_runtime_check_status(r.st);
     if (g->used_kernel) {
-        st = bit_where_cursors(g->scratch, cur, 2);
-        if (st == cudaSuccess) {
-            g->wrote1 += (size_t)cur[0];
-            g->wrote0 += (size_t)cur[1];
-        }
+        g->wrote1 += (size_t)r.cur[0];
+        g->wrote0 += (size_t)r.cur[1];
     }
-    if (g->scratch) {
-        cumo_cuda_runtime_free(g->scratch);
-    }
-    cumo_cuda_runtime_check_status(st);
     cumo_na_release_lock(idx_0);
     cumo_na_release_lock(idx_1);
     bit_where_check(g->wrote1, g->cap1);
