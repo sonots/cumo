@@ -438,11 +438,12 @@ static inline void cumo_bit_count_reduce(cumo_na_bit_reduction_arg_t arg, int in
     int64_t partial_total_size = p.out_total_size * p.n_split;
     uint64_t* partial = reinterpret_cast<uint64_t*>(cumo_cuda_runtime_malloc(sizeof(uint64_t) * partial_total_size));
 
+    // One check after the free answers for both launches. See
+    // cumo_reduce_split in reduce_kernel.h.
     int64_t grid_size = std::min(cumo_detail::max_grid_size, p.partial_block_num);
     cumo_bit_detail::bit_count_partial_kernel<<<grid_size, block_size, shared_mem_size>>>(
         arg, p.ad, p.wa, invert, partial, p.n_split, p.chunk,
         (int)p.split_out_block_size, (int)p.split_reduce_block_size, p.unit_total_size);
-    cumo_cuda_runtime_check_kernel_launch();
 
     cumo_na_reduction_arg_t combine;
     combine.in.ptr = reinterpret_cast<char*>(partial);
@@ -452,9 +453,10 @@ static inline void cumo_bit_count_reduce(cumo_na_bit_reduction_arg_t arg, int in
     combine.in_indexer.total_size = partial_total_size;
     combine.out = arg.out;
     combine.out_indexer = arg.out_indexer;
-    cumo_reduce<uint64_t, uint64_t>(combine, cumo_bit_detail::BitCountImpl{});
+    cumo_reduce<uint64_t, uint64_t>(combine, cumo_bit_detail::BitCountImpl{}, false);
 
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 // The same for the four statistics, whose result is a DFloat of the same width
@@ -483,14 +485,13 @@ static inline void cumo_bit_stat_reduce(cumo_na_bit_reduction_arg_t arg, int sta
     cumo_bit_detail::bit_count_partial_kernel<<<grid_size, block_size, shared_mem_size>>>(
         arg, p.ad, p.wa, 0, partial, p.n_split, p.chunk,
         (int)p.split_out_block_size, (int)p.split_reduce_block_size, p.unit_total_size);
-    cumo_cuda_runtime_check_kernel_launch();
 
     int64_t combine_grid = (p.out_total_size + block_size - 1) / block_size;
     if (combine_grid > cumo_detail::max_grid_size) combine_grid = cumo_detail::max_grid_size;
     cumo_bit_detail::bit_stat_combine_kernel<<<combine_grid, block_size>>>(arg, p.ad, stat, partial, p.n_split);
-    cumo_cuda_runtime_check_kernel_launch();
 
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 // The same for all? (all non-zero) and any? (any non-zero), whose result is a
@@ -519,14 +520,13 @@ static inline void cumo_bit_pred_reduce(cumo_na_bit_pred_reduction_arg_t arg, in
     cumo_bit_detail::bit_count_partial_kernel<<<grid_size, block_size, shared_mem_size>>>(
         arg, p.ad, p.wa, 0, partial, p.n_split, p.chunk,
         (int)p.split_out_block_size, (int)p.split_reduce_block_size, p.unit_total_size);
-    cumo_cuda_runtime_check_kernel_launch();
 
     int64_t combine_grid = (p.out_total_size + block_size - 1) / block_size;
     if (combine_grid > cumo_detail::max_grid_size) combine_grid = cumo_detail::max_grid_size;
     cumo_bit_detail::bit_pred_combine_kernel<<<combine_grid, block_size>>>(arg, p.ad, all, partial, p.n_split);
-    cumo_cuda_runtime_check_kernel_launch();
 
     cumo_cuda_runtime_free(reinterpret_cast<char*>(partial));
+    cumo_cuda_runtime_check_kernel_launch();
 }
 
 #endif // CUMO_BIT_REDUCE_KERNEL_H

@@ -133,7 +133,7 @@ void cumo_row_reduce_apply(
         arg.out_indexer.total_size = rows;
         arg.out_indexer.shape[0] = rows;
 
-        cumo_reduce_split<TypeIn, Stats, Impl>(arg, Impl(impl));
+        cumo_reduce_split<TypeIn, Stats, Impl>(arg, Impl(impl), false);
         cumo_detail::row_apply_kernel<TypeIn, Stats, Apply><<<apply_grid, apply_block>>>(
                 (const TypeIn*)px, (TypeIn*)py, stats, cols, apply);
         // Released before the launch is asked about, since that raises and a
