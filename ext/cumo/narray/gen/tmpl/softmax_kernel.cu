@@ -122,18 +122,19 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
         arg.out_indexer.total_size = rows;
         arg.out_indexer.shape[0] = rows;
 
+        // One check after the free answers for every launch in this window.
+        // See cumo_reduce_split in reduce_kernel.h.
         cumo_reduce_split<dtype, <%=acc%>, <%="cumo_#{c_iter}_max_impl"%>>(
-                arg, <%="cumo_#{c_iter}_max_impl"%>{});
+                arg, <%="cumo_#{c_iter}_max_impl"%>{}, false);
         cumo_detail::row_apply_kernel<dtype, <%=acc%>, <%="cumo_#{c_iter}_shift_apply"%>>
                 <<<apply_grid, apply_block>>>(
                     (const dtype*)px, (dtype*)py, stats, cols, <%="cumo_#{c_iter}_shift_apply"%>{});
-        cumo_cuda_runtime_check_kernel_launch();
 
         // The sum is of what the pass above wrote, so the second reduction reads
         // the output rather than the input.
         arg.in.ptr = py;
         cumo_reduce_split<dtype, <%=acc%>, <%="cumo_#{c_iter}_rden_impl"%>>(
-                arg, <%="cumo_#{c_iter}_rden_impl"%>{});
+                arg, <%="cumo_#{c_iter}_rden_impl"%>{}, false);
         cumo_detail::row_apply_kernel<dtype, <%=acc%>, <%="cumo_#{c_iter}_scale_apply"%>>
                 <<<apply_grid, apply_block>>>(
                     (const dtype*)py, (dtype*)py, stats, cols, <%="cumo_#{c_iter}_scale_apply"%>{});
