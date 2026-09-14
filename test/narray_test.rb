@@ -3837,6 +3837,42 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # An infinity has no deviation from a mean that is itself infinite, so the
+  # variance of a row holding one is NaN. Which answer the fold reached used to
+  # depend on where the infinity sat and how long the row was.
+  test "var and stddev of a row holding an infinity are NaN" do
+    inf = Float::INFINITY
+    rows = [[1.0, 2.0, inf], [inf, 1.0, 2.0], [1.0, inf, 2.0],
+            [1.0, 2.0, -inf], [inf, -inf], [inf, inf], [inf]]
+    [Cumo::DFloat, Cumo::SFloat, Cumo::HFloat].each do |dtype|
+      rows.each do |xs|
+        a = dtype.cast(xs)
+        assert(a.var.to_f.nan?, "#{dtype} #{xs.inspect} var")
+        assert(a.stddev.to_f.nan?, "#{dtype} #{xs.inspect} stddev")
+      end
+    end
+    assert(Cumo::DComplex[1.0, 2.0, inf].var.to_f.nan?)
+    assert(Cumo::DFloat[1.0, Float::NAN, inf].var(nan: true).to_f.nan?)
+
+    # The short rows are the ones that answered Infinity before; the long ones
+    # already answered NaN and are here so that they keep doing so.
+    [3, 4, 7, 100, 100_000].each do |n|
+      xs = Array.new(n) { |i| i == n / 2 ? inf : (i + 1).to_f }
+      assert(Cumo::DFloat.cast(xs).var.to_f.nan?, "n=#{n}")
+    end
+
+    # One row's infinity is its own: the split path lays a partial out per
+    # output, and leaking across them is what would go wrong here.
+    got = Cumo::DFloat[[1.0, 2.0, 3.0], [1.0, 2.0, inf], [4.0, 5.0, 6.0]].var(axis: 1).to_a
+    assert_equal(1.0, got[0])
+    assert(got[1].nan?)
+    assert_equal(1.0, got[2])
+
+    # An overflow inside the accumulator is not an infinite element. That case
+    # is untouched, and still answers by however the tree split.
+    assert_equal(0.0, Cumo::DFloat[1e308, 1e308].var.to_f)
+  end
+
   # A view whose dimensions do not collapse into one stride cannot be flattened
   # by adjusting the strides, so flatten builds an index array for it. That path
   # is the one worth pinning down; the ladder path is a metadata change.

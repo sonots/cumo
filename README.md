@@ -324,6 +324,7 @@ That distinction is what makes half usable in a transformer's layer normalizatio
 Squaring overflows at 256, since 256 squared is already past the top, and a residual stream with one outlier feature reaches thousands.
 Writing the normalization out as `((x - mean) ** 2).mean` builds those squares as a half array and the answer is `Infinity`, while `x.var(axis: 1)` keeps them in its single-precision accumulator and answers 10208.0 against a single-precision 10209.
 `var` saturates only if the variance itself is out of range, which is a far higher bar than any one deviation being over 256, but it is still a bar.
+An input over 65504 is a different matter: it becomes an infinite element on the way in, and `var` and `stddev` answer `NaN` for a row holding one.
 The quantity to check against 65504 is the largest variance a layer produces, not the largest activation in it.
 A single outlier of size d among n values contributes only d squared over n to the variance, so a row 768 wide divides it by 768: an activation of 3000 squares to nine million but raises the variance of its row by about twelve thousand.
 An activation that looks safe therefore says nothing about whether `var` overflows, in either direction.

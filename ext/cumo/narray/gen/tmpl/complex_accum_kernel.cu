@@ -43,11 +43,21 @@ struct cumo_<%=type_name%>_moments_impl {
     }
 };
 
-struct cumo_<%=type_name%>_var_impl : cumo_<%=type_name%>_moments_impl {
+// An infinity has no deviation from a mean that is itself infinite, so a row
+// holding one has a variance of NaN wherever the infinity falls in the tree.
+// It sits below the accumulator so that the forms that cannot use it, as the
+// real layer_norm cannot, do not pay for it.
+struct cumo_<%=type_name%>_spread_impl : cumo_<%=type_name%>_moments_impl {
+    __device__ Moments MapIn(dtype in, int64_t /*index*/) {
+        return {1, in, c_isinf(in) ? (rtype)NAN : (rtype)0};
+    }
+};
+
+struct cumo_<%=type_name%>_var_impl : cumo_<%=type_name%>_spread_impl {
     __device__ rtype MapOut(Moments accum) { return accum.m2 / (accum.n - 1); }
 };
 
-struct cumo_<%=type_name%>_stddev_impl : cumo_<%=type_name%>_moments_impl {
+struct cumo_<%=type_name%>_stddev_impl : cumo_<%=type_name%>_spread_impl {
     __device__ rtype MapOut(Moments accum) { return r_sqrt(accum.m2 / (accum.n - 1)); }
 };
 
@@ -87,10 +97,10 @@ struct cumo_<%=type_name%>_prod_nan_impl {
     __device__ <%=dtype%> MapOut(<%=dtype%> accum) { return accum; }
 };
 
-struct cumo_<%=type_name%>_moments_nan_impl : cumo_<%=type_name%>_moments_impl {
-    __device__ Moments MapIn(dtype in, int64_t /*index*/) {
+struct cumo_<%=type_name%>_moments_nan_impl : cumo_<%=type_name%>_spread_impl {
+    __device__ Moments MapIn(dtype in, int64_t index) {
         if (!not_nan(in)) { return {0, m_zero, 0}; }
-        return {1, in, 0};
+        return cumo_<%=type_name%>_spread_impl::MapIn(in, index);
     }
 };
 

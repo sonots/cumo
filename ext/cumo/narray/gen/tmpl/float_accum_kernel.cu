@@ -38,11 +38,22 @@ struct cumo_<%=type_name%>_moments_impl {
     }
 };
 
-struct cumo_<%=type_name%>_var_impl : cumo_<%=type_name%>_moments_impl {
+// An infinity has no deviation from a mean that is itself infinite, so a row
+// holding one has a variance of NaN wherever the infinity falls in the tree.
+// layer_norm shares the accumulator above and cannot use this, so it sits here
+// rather than there.
+struct cumo_<%=type_name%>_spread_impl : cumo_<%=type_name%>_moments_impl {
+    __device__ Moments MapIn(dtype in, int64_t /*index*/) {
+        <%=acc%> x = <%=to_acc%>(in);
+        return {1, x, isinf(x) ? <%=acc%>(NAN) : <%=acc%>(0)};
+    }
+};
+
+struct cumo_<%=type_name%>_var_impl : cumo_<%=type_name%>_spread_impl {
     __device__ rtype MapOut(Moments accum) { return <%=from_acc%>(accum.m2 / (accum.n - 1)); }
 };
 
-struct cumo_<%=type_name%>_stddev_impl : cumo_<%=type_name%>_moments_impl {
+struct cumo_<%=type_name%>_stddev_impl : cumo_<%=type_name%>_spread_impl {
     __device__ rtype MapOut(Moments accum) { return <%=from_acc%>(sqrt(accum.m2 / (accum.n - 1))); }
 };
 
@@ -68,10 +79,10 @@ struct cumo_<%=type_name%>_rms_impl {
 // Reduce above already returns early on a zero count, so the moments never see
 // it, and mean and rms carry the count of what was left rather than the length
 // of the reduce axis.
-struct cumo_<%=type_name%>_moments_nan_impl : cumo_<%=type_name%>_moments_impl {
-    __device__ Moments MapIn(dtype in, int64_t /*index*/) {
+struct cumo_<%=type_name%>_moments_nan_impl : cumo_<%=type_name%>_spread_impl {
+    __device__ Moments MapIn(dtype in, int64_t index) {
         if (!not_nan(in)) { return {0, 0, 0}; }
-        return {1, <%=to_acc%>(in), 0};
+        return cumo_<%=type_name%>_spread_impl::MapIn(in, index);
     }
 };
 
