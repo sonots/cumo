@@ -5334,8 +5334,7 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   test "poly evaluates every element, whatever the coefficients and the layout" do
-    # poly ran with CUMO_NO_LOOP, so ndloop called the iterator once per
-    # element and each call synchronized with the device.
+    # poly runs with CUMO_NO_LOOP, so ndloop calls the iterator once per element.
     rows = 6
     cols = 10
     small = Array.new(rows * cols) { |i| (i * 13) % 3 }
@@ -5352,7 +5351,8 @@ class NArrayTest < Test::Unit::TestCase
                    "#{dtype} a coefficient that varies per element")
     end
 
-    [Cumo::Int32, Cumo::Int64, Cumo::SFloat, Cumo::DFloat, Cumo::DComplex].each do |dtype|
+    [Cumo::Int32, Cumo::Int64, Cumo::SFloat, Cumo::DFloat, Cumo::DComplex,
+     Cumo::RObject].each do |dtype|
       src = dtype.cast(wide).reshape(rows, cols)
       coefs = [1, 2, 3, 4, 5, 6]
       assert_equal(poly_expect(wide, coefs), src.poly(*coefs).to_a.flatten, "#{dtype} six coefficients")

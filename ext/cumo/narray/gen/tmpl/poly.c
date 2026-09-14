@@ -1,8 +1,6 @@
 <% unless type_name == 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* x, cumo_na_iarray_t* coef, int ncoef, cumo_na_iarray_t* z, cumo_na_indexer_t* indexer);
 
-// Horner over every element in one launch. The host loop this replaces ran
-// once per element, each time behind a cudaDeviceSynchronize.
 static void
 <%=c_iter%>_kernel(cumo_na_loop_t *const lp)
 {
@@ -27,7 +25,6 @@ static void
     dtype  x, y, a;
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_device_synchronize();
     n = lp->narg - 2;
     x = *(dtype*)CUMO_NDL_PTR(lp,0);
     y = *(dtype*)CUMO_NDL_PTR(lp,n);
