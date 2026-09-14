@@ -787,6 +787,19 @@ class CUDNNTest < Test::Unit::TestCase
     end
   end
 
+  sub_test_case "bias validation" do
+    test "a bias of another class is refused before the convolution writes" do
+      sf = Cumo::SFloat
+      x = sf.ones(2, 3, 8, 8)
+      { conv: sf.ones(4, 3, 3, 3), conv_transpose: sf.ones(3, 4, 3, 3) }.each do |m, w|
+        # zeros, so that running the convolution would show
+        y = sf.zeros(*x.send(m, w, stride: 1, pad: 1).shape)
+        assert_raise(TypeError, m.to_s) { x.send(m, w, b: Cumo::DFloat.ones(4), stride: 1, pad: 1, y: y) }
+        assert_equal 0.0, y.abs.max.to_f, "#{m} left y alone"
+      end
+    end
+  end
+
   if float_types.include?(Cumo::HFloat)
    hf = Cumo::HFloat
    sf = Cumo::SFloat

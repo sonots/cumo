@@ -165,7 +165,9 @@ CONV_GRAD_W_ERROR:
     if (gy_desc) cudnnDestroyTensorDescriptor(gy_desc);
     if (gw_desc) cudnnDestroyFilterDescriptor(gw_desc);
     if (conv_desc) cudnnDestroyConvolutionDescriptor(conv_desc);
-    if (workspace) cumo_cuda_runtime_free(workspace);
+    // cuDNN is still reading the workspace, and the raising free would replace
+    // the status reported below.
+    cumo_cuda_runtime_return_scratch(workspace, 1, NULL);
     cumo_cuda_cudnn_check_status(status);
 
     return gw;

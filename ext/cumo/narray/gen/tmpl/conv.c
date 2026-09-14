@@ -23,7 +23,8 @@ static VALUE
     size_t *x_shape, *w_shape;
     size_t out_channels, batch_size;
 
-    VALUE x_cont, w_cont;
+    VALUE x_cont, w_cont, b_cont = Qnil;
+    char *b_cont_ptr = NULL;
     cudnnTensorDescriptor_t x_desc = 0;
     cudnnTensorDescriptor_t y_desc = 0;
     cudnnTensorDescriptor_t b_desc = 0;
@@ -95,6 +96,14 @@ static VALUE
     w_cont_ptr = cumo_na_get_offset_pointer_for_read(w_cont);
     y_ptr = cumo_na_get_offset_pointer_for_write(y);
 
+    // Taking the bias runs Ruby, which can raise, and everything below holds a
+    // descriptor or the workspace that only the error label gives back.
+    if (b != Qnil) {
+        CUMO_CHECK_NARRAY_TYPE(b, cT);
+        b_cont = cumo_na_as_contiguous_array(b);
+        b_cont_ptr = cumo_na_get_offset_pointer_for_read(b_cont);
+    }
+
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&y_desc, y, cudnn_dtype);
@@ -149,23 +158,18 @@ static VALUE
             (void*)y_ptr);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
 
-    if (b != Qnil) {
+    if (b_cont != Qnil) {
         size_t new_shape[CUMO_NA_MAX_DIMENSION];
-        VALUE b_cont;
-        char* b_cont_ptr;
         cumo_narray_t *nb, *nb_cont;
         size_t *b_shape;
         int b_ndim;
 
-        CUMO_CHECK_NARRAY_TYPE(b, cT);
         CumoGetNArray(b, nb);
         new_shape[0] = 1;
         new_shape[1] = nb->size;
         for (size_t i = 0; i < ndim; ++i) {
             new_shape[i + 2] = 1;
         }
-        b_cont =  cumo_na_as_contiguous_array(b);
-        b_cont_ptr = cumo_na_get_offset_pointer_for_read(b_cont);
         CumoGetNArray(b_cont, nb_cont);
         b_shape = nb_cont->shape;
         b_ndim = nb_cont->ndim;
@@ -189,13 +193,17 @@ static VALUE
         if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
     }
 
+    RB_GC_GUARD(b_cont);
+
 CONV_ERROR:
     if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
     if (y_desc) cudnnDestroyTensorDescriptor(y_desc);
     if (b_desc) cudnnDestroyTensorDescriptor(b_desc);
     if (w_desc) cudnnDestroyFilterDescriptor(w_desc);
     if (conv_desc) cudnnDestroyConvolutionDescriptor(conv_desc);
-    if (workspace) cumo_cuda_runtime_free(workspace);
+    // cuDNN is still reading the workspace, and the raising free would replace
+    // the status reported below.
+    cumo_cuda_runtime_return_scratch(workspace, 1, NULL);
     cumo_cuda_cudnn_check_status(status);
 
     return y;
