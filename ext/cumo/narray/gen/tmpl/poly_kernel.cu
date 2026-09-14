@@ -40,9 +40,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* x, cumo_na_iarray_t* 
         <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*x, d_coef, ncoef, *z, *indexer);
         break;
     }
-    // Released before the launch is asked about, since that raises and a raise
-    // there is a longjmp past anything below it.
+    cumo_check_launch_holding(d_coef);
     cumo_cuda_runtime_free((char*)d_coef);
-    cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

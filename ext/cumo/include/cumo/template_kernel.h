@@ -176,14 +176,39 @@ cumo_get_block_dim(size_t n)
     return (block_dim == 0) ? 1 : block_dim;
 }
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // Raises the error a kernel launch reported, if any. Defined in cuda/runtime.c
 // because raising needs ruby.h, which the .cu translation units do not include.
 void cumo_cuda_runtime_check_kernel_launch(void);
+
+// The forms to call while scratch is held, which free what they are given
+// before they raise. Pass every buffer that is still outstanding, including the
+// caller's: a raise here leaves through longjmp and nothing below it runs.
+void cumo_cuda_runtime_check_kernel_launch_holding(char *p0, char *p1, char *p2, char *p3, char *p4);
+void cumo_cuda_runtime_check_taken_status_holding(int status, char *p0, char *p1, char *p2, char *p3, char *p4);
+
+#if defined(__cplusplus)
+static inline void cumo_check_launch_holding(void *p0 = 0, void *p1 = 0, void *p2 = 0, void *p3 = 0, void *p4 = 0)
+{
+    cumo_cuda_runtime_check_kernel_launch_holding((char*)p0, (char*)p1, (char*)p2, (char*)p3, (char*)p4);
+}
+static inline void cumo_check_status_holding(cudaError_t status, void *p0 = 0, void *p1 = 0, void *p2 = 0, void *p3 = 0, void *p4 = 0)
+{
+    cumo_cuda_runtime_check_taken_status_holding((int)status, (char*)p0, (char*)p1, (char*)p2, (char*)p3, (char*)p4);
+}
+#endif
 
 // Scratch memory for a kernel that needs somewhere to put partial results.
 // Declared here rather than including cuda/memory_pool.h, which needs ruby.h.
 char* cumo_cuda_runtime_malloc(size_t size);
 void cumo_cuda_runtime_free(char *ptr);
+
+#if defined(__cplusplus)
+}
+#endif
 
 
 #endif /* ifndef CUMO_TEMPLATE_KERNEL_H */
