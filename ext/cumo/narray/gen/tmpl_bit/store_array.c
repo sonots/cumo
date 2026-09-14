@@ -45,11 +45,7 @@ static VALUE
 {
     <%=c_iter%>_stage_t *r = (<%=c_iter%>_stage_t*)arg;
 
-    if (r->launched) {
-        cudaError_t st = cudaStreamSynchronize(0);
-        if (r->st == cudaSuccess) { r->st = st; }
-    }
-    cumo_cuda_runtime_free_no_raise((char*)r->device_z);
+    cumo_cuda_runtime_return_scratch((char*)r->device_z, r->launched, &r->st);
     return Qnil;
 }
 

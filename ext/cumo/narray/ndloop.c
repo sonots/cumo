@@ -471,7 +471,9 @@ ndloop_release(VALUE vlp)
         if (lp->xargs[j].bufcp) {
             xfree(lp->xargs[j].bufcp->buf_iter);
             if (lp->xargs[j].bufcp->buf_on_device) {
-                cumo_cuda_runtime_free(lp->xargs[j].bufcp->buf_ptr);
+                // Raising here would replace the exception and skip the frees
+                // below. The wait stays out, as it has been.
+                cumo_cuda_runtime_return_scratch(lp->xargs[j].bufcp->buf_ptr, 0, NULL);
             }
             else {
                 xfree(lp->xargs[j].bufcp->buf_ptr);

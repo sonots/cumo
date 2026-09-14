@@ -189,6 +189,7 @@ void cumo_cuda_runtime_check_kernel_launch(void);
 // caller's: a raise here leaves through longjmp and nothing below it runs.
 void cumo_cuda_runtime_check_kernel_launch_holding(char *p0, char *p1, char *p2, char *p3, char *p4);
 void cumo_cuda_runtime_check_taken_status_holding(int status, char *p0, char *p1, char *p2, char *p3, char *p4);
+void cumo_cuda_runtime_return_scratch(char *ptr, int wait_for_stream, cudaError_t *status);
 
 #if defined(__cplusplus)
 static inline void cumo_check_launch_holding(void *p0 = 0, void *p1 = 0, void *p2 = 0, void *p3 = 0, void *p4 = 0)

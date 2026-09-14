@@ -62,6 +62,20 @@ cumo_cuda_runtime_check_kernel_launch_holding(char *p0, char *p1, char *p2, char
     cumo_cuda_runtime_check_taken_status_holding((int)cudaGetLastError(), p0, p1, p2, p3, p4);
 }
 
+// How scratch goes back from a handler that may be unwinding: a free that
+// raises there replaces the exception being carried, and leaves every free
+// below it unrun. wait_for_stream asks for the wait a caller needs when the
+// buffer is still being read, since the pool hands a freed chunk straight out.
+void
+cumo_cuda_runtime_return_scratch(char *ptr, int wait_for_stream, cudaError_t *status)
+{
+    if (wait_for_stream) {
+        cudaError_t wait = cudaStreamSynchronize(0);
+        if (status != NULL && *status == cudaSuccess) { *status = wait; }
+    }
+    if (ptr != NULL) { cumo_cuda_runtime_free_no_raise(ptr); }
+}
+
 int*
 cumo_cuda_runtime_error_flag_ptr(void)
 {
