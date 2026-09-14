@@ -20,6 +20,15 @@ cumo_cuda_runtime_check_kernel_launch(void)
     check_status(cudaGetLastError());
 }
 
+// For a caller that had to take the status out of the slot itself, which is
+// what holding a buffer across a library call needs: CUB reads the slot too,
+// and whoever reads it first is the only one who sees the error.
+void
+cumo_cuda_runtime_check_taken_status(int status)
+{
+    check_status((cudaError_t)status);
+}
+
 int*
 cumo_cuda_runtime_error_flag_ptr(void)
 {
