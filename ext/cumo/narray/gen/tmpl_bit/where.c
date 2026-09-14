@@ -70,19 +70,14 @@ bit_where_run(VALUE arg)
 }
 
 // A launch that is rejected leaves whatever was queued before it still running,
-// and the pool hands a freed chunk straight out again, so the scratch waits for
-// the stream before it goes back. Neither call may raise from here: that would
-// replace the exception being carried out.
+// so the scratch goes back the way an unwinding path has to return one.
 static VALUE
 bit_where_release(VALUE arg)
 {
     where_run_t *r = (where_run_t*)arg;
 
-    if (r->g->scratch) {
-        cudaStreamSynchronize(0);
-        cumo_cuda_runtime_free_no_raise(r->g->scratch);
-        r->g->scratch = NULL;
-    }
+    cumo_cuda_runtime_return_scratch(r->g->scratch, 1, NULL);
+    r->g->scratch = NULL;
     return Qnil;
 }
 

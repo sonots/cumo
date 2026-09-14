@@ -28,6 +28,8 @@ cumo_cuda_runtime_check_status(cudaError_t status)
     }
 }
 
+void cumo_cuda_runtime_return_scratch(char *ptr, int wait_for_stream, cudaError_t *status);
+
 static inline void
 cumo_cuda_runtime_device_synchronize(void)
 {

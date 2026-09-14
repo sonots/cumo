@@ -1022,7 +1022,8 @@ cumo_na_aref_md_ensure(VALUE data_value)
         // leave it NULL, and handing NULL over still costs a pool lookup and a
         // driver call for every dimension of every subscript.
         if (data->q[i].idx) {
-            cumo_cuda_runtime_free((char*)(data->q[i].idx));
+            // Same handler, same reason as ndloop_release.
+            cumo_cuda_runtime_return_scratch((char*)(data->q[i].idx), 0, NULL);
         }
     }
     if (data->q) xfree(data->q);
