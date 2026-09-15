@@ -416,7 +416,7 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
                 perf_result,
                 (void*)workspace,
                 max_workspace_size);
-    cumo_cuda_runtime_free(workspace);
+    cumo_cuda_runtime_return_scratch(workspace, 1, NULL);
     if (status != CUDNN_STATUS_SUCCESS) return status;
     // A search that answers success with nothing to report would leave
     // perf_result untouched, and its algo and math type are used below.
@@ -487,7 +487,7 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
                 perf_result,
                 (void*)workspace,
                 max_workspace_size);
-    cumo_cuda_runtime_free(workspace);
+    cumo_cuda_runtime_return_scratch(workspace, 1, NULL);
     if (status != CUDNN_STATUS_SUCCESS) return status;
     // A search that answers success with nothing to report would leave
     // perf_result untouched, and its algo and math type are used below.
@@ -558,7 +558,7 @@ cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
                 perf_result,
                 (void*)workspace,
                 max_workspace_size);
-    cumo_cuda_runtime_free(workspace);
+    cumo_cuda_runtime_return_scratch(workspace, 1, NULL);
     if (status != CUDNN_STATUS_SUCCESS) return status;
     // A search that answers success with nothing to report would leave
     // perf_result untouched, and its algo and math type are used below.

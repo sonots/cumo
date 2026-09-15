@@ -787,6 +787,19 @@ class CUDNNTest < Test::Unit::TestCase
     end
   end
 
+  sub_test_case "batch norm axis" do
+    test "an axis cuDNN has no mode for is refused" do
+      sf = Cumo::SFloat
+      x = sf.ones(2, 3, 4, 5)
+      g = sf.ones(5)
+      b = sf.zeros(5)
+      msg = /Invalid axis for BatchNorm/
+      assert_raise_message(msg) { x.batch_norm(g, b, axis: [0, 1, 2]) }
+      assert_raise_message(msg) { x.batch_norm_backward(g, sf.ones(2, 3, 4, 5), axis: [0, 1, 2]) }
+      assert_raise_message(msg) { x.fixed_batch_norm(g, b, sf.zeros(5), sf.ones(5), axis: [0, 1, 2]) }
+    end
+  end
+
   sub_test_case "bias validation" do
     test "a bias of another class is refused before the convolution writes" do
       sf = Cumo::SFloat
