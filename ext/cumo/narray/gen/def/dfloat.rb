@@ -18,7 +18,12 @@ set is_object:           false
 set is_real:             true
 set is_comparable:       true
 set is_double_precision: true
-set is_half:             false
+set acc_type:            ""
+set to_acc:              ""
+set from_acc:            ""
+set acc_zero:            "m_zero"
+set acc_one:             "m_one"
+set cublas_dtype:        ""
 set need_align:          true
 
 set cudnn_dtype:         "CUDNN_DATA_DOUBLE"

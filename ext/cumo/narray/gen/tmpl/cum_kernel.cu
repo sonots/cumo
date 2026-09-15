@@ -1,18 +1,19 @@
 <% unless type_name == 'robject' %>
-<% widen = is_half && name == 'cumsum' %>
-<% cum_t = widen ? 'float' : 'dtype' %>
+<% widen = !acc_type.empty? && name == 'cumsum' %>
+<% cum_t = widen ? acc_type : 'dtype' %>
 <% if widen %>
 
-// A running sum of halves stops moving once it passes 2048, so the scan carries
-// float and each element is rounded as it is written.
+// A running sum in the element type stops moving once the partial outgrows it,
+// so the scan carries the accumulator type and each element is rounded as it is
+// written.
 struct <%="cumo_thrust_#{name}_widen"%>
 {
-    __host__ __device__ float operator()(dtype x) const { return cumo_half2float(x); }
+    __host__ __device__ <%=acc_type%> operator()(dtype x) const { return <%=to_acc%>(x); }
 };
 
 struct <%="cumo_thrust_#{name}_narrow"%>
 {
-    __host__ __device__ dtype operator()(float x) const { return cumo_float2half(x); }
+    __host__ __device__ dtype operator()(<%=acc_type%> x) const { return <%=from_acc%>(x); }
 };
 <% end %>
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>

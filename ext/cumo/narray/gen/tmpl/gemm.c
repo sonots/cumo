@@ -23,12 +23,12 @@
     when 'dcomplex'
       'cuDoubleComplex'
     end
-  # cublasGemmStridedBatchedEx multiplies in half and accumulates in float, and
-  # takes its scalars in the accumulator's type.
-  scalar_t = is_half ? 'float' : 'dtype'
-  num_to_scalar = is_half ? '(float)NUM2DBL' : 'm_num_to_data'
-  scalar_one = is_half ? '1.0f' : 'm_one'
-  scalar_zero = is_half ? '0.0f' : 'm_zero'
+  # cublasGemmStridedBatchedEx multiplies in the element type and accumulates
+  # in the wider one, and takes its scalars in the accumulator's type.
+  scalar_t = acc_type.empty? ? 'dtype' : acc_type
+  num_to_scalar = acc_type.empty? ? 'm_num_to_data' : "(#{acc_type})NUM2DBL"
+  scalar_one = acc_one
+  scalar_zero = acc_zero
 %>
 
 #define ROW_SIZE(na) ((na)->shape[(na)->ndim-2])
@@ -298,7 +298,7 @@ static void
 
     if (cumo_na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
     handle = cumo_cuda_cublas_handle();
-<% if is_half %>
+<% unless cublas_dtype.empty? %>
     status = cublasGemmStridedBatchedEx(
             handle,
             b_layout.trans,
@@ -308,16 +308,16 @@ static void
             g->k,
             &g->alpha,
             (const void*)(cumo_na_get_pointer_for_read(b_layout.a) + cumo_na_get_offset(b_layout.a)),
-            CUDA_R_16F,
+            <%=cublas_dtype%>,
             b_layout.ld,
             b_layout.stride,
             (const void*)(cumo_na_get_pointer_for_read(a_layout.a) + cumo_na_get_offset(a_layout.a)),
-            CUDA_R_16F,
+            <%=cublas_dtype%>,
             a_layout.ld,
             a_layout.stride,
             &g->beta,
             (void*)(cumo_na_get_pointer_for_write(c) + cumo_na_get_offset(c)),
-            CUDA_R_16F,
+            <%=cublas_dtype%>,
             g->n,
             stridec,
             batch_count,

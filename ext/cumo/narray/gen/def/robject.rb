@@ -19,7 +19,12 @@ set is_complex:          false
 set is_object:           true
 set is_comparable:       true
 set is_double_precision: false
-set is_half:             false
+set acc_type:            ""
+set to_acc:              ""
+set from_acc:            ""
+set acc_zero:            "m_zero"
+set acc_one:             "m_one"
+set cublas_dtype:        ""
 set need_align:          false
 
 upcast_rb "Integer"

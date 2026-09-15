@@ -1,7 +1,5 @@
 <%
-  acc = is_half ? 'float' : 'dtype'
-  to_acc = is_half ? 'cumo_half2float' : ''
-  from_acc = is_half ? 'cumo_float2half' : ''
+  acc = acc_type.empty? ? 'dtype' : acc_type
 %>
 
 #if defined(__cplusplus)
