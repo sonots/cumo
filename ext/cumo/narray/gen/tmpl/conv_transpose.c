@@ -26,17 +26,120 @@ get_int_out_size(int* int_out_size, VALUE out_size, size_t ndim, size_t* x_shape
     }
 }
 
+typedef struct {
+    cumo_cuda_cudnn_conv_held_t held;
+    cudnnHandle_t handle;
+    VALUE   x_cont, w_cont, y, b_cont;
+    char   *x_cont_ptr, *w_cont_ptr, *y_ptr, *b_cont_ptr;
+    size_t  ndim;
+    int    *int_stride, *int_pad;
+    cudnnStatus_t status;
+} <%=c_iter%>_run_t;
+
+// Everything here holds a descriptor or the workspace, and the two allocations
+// below raise on their own when the device is full.
+static VALUE
+<%=c_iter%>_run(VALUE v)
+{
+    <%=c_iter%>_run_t *r = (<%=c_iter%>_run_t*)v;
+    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
+    <%=cudnn_scalar_t%> alpha = 1;
+    <%=cudnn_scalar_t%> beta = 0;
+    cudnnConvolutionBwdDataAlgoPerf_t perf_result;
+    size_t workspace_size;
+
+    r->status = cumo_cuda_cudnn_CreateTensorDescriptor(&r->held.x_desc, r->x_cont, cudnn_dtype);
+    if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
+    r->status = cumo_cuda_cudnn_CreateTensorDescriptor(&r->held.y_desc, r->y, cudnn_dtype);
+    if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
+    r->status = cumo_cuda_cudnn_CreateFilterDescriptor(&r->held.w_desc, r->w_cont, cudnn_dtype);
+    if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
+    r->status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&r->held.conv_desc, r->ndim, r->int_stride, r->int_pad, <%=cudnn_compute_dtype%>, <%=cudnn_math_type%>);
+    if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
+
+    // auto tune
+    r->status = cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
+            &perf_result,
+            r->handle,
+            r->held.w_desc,
+            r->w_cont,
+            r->held.x_desc,
+            r->x_cont,
+            r->held.conv_desc,
+            r->held.y_desc,
+            r->y,
+            cumo_cuda_cudnn_max_workspace_size(),
+            r->int_stride,
+            r->int_pad,
+            r->ndim,
+            cudnn_dtype);
+    if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
+    // The descriptor asked for a math type; use the one the search settled on.
+    r->status = cudnnSetConvolutionMathType(r->held.conv_desc, perf_result.mathType);
+    if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
+
+    // The search may look at algorithms needing up to max_workspace_size,
+    // but only the one it picked has to be paid for.
+    workspace_size = perf_result.memory;
+    if (workspace_size > 0) r->held.workspace = cumo_cuda_runtime_malloc(workspace_size);
+    r->status = cudnnConvolutionBackwardData(
+            r->handle,
+            (void*)&alpha,
+            r->held.w_desc,
+            (void*)r->w_cont_ptr,
+            r->held.x_desc,
+            (void*)r->x_cont_ptr,
+            r->held.conv_desc,
+            perf_result.algo,
+            (void*)r->held.workspace,
+            workspace_size,
+            (void*)&beta,
+            r->held.y_desc,
+            (void*)r->y_ptr);
+    if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
+
+    if (RTEST(r->b_cont)) {
+        size_t new_shape[CUMO_NA_MAX_DIMENSION];
+        cumo_narray_t *nb_cont;
+        size_t *b_shape;
+        int b_ndim;
+
+        CumoGetNArray(r->b_cont, nb_cont);
+        new_shape[0] = 1;
+        new_shape[1] = nb_cont->size;
+        for (size_t i = 0; i < r->ndim; ++i) {
+            new_shape[i + 2] = 1;
+        }
+        b_shape = nb_cont->shape;
+        b_ndim = nb_cont->ndim;
+        // reshape b
+        nb_cont->ndim = r->ndim + 2;
+        nb_cont->shape = new_shape;
+        r->status = cumo_cuda_cudnn_CreateTensorDescriptor(&r->held.b_desc, r->b_cont, cudnn_dtype);
+        // restore b.shape
+        nb_cont->ndim = b_ndim;
+        nb_cont->shape = b_shape;
+        if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
+
+        r->status = cudnnAddTensor(
+                    r->handle,
+                    (void*)&alpha,
+                    r->held.b_desc,
+                    (void*)r->b_cont_ptr,
+                    (void*)&alpha,
+                    r->held.y_desc,
+                    (void*)r->y_ptr);
+    }
+    return Qnil;
+}
+
 // cover_all=true is not supported with CUDNN
 // dilation > 1 is not supported yet
 // x.conv(w, b: nil, stride: 1, pad: 0, out_size: nil, y: nil)
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
-    cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
-    cudnnStatus_t status = 0;
-    cudnnHandle_t handle = 0;
-    <%=cudnn_scalar_t%> alpha = 1;
-    <%=cudnn_scalar_t%> beta = 0;
+    <%=c_iter%>_run_t r;
 
     VALUE x=self, w, b, stride, pad, out_size, y;
     VALUE kw_hash = Qnil;
@@ -48,25 +151,12 @@ static VALUE
     size_t *x_shape, *w_shape;
     size_t out_channels, batch_size;
 
-    VALUE x_cont, w_cont, b_cont = Qnil;
-    char *b_cont_ptr = NULL;
-    cudnnTensorDescriptor_t x_desc = 0;
-    cudnnTensorDescriptor_t y_desc = 0;
-    cudnnTensorDescriptor_t b_desc = 0;
-    cudnnFilterDescriptor_t w_desc = 0;
-    cudnnConvolutionDescriptor_t conv_desc = 0;
-    char *x_cont_ptr, *w_cont_ptr, *y_ptr;
-
-    cudnnConvolutionBwdDataAlgoPerf_t perf_result;
-    cudnnConvolutionBwdDataAlgo_t algo;
-    size_t max_workspace_size = cumo_cuda_cudnn_max_workspace_size();
-    size_t workspace_size;
-    char* workspace = 0;
-
+    VALUE x_cont, w_cont;
     int int_stride[CUMO_NA_MAX_DIMENSION];
     int int_pad[CUMO_NA_MAX_DIMENSION];
     int int_out_size[CUMO_NA_MAX_DIMENSION];
 
+    memset(&r, 0, sizeof(r));
     rb_scan_args(argc, argv, "1:", &w, &kw_hash);
     rb_get_kwargs(kw_hash, kw_table, 0, 5, opts);
     b = cumo_option_value(opts[0], Qnil);
@@ -119,119 +209,29 @@ static VALUE
     x_cont = cumo_na_as_contiguous_array(x);
     w_cont = cumo_na_as_contiguous_array(w);
 
-    x_cont_ptr = cumo_na_get_offset_pointer_for_read(x_cont);
-    w_cont_ptr = cumo_na_get_offset_pointer_for_read(w_cont);
-    y_ptr = cumo_na_get_offset_pointer_for_write(y);
+    r.x_cont = x_cont;
+    r.w_cont = w_cont;
+    r.y = y;
+    r.x_cont_ptr = cumo_na_get_offset_pointer_for_read(x_cont);
+    r.w_cont_ptr = cumo_na_get_offset_pointer_for_read(w_cont);
+    r.y_ptr = cumo_na_get_offset_pointer_for_write(y);
+    r.ndim = ndim;
+    r.int_stride = int_stride;
+    r.int_pad = int_pad;
 
-    // Taking the bias runs Ruby, which can raise, and everything below holds a
-    // descriptor or the workspace that only the error label gives back.
+    // Taking the bias runs Ruby, which can raise, so it is settled before the
+    // ensure below has anything to give back.
     if (b != Qnil) {
         CUMO_CHECK_NARRAY_TYPE(b, cT);
-        b_cont = cumo_na_as_contiguous_array(b);
-        b_cont_ptr = cumo_na_get_offset_pointer_for_read(b_cont);
+        r.b_cont = cumo_na_as_contiguous_array(b);
+        r.b_cont_ptr = cumo_na_get_offset_pointer_for_read(r.b_cont);
     }
+    r.handle = cumo_cuda_cudnn_handle();
 
-    handle = cumo_cuda_cudnn_handle();
-
-    status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-    status = cumo_cuda_cudnn_CreateTensorDescriptor(&y_desc, y, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-    status = cumo_cuda_cudnn_CreateFilterDescriptor(&w_desc, w_cont, cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-    status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, <%=cudnn_compute_dtype%>, <%=cudnn_math_type%>);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-
-    // auto tune
-    status = cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
-            &perf_result,
-            handle,
-            w_desc,
-            w_cont,
-            x_desc,
-            x_cont,
-            conv_desc,
-            y_desc,
-            y,
-            max_workspace_size,
-            int_stride,
-            int_pad,
-            ndim,
-            cudnn_dtype);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-    // The descriptor asked for a math type; use the one the search settled on.
-    status = cudnnSetConvolutionMathType(conv_desc, perf_result.mathType);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-
-    algo = perf_result.algo;
-    workspace_size = perf_result.memory;
-
-    // The search may look at algorithms needing up to max_workspace_size,
-    // but only the one it picked has to be paid for.
-    if (workspace_size > 0) workspace = cumo_cuda_runtime_malloc(workspace_size);
-    status = cudnnConvolutionBackwardData(
-            handle,
-            (void*)&alpha,
-            w_desc,
-            (void*)w_cont_ptr,
-            x_desc,
-            (void*)x_cont_ptr,
-            conv_desc,
-            algo,
-            (void*)workspace,
-            workspace_size,
-            (void*)&beta,
-            y_desc,
-            (void*)y_ptr);
-    if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-
-    if (b_cont != Qnil) {
-        size_t new_shape[CUMO_NA_MAX_DIMENSION];
-        cumo_narray_t *nb, *nb_cont;
-        size_t *b_shape;
-        int b_ndim;
-
-        CumoGetNArray(b, nb);
-        new_shape[0] = 1;
-        new_shape[1] = nb->size;
-        for (size_t i = 0; i < ndim; ++i) {
-            new_shape[i + 2] = 1;
-        }
-        CumoGetNArray(b_cont, nb_cont);
-        b_shape = nb_cont->shape;
-        b_ndim = nb_cont->ndim;
-        // reshape b
-        nb_cont->ndim = ndim + 2;
-        nb_cont->shape = new_shape;
-        status = cumo_cuda_cudnn_CreateTensorDescriptor(&b_desc, b_cont, cudnn_dtype);
-        // restore b.shape
-        nb_cont->ndim = b_ndim;
-        nb_cont->shape = b_shape;
-        if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-
-        status = cudnnAddTensor(
-                    handle,
-                    (void*)&alpha,
-                    b_desc,
-                    (void*)b_cont_ptr,
-                    (void*)&alpha,
-                    y_desc,
-                    (void*)y_ptr);
-        if (status != CUDNN_STATUS_SUCCESS) goto CONV_TRANSPOSE_ERROR;
-    }
-
-    RB_GC_GUARD(b_cont);
-
-CONV_TRANSPOSE_ERROR:
-    if (x_desc) cudnnDestroyTensorDescriptor(x_desc);
-    if (y_desc) cudnnDestroyTensorDescriptor(y_desc);
-    if (b_desc) cudnnDestroyTensorDescriptor(b_desc);
-    if (w_desc) cudnnDestroyFilterDescriptor(w_desc);
-    if (conv_desc) cudnnDestroyConvolutionDescriptor(conv_desc);
-    // cuDNN is still reading the workspace, and the raising free would replace
-    // the status reported below.
-    cumo_cuda_runtime_return_scratch(workspace, 1, NULL);
-    cumo_cuda_cudnn_check_status(status);
+    rb_ensure(<%=c_iter%>_run, (VALUE)&r, cumo_cuda_cudnn_release_conv_held, (VALUE)&r.held);
+    RB_GC_GUARD(r.b_cont);
+    cumo_cuda_cudnn_check_status(r.status);
+    cumo_cuda_runtime_check_status(r.held.wait_status);
 
     return y;
 }

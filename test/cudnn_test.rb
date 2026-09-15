@@ -787,6 +787,32 @@ class CUDNNTest < Test::Unit::TestCase
     end
   end
 
+  sub_test_case "convolution unwinding" do
+    # The search allocates, so a ceiling nothing can meet raises with the
+    # descriptors already built. They used to stay: 400 bytes a call.
+    test "a convolution that raises on the way gives its descriptors back" do
+      script = <<~RUBY
+        require "cumo/narray"
+        def rss_kb; File.read("/proc/self/statm").split[1].to_i * 4; end
+        x = Cumo::SFloat.ones(8, 16, 16, 16)
+        w = Cumo::SFloat.ones(32, 16, 5, 5)
+        op = -> { x.conv(w, stride: 1, pad: 2) }
+        raised = 0
+        400.times { begin; op.call; rescue Cumo::CUDA::OutOfMemoryError; raised += 1; end }
+        GC.start
+        before = rss_kb
+        4000.times { begin; op.call; rescue Cumo::CUDA::OutOfMemoryError; raised += 1; end }
+        GC.start
+        puts [raised, rss_kb - before].join(" ")
+      RUBY
+      out = IO.popen({ "CUMO_CUDNN_MAX_WORKSPACE_SIZE" => (10**18).to_s },
+                     [RbConfig.ruby, "-I#{File.expand_path("../lib", __dir__)}", "-e", script], &:read)
+      raised, grew_kb = out.split.map(&:to_i)
+      assert_equal 4400, raised, "every call raised"
+      assert_operator grew_kb, :<, 400, "4000 raises grew the heap by #{grew_kb}KB"
+    end
+  end
+
   sub_test_case "batch norm axis" do
     test "an axis cuDNN has no mode for is refused" do
       sf = Cumo::SFloat

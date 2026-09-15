@@ -53,6 +53,24 @@ BAD:
             env, cudnn_max_workspace_size);
 }
 
+VALUE
+cumo_cuda_cudnn_release_conv_held(VALUE held)
+{
+    cumo_cuda_cudnn_conv_held_t *h = (cumo_cuda_cudnn_conv_held_t*)held;
+
+    if (h->x_desc) { cudnnDestroyTensorDescriptor(h->x_desc); h->x_desc = 0; }
+    if (h->y_desc) { cudnnDestroyTensorDescriptor(h->y_desc); h->y_desc = 0; }
+    if (h->b_desc) { cudnnDestroyTensorDescriptor(h->b_desc); h->b_desc = 0; }
+    if (h->w_desc) { cudnnDestroyFilterDescriptor(h->w_desc); h->w_desc = 0; }
+    if (h->conv_desc) { cudnnDestroyConvolutionDescriptor(h->conv_desc); h->conv_desc = 0; }
+    // cuDNN is still reading the workspace, so the wait is the caller's to
+    // report. A free that raises from here would replace the exception being
+    // carried out, so it goes back the way an unwinding path has to.
+    cumo_cuda_runtime_return_scratch(h->workspace, h->workspace != NULL, &h->wait_status);
+    h->workspace = NULL;
+    return Qnil;
+}
+
 // Lazily initialize cudnn handle, and cache it
 cudnnHandle_t
 cumo_cuda_cudnn_handle()

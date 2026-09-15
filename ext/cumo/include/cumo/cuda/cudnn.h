@@ -97,10 +97,26 @@ cumo_cuda_cudnn_check_param_type(VALUE param, VALUE type, const char* name)
 void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status);
 
-// Raises, so callers take it before they hold a descriptor: a raise runs no
-// error label, and nothing else destroys one.
+// Raises, so the methods that clean up through a label take it before they
+// hold a descriptor: a raise runs no label.
 cudnnHandle_t
 cumo_cuda_cudnn_handle();
+
+// What a convolution holds while it works. A raise runs no error label, so the
+// work goes under rb_ensure and the handler gives these back instead.
+typedef struct {
+    cudnnTensorDescriptor_t      x_desc;
+    cudnnTensorDescriptor_t      y_desc;
+    cudnnTensorDescriptor_t      b_desc;
+    cudnnFilterDescriptor_t      w_desc;
+    cudnnConvolutionDescriptor_t conv_desc;
+    char                        *workspace;
+    cudaError_t                  wait_status;
+} cumo_cuda_cudnn_conv_held_t;
+
+// Takes the held as its argument so it can be handed to rb_ensure as it is.
+VALUE
+cumo_cuda_cudnn_release_conv_held(VALUE held);
 
 // VALUE is Ruby Array
 static inline void
