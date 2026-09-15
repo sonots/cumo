@@ -118,6 +118,21 @@ typedef struct {
 VALUE
 cumo_cuda_cudnn_release_conv_held(VALUE held);
 
+// What conv and conv_transpose carry into the run the ensure above guards.
+typedef struct {
+    cumo_cuda_cudnn_conv_held_t held;
+    cudnnHandle_t handle;
+    VALUE   x_cont, w_cont, y, b_cont;
+    char   *x_cont_ptr, *w_cont_ptr, *y_ptr, *b_cont_ptr;
+    size_t  ndim;
+    int    *int_stride, *int_pad;
+    cudnnStatus_t status;
+} cumo_cuda_cudnn_conv_run_t;
+
+// Adds nothing when the run carries no bias, so callers need no guard.
+cudnnStatus_t
+cumo_cuda_cudnn_AddBias(cumo_cuda_cudnn_conv_run_t *r, cudnnDataType_t dtype, const void *one);
+
 // VALUE is Ruby Array
 static inline void
 cumo_cuda_cudnn_get_int_ary(int* int_ary, VALUE ary, size_t ndim, int default_value)
@@ -194,6 +209,13 @@ cudnnStatus_t
 cumo_cuda_cudnn_CreateTensorDescriptor(
         cudnnTensorDescriptor_t *desc,
         VALUE a,
+        cudnnDataType_t cudnn_dtype);
+
+cudnnStatus_t
+cumo_cuda_cudnn_CreateTensorDescriptorFromShape(
+        cudnnTensorDescriptor_t *desc,
+        int ndim,
+        size_t *shape,
         cudnnDataType_t cudnn_dtype);
 
 cudnnStatus_t

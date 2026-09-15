@@ -67,17 +67,11 @@ cumo_cuda_cudnn_GetConvTransposeOutDim(
 }
 
 cudnnStatus_t
-cumo_cuda_cudnn_CreateTensorDescriptor(
+cumo_cuda_cudnn_CreateTensorDescriptorFromShape(
         cudnnTensorDescriptor_t *desc,
-        VALUE a, cudnnDataType_t cudnn_dtype) {
+        int ndim, size_t *shape, cudnnDataType_t cudnn_dtype) {
     cudnnStatus_t status = CUDNN_STATUS_SUCCESS;
-    cumo_narray_t *na;
-    CumoGetNArray(a, na);
-    int ndim = (int)(na->ndim);
-    size_t *shape = na->shape;
 
-    // only the shape is read: the descriptor is NCHW and the caller passes the
-    // contiguous copy, so a non-contiguous a still describes what is read
     status = cudnnCreateTensorDescriptor(desc);
     if (status != CUDNN_STATUS_SUCCESS) return status;
 
@@ -118,6 +112,47 @@ cumo_cuda_cudnn_CreateTensorDescriptor(
         status = cudnnSetTensorNdDescriptor(*desc, cudnn_dtype, ndim, int_shape, int_strides);
     }
     return status;
+}
+
+// Only the shape is read: the descriptor is NCHW and the caller passes the
+// contiguous copy, so a non-contiguous a still describes what is read.
+cudnnStatus_t
+cumo_cuda_cudnn_CreateTensorDescriptor(
+        cudnnTensorDescriptor_t *desc,
+        VALUE a, cudnnDataType_t cudnn_dtype) {
+    cumo_narray_t *na;
+    CumoGetNArray(a, na);
+    return cumo_cuda_cudnn_CreateTensorDescriptorFromShape(desc, (int)(na->ndim), na->shape, cudnn_dtype);
+}
+
+// The bias is one value a channel, and cuDNN broadcasts it from a descriptor
+// shaped like the output. Shared because conv and conv_transpose add it alike.
+cudnnStatus_t
+cumo_cuda_cudnn_AddBias(cumo_cuda_cudnn_conv_run_t *r, cudnnDataType_t dtype, const void *one) {
+    size_t bias_shape[CUMO_NA_MAX_DIMENSION];
+    cumo_narray_t *nb;
+    cudnnStatus_t status;
+
+    if (!RTEST(r->b_cont)) return CUDNN_STATUS_SUCCESS;
+
+    CumoGetNArray(r->b_cont, nb);
+    bias_shape[0] = 1;
+    bias_shape[1] = nb->size;
+    for (size_t i = 0; i < r->ndim; ++i) {
+        bias_shape[i + 2] = 1;
+    }
+    status = cumo_cuda_cudnn_CreateTensorDescriptorFromShape(
+            &r->held.b_desc, (int)(r->ndim + 2), bias_shape, dtype);
+    if (status != CUDNN_STATUS_SUCCESS) return status;
+
+    return cudnnAddTensor(
+            r->handle,
+            one,
+            r->held.b_desc,
+            (void*)r->b_cont_ptr,
+            one,
+            r->held.y_desc,
+            (void*)r->y_ptr);
 }
 
 cudnnStatus_t
