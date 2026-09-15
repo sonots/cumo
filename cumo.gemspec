@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{Cumo is CUDA aware numerical library whose interface is highly compatible with Ruby Numo}
   spec.description   = %q{Cumo is CUDA aware numerical library whose interface is highly compatible with Ruby Numo.}
   spec.homepage      = "https://github.com/sonots/cumo"
-  spec.license       = "BSD-3-Clause"
+  spec.license       = "MIT"
 
   spec.required_ruby_version = ">= 3.0.0"
 
