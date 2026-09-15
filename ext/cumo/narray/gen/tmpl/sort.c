@@ -51,7 +51,7 @@ static void
   <%=name%> of self.
 <% if is_float %>
   @overload <%=name%>(axis:nil, nan:false)
-  @param [TrueClass] nan  If true, propagete NaN. If false, ignore NaN.
+  @param [TrueClass] nan  If true, propagate NaN. If false, ignore NaN.
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
