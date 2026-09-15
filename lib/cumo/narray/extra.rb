@@ -1195,7 +1195,7 @@ module Cumo
 
     # The dtypes whose dot reaches cuBLAS through gemm. Every other dtype falls
     # to mulsum, which answers within an ulp but is orders of magnitude slower.
-    GEMM_TYPES = [HFloat, SFloat, DFloat, SComplex, DComplex].freeze
+    GEMM_TYPES = [BFloat, HFloat, SFloat, DFloat, SComplex, DComplex].freeze
     private_constant :GEMM_TYPES
 
     # Dot product of two arrays.

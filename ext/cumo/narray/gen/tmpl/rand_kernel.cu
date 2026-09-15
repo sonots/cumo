@@ -48,14 +48,14 @@ __device__ static dtype
     CUMO_IMAG(z) = cumo_rand_uniform(st) * CUMO_IMAG(max) + CUMO_IMAG(low);
     return z;
     //<% elsif !acc_type.empty? %>
-    // Rounding the float into a half can land on the upper bound, which rand
+    // Rounding the float into the element type can land on the upper bound, which rand
     // does not include, and the neighbour below it is the nearest value that
-    // does. A bound half cannot hold has no neighbour to step to.
+    // does. A bound the type cannot hold has no neighbour to step to.
     <%=acc_type%> flow = <%=to_acc%>(low);
     float high = flow + max;
     dtype h = <%=from_acc%>(cumo_rand_uniform(st) * max + flow);
     if (isfinite(high) && <%=to_acc%>(h) >= high) {
-        h = cumo_half_step_down(h);
+        h = <%=step_down%>(h);
     }
     return h;
     //<% else %>

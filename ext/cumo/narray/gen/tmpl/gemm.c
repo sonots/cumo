@@ -1,28 +1,4 @@
 <%
-  func_prefix =
-    case type_name
-    when 'sfloat'
-      'S'
-    when 'dfloat'
-      'D'
-    when 'scomplex'
-      'C'
-    when 'dcomplex'
-      'Z'
-    end
-  cutype =
-    case type_name
-    when 'hfloat'
-      'cumo_half'
-    when 'sfloat'
-      'float'
-    when 'dfloat'
-      'double'
-    when 'scomplex'
-      'cuComplex'
-    when 'dcomplex'
-      'cuDoubleComplex'
-    end
   # cublasGemmStridedBatchedEx multiplies in the element type and accumulates
   # in the wider one, and takes its scalars in the accumulator's type.
   scalar_t = acc_type.empty? ? 'dtype' : acc_type
@@ -324,7 +300,7 @@ static void
             CUBLAS_COMPUTE_32F,
             CUBLAS_GEMM_DEFAULT);
 <% else %>
-    status = cublas<%=func_prefix%>gemmStridedBatched(
+    status = cublas<%=cublas_prefix%>gemmStridedBatched(
             handle,
             b_layout.trans,
             a_layout.trans,
