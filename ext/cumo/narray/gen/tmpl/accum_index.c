@@ -39,7 +39,7 @@ static void
   <%=name%>. Return an index of result.
 <% if is_float %>
   @overload <%=name%>(axis:nil, nan:false)
-  @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN posision if exist).
+  @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN position if exist).
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
