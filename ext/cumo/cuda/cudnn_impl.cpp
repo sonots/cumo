@@ -357,6 +357,17 @@ struct AlgoCacheEntry {
     size_t memory;
     cudnnMathType_t math_type;
 };
+
+// Nothing may reach the C caller: it has no handler, so an escaping exception
+// is std::terminate. The cache only saves a later search, so one that cannot
+// grow leaves the answer this call already has.
+template <typename Map>
+void StoreAlgoCache(Map& map, const AlgoCacheKey& key, const typename Map::mapped_type& entry) {
+    try {
+        map[key] = entry;
+    } catch (...) {
+    }
+}
 }
 
 using FwdAlgoCacheMap = std::unordered_map<AlgoCacheKey, AlgoCacheEntry<cudnnConvolutionFwdAlgo_t>, AlgoCacheKeyHash>;
@@ -459,7 +470,7 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
     if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
     // TODO: thread-safe
-    algo_cache_map[key] = {perf_result->algo, perf_result->memory, perf_result->mathType};
+    StoreAlgoCache(algo_cache_map, key, {perf_result->algo, perf_result->memory, perf_result->mathType});
     return status;
 }
 
@@ -530,7 +541,7 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
     if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
     // TODO: thread-safe
-    algo_cache_map[key] = {perf_result->algo, perf_result->memory, perf_result->mathType};
+    StoreAlgoCache(algo_cache_map, key, {perf_result->algo, perf_result->memory, perf_result->mathType});
     return status;
 }
 
@@ -601,7 +612,7 @@ cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
     if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
     // TODO: thread-safe
-    algo_cache_map[key] = {perf_result->algo, perf_result->memory, perf_result->mathType};
+    StoreAlgoCache(algo_cache_map, key, {perf_result->algo, perf_result->memory, perf_result->mathType});
     return status;
 }
 
