@@ -82,7 +82,9 @@ module Cumo::CUDA
         # test is about takes the interpreter down with it.
         STDOUT.sync = true
 
-        name = %w[cuCtxDestroy_v2 cuCtxDestroy].find do |sym|
+        # The context cumo runs in is the device's primary one, which
+        # cuCtxDestroy refuses; resetting the device is what tears it down.
+        name = %w[cuDevicePrimaryCtxReset_v2 cuDevicePrimaryCtxReset].find do |sym|
           begin
             Fiddle::Handle::DEFAULT[sym]
             true
@@ -91,11 +93,11 @@ module Cumo::CUDA
           end
         end
         if name.nil?
-          print "no-cuCtxDestroy"
+          print "no-cuDevicePrimaryCtxReset"
           exit
         end
-        destroy = Fiddle::Function.new(Fiddle::Handle::DEFAULT[name],
-                                       [Fiddle::TYPE_VOIDP], Fiddle::TYPE_INT)
+        reset = Fiddle::Function.new(Fiddle::Handle::DEFAULT[name],
+                                     [Fiddle::TYPE_INT], Fiddle::TYPE_INT)
 
         def make_garbage
           200.times { Cumo::DFloat.new(4096).seq }
@@ -108,10 +110,9 @@ module Cumo::CUDA
 
         GC.disable
         make_garbage
-        ctx = Cumo::CUDA::Driver.cuCtxGetCurrent
 
         STDERR.reopen(ARGV.fetch(0), "w")
-        destroy.call(ctx)
+        reset.call(0)
         GC.enable
         begin
           GC.start
@@ -123,7 +124,7 @@ module Cumo::CUDA
 
       Tempfile.create("cumo-free-hook") do |log|
         out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script, log.path], &:read)
-        omit("cuCtxDestroy is not available") if out == "no-cuCtxDestroy"
+        omit("cuDevicePrimaryCtxReset is not available") if out == "no-cuDevicePrimaryCtxReset"
         assert_equal("ok", out)
         # Without this the test passes even when nothing was freed at all.
         assert_match(/failed to free device memory/, log.read)

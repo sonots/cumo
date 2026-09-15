@@ -449,15 +449,17 @@ Init_cumo_cuda_driver()
 
     // A driver API call needs a current context, and the runtime API only
     // creates its primary one once an array operation happens, so this covers
-    // the gap in between. Losing it is not fatal -- everything but a driver
-    // call made before any array operation still works -- so a device that
-    // refuses a context is left for that call to report. cuDeviceGet leaves
-    // cuDevice untouched when it fails, hence the guard.
+    // the gap in between. It has to be the primary context and not one of our
+    // own: cudaSetDevice binds the primary one, so anything built in a
+    // different context stops working the moment a caller sets the device,
+    // including the events a cuBLAS handle keeps inside itself.
+    // Losing it is not fatal -- everything but a driver call made before any
+    // array operation still works -- so a device that refuses a context is
+    // left for that call to report. cuDeviceGet leaves cuDevice untouched
+    // when it fails, hence the guard.
     if (cuDeviceGet(&cuDevice, 0) == CUDA_SUCCESS) {
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000
-        cuCtxCreate(&context, NULL, 0, cuDevice);
-#else
-        cuCtxCreate(&context, 0, cuDevice);
-#endif
+        if (cuDevicePrimaryCtxRetain(&context, cuDevice) == CUDA_SUCCESS) {
+            cuCtxSetCurrent(context);
+        }
     }
 }
