@@ -2,8 +2,8 @@
 if is_int && !is_object
   rand_bit = (/Int64$/ =~ class_name) ? 64 : 32
   rand_type = "uint#{rand_bit}_t"
-elsif is_half
-  rand_type = "float"
+elsif !acc_type.empty?
+  rand_type = acc_type
 else
   rand_type = "dtype"
 end
@@ -47,14 +47,14 @@ __device__ static dtype
     CUMO_REAL(z) = cumo_rand_uniform(st) * CUMO_REAL(max) + CUMO_REAL(low);
     CUMO_IMAG(z) = cumo_rand_uniform(st) * CUMO_IMAG(max) + CUMO_IMAG(low);
     return z;
-    //<% elsif is_half %>
+    //<% elsif !acc_type.empty? %>
     // Rounding the float into a half can land on the upper bound, which rand
     // does not include, and the neighbour below it is the nearest value that
     // does. A bound half cannot hold has no neighbour to step to.
-    float flow = cumo_half2float(low);
+    <%=acc_type%> flow = <%=to_acc%>(low);
     float high = flow + max;
-    dtype h = cumo_float2half(cumo_rand_uniform(st) * max + flow);
-    if (isfinite(high) && cumo_half2float(h) >= high) {
+    dtype h = <%=from_acc%>(cumo_rand_uniform(st) * max + flow);
+    if (isfinite(high) && <%=to_acc%>(h) >= high) {
         h = cumo_half_step_down(h);
     }
     return h;

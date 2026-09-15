@@ -18,7 +18,12 @@ set is_object:           false
 set is_real:             true
 set is_comparable:       true
 set is_double_precision: false
-set is_half:             true
+set acc_type:            "float"
+set to_acc:              "cumo_half2float"
+set from_acc:            "cumo_float2half"
+set acc_zero:            "0.0f"
+set acc_one:             "1.0f"
+set cublas_dtype:        "CUDA_R_16F"
 set need_align:          true
 
 set cudnn_dtype:         "CUDNN_DATA_HALF"

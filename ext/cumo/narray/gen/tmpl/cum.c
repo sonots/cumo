@@ -28,24 +28,25 @@ static void
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     cumo_cuda_runtime_device_synchronize();
 
-<% if is_half && name == 'cumsum' %>
-    // The scan this stands in for carries float, and a running sum of halves
-    // stops moving once it passes 2048, so the accumulator is float here too.
+<% if !acc_type.empty? && name == 'cumsum' %>
+    // The scan this stands in for carries the accumulator type, and a running
+    // sum in the element type stops moving once the partial outgrows it, so this
+    // path carries it too.
     {
-        float acc, fy;
+        <%=acc_type%> acc, fy;
 
         CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
-        acc = cumo_half2float(x);
+        acc = <%=to_acc%>(x);
         CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
         for (i--; i--;) {
             CUMO_GET_DATA_STRIDE(p1,s1,dtype,y);
-            fy = cumo_half2float(y);
+            fy = <%=to_acc%>(y);
   <% if j == '_nan' %>
             if (acc != acc) { acc = fy; } else if (fy == fy) { acc += fy; }
   <% else %>
             acc += fy;
   <% end %>
-            x = cumo_float2half(acc);
+            x = <%=from_acc%>(acc);
             CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
         }
     }

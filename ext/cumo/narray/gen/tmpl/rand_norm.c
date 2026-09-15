@@ -1,12 +1,12 @@
 typedef struct {
     dtype mu;
-    <% if is_half %>float<% else %>rtype<% end %> sigma;
+    <%= acc_type.empty? ? 'rtype' : acc_type %> sigma;
     u_int64_t seed;
     u_int64_t offset;
 } randn_opt_t;
 
-void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype mu, <% if is_half %>float<% else %>rtype<% end %> sigma, uint64_t n);
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype mu, <% if is_half %>float<% else %>rtype<% end %> sigma, uint64_t n);
+void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype mu, <%= acc_type.empty? ? 'rtype' : acc_type %> sigma, uint64_t n);
+void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype mu, <%= acc_type.empty? ? 'rtype' : acc_type %> sigma, uint64_t n);
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
@@ -16,7 +16,7 @@ static void
     ssize_t  s1;
     size_t  *idx1;
     dtype    mu;
-    <% if is_half %>float<% else %>rtype<% end %>    sigma;
+    <%= acc_type.empty? ? 'rtype' : acc_type %>    sigma;
     randn_opt_t *g;
 
     CUMO_INIT_COUNTER(lp, i);

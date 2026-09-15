@@ -5,10 +5,7 @@
 }  /* extern "C" { */
 #endif
 
-<% acc = is_half ? 'float' : dtype %>
-<% to_acc = is_half ? 'cumo_half2float' : '' %>
-<% from_acc = is_half ? 'cumo_float2half' : '' %>
-<% acc_zero = is_half ? '0.0f' : 'm_zero' %>
+<% acc = acc_type.empty? ? dtype : acc_type %>
 
 
 // Reduce also combines two accumulators, so next has to be the accumulator type:

@@ -18,7 +18,12 @@ set is_object:     false
 set is_real:       false
 set is_comparable: false
 set is_double_precision: false
-set is_half:             false
+set acc_type:            ""
+set to_acc:              ""
+set from_acc:            ""
+set acc_zero:            "m_zero"
+set acc_one:             "m_one"
+set cublas_dtype:        ""
 set need_align: false
 
 upcast_rb "Integer"
