@@ -49,12 +49,6 @@
 #define m_cumsum(x,y) {x += y;}
 #define m_cumprod(x,y) {x *= y;}
 
-#define cmp(a,b)                                        \
-    ((qsort_cast(a)==qsort_cast(b)) ? 0 :               \
-     (qsort_cast(a) > qsort_cast(b)) ? 1 : -1)
-#define cmpgt(a,b)                              \
-    (qsort_cast(a) > qsort_cast(b))
-
 static inline dtype f_min(size_t n, char *p, ssize_t stride)
 {
     dtype x,y;
