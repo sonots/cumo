@@ -11,6 +11,7 @@ on:
       - '**/.gitignore'
       - '.rubocop*.yml'
       - 'docs/**'
+      - 'bench/**'
   pull_request:
     paths-ignore:
       - '**.md'
@@ -20,6 +21,7 @@ on:
       - '**/.gitignore'
       - '.rubocop*.yml'
       - 'docs/**'
+      - 'bench/**'
 
 jobs:
   build:
