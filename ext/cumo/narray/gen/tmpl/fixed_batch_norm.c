@@ -97,17 +97,17 @@ static VALUE
     }
     y_ptr = cumo_na_get_offset_pointer_for_write(y);
 
+    mode = cumo_cuda_cudnn_GetBatchNormMode(axis_ndim, int_axis);
+    handle = cumo_cuda_cudnn_handle();
+
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto FIXED_BATCH_NORM_ERROR;
 
-    mode = cumo_cuda_cudnn_GetBatchNormMode(axis_ndim, int_axis);
     status = cumo_cuda_cudnn_CreateBNTensorDescriptor(&bn_desc, x_desc, mode);
     if (status != CUDNN_STATUS_SUCCESS) goto FIXED_BATCH_NORM_ERROR;
     // cuDNN derives the parameter descriptor as float for a half x and as x's
     // own type otherwise, and the checks above hold every parameter to exactly
     // that class, so none of them needs a cast.
-
-    handle = cumo_cuda_cudnn_handle();
 
     status = cudnnBatchNormalizationForwardInference(
             handle,

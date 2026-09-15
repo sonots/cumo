@@ -104,6 +104,8 @@ static VALUE
         b_cont_ptr = cumo_na_get_offset_pointer_for_read(b_cont);
     }
 
+    handle = cumo_cuda_cudnn_handle();
+
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&x_desc, x_cont, cudnn_dtype);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
     status = cumo_cuda_cudnn_CreateTensorDescriptor(&y_desc, y, cudnn_dtype);
@@ -112,8 +114,6 @@ static VALUE
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
     status = cumo_cuda_cudnn_CreateConvolutionDescriptor(&conv_desc, ndim, int_stride, int_pad, <%=cudnn_compute_dtype%>, <%=cudnn_math_type%>);
     if (status != CUDNN_STATUS_SUCCESS) goto CONV_ERROR;
-
-    handle = cumo_cuda_cudnn_handle();
 
     // auto tune
     status = cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(

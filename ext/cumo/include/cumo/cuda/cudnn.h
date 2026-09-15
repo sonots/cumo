@@ -97,6 +97,8 @@ cumo_cuda_cudnn_check_param_type(VALUE param, VALUE type, const char* name)
 void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status);
 
+// Raises, so callers take it before they hold a descriptor: a raise runs no
+// error label, and nothing else destroys one.
 cudnnHandle_t
 cumo_cuda_cudnn_handle();
 
