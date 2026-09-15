@@ -66,6 +66,15 @@ VALUE cumo_na_ndloop4(cumo_ndfunc_t *nf, void *ptr, VALUE args);
 
 VALUE cumo_na_ndloop_cast_narray_to_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE fmt);
 VALUE cumo_na_ndloop_store_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE rary);
+
+// One device buffer for a whole walk, not one per row. A row that gives its
+// own back has to wait for the kernel still reading it, and that wait costs
+// more than everything else the row does. cumo_na_ndloop_store_rarray owns
+// one and hands it over as the loop's opt_ptr.
+// Opaque: an iterator asks for a buffer and reads nothing else.
+typedef struct cumo_na_stage_pool cumo_na_stage_pool_t;
+
+char *cumo_na_stage_pool_get(cumo_na_stage_pool_t *pool, size_t bytes);
 VALUE cumo_na_ndloop_store_rarray2(cumo_ndfunc_t *nf, VALUE nary, VALUE rary, VALUE opt);
 VALUE cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt);
 VALUE cumo_na_ndloop_with_index(cumo_ndfunc_t *nf, int argc, ...);

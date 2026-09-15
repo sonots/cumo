@@ -2129,8 +2129,25 @@ loop_store_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     ;
 }
 
-VALUE
-cumo_na_ndloop_store_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE rary)
+struct cumo_na_stage_pool {
+    char       *ptr;
+    size_t      bytes;
+    int         launched;
+    cudaError_t st;
+};
+
+static VALUE ndloop_store_rarray_walk(VALUE arg);
+static VALUE ndloop_stage_pool_release(VALUE pool);
+
+typedef struct {
+    cumo_ndfunc_t        *ndf;
+    VALUE                 nary;
+    VALUE                 rary;
+    cumo_na_stage_pool_t *pool;
+} ndloop_store_rarray_arg_t;
+
+static VALUE
+ndloop_store_rarray_opt(cumo_ndfunc_t *nf, VALUE nary, VALUE rary, void *opt_ptr)
 {
     cumo_na_md_loop_t lp;
     VALUE args;
@@ -2144,9 +2161,59 @@ cumo_na_ndloop_store_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE rary)
     //ndloop_cast_args(nf, args);
 
     // allocate ndloop struct
-    ndloop_alloc(&lp, nf, args, NULL, 0, loop_store_rarray);
+    ndloop_alloc(&lp, nf, args, opt_ptr, 0, loop_store_rarray);
 
     return rb_ensure(ndloop_run, (VALUE)&lp, ndloop_release, (VALUE)&lp);
+}
+
+static VALUE
+ndloop_store_rarray_walk(VALUE arg)
+{
+    ndloop_store_rarray_arg_t *r = (ndloop_store_rarray_arg_t*)arg;
+
+    return ndloop_store_rarray_opt(r->ndf, r->nary, r->rary, r->pool);
+}
+
+// Only a row wanting more takes the wait, and a walk's rows are all the length
+// of the destination's last axis, so that is the first row and no other.
+char *
+cumo_na_stage_pool_get(cumo_na_stage_pool_t *pool, size_t bytes)
+{
+    if (pool->bytes < bytes) {
+        ndloop_stage_pool_release((VALUE)pool);
+        pool->ptr = cumo_cuda_runtime_malloc(bytes);
+        pool->bytes = bytes;
+    }
+    pool->launched = 1;
+    return pool->ptr;
+}
+
+// Takes the pool as its argument so it can be handed to rb_ensure as it is.
+// The wait belongs to whoever reports, so it is folded in rather than dropped.
+static VALUE
+ndloop_stage_pool_release(VALUE pool)
+{
+    cumo_na_stage_pool_t *p = (cumo_na_stage_pool_t*)pool;
+
+    cumo_cuda_runtime_return_scratch(p->ptr, p->launched, &p->st);
+    p->ptr = NULL;
+    p->bytes = 0;
+    p->launched = 0;
+    return Qnil;
+}
+
+// The pool is made here so that no caller can forget it: the iterators read it
+// through the loop's opt_ptr and have no other way to reach one.
+VALUE
+cumo_na_ndloop_store_rarray(cumo_ndfunc_t *nf, VALUE nary, VALUE rary)
+{
+    cumo_na_stage_pool_t pool = {NULL, 0, 0, cudaSuccess};
+    ndloop_store_rarray_arg_t r = {nf, nary, rary, &pool};
+    VALUE v;
+
+    v = rb_ensure(ndloop_store_rarray_walk, (VALUE)&r, ndloop_stage_pool_release, (VALUE)&pool);
+    cumo_cuda_runtime_check_status(pool.st);
+    return v;
 }
 
 
