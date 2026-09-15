@@ -4,51 +4,6 @@ void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p
 void <%="cumo_#{c_iter}_index_scalar_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, size_t *idx1, CUMO_BIT_DIGIT z, uint64_t n);
 void <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, ssize_t s1, CUMO_BIT_DIGIT z, uint64_t n);
 
-typedef struct {
-    CUMO_BIT_DIGIT *device_z;
-    CUMO_BIT_DIGIT *host_z;
-    CUMO_BIT_DIGIT *a1;
-    size_t   p1;
-    ssize_t  s1;
-    size_t  *idx1;
-    size_t   n;
-    uint64_t nw;
-    int      launched;
-    cudaError_t st;
-} <%=c_iter%>_stage_t;
-
-// The launch raises through a longjmp, so the staging buffer is owned by an
-// ensure. The kernel reads it, so the ensure waits for the stream before
-// giving it back: the pool hands a freed chunk straight out again, and a host
-// write into that managed memory does not wait for the stream.
-static VALUE
-<%=c_iter%>_stage_run(VALUE arg)
-{
-    <%=c_iter%>_stage_t *r = (<%=c_iter%>_stage_t*)arg;
-
-    r->st = cudaMemcpyAsync(r->device_z, r->host_z, sizeof(CUMO_BIT_DIGIT) * r->nw, cudaMemcpyHostToDevice, 0);
-    if (r->st == cudaSuccess && r->n > 0) {
-        r->launched = 1;
-        if (r->idx1) {
-            <%="cumo_#{c_iter}_index_kernel_launch"%>(r->a1, r->p1, r->idx1, r->device_z, r->n);
-        } else if (r->s1 == 1) {
-            <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(r->a1, r->p1, r->device_z, r->n);
-        } else {
-            <%="cumo_#{c_iter}_stride_kernel_launch"%>(r->a1, r->p1, r->s1, r->device_z, r->n);
-        }
-    }
-    return Qnil;
-}
-
-static VALUE
-<%=c_iter%>_stage_release(VALUE arg)
-{
-    <%=c_iter%>_stage_t *r = (<%=c_iter%>_stage_t*)arg;
-
-    cumo_cuda_runtime_return_scratch((char*)r->device_z, r->launched, &r->st);
-    return Qnil;
-}
-
 #define <%=c_iter%>_set(buf, i, z)                                      \
     if ((z) & 1) { (buf)[(i) / CUMO_NB] |= (CUMO_BIT_DIGIT)1 << ((i) % CUMO_NB); }
 
@@ -143,20 +98,23 @@ static void
             cumo_cuda_runtime_check_status(
                 cudaMemcpyAsync(a1,host_z,sizeof(CUMO_BIT_DIGIT)*(i/CUMO_NB),cudaMemcpyHostToDevice,0));
         } else {
-            <%=c_iter%>_stage_t r;
-
-            r.nw = (i + CUMO_NB - 1) / CUMO_NB;
-            r.device_z = (CUMO_BIT_DIGIT*)cumo_cuda_runtime_malloc(sizeof(CUMO_BIT_DIGIT) * (r.nw ? r.nw : 1));
-            r.host_z = host_z;
-            r.a1 = a1;
-            r.p1 = p1;
-            r.s1 = s1;
-            r.idx1 = idx1;
-            r.n = i;
-            r.launched = 0;
-            r.st = cudaSuccess;
-            rb_ensure(<%=c_iter%>_stage_run, (VALUE)&r, <%=c_iter%>_stage_release, (VALUE)&r);
-            cumo_cuda_runtime_check_status(r.st);
+            uint64_t iw = (i + CUMO_NB - 1) / CUMO_NB;
+            // nw, not iw: every row of the walk is n long, and a row that
+            // converts fewer would otherwise ask for a size of its own.
+            CUMO_BIT_DIGIT *device_z = (CUMO_BIT_DIGIT*)cumo_na_stage_pool_get(
+                    (cumo_na_stage_pool_t*)(lp->opt_ptr), sizeof(CUMO_BIT_DIGIT) * (nw ? nw : 1));
+            cudaError_t status =
+                cudaMemcpyAsync(device_z,host_z,sizeof(CUMO_BIT_DIGIT)*iw,cudaMemcpyHostToDevice,0);
+            if (status == cudaSuccess && i > 0) {
+                if (idx1) {
+                    <%="cumo_#{c_iter}_index_kernel_launch"%>(a1,p1,idx1,device_z,i);
+                } else if (s1 == 1) {
+                    <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(a1,p1,device_z,i);
+                } else {
+                    <%="cumo_#{c_iter}_stride_kernel_launch"%>(a1,p1,s1,device_z,i);
+                }
+            }
+            cumo_cuda_runtime_check_status(status);
         }
         RB_ALLOCV_END(buf);
     }

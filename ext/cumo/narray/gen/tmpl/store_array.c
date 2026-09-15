@@ -4,46 +4,6 @@ void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, dtype* z, 
 void <%="cumo_#{c_iter}_index_scalar_kernel_launch"%>(char *p1, size_t *idx1, dtype z, uint64_t n);
 void <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(char *p1, ssize_t s1, dtype z, uint64_t n);
 
-typedef struct {
-    dtype  *device_z;
-    dtype  *host_z;
-    char   *p1;
-    size_t  s1;
-    size_t *idx1;
-    size_t  n;
-    int     launched;
-    cudaError_t st;
-} <%=c_iter%>_stage_t;
-
-// The launch raises through a longjmp, so the staging buffer is owned by an
-// ensure. The kernel reads it, so the ensure waits for the stream before
-// giving it back: the pool hands a freed chunk straight out again, and a host
-// write into that managed memory does not wait for the stream.
-static VALUE
-<%=c_iter%>_stage_run(VALUE arg)
-{
-    <%=c_iter%>_stage_t *r = (<%=c_iter%>_stage_t*)arg;
-
-    r->st = cudaMemcpyAsync(r->device_z, r->host_z, sizeof(dtype) * r->n, cudaMemcpyHostToDevice, 0);
-    if (r->st == cudaSuccess && r->n > 0) {
-        r->launched = 1;
-        if (r->idx1) {
-            <%="cumo_#{c_iter}_index_kernel_launch"%>(r->p1, r->idx1, r->device_z, r->n);
-        } else {
-            <%="cumo_#{c_iter}_stride_kernel_launch"%>(r->p1, r->s1, r->device_z, r->n);
-        }
-    }
-    return Qnil;
-}
-
-static VALUE
-<%=c_iter%>_stage_release(VALUE arg)
-{
-    <%=c_iter%>_stage_t *r = (<%=c_iter%>_stage_t*)arg;
-
-    cumo_cuda_runtime_return_scratch((char*)r->device_z, r->launched, &r->st);
-    return Qnil;
-}
 //<% end %>
 
 static void
@@ -191,18 +151,20 @@ static void
             cumo_cuda_runtime_check_status(
                 cudaMemcpyAsync(p1,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0));
         } else {
-            <%=c_iter%>_stage_t r;
-
-            r.device_z = (dtype*)cumo_cuda_runtime_malloc(sizeof(dtype) * (i ? i : 1));
-            r.host_z = host_z;
-            r.p1 = p1;
-            r.s1 = s1;
-            r.idx1 = idx1;
-            r.n = i;
-            r.launched = 0;
-            r.st = cudaSuccess;
-            rb_ensure(<%=c_iter%>_stage_run, (VALUE)&r, <%=c_iter%>_stage_release, (VALUE)&r);
-            cumo_cuda_runtime_check_status(r.st);
+            // n, not i: every row of the walk is n long, and a row that
+            // converts fewer would otherwise ask for a size of its own.
+            dtype *device_z = (dtype*)cumo_na_stage_pool_get(
+                    (cumo_na_stage_pool_t*)(lp->opt_ptr), sizeof(dtype) * (n ? n : 1));
+            cudaError_t status =
+                cudaMemcpyAsync(device_z,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0);
+            if (status == cudaSuccess && i > 0) {
+                if (idx1) {
+                    <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,idx1,device_z,i);
+                } else {
+                    <%="cumo_#{c_iter}_stride_kernel_launch"%>(p1,s1,device_z,i);
+                }
+            }
+            cumo_cuda_runtime_check_status(status);
         }
         RB_ALLOCV_END(buf);
     }
@@ -244,6 +206,10 @@ static VALUE
     cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{rb_cArray,0}};
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0};
 
+    //<% if c_iter.include? 'robject' %>
     cumo_na_ndloop_store_rarray(&ndf, self, rary);
+    //<% else %>
+    cumo_na_ndloop_store_rarray(&ndf, self, rary);
+    //<% end %>
     return self;
 }
