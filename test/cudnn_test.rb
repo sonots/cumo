@@ -787,6 +787,23 @@ class CUDNNTest < Test::Unit::TestCase
     end
   end
 
+  sub_test_case "bias shape" do
+    # w is [out, in, ...] for conv and [in, out, ...] for conv_transpose, so a
+    # bias the length of the other end has to be refused by both.
+    test "a bias that is not one value per output channel is refused" do
+      sf = Cumo::SFloat
+      x = sf.ones(1, 2, 5, 5)
+      { conv: sf.ones(3, 2, 3, 3), conv_transpose: sf.ones(2, 3, 3, 3) }.each do |m, w|
+        assert_equal 3, x.send(m, w, b: sf.ones(3), stride: 1, pad: 1).shape[1], "#{m} takes 3"
+        [sf.ones(1), sf.ones(2), sf.ones(1, 3), sf.ones(3, 1)].each do |b|
+          assert_raise(Cumo::NArray::ShapeError, "#{m} b=#{b.shape}") do
+            x.send(m, w, b: b, stride: 1, pad: 1)
+          end
+        end
+      end
+    end
+  end
+
   sub_test_case "convolution unwinding" do
     # The search allocates, so a ceiling nothing can meet raises with the
     # descriptors already built. They used to stay: 400 bytes a call.

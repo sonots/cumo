@@ -154,7 +154,7 @@ static VALUE
     // Taking the bias runs Ruby, which can raise, so it is settled before the
     // ensure below has anything to give back.
     if (b != Qnil) {
-        CUMO_CHECK_NARRAY_TYPE(b, cT);
+        cumo_cuda_cudnn_check_input(b, cT, 1, &out_channels);
         r.b_cont = cumo_na_as_contiguous_array(b);
         r.b_cont_ptr = cumo_na_get_offset_pointer_for_read(r.b_cont);
     }
