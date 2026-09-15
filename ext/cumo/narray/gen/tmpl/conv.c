@@ -1,22 +1,12 @@
 #ifdef CUDNN_FOUND
 
 
-typedef struct {
-    cumo_cuda_cudnn_conv_held_t held;
-    cudnnHandle_t handle;
-    VALUE   x_cont, w_cont, y, b_cont;
-    char   *x_cont_ptr, *w_cont_ptr, *y_ptr, *b_cont_ptr;
-    size_t  ndim;
-    int    *int_stride, *int_pad;
-    cudnnStatus_t status;
-} <%=c_iter%>_run_t;
-
 // Everything here holds a descriptor or the workspace, and the two allocations
 // below raise on their own when the device is full.
 static VALUE
 <%=c_iter%>_run(VALUE v)
 {
-    <%=c_iter%>_run_t *r = (<%=c_iter%>_run_t*)v;
+    cumo_cuda_cudnn_conv_run_t *r = (cumo_cuda_cudnn_conv_run_t*)v;
     cudnnDataType_t cudnn_dtype = <%= cudnn_dtype %>;
     <%=cudnn_scalar_t%> alpha = 1;
     <%=cudnn_scalar_t%> beta = 0;
@@ -73,38 +63,7 @@ static VALUE
             (void*)r->y_ptr);
     if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
 
-    if (RTEST(r->b_cont)) {
-        size_t new_shape[CUMO_NA_MAX_DIMENSION];
-        cumo_narray_t *nb_cont;
-        size_t *b_shape;
-        int b_ndim;
-
-        CumoGetNArray(r->b_cont, nb_cont);
-        new_shape[0] = 1;
-        new_shape[1] = nb_cont->size;
-        for (size_t i = 0; i < r->ndim; ++i) {
-            new_shape[i + 2] = 1;
-        }
-        b_shape = nb_cont->shape;
-        b_ndim = nb_cont->ndim;
-        // reshape b
-        nb_cont->ndim = r->ndim + 2;
-        nb_cont->shape = new_shape;
-        r->status = cumo_cuda_cudnn_CreateTensorDescriptor(&r->held.b_desc, r->b_cont, cudnn_dtype);
-        // restore b.shape
-        nb_cont->ndim = b_ndim;
-        nb_cont->shape = b_shape;
-        if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
-
-        r->status = cudnnAddTensor(
-                    r->handle,
-                    (void*)&alpha,
-                    r->held.b_desc,
-                    (void*)r->b_cont_ptr,
-                    (void*)&alpha,
-                    r->held.y_desc,
-                    (void*)r->y_ptr);
-    }
+    r->status = cumo_cuda_cudnn_AddBias(r, cudnn_dtype, &alpha);
     return Qnil;
 }
 
@@ -114,7 +73,7 @@ static VALUE
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
-    <%=c_iter%>_run_t r;
+    cumo_cuda_cudnn_conv_run_t r;
 
     VALUE x=self, w, b, stride, pad, y;
     VALUE kw_hash = Qnil;
