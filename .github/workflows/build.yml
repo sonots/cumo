@@ -3,7 +3,25 @@ name: Build Test
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE*'
+      - '**/LICENSE*'
+      - '.gitignore'
+      - '**/.gitignore'
+      - '.rubocop*.yml'
+      - 'docs/**'
+      - 'bench/**'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE*'
+      - '**/LICENSE*'
+      - '.gitignore'
+      - '**/.gitignore'
+      - '.rubocop*.yml'
+      - 'docs/**'
+      - 'bench/**'
 
 jobs:
   build:
