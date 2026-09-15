@@ -5160,12 +5160,13 @@ class NArrayTest < Test::Unit::TestCase
     want
   end
 
-  def assert_sort_index(view, what, axes: nil)
+  def assert_sort_index(view, what, axes: nil, nan: false)
     axes ||= (0...view.ndim).map { |i| [i] } + [(0...view.ndim).to_a]
     axes.each do |axis|
-      got = axis.size == view.ndim ? view.sort_index : view.sort_index(axis: axis)
+      kw = nan ? { nan: true } : {}
+      got = axis.size == view.ndim ? view.sort_index(**kw) : view.sort_index(axis: axis, **kw)
       assert_equal(sort_index_expect(view, axis), got.to_a.flatten,
-                   "#{what} sort_index axis #{axis.inspect}")
+                   "#{what} sort_index axis #{axis.inspect}#{nan ? " nan:true" : ""}")
     end
   end
 
@@ -5225,6 +5226,21 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([1, 1, 0, 0], zeros.map { |x| (1.0 / x).negative? ? 1 : 0 }, "#{dtype} signed zero order")
     end
 
+    # nan:true asks for the order the default already produces. Its comparator
+    # answered -1 for a NaN against anything, so the partition took elements
+    # other than the NaN to the wrong side.
+    [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat].each do |dtype|
+      got = dtype[9, 8, 7, nan, 6, 5, 4, 3, 2, 1].sort(nan: true).to_a
+      assert_equal(10, got.size, "#{dtype} nan:true length")
+      assert_equal((1..9).map(&:to_f), got[0, 9], "#{dtype} nan:true")
+      assert(got[9].nan?, "#{dtype} nan:true NaN last")
+
+      src = dtype.cast([[3.0, nan, 1.0], [neg_nan, 2.0, nan]])
+      assert_equal([[1.0, 3.0, :nan], [2.0, :nan, :nan]],
+                   map_deep(src.sort(axis: 1, nan: true).to_a) { |x| x.nan? ? :nan : x },
+                   "#{dtype} nan:true along an axis")
+    end
+
     assert_equal([1, 2, 3], Cumo::Int32[3, 1, 2].sort.to_a, "smallest case")
     assert_equal([7], Cumo::Int32[7].sort.to_a, "one element")
   end
@@ -5272,9 +5288,13 @@ class NArrayTest < Test::Unit::TestCase
                    "#{dtype} signed zero")
     end
 
-    # nan:true keeps the host path, and it answers what numo answers there
-    assert_equal([0, 1, 2, 3], Cumo::DFloat[3.0, nan, 1.0, 2.0].sort_index(nan: true).to_a,
+    # nan:true asks for the order the default already produces
+    assert_equal([2, 3, 0, 1], Cumo::DFloat[3.0, nan, 1.0, 2.0].sort_index(nan: true).to_a,
                  "nan:true")
+    [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat].each do |dtype|
+      src = dtype.cast([[3.0, nan, 1.0], [neg_nan, 2.0, nan]])
+      assert_sort_index(src, "#{dtype} nan:true", axes: [[1]], nan: true)
+    end
 
     assert_equal([0], Cumo::Int32[7].sort_index.to_a, "one element")
     assert_equal([1, 2, 0], Cumo::Int32[3, 1, 2].sort_index.to_a, "smallest case")

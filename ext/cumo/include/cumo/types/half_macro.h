@@ -78,23 +78,6 @@ static inline float cumo_half_floored_mod(float x, float y)
 
 #define m_sprintf(s,x) sprintf(s,"%g",cumo_half2float(x))
 
-#define cmp_prnan(a,b)                                                  \
-    ((cumo_half2float(qsort_cast(a))==cumo_half2float(qsort_cast(b))) ? 0 : \
-     (cumo_half2float(qsort_cast(a)) > cumo_half2float(qsort_cast(b))) ? 1 : -1)
-
-#define cmp_ignan(a,b)                                                  \
-    (m_isnan(qsort_cast(a)) ? (m_isnan(qsort_cast(b)) ? 0 : 1) :        \
-     (m_isnan(qsort_cast(b)) ? -1 :                                     \
-      ((cumo_half2float(qsort_cast(a))==cumo_half2float(qsort_cast(b))) ? 0 : \
-       (cumo_half2float(qsort_cast(a)) > cumo_half2float(qsort_cast(b))) ? 1 : -1)))
-
-#define cmpgt_prnan(a,b)                        \
-    (cumo_half2float(qsort_cast(a)) > cumo_half2float(qsort_cast(b)))
-
-#define cmpgt_ignan(a,b)                                                \
-    ((m_isnan(qsort_cast(a)) && !m_isnan(qsort_cast(b))) ||             \
-     (cumo_half2float(qsort_cast(a)) > cumo_half2float(qsort_cast(b))))
-
 #define m_sqrt(x)    cumo_float2half(sqrtf(cumo_half2float(x)))
 #define m_cbrt(x)    cumo_float2half(cbrtf(cumo_half2float(x)))
 #define m_log(x)     cumo_float2half(logf(cumo_half2float(x)))

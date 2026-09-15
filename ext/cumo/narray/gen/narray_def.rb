@@ -80,11 +80,6 @@ module NArrayMethod
     ope = meth if ope.nil?
     def_method(meth, "accum_binary", op:ope)
   end
-
-  def qsort(type_name, dtype, dcast, suffix="")
-    h = {type_name:type_name, dtype:dtype, dcast:dcast, suffix:suffix}
-    def_method("qsort", **h)
-  end
 end
 
 module NMathMethod

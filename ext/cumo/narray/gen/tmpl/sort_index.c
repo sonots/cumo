@@ -2,7 +2,11 @@ void cumo_<%=type_name%>_sort_index_kernel_launch(cumo_na_iarray_t* a, cumo_na_i
         cumo_na_iarray_t* idx, cumo_na_iarray_t* out, int64_t n_rows, int64_t row_len, int flat, int idx_bytes);
 
 // args[1] holds the answer for each position, so the sort only has to say
-// which position each rank came from. nan:true keeps the host path, as sort does.
+// which position each rank came from.
+<% if is_float %>
+// The keys put every NaN last, so nan:true asks for the order this already
+// produces.
+<% end %>
 static void
 <%=c_iter%>_kernel(cumo_na_loop_t *const lp)
 {
@@ -32,63 +36,11 @@ static void
                                                  (int)lp->args[2].elmsz);
 }
 
-<% (is_float ? ["_ignan","_prnan"] : [""]).each do |j|
-   [64,32].each do |i| %>
-#define idx_t int<%=i%>_t
-static void
-<%=type_name%>_index<%=i%>_qsort<%=j%>(cumo_na_loop_t *const lp)
-{
-    size_t   i, n, idx;
-    char    *d_ptr, *i_ptr, *o_ptr;
-    ssize_t  d_step, i_step, o_step;
-    char   **ptr;
-
-    CUMO_INIT_COUNTER(lp, n);
-    CUMO_INIT_PTR(lp, 0, d_ptr, d_step);
-    CUMO_INIT_PTR(lp, 1, i_ptr, i_step);
-    CUMO_INIT_PTR(lp, 2, o_ptr, o_step);
-
-    ptr = (char**)(lp->opt_ptr);
-
-    // The row is managed memory that ndloop may have just filled with a copy
-    // kernel, and everything below reads it on the host. Per row rather than
-    // once for the call, because that copy happens per row.
-    CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_device_synchronize();
-
-    //printf("(ptr=%lx, d_ptr=%lx,d_step=%ld, i_ptr=%lx,i_step=%ld, o_ptr=%lx,o_step=%ld)\n",(size_t)ptr,(size_t)d_ptr,(ssize_t)d_step,(size_t)i_ptr,(ssize_t)i_step,(size_t)o_ptr,(ssize_t)o_step);
-
-    if (n==1) {
-        *(idx_t*)o_ptr = *(idx_t*)(i_ptr);
-        return;
-    }
-
-    for (i=0; i<n; i++) {
-        ptr[i] = d_ptr + d_step * i;
-        //printf("(%ld,%.3f)",i,*(double*)ptr[i]);
-    }
-
-    <%=type_name%>_index_qsort<%=j%>(ptr, n, sizeof(dtype*));
-
-    //d_ptr = lp->args[0].ptr;
-    //printf("(d_ptr=%lx)\n",(size_t)d_ptr);
-
-    for (i=0; i<n; i++) {
-        idx = (ptr[i] - d_ptr) / d_step;
-        *(idx_t*)o_ptr = *(idx_t*)(i_ptr + i_step * idx);
-        //printf("(idx[%ld]=%ld,%d)",i,idx,*(idx_t*)o_ptr);
-        o_ptr += o_step;
-    }
-    //printf("\n");
-}
-#undef idx_t
-<% end;end %>
-
 /*
   <%=name%>. Returns an index array of sort result.
 <% if is_float %>
   @overload <%=name%>(axis:nil, nan:false)
-  @param [TrueClass] nan  If true, propagate NaN. If false, ignore NaN.
+  @param [TrueClass] nan  A NaN sorts after every number whether this is true or false.
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
@@ -100,11 +52,8 @@ static void
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
-    size_t size;
     cumo_narray_t *na;
-    VALUE idx, tmp, reduce, res;
-    char *buf;
-    int kernel;
+    VALUE idx, reduce;
     cumo_ndfunc_arg_in_t ain[3] = {{cT,0},{0,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
     cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM, 3,1, ain,aout};
@@ -117,49 +66,21 @@ static VALUE
         ain[1].type =
         aout[0].type = cumo_cInt64;
         idx = cumo_na_new(cumo_cInt64, na->ndim, na->shape);
-       <% if is_float %>
-         ndf.func = <%=type_name%>_index64_qsort_ignan;
-         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf,
-                                      <%=type_name%>_index64_qsort_prnan);
-         kernel = (ndf.func == <%=type_name%>_index64_qsort_ignan);
-       <% else %>
-         ndf.func = <%=type_name%>_index64_qsort;
-         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
-         kernel = 1;
-       <% end %>
     } else {
         ain[1].type =
         aout[0].type = cumo_cInt32;
         idx = cumo_na_new(cumo_cInt32, na->ndim, na->shape);
-       <% if is_float %>
-         ndf.func = <%=type_name%>_index32_qsort_ignan;
-         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf,
-                                      <%=type_name%>_index32_qsort_prnan);
-         kernel = (ndf.func == <%=type_name%>_index32_qsort_ignan);
-       <% else %>
-         ndf.func = <%=type_name%>_index32_qsort;
-         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
-         kernel = 1;
-       <% end %>
     }
+    ndf.func = <%=c_iter%>_kernel;
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     rb_funcall(idx, rb_intern("seq"), 0);
 
-    if (kernel) {
-        ndf.func = <%=c_iter%>_kernel;
-        ndf.flag |= CUMO_NDF_INDEXER_LOOP;
-        // The index the kernel writes counts along the operand's memory, so it
-        // only means the same thing as the logical index when the operand is
-        // contiguous.
-        if (cumo_na_check_contiguous(self) != Qtrue) {
-            self = cumo_na_copy(self);
-        }
-        return cumo_na_ndloop3(&ndf, 0, 3, self, idx, reduce);
+    ndf.flag |= CUMO_NDF_INDEXER_LOOP;
+    // The index the kernel writes counts along the operand's memory, so it
+    // only means the same thing as the logical index when the operand is
+    // contiguous.
+    if (cumo_na_check_contiguous(self) != Qtrue) {
+        self = cumo_na_copy(self);
     }
-
-    size = na->size*sizeof(void*); // max capa
-    buf = rb_alloc_tmp_buffer(&tmp, size);
-
-    res = cumo_na_ndloop3(&ndf, buf, 3, self, idx, reduce);
-    rb_free_tmp_buffer(&tmp);
-    return res;
+    return cumo_na_ndloop3(&ndf, 0, 3, self, idx, reduce);
 }
