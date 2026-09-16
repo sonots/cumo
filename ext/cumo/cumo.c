@@ -21,6 +21,7 @@ void Init_cumo_uint16();
 void Init_cumo_uint32();
 void Init_cumo_uint64();
 void Init_cumo_hfloat();
+void Init_cumo_bfloat();
 void Init_cumo_sfloat();
 void Init_cumo_scomplex();
 void Init_cumo_dfloat();
@@ -31,6 +32,7 @@ void Init_cumo_dfloat_upcast();
 void Init_cumo_scomplex_upcast();
 void Init_cumo_sfloat_upcast();
 void Init_cumo_hfloat_upcast();
+void Init_cumo_bfloat_upcast();
 void Init_cumo_int64_upcast();
 void Init_cumo_uint64_upcast();
 void Init_cumo_int32_upcast();
@@ -167,6 +169,7 @@ Init_cumo()
     Init_cumo_scomplex();
     Init_cumo_sfloat();
     Init_cumo_hfloat();
+    Init_cumo_bfloat();
 
     Init_cumo_int64();
     Init_cumo_uint64();
@@ -186,6 +189,7 @@ Init_cumo()
     Init_cumo_scomplex_upcast();
     Init_cumo_sfloat_upcast();
     Init_cumo_hfloat_upcast();
+    Init_cumo_bfloat_upcast();
     Init_cumo_int64_upcast();
     Init_cumo_uint64_upcast();
     Init_cumo_int32_upcast();

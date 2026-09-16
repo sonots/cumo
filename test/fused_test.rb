@@ -21,6 +21,7 @@ class FusedTest < CumoTestBase
 
   FUSED_FLOAT_TYPES = [
     Cumo::HFloat,
+    Cumo::BFloat,
     Cumo::SFloat,
     Cumo::DFloat,
   ]
@@ -37,6 +38,7 @@ class FusedTest < CumoTestBase
 
   def rtol_for(dtype)
     case dtype.to_s
+    when "Cumo::BFloat" then 1e-1
     when "Cumo::HFloat" then 1e-2
     when "Cumo::SFloat" then 1e-5
     else 1e-11
@@ -192,6 +194,8 @@ class FusedTest < CumoTestBase
     # to be the maximum: softmax is the same answer whatever is subtracted, so
     # only a row whose spread overflows tells the maximum from anything else.
     test "softmax stays finite where a bare exp would not #{dtype}" do
+      # bfloat16 carries a float's exponent, so it takes the wide bound with
+      # the rest; only binary16 overflows this early.
       far = dtype == Cumo::HFloat ? 20.0 : 1.0e3
       x = dtype[[-far, 0.0, far]]
       y = x.softmax
@@ -202,6 +206,8 @@ class FusedTest < CumoTestBase
     end
 
     test "softmax keeps the row maximum through a long row #{dtype}" do
+      # bfloat16 carries a float's exponent, so it takes the wide bound with
+      # the rest; only binary16 overflows this early.
       far = dtype == Cumo::HFloat ? 20.0 : 1.0e3
       [512, 20_000].each do |cols|
         x = dtype.new(1, cols).fill(-far)

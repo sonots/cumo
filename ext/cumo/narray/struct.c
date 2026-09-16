@@ -822,6 +822,7 @@ NST_TYPEDEF(uint64,cumo_cUInt64)
 NST_TYPEDEF(dfloat,cumo_cDFloat)
 NST_TYPEDEF(dcomplex,cumo_cDComplex)
 NST_TYPEDEF(hfloat,cumo_cHFloat)
+NST_TYPEDEF(bfloat,cumo_cBFloat)
 NST_TYPEDEF(sfloat,cumo_cSFloat)
 NST_TYPEDEF(scomplex,cumo_cSComplex)
 
@@ -853,6 +854,8 @@ Init_cumo_na_struct()
     rb_define_singleton_alias (cT, "float32", "sfloat");
     rb_define_singleton_method(cT, "hfloat",   nst_s_hfloat, -1);
     rb_define_singleton_alias (cT, "float16", "hfloat");
+    rb_define_singleton_method(cT, "bfloat",   nst_s_bfloat, -1);
+    rb_define_singleton_alias (cT, "bfloat16", "bfloat");
     rb_define_singleton_method(cT, "scomplex", nst_s_scomplex, -1);
     rb_define_singleton_alias (cT, "complex64", "scomplex");
     rb_define_singleton_method(cT, "dfloat",   nst_s_dfloat, -1);

@@ -88,6 +88,7 @@ class CumoTestBase < Test::Unit::TestCase
     *FLOAT_TYPES,
     Cumo::SFloat,
     Cumo::HFloat,
+    Cumo::BFloat,
     Cumo::SComplex,
     Cumo::Int64,
     Cumo::Int32,

@@ -59,7 +59,7 @@ if (is_float || is_complex) && !is_object
   def_id "gemm"
 end
 # cudnn
-if is_float && !is_complex && !is_object
+if is_float && !is_complex && !is_object && !cudnn_dtype.empty?
   def_id "conv"
   def_id "conv_transpose"
   def_id "conv_grad_w"
@@ -128,6 +128,7 @@ def_method "store" do
     store_from "SComplex", "cumo_scomplex", "m_from_scomplex"
   end
   store_from "HFloat", "cumo_half", "m_from_half"
+  store_from "BFloat", "cumo_bfloat", "m_from_bfloat"
   store_from "DFloat", "double",   "m_from_real"
   store_from "SFloat", "float",    "m_from_real"
   store_from "Int64", "int64_t",  "m_from_int64"
@@ -367,7 +368,7 @@ if (is_float || is_complex) && !is_object
 end
 
 # cudnn
-if is_float && !is_complex && !is_object
+if is_float && !is_complex && !is_object && !cudnn_dtype.empty?
   def_method "conv"
   def_method "conv_transpose" # conv_backward_data
   def_method "conv_grad_w" # conv_backward_filter

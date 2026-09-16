@@ -1,7 +1,9 @@
 #include "cumo/narray_kernel.h"
 #include "cumo/indexer.h"
 #include "cumo/template_kernel.h"
+#include <string.h>
 #include "cumo/types/half_def_kernel.h"
+#include "cumo/types/bf16_def_kernel.h"
 
 #include <cub/cub.cuh>
 #include <thrust/iterator/counting_iterator.h>
@@ -47,6 +49,16 @@ template <> struct float_key<float> {
 template <> struct float_key<cumo_half> {
     typedef uint16_t type;
     __device__ static type of(cumo_half x) { return order_key<type>(__half_as_ushort(x), 0x7c00u); }
+};
+
+// CUDA 11.8 has no __bfloat16_as_ushort, so the bits come out through memcpy.
+template <> struct float_key<cumo_bfloat> {
+    typedef uint16_t type;
+    __device__ static type of(cumo_bfloat x) {
+        uint16_t bits;
+        memcpy(&bits, &x, sizeof(bits));
+        return order_key<type>(bits, 0x7f80u);
+    }
 };
 
 template <> struct float_key<double> {
@@ -183,14 +195,18 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
 // The rows are already sorted, so the middle of each is the answer. Trailing
 // NaNs are dropped first, which is what the host loop this replaces does and
 // what numo 0.9 does; numo-narray-alt lost that in a rewrite.
-// A half carries no operator of its own below sm_53, and isnan does not take
-// one at all, so both go through the element type.
+// A half carries no operator of its own below sm_53 and a bfloat16 none below
+// sm_80, and isnan takes neither at all, so both go through float.
 template <typename T> __device__ static inline bool sorted_isnan(T x) { return isnan(x); }
 template <> __device__ inline bool sorted_isnan<cumo_half>(cumo_half x) { return isnan(cumo_half2float(x)); }
+template <> __device__ inline bool sorted_isnan<cumo_bfloat>(cumo_bfloat x) { return isnan(cumo_bfloat2float(x)); }
 
 template <typename T> __device__ static inline T sorted_midpoint(T a, T b) { return (a + b) / 2; }
 template <> __device__ inline cumo_half sorted_midpoint<cumo_half>(cumo_half a, cumo_half b) {
     return cumo_float2half((cumo_half2float(a) + cumo_half2float(b)) / 2.0f);
+}
+template <> __device__ inline cumo_bfloat sorted_midpoint<cumo_bfloat>(cumo_bfloat a, cumo_bfloat b) {
+    return cumo_float2bfloat((cumo_bfloat2float(a) + cumo_bfloat2float(b)) / 2.0f);
 }
 
 template <typename T, bool IS_FLOAT>
@@ -365,5 +381,6 @@ CUMO_DEF_SORT(uint16, u_int16_t, false)
 CUMO_DEF_SORT(uint32, u_int32_t, false)
 CUMO_DEF_SORT(uint64, u_int64_t, false)
 CUMO_DEF_SORT(hfloat, cumo_half, true)
+CUMO_DEF_SORT(bfloat, cumo_bfloat, true)
 CUMO_DEF_SORT(sfloat, float, true)
 CUMO_DEF_SORT(dfloat, double, true)

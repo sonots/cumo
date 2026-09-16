@@ -7,6 +7,7 @@ require_relative "test_helper"
 class NArrayAltCoverageTest < CumoTestBase
   FLOAT_TYPES = [
     Cumo::HFloat,
+    Cumo::BFloat,
     Cumo::SFloat,
     Cumo::SComplex,
     Cumo::DFloat,
