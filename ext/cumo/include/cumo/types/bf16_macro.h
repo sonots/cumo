@@ -115,6 +115,7 @@ static inline float cumo_bfloat_floored_mod(float x, float y)
 #define m_erfc(x)    cumo_float2bfloat(erfcf(cumo_bfloat2float(x)))
 #define m_gelu(x)      cumo_float2bfloat(cumo_bfloat_gelu(cumo_bfloat2float(x)))
 #define m_gelu_tanh(x) cumo_float2bfloat(cumo_bfloat_gelu_tanh(cumo_bfloat2float(x)))
+#define m_silu(x)      cumo_float2bfloat(cumo_bfloat_silu(cumo_bfloat2float(x)))
 #define m_ldexp(x,y) cumo_float2bfloat(cumo_bfloat_ldexp(cumo_bfloat2float(x),cumo_bfloat2float(y)))
 #define m_frexp(x,exp) cumo_float2bfloat(frexpf(cumo_bfloat2float(x),exp))
 
@@ -183,4 +184,10 @@ static inline float cumo_bfloat_gelu(float x)
 static inline float cumo_bfloat_gelu_tanh(float x)
 {
     return 0.5f * x * (1.0f + tanhf((float)CUMO_M_SQRT_2_OVER_PI * (x + (float)CUMO_GELU_TANH_CUBIC * x * x * x)));
+}
+
+// x * sigmoid(x) as one division, cumo having no sigmoid to call.
+static inline float cumo_bfloat_silu(float x)
+{
+    return x / (1.0f + expf(-x));
 }

@@ -116,6 +116,7 @@ static inline dtype m_floored_mod(dtype x, dtype y) {
 #define m_erfc(x)    erfc(x)
 #define m_gelu(x)      cumo_gelu(x)
 #define m_gelu_tanh(x) cumo_gelu_tanh(x)
+#define m_silu(x)      cumo_silu(x)
 #define m_ldexp(x,y) ldexp(x,y)
 #define m_frexp(x,exp) frexp(x,exp)
 
@@ -210,4 +211,10 @@ static inline dtype cumo_gelu_tanh(dtype x)
 {
     return (dtype)0.5 * x * ((dtype)1 + tanh((dtype)CUMO_M_SQRT_2_OVER_PI *
                                              (x + (dtype)CUMO_GELU_TANH_CUBIC * x * x * x)));
+}
+
+// x * sigmoid(x) as one division, cumo having no sigmoid to call.
+static inline dtype cumo_silu(dtype x)
+{
+    return x / ((dtype)1 + exp(-x));
 }

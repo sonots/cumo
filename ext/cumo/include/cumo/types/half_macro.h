@@ -115,6 +115,7 @@ static inline float cumo_half_floored_mod(float x, float y)
 #define m_erfc(x)    cumo_float2half(erfcf(cumo_half2float(x)))
 #define m_gelu(x)      cumo_float2half(cumo_half_gelu(cumo_half2float(x)))
 #define m_gelu_tanh(x) cumo_float2half(cumo_half_gelu_tanh(cumo_half2float(x)))
+#define m_silu(x)      cumo_float2half(cumo_half_silu(cumo_half2float(x)))
 #define m_ldexp(x,y) cumo_float2half(cumo_half_ldexp(cumo_half2float(x),cumo_half2float(y)))
 #define m_frexp(x,exp) cumo_float2half(frexpf(cumo_half2float(x),exp))
 
@@ -183,4 +184,10 @@ static inline float cumo_half_gelu(float x)
 static inline float cumo_half_gelu_tanh(float x)
 {
     return 0.5f * x * (1.0f + tanhf((float)CUMO_M_SQRT_2_OVER_PI * (x + (float)CUMO_GELU_TANH_CUBIC * x * x * x)));
+}
+
+// x * sigmoid(x) as one division, cumo having no sigmoid to call.
+static inline float cumo_half_silu(float x)
+{
+    return x / (1.0f + expf(-x));
 }
