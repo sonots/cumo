@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Cumo
-  [HFloat, SFloat, DFloat].each do |klass|
+  [BFloat, HFloat, SFloat, DFloat].each do |klass|
     klass.class_eval do
       alias_method :conv_backward_data, :conv_transpose
       alias_method :conv_backward_filter, :conv_grad_w

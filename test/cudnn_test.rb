@@ -5,6 +5,7 @@ require_relative "test_helper"
 class CUDNNTest < Test::Unit::TestCase
   float_types = [
     Cumo::HFloat,
+    Cumo::BFloat,
     Cumo::SFloat,
     Cumo::DFloat,
   ]
@@ -15,8 +16,9 @@ class CUDNNTest < Test::Unit::TestCase
 
   float_types.each do |dtype|
     # cuDNN derives the batch norm parameter descriptor from x and widens it to
-    # float for a half x, so those arrays take this class rather than x's own
-    param_type = dtype == Cumo::HFloat ? Cumo::SFloat : dtype
+    # float for a sixteen-bit x, so those arrays take this class rather than
+    # x's own
+    param_type = dtype::ELEMENT_BYTE_SIZE < 4 ? Cumo::SFloat : dtype
 
     sub_test_case "conv_2d" do
       setup do
@@ -335,7 +337,8 @@ class CUDNNTest < Test::Unit::TestCase
     # given rather than failing. The sizes below are the ones that reach the
     # kernel, so nothing else can raise first.
     # cuDNN derives the parameter descriptor from x, giving it x's own type
-    # except for a half x, where it widens to float. What keeps the descriptor
+    # except for a sixteen-bit x, where it widens to float. What keeps the
+    # descriptor
     # and the buffer behind it in step is that every parameter is held to
     # exactly the class that descriptor carries.
     sub_test_case "a parameter of another dtype" do
@@ -856,38 +859,48 @@ class CUDNNTest < Test::Unit::TestCase
     end
   end
 
-  if float_types.include?(Cumo::HFloat)
-   hf = Cumo::HFloat
+  # Both sixteen-bit types take the same path through cuDNN and differ only in
+  # how much of an answer they can hold, so they run the same cases.
+  [Cumo::HFloat, Cumo::BFloat].select { |k| float_types.include?(k) }.each do |hf|
    sf = Cumo::SFloat
+   close_tol = hf::EPSILON * 2
 
-   sub_test_case "HFloat" do
+   sub_test_case hf.name.split("::").last do
 
     def seq(klass, shape, modulo)
       klass.cast(Cumo::Int32.new(*shape).seq % modulo)
     end
 
-    # cuDNN picks its algorithm by benchmarking, and half is allowed tensor
-    # cores, so which one wins varies between processes and so does the last
-    # place of the answer. Everything here is compared against SFloat within
-    # half's own precision rather than to the bit.
-    def assert_close_to_sfloat(got, ref)
+    # Integers this small are exact in either sixteen-bit type and so are the
+    # sums of them, so a convolution over them answers SFloat's answer to the
+    # bit whatever the mantissa does. Thirds are the rounding these cases mean
+    # to cover.
+    def thirds(klass, shape, modulo)
+      klass.cast(Cumo::SFloat.cast(Cumo::Int32.new(*shape).seq % modulo) / 3)
+    end
+
+    # cuDNN picks its algorithm by benchmarking, and a sixteen-bit type is
+    # allowed tensor cores, so which one wins varies between processes and so
+    # does the last place of the answer. Everything here is compared against
+    # SFloat within the element type's own precision rather than to the bit.
+    define_method(:assert_close_to_sfloat) do |got, ref|
       scale = [ref.abs.max.to_a.first, 1.0].max
-      assert_in_delta 0.0, (Cumo::SFloat.cast(got) - ref).abs.max.to_a.first, scale * 2.0**-9
+      assert_in_delta 0.0, (Cumo::SFloat.cast(got) - ref).abs.max.to_a.first, scale * close_tol
     end
 
     test "a convolution answers what SFloat answers" do
-      x = seq(hf, [2, 8, 6, 6], 4)
-      w = seq(hf, [8, 8, 1, 1], 3)
-      b = seq(hf, [8], 3)
+      x = thirds(hf, [2, 8, 6, 6], 4)
+      w = thirds(hf, [8, 8, 1, 1], 3)
+      b = thirds(hf, [8], 3)
       assert_close_to_sfloat x.conv(w), sf.cast(x).conv(sf.cast(w))
       assert_close_to_sfloat x.conv(w, b: b), sf.cast(x).conv(sf.cast(w), b: sf.cast(b))
     end
 
     test "a 3x3 convolution and its two gradients answer what SFloat answers" do
-      x = seq(hf, [2, 8, 8, 8], 4)
-      w = seq(hf, [8, 8, 3, 3], 3)
+      x = thirds(hf, [2, 8, 8, 8], 4)
+      w = thirds(hf, [8, 8, 3, 3], 3)
       assert_close_to_sfloat x.conv(w), sf.cast(x).conv(sf.cast(w))
-      gy = seq(hf, x.conv(w).shape, 3)
+      gy = thirds(hf, x.conv(w).shape, 3)
       assert_close_to_sfloat x.conv_grad_w(gy, w.shape), sf.cast(x).conv_grad_w(sf.cast(gy), w.shape)
       assert_close_to_sfloat gy.conv_transpose(w, out_size: [8, 8]),
                              sf.cast(gy).conv_transpose(sf.cast(w), out_size: [8, 8])
@@ -903,7 +916,7 @@ class CUDNNTest < Test::Unit::TestCase
       assert_equal sf.cast(x).avg_pool(2, stride: 2).to_a, x.avg_pool(2, stride: 2).to_a
     end
 
-    test "the batch norm parameters are SFloat, not HFloat" do
+    test "the batch norm parameters are SFloat, not the element type" do
       x = seq(hf, [2, 4, 3, 3], 5)
       g = sf.ones(4)
       b = sf.zeros(4)
@@ -917,9 +930,9 @@ class CUDNNTest < Test::Unit::TestCase
     test "a parameter of x's own class is refused by name" do
       x = seq(hf, [2, 4, 3, 3], 5)
       e = assert_raise(TypeError) { x.batch_norm(hf.ones(4), sf.zeros(4), axis: [0, 2, 3]) }
-      assert_equal "gamma must be Cumo::SFloat, not Cumo::HFloat", e.message
+      assert_equal "gamma must be Cumo::SFloat, not #{hf}", e.message
       e = assert_raise(TypeError) { x.batch_norm(sf.ones(4), hf.zeros(4), axis: [0, 2, 3]) }
-      assert_equal "beta must be Cumo::SFloat, not Cumo::HFloat", e.message
+      assert_equal "beta must be Cumo::SFloat, not #{hf}", e.message
     end
 
     test "the workspace ceiling is a positive byte count or the default" do
@@ -928,11 +941,13 @@ class CUDNNTest < Test::Unit::TestCase
         ENV["CUMO_CUDNN_MAX_WORKSPACE_SIZE"].to_s =~ /\A[1-9][0-9]*\z/
     end
 
-    test "the convolution accumulates over more channels than half can count" do
-      # 40000 ones summed in half would stop at 2048
+    test "the convolution accumulates over more channels than the element type can count" do
+      # 40000 ones summed in the element type would stop at 2048 for binary16
+      # and at 256 for bfloat16. The accumulation is exact and only the store
+      # back into the element type rounds, so the answer is 40000 taken to it.
       x = hf.ones(1, 40_000, 1, 1)
       w = hf.ones(1, 40_000, 1, 1)
-      assert_equal 40_000.0, x.conv(w).to_a.flatten.first
+      assert_equal hf[40_000.0].to_a.first, x.conv(w).to_a.flatten.first
     end
    end
   end

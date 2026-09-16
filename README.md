@@ -431,6 +431,7 @@ The two do not contain each other, so an expression mixing them promotes to `Cum
 Everything else promotes as `Cumo::SFloat` does, so an integer array or a Ruby Float mixed in stays bfloat16 while anything wider takes over.
 
 `layer_norm`, `softmax` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
+The cuDNN methods take it too: `conv`, `conv_transpose`, `conv_grad_w`, `max_pool`, `avg_pool` and the three batch norm entries.
 
 Reductions accumulate in single precision and round once at the end, exactly as they do for half, so a sum passes 256 without stopping there:
 
@@ -475,7 +476,11 @@ Storing, casting and elementwise arithmetic have no such floor, because every op
 A `dot` on a pre-Ampere card is the one to expect trouble from.
 **This is not measured here**: the only GPU these numbers came from is a Blackwell one, and the requirement is read from cuBLAS's documentation rather than reproduced.
 
-`conv` and the other cuDNN methods are not wired to `Cumo::BFloat` yet.
+cuDNN reaches bfloat16 as `CUDNN_DATA_BFLOAT16`, and its own bfloat16 kernels want Ampere for the same reason cuBLAS does.
+A convolution is given `CUDNN_DATA_FLOAT` to accumulate in, so it passes 256 the way a reduction does.
+The batch norm parameters are `Cumo::SFloat`, the same as they are for `Cumo::HFloat`.
+The workspace ceiling matters here as much as it does for half: left at the default 8MB, a bfloat16 convolution is no faster than a single-precision one.
+See [Raise the cuDNN workspace ceiling](#raise-the-cudnn-workspace-ceiling).
 
 ### Select a GPU device ID
 
