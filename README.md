@@ -405,6 +405,78 @@ Keeping the running statistics in single precision is what the arithmetic wants 
 Gradients are the other place half runs out of room.
 Values below `Cumo::HFloat::MIN` of 6.1e-05 fall into the subnormals and then to zero, which is what loss scaling in a training loop exists to prevent.
 
+### Brain Float
+
+`Cumo::BFloat`, also reachable as `Cumo::BFloat16`, holds bfloat16: one sign bit, eight of exponent and seven of mantissa.
+It is the other sixteen-bit float, and it differs from `Cumo::HFloat` in where those bits went.
+A bfloat16 has the exponent of a `Cumo::SFloat` and three fewer mantissa bits than a binary16, so it reaches everything a single-precision value reaches and resolves less of it:
+
+```ruby
+Cumo::BFloat[1.0e38]   #=> 9.969209968386869e+37
+Cumo::HFloat[1.0e38]   #=> Infinity
+
+Cumo::BFloat[257.0]    #=> 256.0
+Cumo::HFloat[257.0]    #=> 257.0
+```
+
+Integers are exact only to 256, against 2048 for a binary16, and the largest finite value is 3.3895314e+38 rather than 65504.
+That trade is why weights are published in it: a tensor that came out of training keeps its magnitudes, and the bits it loses are ones a trained weight does not carry.
+
+The two do not contain each other, so an expression mixing them promotes to `Cumo::SFloat`, which does:
+
+```ruby
+(Cumo::BFloat[1.0] + Cumo::HFloat[1.0]).class   #=> Cumo::SFloat
+```
+
+Everything else promotes as `Cumo::SFloat` does, so an integer array or a Ruby Float mixed in stays bfloat16 while anything wider takes over.
+
+`layer_norm`, `softmax` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
+
+Reductions accumulate in single precision and round once at the end, exactly as they do for half, so a sum passes 256 without stopping there:
+
+```ruby
+Cumo::BFloat.new(40_000).fill(1.0).sum   #=> 39936.0
+```
+
+That 39936 is 40000 rounded to the nearest bfloat16, whose values are 256 apart up there; a bfloat16 accumulator would have answered 256.
+`sum`, `mean`, `var`, `stddev`, `rms`, `mulsum`, `dot`, `gemm` and `cumsum` all widen this way, and `prod` and `cumprod` do not, for the same reasons given under Half Precision.
+
+The wider exponent moves where the saturation described there bites.
+A variance is far from 3.4e+38, so `var` does not saturate on any input a network produces, and squaring is safe to 1.8e+19 rather than to 256.
+What replaces it is the mantissa: a bfloat16 resolves about three decimal digits, so a normalization computes its statistics well enough while the values it writes back carry that resolution and no more.
+
+#### What bfloat16 is faster at
+
+`gemm` reaches the tensor cores and lands on the same throughput as half. Square matrices on an RTX 5070 Ti Laptop, median of five runs each, one process per case:
+
+```
+              BFloat              HFloat              SFloat
+1024x1024     0.044 ms  48.9 TF   0.044 ms  48.5 TF   0.144 ms  14.9 TF
+2048x2048     0.298 ms  57.6 TF   0.303 ms  56.7 TF   1.404 ms  12.2 TF
+4096x4096     2.839 ms  48.4 TF   2.898 ms  47.4 TF   9.540 ms  14.4 TF
+```
+
+The odd-column penalty is the same as half's and for the same reason, a row starting on a two-byte boundary.
+1024x1024 times 1024x1024, with one dimension made odd at a time:
+
+```
+             all even   M odd      K odd      N odd
+BFloat        48.9 TF   48.7 TF    23.5 TF    23.0 TF
+HFloat        48.5 TF      -       24.0 TF    23.1 TF
+```
+
+So the choice between the two sixteen-bit types is about range and resolution, not speed.
+Take bfloat16 where the magnitudes came from somewhere else and binary16 where three more mantissa bits are worth having.
+
+#### The accelerated paths want Ampere
+
+cuBLAS supports `CUDA_R_16BF`, which is what `gemm` and `dot` reach, from compute capability 8.0.
+Storing, casting and elementwise arithmetic have no such floor, because every operation is computed in single precision and rounded back, and they build and run wherever cumo does.
+A `dot` on a pre-Ampere card is the one to expect trouble from.
+**This is not measured here**: the only GPU these numbers came from is a Blackwell one, and the requirement is read from cuBLAS's documentation rather than reproduced.
+
+`conv` and the other cuDNN methods are not wired to `Cumo::BFloat` yet.
+
 ### Select a GPU device ID
 
 Set the `CUDA_VISIBLE_DEVICES=id` environment variable, or
