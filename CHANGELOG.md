@@ -1,3 +1,32 @@
+# 0.8.0 (2026/09/16)
+
+Breaking changes:
+
+* `sort` and `sort_index` with `nan: true` put every NaN last. The host comparator they used answered -1 for a NaN against anything, so the partition carried elements other than the NaN to the wrong side: of 4156 cases over lengths 5 to 129, 2121 came back with the numbers out of order. `nan:` no longer changes the answer, and 1M DFloat costs 0.405 ms rather than 73.0 (PR #447)
+* `conv` and `conv_transpose` refuse a bias that is not one value per output channel. A bias of length 1 was broadcast over every channel and answered as if it had been right, and a bias of two dimensions passed whenever its size fitted (PR #443)
+* `var` and `stddev` answer NaN for a row holding an infinity, where the answer turned on where the infinity sat and how long the row was (PR #430)
+
+Fixes:
+
+* Fix every `dot` after `Cumo::CUDA::Runtime.cudaSetDevice` raising `CUBLAS_STATUS_EXECUTION_FAILED` for the life of the process. Cumo took a context of its own when it loaded, and `cudaSetDevice` binds the device's primary one, so the event inside the cuBLAS handle was left in a context nothing ran in (PR #451)
+* Fix the device memory a rejected kernel launch left in the pool, `rb_raise` leaving by longjmp past the free below it. A sort lost 24MB and a convolution given a bias of the wrong class 5MB, every time; reductions, `softmax`, `layer_norm`, `Cumo::Bit#count`, `where`, `poly` and a store from a Ruby Array lost theirs the same way (PR #439, PR #438, PR #437, PR #436, PR #434, PR #433, PR #432, PR #431)
+* Fix two cuDNN descriptor leaks, one where `batch_norm` raises after building its descriptors and one where a convolution finds no algorithm inside `CUMO_CUDNN_MAX_WORKSPACE_SIZE` (PR #441, PR #440)
+* Fix a `std::bad_alloc` from the convolution algorithm cache killing the process, `cudnn_impl.cpp` being one `extern "C"` block with no handler in it (PR #444)
+* Fix the nine cuDNN methods and `layer_norm` reading the wrong memory when `dup` answers a different class, a different shape or a non-contiguous view; `conv` took a reversed view and read past it (PR #425)
+* Fix the spelling of "propagate" and "position" in the `nan:` documentation on `sort`, `sort_index`, `median`, `argmin`, `argmax`, `min_index` and `max_index` (PR #446)
+
+Changes:
+
+* Add `Cumo::BFloat`, the bfloat16 dtype, aliased `Cumo::BFloat16`. It keeps a float's exponent and gives up mantissa bits for it, so it holds the magnitudes a `Cumo::HFloat` overflows on, which is how published weights are written. Everything the dtype has is generated: the four operations, the comparisons, the reductions, `Cumo::NMath`, `sort`, `rand`, `dot` through cuBLAS and the cuDNN methods, both with a float compute type. `BFloat` and `HFloat` promote to `SFloat` when they meet, neither format containing the other. The accelerated paths want compute capability 8.0 (PR #455, PR #453, PR #452, PR #450)
+* Add `layer_norm`, which normalizes a row in one kernel rather than the nine it is written out of, and `softmax`, which takes one rather than five. On SFloat `[1, 768]` the first goes from 19.9 to 2.9us and the second from 11.0 to 2.2, and `[4096, 768]` from 198.3 to 31.4 and 109.6 to 31.6. No shape is slower (PR #428, PR #426, PR #424, PR #423)
+* Add `gelu` and `gelu_tanh` to `Cumo::NMath`. Two of them because there are two: `gelu` is the error function form PyTorch answers by default, and `gelu_tanh` the approximation GPT-2 and the models after it were trained with. They differ by 4.1e-4 at most, too little to tell apart by eye and far too much to swap under trained weights (PR #427)
+* Take one reciprocal instead of two divides in the moments accumulator, a double divide being what this class of card charges most for; `var` goes from 172.7 to 106.5us in DFloat and `layer_norm` from 179.6 to 138.0 (PR #429)
+* Store a Ruby Array into a strided or indexed view through one buffer held by the loop rather than one a row, a row having cost 2.53 times what the same payload written contiguously does and now costing 1.04 (PR #445)
+* Stop `Cumo::RObject#poly` stopping the whole device once per element. It runs with `CUMO_NO_LOOP`, so ndloop calls its iterator once an element, and there is nothing left there to wait for (PR #435)
+* Say once what `conv` and `conv_transpose` had each grown a copy of, the run struct and the bias block, and build the bias descriptor from a shape rather than lending the narray one (PR #442)
+* Declare the gem's license as MIT. RubyGems reads the gemspec, which said BSD-3-Clause while the `LICENSE.txt` inside the same gem has carried the MIT text from the start (PR #448)
+* Skip the CUDA build matrix for a README, license or benchmark edit no build step opens, and give ccache a ceiling one build fits in (PR #454, PR #449)
+
 # 0.7.0 (2026/09/13)
 
 Breaking changes:
