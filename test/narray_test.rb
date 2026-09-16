@@ -4239,6 +4239,38 @@ class NArrayTest < Test::Unit::TestCase
                  b[[1, 0], true, true, true, true].copy.to_a.flatten)
   end
 
+  test "a reduction of an index-backed view answers what a contiguous one does" do
+    # A reduction copies such a view first, and that copy has a kernel per rank.
+    # dup reaches the same elements by another path, so a wrong accessor cannot
+    # agree with it.
+    [Cumo::SFloat, Cumo::DFloat, Cumo::Int32, Cumo::Int64,
+     Cumo::UInt8, Cumo::HFloat, Cumo::BFloat].each do |dtype|
+      a = dtype.new(40, 6).seq
+      # out of order, and one row twice, which a stride can never produce
+      idx = Cumo::Int32[9, 0, 39, 9, 17]
+      view = a[idx, true]
+      [0, 1].each do |axis|
+        assert_equal(view.dup.sum(axis: axis).to_a, view.sum(axis: axis).to_a, "#{dtype} sum axis #{axis}")
+        assert_equal(view.dup.max(axis: axis).to_a, view.max(axis: axis).to_a, "#{dtype} max axis #{axis}")
+      end
+    end
+
+    # The rank the kernel runs at is the one left after ndloop folds adjacent
+    # contiguous axes together, so a shape with trailing `true` axes arrives as
+    # rank 2 however many dimensions it was written with. Slicing every axis is
+    # what keeps them apart, and these reach ranks 3, 4 and 5.
+    c = Cumo::SFloat.new(5, 7, 3).seq
+    mid = c[true, Cumo::Int32[6, 0, 3, 3], true]
+    assert_equal(mid.dup.sum(axis: 1).to_a, mid.sum(axis: 1).to_a)
+    d4 = Cumo::SFloat.new(4, 5, 6, 7).seq
+    r4 = d4[Cumo::Int32[3, 0, 3], 1..3, 0...4, 2..5]
+    assert_equal(r4.dup.sum(axis: 3).to_a, r4.sum(axis: 3).to_a)
+    assert_equal(r4.dup.max(axis: 0).to_a, r4.max(axis: 0).to_a)
+    d5 = Cumo::SFloat.new(3, 4, 5, 4, 6).seq
+    r5 = d5[Cumo::Int32[2, 0], 1..2, 0...3, 1..2, 2..4]
+    assert_equal(r5.dup.sum(axis: 4).to_a, r5.sum(axis: 4).to_a)
+  end
+
   # cumo_na_copy answered self for an inplace receiver, so the view a reduction
   # meant to make contiguous stayed the index-backed one it was handed.
   test "an inplace index-backed view is still made contiguous before it reduces" do
