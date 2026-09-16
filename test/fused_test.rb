@@ -67,14 +67,19 @@ class FusedTest < CumoTestBase
     assert_operator((Cumo::DFloat.cast(actual).sum(axis: -1) - 1.0).abs.max.extract_cpu, :<, rtol)
   end
 
-  def assert_layer_norm(x, gamma, beta, eps: 1e-5)
-    actual = eps == 1e-5 ? x.layer_norm(gamma, beta) : x.layer_norm(gamma, beta, eps: eps)
-    expected = ref_layer_norm(x, gamma, beta, eps)
+  # Both normalizations are held to the same bound against the same kind of
+  # double reference, so the bound lives in one place.
+  def assert_row_norm(x, actual, expected)
     assert_kind_of(x.class, actual)
     assert_equal(x.shape, actual.shape)
     scale = [1.0, expected.abs.max.extract_cpu].max
     error = (expected - Cumo::DFloat.cast(actual)).abs.max.extract_cpu
     assert_operator(error, :<, rtol_for(x.class) * scale)
+  end
+
+  def assert_layer_norm(x, gamma, beta, eps: 1e-5)
+    actual = eps == 1e-5 ? x.layer_norm(gamma, beta) : x.layer_norm(gamma, beta, eps: eps)
+    assert_row_norm(x, actual, ref_layer_norm(x, gamma, beta, eps))
   end
 
   # The same answer written out of the operators, in double so that it is the
@@ -88,12 +93,7 @@ class FusedTest < CumoTestBase
 
   def assert_rms_norm(x, gamma, eps: 1e-5)
     actual = eps == 1e-5 ? x.rms_norm(gamma) : x.rms_norm(gamma, eps: eps)
-    expected = ref_rms_norm(x, gamma, eps)
-    assert_kind_of(x.class, actual)
-    assert_equal(x.shape, actual.shape)
-    scale = [1.0, expected.abs.max.extract_cpu].max
-    error = (expected - Cumo::DFloat.cast(actual)).abs.max.extract_cpu
-    assert_operator(error, :<, rtol_for(x.class) * scale)
+    assert_row_norm(x, actual, ref_rms_norm(x, gamma, eps))
   end
 
   FUSED_FLOAT_TYPES.each do |dtype|
@@ -402,6 +402,21 @@ class FusedTest < CumoTestBase
     end
   end
 
+  # The preamble these three share is in row_method.h, so each case below runs
+  # against all of them rather than against whichever one it was written for.
+  # The operands each one holds, so that a case can arm the one it means to
+  # perturb and nothing allocates what it will not use.
+  FUSED_CALLS = {
+    "layer_norm" => ["x.layer_norm(g, b)", %w[g b]],
+    "rms_norm" => ["x.rms_norm(g)", %w[g]],
+    "softmax" => ["x.softmax", []],
+  }.freeze
+
+  OPERAND_SETUP = {
+    "g" => "g = Cumo::DFloat.new(cols).fill(1)",
+    "b" => "b = Cumo::DFloat.new(cols).fill(0)",
+  }.freeze
+
   # Taking a pointer runs allocate, and a class is free to redefine it, so the
   # sizes the launch is built from have to be the ones left behind afterwards.
   {"resizes the output under it" =>
@@ -413,29 +428,34 @@ class FusedTest < CumoTestBase
    "reshapes to the same size" =>
      ["Cumo::DFloat.new(4, 6)", "$armed = ->(a) { a.reshape!(24) }",
       "self or the result was reshaped while it was measured"],
-  }.each do |what, (make, arm, message)|
-    test "layer_norm refuses an allocate that #{what}" do
-      assert_child_raises(message, <<~RUBY, prelude: ARMED_ALLOCATE)
-        Cumo::DFloat.prepend(Armed)
-        x = #{make}.seq
-        cols = x.shape[-1]
-        g = Cumo::DFloat.new(cols).fill(1)
-        b = Cumo::DFloat.new(cols).fill(0)
-        Cumo::CUDA::Runtime.cudaDeviceSynchronize
-        #{arm}
-        x.layer_norm(g, b)
-      RUBY
-    end
+   # The three above all land on the output, which is the only array whose
+   # allocate the method itself runs. Reaching self and the operands takes a
+   # lambda that ignores what it was handed, and is the other half of what the
+   # preamble checks.
+   "leaves self reshaped behind it" =>
+     ["Cumo::DFloat.new(4, 6)", "$armed = ->(_) { x.reshape!(24) }",
+      "self or the result was reshaped while it was measured"],
+   "frees an operand under it" =>
+     ["Cumo::DFloat.new(4, 6)", "$armed = ->(_) { g.free }",
+      "cannot read unallocated NArray", "g"],
+   "reshapes an operand under it" =>
+     ["Cumo::DFloat.new(4, 6)", "$armed = ->(_) { g.reshape!(3, 2) }",
+      "gamma must be 1-dimensional and 6 long", "g"],
+  }.each do |what, (make, arm, message, needs)|
+    FUSED_CALLS.each do |name, (call, operands)|
+      next if needs && !operands.include?(needs)
 
-    test "rms_norm refuses an allocate that #{what}" do
-      assert_child_raises(message, <<~RUBY, prelude: ARMED_ALLOCATE)
-        Cumo::DFloat.prepend(Armed)
-        x = #{make}.seq
-        g = Cumo::DFloat.new(x.shape[-1]).fill(1)
-        Cumo::CUDA::Runtime.cudaDeviceSynchronize
-        #{arm}
-        x.rms_norm(g)
-      RUBY
+      test "#{name} refuses an allocate that #{what}" do
+        assert_child_raises(message, <<~RUBY, prelude: ARMED_ALLOCATE)
+          Cumo::DFloat.prepend(Armed)
+          x = #{make}.seq
+          cols = x.shape[-1]
+          #{operands.map { |o| OPERAND_SETUP[o] }.join("\n          ")}
+          Cumo::CUDA::Runtime.cudaDeviceSynchronize
+          #{arm}
+          #{call}
+        RUBY
+      end
     end
   end
 
@@ -447,28 +467,20 @@ class FusedTest < CumoTestBase
    "an array shaped like the one it was given" => "Cumo::DFloat.new(128 * 64).seq",
    "an array shaped like the one it was given, one axis deeper" => "Cumo::DFloat.new(128, 64, 1).seq",
    "a Cumo::DFloat" => "Cumo::Int32.new(128, 64).seq"}.each do |message, body|
-    test "layer_norm refuses a dup that does not answer #{message}" do
-      assert_child_raises("dup did not answer #{message.sub(/, one axis deeper\z/, "")}", <<~RUBY, prelude: "")
-        class Cumo::DFloat
-          def dup
-            #{body}
+    FUSED_CALLS.each do |name, (call, operands)|
+      test "#{name} refuses a dup that does not answer #{message}" do
+        assert_child_raises("dup did not answer #{message.sub(/, one axis deeper\z/, "")}", <<~RUBY, prelude: "")
+          x = Cumo::DFloat.new(64, 128).seq.transpose
+          cols = 64
+          #{operands.map { |o| OPERAND_SETUP[o] }.join("\n          ")}
+          class Cumo::DFloat
+            def dup
+              #{body}
+            end
           end
-        end
-        x = Cumo::DFloat.new(64, 128).seq.transpose
-        x.layer_norm(Cumo::DFloat.new(64).fill(1), Cumo::DFloat.new(64).fill(0))
-      RUBY
-    end
-
-    test "rms_norm refuses a dup that does not answer #{message}" do
-      assert_child_raises("dup did not answer #{message.sub(/, one axis deeper\z/, "")}", <<~RUBY, prelude: "")
-        class Cumo::DFloat
-          def dup
-            #{body}
-          end
-        end
-        x = Cumo::DFloat.new(64, 128).seq.transpose
-        x.rms_norm(Cumo::DFloat.new(64).fill(1))
-      RUBY
+          #{call}
+        RUBY
+      end
     end
   end
 end
