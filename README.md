@@ -178,6 +178,44 @@ x += p_dir * alpha     # and consumed there, without crossing the bus
 
 Read the value back once the loop is done, or every k iterations if it has to test something.
 
+### Reshape Copies, Reshape! Does Not
+
+`reshape` answers a copy of the whole array, never a view.
+Slicing answers a view, so the two look alike and are not:
+
+```ruby
+a = Cumo::SFloat.new(4, 6).seq
+a[0..1, true][0, 0] = 77.0   # a view, so a changes
+a.reshape(2, 12)[0, 0] = 99.0  # a copy, so a does not
+```
+
+This is what Numo does too, and numpy is where the expectation comes from: there `reshape` answers a view whenever the strides allow one.
+On a GPU the difference is an allocation and a copy kernel, paid every call.
+`reshape!` changes the receiver in place and costs neither.
+RTX 5070 Ti Laptop, `Cumo::SFloat`, 200 calls a measurement:
+
+```
+shape        reshape     reshape!    the copy allocates
+1x768        5.1 us      0.04 us          3 KB
+1024x768    39.1 us      0.18 us          3 MB
+4096x768    58.1 us      0.22 us         12 MB
+8192x768   142.7 us      0.43 us         24 MB
+```
+
+`reshape!` is host-side bookkeeping, so it stays under a microsecond whatever the array weighs.
+The `reshape` column is the copy, and it grows with the bytes.
+
+The catch is that `reshape!` changes the array everything else is holding.
+It fits a temporary the calling expression owns, and not an argument, an ivar, or anything a cache still points at:
+
+```ruby
+x = a * b            # a temporary nothing else holds
+x.reshape!(t, n, h)  # free
+```
+
+Where the array is not yours to change, the copy is the price of the shape.
+Reach for `reshape!` when a profile says the copies are worth removing, not by default.
+
 ### Ruby Floats In NMath Promote To Double
 
 `Cumo::NMath` picks the module it dispatches to from every argument it is given, and a Ruby `Float` counts as a `DFloat` there.

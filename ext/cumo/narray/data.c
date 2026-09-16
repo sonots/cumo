@@ -502,7 +502,7 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
 
   @overload  reshape(size0,size1,...)
   @param sizeN [Integer] new shape
-  @return [Cumo::NArray] return self.
+  @return [Cumo::NArray] a copy carrying the new shape.
   @example
 */
 static VALUE
