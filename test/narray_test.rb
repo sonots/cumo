@@ -4239,6 +4239,22 @@ class NArrayTest < Test::Unit::TestCase
                  b[[1, 0], true, true, true, true].copy.to_a.flatten)
   end
 
+  # cumo_na_copy answered self for an inplace receiver, so the view a reduction
+  # meant to make contiguous stayed the index-backed one it was handed.
+  test "an inplace index-backed view is still made contiguous before it reduces" do
+    d = Cumo::SFloat.new(4, 5, 3).seq
+    idx = Cumo::Int32[1, 3]
+    want = d[idx, true, true].dup
+    assert_equal(want.sum(axis: 2).to_a, d[idx, true, true].inplace.sum(axis: 2).to_a)
+    assert_equal(want.median(axis: 2).to_a, d[idx, true, true].inplace.median(axis: 2).to_a)
+    assert_equal(want.max_index(axis: 2).to_a, d[idx, true, true].inplace.max_index(axis: 2).to_a)
+    # inplace survives an operation, so the reduction below it sees it too
+    assert_equal((want * 2).sum(axis: 2).to_a, (d[idx, true, true].inplace * 2).sum(axis: 2).to_a)
+    # the receiver of a copy is not the copy, whatever flags it carries
+    v = d[idx, true, true]
+    refute_same(v, v.inplace.copy)
+  end
+
   test "elementwise kernels reach every element of a view they cannot flatten" do
     # pow, clip, divmod, maximum, frexp, modf, fill and seq each ran once per
     # row of a view with more than one dimension left before the indexer loop.
