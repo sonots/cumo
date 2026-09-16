@@ -113,13 +113,14 @@ jobs:
           export PATH=/opt/ccache-bin:$PATH
 
           export CCACHE_DIR=~/.cache/ccache
-          export CCACHE_MAXSIZE=500M
+          export CCACHE_MAXSIZE=1024M
           export CCACHE_CPP2=1
           ccache -z
 
           bundle exec rake compile
           bundle exec rake build_ctest
 
+          ccache -c
           ccache -s
 
       - name: Drop the ccache entry being replaced
