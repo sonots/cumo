@@ -99,7 +99,7 @@ cumo_na_copy(VALUE self)
     VALUE v;
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
-    cumo_ndfunc_t ndf = { iter_copy_bytes, CUMO_FULL_LOOP, 1, 1, ain, aout };
+    cumo_ndfunc_t ndf = { iter_copy_bytes, CUMO_FULL_LOOP_NIP, 1, 1, ain, aout };
 
     // The loops below move whole bytes, which is one element of every class but
     // Cumo::Bit, whose element is one bit. Its own copy is the one that can
@@ -114,7 +114,7 @@ cumo_na_copy(VALUE self)
     // synchronization per step when an operand carries an index array.
     if (!rb_obj_is_kind_of(self, cumo_cRObject)) {
         ndf.func = iter_copy_bytes_indexer;
-        ndf.flag = CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
+        ndf.flag = CUMO_STRIDE_LOOP_NIP|CUMO_NDF_INDEXER_LOOP;
     }
 
     v = cumo_na_ndloop(&ndf, 1, self);
