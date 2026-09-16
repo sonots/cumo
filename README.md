@@ -475,7 +475,8 @@ Storing, casting and elementwise arithmetic have no such floor, because every op
 A `dot` on a pre-Ampere card is the one to expect trouble from.
 **This is not measured here**: the only GPU these numbers came from is a Blackwell one, and the requirement is read from cuBLAS's documentation rather than reproduced.
 
-`conv` and the other cuDNN methods are not wired to `Cumo::BFloat` yet.
+`conv`, the pooling methods and `batch_norm` take `Cumo::BFloat` too, through `CUDNN_DATA_BFLOAT16` with the accumulation in single precision.
+The batch norm parameters are `Cumo::SFloat`, the same as they are for `Cumo::HFloat`.
 
 ### Select a GPU device ID
 

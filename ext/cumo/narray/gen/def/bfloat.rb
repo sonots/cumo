@@ -29,7 +29,11 @@ set cutype:              "cumo_bfloat"
 set step_down:           "cumo_bfloat_step_down"
 set need_align:          true
 
-set cudnn_dtype:         ""
+set cudnn_dtype:         "CUDNN_DATA_BFLOAT16"
+set cudnn_compute_dtype: "CUDNN_DATA_FLOAT"
+set cudnn_scalar_t:      "float"
+set cudnn_param_class:   "cumo_cSFloat"
+set cudnn_math_type:     "CUDNN_TENSOR_OP_MATH"
 
 upcast_rb "Integer"
 upcast_rb "Float"

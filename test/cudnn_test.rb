@@ -5,6 +5,7 @@ require_relative "test_helper"
 class CUDNNTest < Test::Unit::TestCase
   float_types = [
     Cumo::HFloat,
+    Cumo::BFloat,
     Cumo::SFloat,
     Cumo::DFloat,
   ]
@@ -16,7 +17,7 @@ class CUDNNTest < Test::Unit::TestCase
   float_types.each do |dtype|
     # cuDNN derives the batch norm parameter descriptor from x and widens it to
     # float for a half x, so those arrays take this class rather than x's own
-    param_type = dtype == Cumo::HFloat ? Cumo::SFloat : dtype
+    param_type = [Cumo::HFloat, Cumo::BFloat].include?(dtype) ? Cumo::SFloat : dtype
 
     sub_test_case "conv_2d" do
       setup do
@@ -856,11 +857,14 @@ class CUDNNTest < Test::Unit::TestCase
     end
   end
 
-  if float_types.include?(Cumo::HFloat)
-   hf = Cumo::HFloat
+  # Both sixteen-bit types take the same path through cuDNN and differ only in
+  # how much of an answer they can hold, so they run the same cases.
+  [Cumo::HFloat, Cumo::BFloat].select { |k| float_types.include?(k) }.each do |hf|
    sf = Cumo::SFloat
+   # bfloat16 keeps seven mantissa bits to binary16's ten
+   close_tol = hf == Cumo::BFloat ? 2.0**-6 : 2.0**-9
 
-   sub_test_case "HFloat" do
+   sub_test_case hf.name.split("::").last do
 
     def seq(klass, shape, modulo)
       klass.cast(Cumo::Int32.new(*shape).seq % modulo)
@@ -870,9 +874,9 @@ class CUDNNTest < Test::Unit::TestCase
     # cores, so which one wins varies between processes and so does the last
     # place of the answer. Everything here is compared against SFloat within
     # half's own precision rather than to the bit.
-    def assert_close_to_sfloat(got, ref)
+    define_method(:assert_close_to_sfloat) do |got, ref|
       scale = [ref.abs.max.to_a.first, 1.0].max
-      assert_in_delta 0.0, (Cumo::SFloat.cast(got) - ref).abs.max.to_a.first, scale * 2.0**-9
+      assert_in_delta 0.0, (Cumo::SFloat.cast(got) - ref).abs.max.to_a.first, scale * close_tol
     end
 
     test "a convolution answers what SFloat answers" do
@@ -903,7 +907,7 @@ class CUDNNTest < Test::Unit::TestCase
       assert_equal sf.cast(x).avg_pool(2, stride: 2).to_a, x.avg_pool(2, stride: 2).to_a
     end
 
-    test "the batch norm parameters are SFloat, not HFloat" do
+    test "the batch norm parameters are SFloat, not the element type" do
       x = seq(hf, [2, 4, 3, 3], 5)
       g = sf.ones(4)
       b = sf.zeros(4)
@@ -917,9 +921,9 @@ class CUDNNTest < Test::Unit::TestCase
     test "a parameter of x's own class is refused by name" do
       x = seq(hf, [2, 4, 3, 3], 5)
       e = assert_raise(TypeError) { x.batch_norm(hf.ones(4), sf.zeros(4), axis: [0, 2, 3]) }
-      assert_equal "gamma must be Cumo::SFloat, not Cumo::HFloat", e.message
+      assert_equal "gamma must be Cumo::SFloat, not #{hf}", e.message
       e = assert_raise(TypeError) { x.batch_norm(sf.ones(4), hf.zeros(4), axis: [0, 2, 3]) }
-      assert_equal "beta must be Cumo::SFloat, not Cumo::HFloat", e.message
+      assert_equal "beta must be Cumo::SFloat, not #{hf}", e.message
     end
 
     test "the workspace ceiling is a positive byte count or the default" do
@@ -928,11 +932,13 @@ class CUDNNTest < Test::Unit::TestCase
         ENV["CUMO_CUDNN_MAX_WORKSPACE_SIZE"].to_s =~ /\A[1-9][0-9]*\z/
     end
 
-    test "the convolution accumulates over more channels than half can count" do
-      # 40000 ones summed in half would stop at 2048
+    test "the convolution accumulates over more channels than the element type can count" do
+      # 40000 ones summed in the element type would stop at 2048 for binary16
+      # and at 256 for bfloat16. The accumulation is exact and only the store
+      # back into the element type rounds, so the answer is 40000 taken to it.
       x = hf.ones(1, 40_000, 1, 1)
       w = hf.ones(1, 40_000, 1, 1)
-      assert_equal 40_000.0, x.conv(w).to_a.flatten.first
+      assert_equal hf[40_000.0].to_a.first, x.conv(w).to_a.flatten.first
     end
    end
   end
