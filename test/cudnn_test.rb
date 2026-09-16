@@ -16,8 +16,9 @@ class CUDNNTest < Test::Unit::TestCase
 
   float_types.each do |dtype|
     # cuDNN derives the batch norm parameter descriptor from x and widens it to
-    # float for a half x, so those arrays take this class rather than x's own
-    param_type = [Cumo::HFloat, Cumo::BFloat].include?(dtype) ? Cumo::SFloat : dtype
+    # float for a sixteen-bit x, so those arrays take this class rather than
+    # x's own
+    param_type = dtype::ELEMENT_BYTE_SIZE < 4 ? Cumo::SFloat : dtype
 
     sub_test_case "conv_2d" do
       setup do
@@ -336,7 +337,8 @@ class CUDNNTest < Test::Unit::TestCase
     # given rather than failing. The sizes below are the ones that reach the
     # kernel, so nothing else can raise first.
     # cuDNN derives the parameter descriptor from x, giving it x's own type
-    # except for a half x, where it widens to float. What keeps the descriptor
+    # except for a sixteen-bit x, where it widens to float. What keeps the
+    # descriptor
     # and the buffer behind it in step is that every parameter is held to
     # exactly the class that descriptor carries.
     sub_test_case "a parameter of another dtype" do
@@ -861,8 +863,7 @@ class CUDNNTest < Test::Unit::TestCase
   # how much of an answer they can hold, so they run the same cases.
   [Cumo::HFloat, Cumo::BFloat].select { |k| float_types.include?(k) }.each do |hf|
    sf = Cumo::SFloat
-   # bfloat16 keeps seven mantissa bits to binary16's ten
-   close_tol = hf == Cumo::BFloat ? 2.0**-6 : 2.0**-9
+   close_tol = hf::EPSILON * 2
 
    sub_test_case hf.name.split("::").last do
 
@@ -870,28 +871,36 @@ class CUDNNTest < Test::Unit::TestCase
       klass.cast(Cumo::Int32.new(*shape).seq % modulo)
     end
 
-    # cuDNN picks its algorithm by benchmarking, and half is allowed tensor
-    # cores, so which one wins varies between processes and so does the last
-    # place of the answer. Everything here is compared against SFloat within
-    # half's own precision rather than to the bit.
+    # Integers this small are exact in either sixteen-bit type and so are the
+    # sums of them, so a convolution over them answers SFloat's answer to the
+    # bit whatever the mantissa does. Thirds are the rounding these cases mean
+    # to cover.
+    def thirds(klass, shape, modulo)
+      klass.cast(Cumo::SFloat.cast(Cumo::Int32.new(*shape).seq % modulo) / 3)
+    end
+
+    # cuDNN picks its algorithm by benchmarking, and a sixteen-bit type is
+    # allowed tensor cores, so which one wins varies between processes and so
+    # does the last place of the answer. Everything here is compared against
+    # SFloat within the element type's own precision rather than to the bit.
     define_method(:assert_close_to_sfloat) do |got, ref|
       scale = [ref.abs.max.to_a.first, 1.0].max
       assert_in_delta 0.0, (Cumo::SFloat.cast(got) - ref).abs.max.to_a.first, scale * close_tol
     end
 
     test "a convolution answers what SFloat answers" do
-      x = seq(hf, [2, 8, 6, 6], 4)
-      w = seq(hf, [8, 8, 1, 1], 3)
-      b = seq(hf, [8], 3)
+      x = thirds(hf, [2, 8, 6, 6], 4)
+      w = thirds(hf, [8, 8, 1, 1], 3)
+      b = thirds(hf, [8], 3)
       assert_close_to_sfloat x.conv(w), sf.cast(x).conv(sf.cast(w))
       assert_close_to_sfloat x.conv(w, b: b), sf.cast(x).conv(sf.cast(w), b: sf.cast(b))
     end
 
     test "a 3x3 convolution and its two gradients answer what SFloat answers" do
-      x = seq(hf, [2, 8, 8, 8], 4)
-      w = seq(hf, [8, 8, 3, 3], 3)
+      x = thirds(hf, [2, 8, 8, 8], 4)
+      w = thirds(hf, [8, 8, 3, 3], 3)
       assert_close_to_sfloat x.conv(w), sf.cast(x).conv(sf.cast(w))
-      gy = seq(hf, x.conv(w).shape, 3)
+      gy = thirds(hf, x.conv(w).shape, 3)
       assert_close_to_sfloat x.conv_grad_w(gy, w.shape), sf.cast(x).conv_grad_w(sf.cast(gy), w.shape)
       assert_close_to_sfloat gy.conv_transpose(w, out_size: [8, 8]),
                              sf.cast(gy).conv_transpose(sf.cast(w), out_size: [8, 8])
