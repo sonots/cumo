@@ -190,6 +190,7 @@ extern VALUE cumo_cBit;
 extern VALUE cumo_cDFloat;
 extern VALUE cumo_cSFloat;
 extern VALUE cumo_cHFloat;
+extern VALUE cumo_cBFloat;
 extern VALUE cumo_cDComplex;
 extern VALUE cumo_cSComplex;
 extern VALUE cumo_cInt64;

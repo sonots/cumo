@@ -5,6 +5,7 @@ require_relative "test_helper"
 class NArrayMathTest < CumoTestBase
   FLOAT_TYPES = [
     Cumo::HFloat,
+    Cumo::BFloat,
     Cumo::SFloat,
     Cumo::SComplex,
     Cumo::DFloat,
@@ -527,7 +528,7 @@ class NArrayMathTest < CumoTestBase
       # dtype, since wiring one to the other is a per-dtype macro.
       a = dtype[-2, -1, 1, 2]
       assert_operator((Cumo::NMath.gelu(a) - Cumo::NMath.gelu_tanh(a)).abs.max.extract_cpu,
-                      :>, dtype == Cumo::HFloat ? 1e-4 : 1e-5)
+                      :>, [Cumo::HFloat, Cumo::BFloat].include?(dtype) ? 1e-4 : 1e-5)
     end
   end
 
@@ -605,8 +606,9 @@ class NArrayMathTest < CumoTestBase
   private
 
   def assert_close(expected, actual, rtol = nil)
-    # half keeps 11 bits of significand, so it cannot hold a result to 1e-6
-    rtol ||= expected.is_a?(Cumo::HFloat) ? 1e-3 : 1e-6
+    # binary16 keeps 11 bits of significand and bfloat16 only 8, so neither
+    # holds a result to 1e-6
+    rtol ||= expected.is_a?(Cumo::BFloat) ? 1e-2 : expected.is_a?(Cumo::HFloat) ? 1e-3 : 1e-6
     scale = [1.0, expected.abs.max.extract_cpu].max
     assert_operator((expected - actual).abs.max.extract_cpu, :<, rtol * scale)
   end

@@ -2,6 +2,7 @@
 #define CUMO_HALF_MACRO_KERNEL_H
 
 #include "float_def_kernel.h"
+#include "bf16_def_kernel.h"
 #include "half_def_kernel.h"
 #include <string.h>
 
@@ -18,6 +19,7 @@
 #define m_from_uint32(x) cumo_double2half((double)(x))
 #define m_from_uint64(x) cumo_double2half((double)(x))
 #define m_from_half(x)   (x)
+#define m_from_bfloat(x) cumo_float2half(cumo_bfloat2float(x))
 
 // Overloaded rather than substituted, so that a scan or a reduction can apply
 // the same rule to its own wider accumulator.

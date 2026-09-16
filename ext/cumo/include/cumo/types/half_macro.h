@@ -1,4 +1,5 @@
 #include "float_def.h"
+#include "bf16_def.h"
 #include "half_def.h"
 
 #define CUMO_HALF_EPSILON 9.765625e-04f
@@ -17,6 +18,7 @@
 #define m_from_uint32(x) cumo_double2half((double)(x))
 #define m_from_uint64(x) cumo_double2half((double)(x))
 #define m_from_half(x)   (x)
+#define m_from_bfloat(x) cumo_float2half(cumo_bfloat2float(x))
 
 #define m_add(x,y) cumo_float2half(cumo_half2float(x)+cumo_half2float(y))
 #define m_sub(x,y) cumo_float2half(cumo_half2float(x)-cumo_half2float(y))

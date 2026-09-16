@@ -9,6 +9,7 @@ class NArrayTest < Test::Unit::TestCase
     Cumo::DFloat,
     Cumo::SFloat,
     Cumo::HFloat,
+    Cumo::BFloat,
     Cumo::DComplex,
     Cumo::SComplex,
     Cumo::Int64,
@@ -194,7 +195,10 @@ class NArrayTest < Test::Unit::TestCase
         assert { a[2..-1][[1]] == [5] }
         assert { a.reverse == [11, 7, 5, 3, 2, 1] }
         assert { a.sum == 29 }
-        assert { (a.mean.extract_cpu - 29.0 / 6).abs < (dtype == Cumo::HFloat ? 1e-2 : 1e-6) }
+        # bfloat16 keeps seven mantissa bits to binary16's ten, so it is the
+        # coarser of the two wherever a tolerance has to name them.
+        tol = dtype == Cumo::BFloat ? 5e-2 : dtype == Cumo::HFloat ? 1e-2 : 1e-6
+        assert { (a.mean.extract_cpu - 29.0 / 6).abs < tol }
         if float_types.include?(dtype)
           assert { a.mean == 29.0 / 6 }
           assert_in_delta(13.766666666666667, a.var.extract_cpu, 1e-13)
@@ -1553,7 +1557,7 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   test "UPCAST names the types initialised after it" do
-    all_types = [Cumo::DComplex, Cumo::DFloat, Cumo::SComplex, Cumo::SFloat, Cumo::HFloat,
+    all_types = [Cumo::DComplex, Cumo::DFloat, Cumo::SComplex, Cumo::SFloat, Cumo::HFloat, Cumo::BFloat,
                  Cumo::Int64, Cumo::UInt64, Cumo::Int32, Cumo::UInt32, Cumo::Int16,
                  Cumo::UInt16, Cumo::Int8, Cumo::UInt8, Cumo::Bit, Cumo::RObject]
 
