@@ -239,6 +239,56 @@ __global__ void cumo_iter_copy_bytes_indexer_kernel_dim(cumo_na_iarray_t a1, cum
     }
 }
 
+#define CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(NDIM) \
+__global__ void cumo_iter_copy_bytes_stridx_kernel_dim##NDIM( \
+        cumo_na_iarray_stridx_t a1, cumo_na_iarray_stridx_t a2, cumo_na_indexer_t indexer, ssize_t elmsz) { \
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) { \
+        cumo_na_indexer_set_dim##NDIM(&indexer, i); \
+        char* p1 = cumo_na_iarray_stridx_at_dim##NDIM(&a1, &indexer); \
+        char* p2 = cumo_na_iarray_stridx_at_dim##NDIM(&a2, &indexer); \
+        memcpy(p2, p1, elmsz); \
+    } \
+}
+
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(0)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(1)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(2)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(3)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(4)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(5)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(6)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(7)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL(8)
+CUMO_ITER_COPY_BYTES_STRIDX_KERNEL()
+
+#undef CUMO_ITER_COPY_BYTES_STRIDX_KERNEL
+
+void cumo_iter_copy_bytes_stridx_kernel_launch(cumo_na_iarray_stridx_t* a1, cumo_na_iarray_stridx_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz)
+{
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+#define CUMO_ITER_COPY_BYTES_STRIDX_CASE(NDIM) \
+    case NDIM: \
+        cumo_iter_copy_bytes_stridx_kernel_dim##NDIM<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz); \
+        break;
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(0)
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(1)
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(2)
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(3)
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(4)
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(5)
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(6)
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(7)
+    CUMO_ITER_COPY_BYTES_STRIDX_CASE(8)
+#undef CUMO_ITER_COPY_BYTES_STRIDX_CASE
+    default:
+        cumo_iter_copy_bytes_stridx_kernel_dim<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        break;
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+}
+
 void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz)
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
