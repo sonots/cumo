@@ -262,11 +262,12 @@ The 0-dimensional form has no effect under Numo, where `[]` returns a Ruby Float
 
 ### Fused Operations
 
-`layer_norm` and `softmax` normalize along the last axis in one kernel each.
-Written out of the operators they take nine launches and five, and a launch costs about two microseconds whatever it is handed, so a short row pays for the launches rather than for its bytes.
+`layer_norm`, `rms_norm` and `softmax` normalize along the last axis in one kernel each.
+Written out of the operators they take nine launches, six and five, and a launch costs about two microseconds whatever it is handed, so a short row pays for the launches rather than for its bytes.
 
 ```ruby
 y = x.layer_norm(gamma, beta, eps: 1e-5)   # (x - mean) / sqrt(var + eps) * gamma + beta
+z = x.rms_norm(gamma, eps: 1e-5)           # x / sqrt(mean(x * x) + eps) * gamma
 probs = scores.softmax                     # exp(x - max) / sum(exp(x - max))
 ```
 
@@ -286,23 +287,47 @@ shape              fused  written    fused  written    fused  written
 256 x 768            8.8     13.9     23.4     35.1      6.8     18.5
 4096 x 768          49.2    122.7    318.3    549.0     28.2    109.8
 1 x 1000000         27.8     44.0    108.6    148.5     32.1     53.8
+
+rms_norm                SFloat            DFloat            HFloat
+shape              fused  written    fused  written    fused  written
+1 x 768              2.9     14.2      5.8     14.1      3.1     15.1
+256 x 768            4.6     16.7      6.9     20.2      5.2     15.5
+4096 x 768          38.5    122.5    130.8    367.0     19.2     80.8
+1 x 1000000         12.5     35.8     23.7    102.2     12.0     33.2
 ```
 
-Both pay off in every precision, by the most where the row is short enough that the launches were all it was doing, and by the least in double, where the reduction itself costs more than the launches ever did.
+The three tables were taken in separate sessions, so read each row against the row beside it and not across the tables.
+
+All three pay off in every precision, by the most where the row is short enough that the launches were all it was doing, and by the least in double, where the reduction itself costs more than the launches ever did.
 The memory clock on this card steps between 9001 and 11001 MHz under a benchmark this short, and the absolute figures move with it.
 The ratios hold across the steps.
 
-Both methods normalize along the last axis only.
+All three normalize along the last axis only.
 Other axes are reachable through `transpose`.
-`layer_norm` divides the variance by the row length and not by one less, which is how the layer is defined and unlike `var`.
-Both answer a new array and ignore `inplace!`, and a non-contiguous receiver is copied once rather than walked.
+`layer_norm` divides the variance by the row length and not by one less, which is how the layer is defined and unlike `var`; `rms_norm` divides its mean square the same way.
+All three answer a new array and ignore `inplace!`, and a non-contiguous receiver is copied once rather than walked.
 `gamma` and `beta` must be one-dimensional, as long as the last axis, and of the same class as the receiver.
+
+`rms_norm` is `layer_norm` without the centring, and takes no `beta`, which is the layer Llama and the models after it normalize with.
+The two agree on a row whose mean is already zero and differ on every other row, so they are not interchangeable:
+
+```ruby
+x = Cumo::SFloat[[1.0, 2.0, 3.0, 4.0]]
+ones = Cumo::SFloat.ones(4)
+zeros = Cumo::SFloat.zeros(4)
+x.rms_norm(ones)               #=> [[0.365, 0.730, 1.095, 1.461]]
+x.layer_norm(ones, zeros)      #=> [[-1.342, -0.447, 0.447, 1.342]]
+```
+
+All three accumulate in single precision, so a half row that squares past the 65504 half holds is still answered the way double answers it.
+bfloat16 carries a float's exponent rather than a half's, so a bfloat16 row that squares past what a float holds overflows the accumulator too: `Cumo::BFloat[[-3e20, 3e20, 3e20, -3e20]].rms_norm(ones)` answers zeros where double answers ones.
 
 `softmax` subtracts the row maximum before exponentiating, so a row masked with `-Float::INFINITY` answers zeros rather than `NaN`.
 A row that is entirely `-Float::INFINITY` answers `NaN`, as the written-out form does.
 
-Those two and `gelu_tanh` from the section below are where a transformer spends most of its launches.
+`layer_norm`, `softmax` and `gelu_tanh` from the section below are where a GPT-2 style transformer spends most of its launches.
 Decoding one token of GPT-2 124M written against Numo's API takes 640 of them, and calling these three instead removes 332: 200 for the layer norms, 84 for the activations and 48 for the softmaxes.
+A Llama style one spends them on `rms_norm` instead, which is why it is here.
 
 ### Two Spellings Of gelu
 
@@ -468,7 +493,7 @@ The two do not contain each other, so an expression mixing them promotes to `Cum
 
 Everything else promotes as `Cumo::SFloat` does, so an integer array or a Ruby Float mixed in stays bfloat16 while anything wider takes over.
 
-`layer_norm`, `softmax` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
+`layer_norm`, `rms_norm`, `softmax` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
 The cuDNN methods take it too: `conv`, `conv_transpose`, `conv_grad_w`, `max_pool`, `avg_pool` and the three batch norm entries.
 
 Reductions accumulate in single precision and round once at the end, exactly as they do for half, so a sum passes 256 without stopping there:
