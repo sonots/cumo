@@ -459,6 +459,7 @@ def_module do
     math "erfc"
     math "gelu"
     math "gelu_tanh"
+    math "silu"
     math "log1p"
     math "expm1"
     math "ldexp", 2

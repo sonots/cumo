@@ -325,9 +325,9 @@ bfloat16 carries a float's exponent rather than a half's, so a bfloat16 row that
 `softmax` subtracts the row maximum before exponentiating, so a row masked with `-Float::INFINITY` answers zeros rather than `NaN`.
 A row that is entirely `-Float::INFINITY` answers `NaN`, as the written-out form does.
 
-`layer_norm`, `softmax` and `gelu_tanh` from the section below are where a GPT-2 style transformer spends most of its launches.
+`layer_norm` and `softmax` above, with `gelu_tanh` from the section below, are where a GPT-2 style transformer spends most of its launches.
 Decoding one token of GPT-2 124M written against Numo's API takes 640 of them, and calling these three instead removes 332: 200 for the layer norms, 84 for the activations and 48 for the softmaxes.
-A Llama style one spends them on `rms_norm` instead, which is why it is here.
+A Llama style one spends them on `rms_norm` and `silu` instead, which is why they are here.
 
 ### Two Spellings Of gelu
 
@@ -346,6 +346,34 @@ the weights were trained with.
 Both follow PyTorch at the edges rather than the limit: a large negative `x`
 runs out of significant digits and answers zero, and `-Float::INFINITY` answers
 `NaN`.
+
+### SiLU
+
+`Cumo::NMath.silu` is `x * sigmoid(x)`, the activation Llama and the models after it use where GPT-2 uses `gelu_tanh`.
+It is also called Swish.
+
+```ruby
+Cumo::NMath.silu(x)   # x / (1 + exp(-x)), in one kernel rather than five
+```
+
+Written out of the operators it costs five launches, and one kernel runs 1.1x to 4.3x faster on an RTX 5070 Ti Laptop, in microseconds:
+
+```
+silu                    SFloat            DFloat            HFloat
+elements           fused  written    fused  written    fused  written
+768                  3.6     13.4      3.6      9.5      3.4     14.3
+786432               7.0     25.9     90.5    102.4      5.2     19.2
+16777216           353.2   1312.9   1984.7   3258.8    199.6    851.8
+```
+
+The three rows are three regimes rather than one curve: 768 elements pay for the launches, 786432 fit in L2 and move faster than this card reads from memory, and 16777216 are what it costs from DRAM.
+
+It follows `torch.nn.functional.silu`, answering within one unit in the last place of the true value at the nine double points measured, as torch does.
+At the edges it matches torch exactly: `-Float::INFINITY` answers `NaN`, since that is what infinity times zero is, and a large negative `x` answers a signed zero.
+
+Where that zero starts depends on the type, and not on `exp` alone.
+Single and bfloat16 reach it at -89, where `exp(-x)` passes what a float holds, and double never does.
+Half reaches it at -21, because the round back to half gets there first.
 
 ### Half Precision
 
@@ -493,7 +521,7 @@ The two do not contain each other, so an expression mixing them promotes to `Cum
 
 Everything else promotes as `Cumo::SFloat` does, so an integer array or a Ruby Float mixed in stays bfloat16 while anything wider takes over.
 
-`layer_norm`, `rms_norm`, `softmax` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
+`layer_norm`, `rms_norm`, `softmax`, `silu` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
 The cuDNN methods take it too: `conv`, `conv_transpose`, `conv_grad_w`, `max_pool`, `avg_pool` and the three batch norm entries.
 
 Reductions accumulate in single precision and round once at the end, exactly as they do for half, so a sum passes 256 without stopping there:

@@ -562,6 +562,84 @@ class NArrayMathTest < CumoTestBase
     assert_close(Cumo::NMath.gelu_tanh(view.dup), Cumo::NMath.gelu_tanh(view))
   end
 
+  # The definition evaluated at 200 decimal places and rounded once, which is
+  # the true value rather than any implementation of it. A division cannot
+  # always reach it: this kernel is within one unit in the last place at every
+  # point below, and exactly on five of the nine. torch answers the same except
+  # at 2.5, where it is a unit high.
+  SILU = {
+    -6.0 => -0.014835738939808645,
+    -2.5 => -0.18964545005310887,
+    -2.0 => -0.23840584404423512,
+    -1.0 => -0.2689414213699951,
+    0.0 => 0.0,
+    1.0 => 0.7310585786300049,
+    2.0 => 1.7615941559557649,
+    2.5 => 2.310354549946891,
+    6.0 => 5.985164261060191,
+  }.freeze
+
+  def test_silu
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      b = Cumo::NMath.silu(dtype[*SILU.keys])
+      assert_kind_of(dtype, b)
+      assert_close(dtype[*SILU.values], b)
+    end
+  end
+
+  # x * sigmoid(x) reaches infinity times zero at a negative infinity, the same
+  # way both gelu forms do. torch answers NaN here, and cumo follows the
+  # framework rather than the limit, which is zero.
+  def test_silu_at_infinity
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      y = Cumo::NMath.silu(dtype[-Float::INFINITY, Float::INFINITY]).to_a
+      assert(y[0].nan?, "silu #{dtype} at -Infinity answered #{y[0]}")
+      assert(y[1].infinite? == 1, "silu #{dtype} at +Infinity answered #{y[1]}")
+      assert(Cumo::NMath.silu(dtype[Float::NAN]).to_a.first.nan?)
+    end
+  end
+
+  # The quotient reaches exactly zero rather than the denormal the true value
+  # is, and keeps its sign, which is what tells it from a plain zero. Ruby has
+  # -0.0 == 0.0, so the reciprocal is what actually asks.
+  def test_silu_underflows_like_torch
+    [[Cumo::SFloat, -800.0], [Cumo::SFloat, -100.0], [Cumo::DFloat, -800.0]].each do |dtype, x|
+      y = Cumo::NMath.silu(dtype[x]).to_a.first
+      assert_equal(0.0, y.abs, "#{dtype} at #{x}")
+      assert_equal(-Float::INFINITY, 1.0 / y, "#{dtype} at #{x} lost the sign of its zero")
+    end
+    # Double still has room at -100, where single does not.
+    assert_in_delta(-3.720075976020836e-42, Cumo::NMath.silu(Cumo::DFloat[-100.0]).to_a.first, 1e-56)
+  end
+
+  # Half runs out four times earlier than the others, and not for the same
+  # reason: expf is still finite at -21, and it is the round back to half that
+  # answers zero. bfloat16 carries a float's exponent, so it goes with single.
+  def test_silu_underflows_earlier_in_half
+    first_zero = lambda do |dtype|
+      (1..200).find { |n| Cumo::NMath.silu(dtype[-n.to_f]).to_a.first == 0.0 }
+    end
+    assert_equal(21, first_zero.call(Cumo::HFloat))
+    assert_equal(89, first_zero.call(Cumo::BFloat))
+    assert_equal(89, first_zero.call(Cumo::SFloat))
+    assert_nil(first_zero.call(Cumo::DFloat))
+  end
+
+  # silu is not either gelu, and wiring one to the other is a per-dtype macro.
+  def test_silu_is_not_gelu
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      a = dtype[-2, -1, 1, 2]
+      tol = [Cumo::HFloat, Cumo::BFloat].include?(dtype) ? 1e-4 : 1e-5
+      assert_operator((Cumo::NMath.silu(a) - Cumo::NMath.gelu(a)).abs.max.extract_cpu, :>, tol)
+      assert_operator((Cumo::NMath.silu(a) - Cumo::NMath.gelu_tanh(a)).abs.max.extract_cpu, :>, tol)
+    end
+  end
+
+  def test_silu_reads_a_non_contiguous_view
+    view = (Cumo::DFloat.new(4, 3).seq(-6) / 2).transpose
+    assert_close(Cumo::NMath.silu(view.dup), Cumo::NMath.silu(view))
+  end
+
   def test_log1p
     FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
       a = dtype[-0.5, 0, 1, 2]
