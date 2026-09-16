@@ -1250,7 +1250,7 @@ module Cumo
               if am > nx && an > nx && bm > nx && bn > nx &&
                   size > ns && b.size > ns
                 @@warn_slow_dot = true
-                warn "\nwarning: matrix dot for #{t} is slow. Consider SFloat, DFloat, SComplex, or DComplex to use cuBLAS, or HFloat where half precision is enough.\n\n"
+                warn "\nwarning: matrix dot for #{t} is slow. Consider SFloat, DFloat, SComplex, or DComplex to use cuBLAS, or BFloat or HFloat where sixteen bits are enough.\n\n"
               end
             end
             self[false, :new].mulsum(b[false, :new, true, true], axis:-2)
