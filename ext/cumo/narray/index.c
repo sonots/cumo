@@ -227,15 +227,19 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
     q->orig_dim = orig_dim;
 }
 
+void cumo_na_index_range_check_kernel_launch(size_t *out, ssize_t *in, ssize_t size, uint64_t n, int *oor, size_t *item);
+
 // copy narray to idx
 static void
 cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q, int at_mode)
 {
-    VALUE idx, buf;
+    VALUE idx;
     cumo_narray_t *na;
     cumo_narray_data_t *nidx;
-    size_t k, n;
-    ssize_t *nidxp, *host_idx;
+    size_t n;
+    ssize_t *nidxp;
+    int *oor;
+    size_t *item;
 
     CumoGetNArray(a,na);
     if (CUMO_NA_NDIM(na) != 1) {
@@ -255,34 +259,39 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     CumoGetNArrayData(idx,nidx);
     nidxp   = (ssize_t*)nidx->ptr; // Cumo::NArray data resides on GPU
 
-    // Check the indices on the host, as cumo_na_parse_array() does: a kernel
-    // could neither raise IndexError nor rewrite a negative index into the
-    // element it denotes. Copy them rather than read the managed memory in
-    // place -- "synchronize, then touch it from the host" is what breaks under
-    // Ractor (sonots/cumo#180), where only the GVL made it atomic. The buffer
-    // is a String so the raise below cannot leak it.
-    buf = rb_str_tmp_new((long)(sizeof(ssize_t)*n));
-    host_idx = (ssize_t*)RSTRING_PTR(buf);
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
-    cumo_cuda_runtime_check_status(
-        cudaMemcpy(host_idx,nidxp,sizeof(ssize_t)*n,cudaMemcpyDeviceToHost));
-    for (k=0; k<n; k++) {
-        // A checked index is non-negative, so it is already a valid size_t.
-        host_idx[k] = cumo_na_range_check(host_idx[k], size, orig_dim);
-    }
-
+    // One index names a position rather than a list, so it is read here and
+    // the axis is walked by a step. Taking a buffer and a launch to check a
+    // single value costs more than reading it.
     if (n == 1 && !at_mode) {
-        cumo_na_index_set_step(q, orig_dim, 1, (size_t)host_idx[0], 1);
-        RB_GC_GUARD(buf);
+        ssize_t first;
+        CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
+        cumo_cuda_runtime_check_status(
+            cudaMemcpy(&first,nidxp,sizeof(ssize_t),cudaMemcpyDeviceToHost));
         RB_GC_GUARD(idx);
+        cumo_na_index_set_step(q, orig_dim, 1,
+                               cumo_na_range_check(first, size, orig_dim), 1);
         return;
     }
 
+    // Normalize and range check the rest where they already are. Reading them
+    // on the host first, the way cumo_na_parse_array() has to for a Ruby Array,
+    // cost a copy each way and a walk over them here. Nothing touches managed
+    // memory from the host on this path, which is what breaks under Ractor
+    // (sonots/cumo#180), where only the GVL made it atomic.
     q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-    cumo_cuda_runtime_check_status(
-        cudaMemcpyAsync(q->idx,host_idx,sizeof(size_t)*n,cudaMemcpyHostToDevice,0));
-    RB_GC_GUARD(buf);
+    oor = cumo_cuda_runtime_error_flag_new();
+    item = cumo_cuda_runtime_error_item_new();
+    cumo_na_index_range_check_kernel_launch(q->idx, nidxp, size, (uint64_t)n, oor, item);
     RB_GC_GUARD(idx);
+
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
+    if (cumo_cuda_runtime_error_flag_get(oor)) {
+        ssize_t pos = (ssize_t)*item;
+        cumo_cuda_runtime_free((char*)q->idx);
+        q->idx = NULL;
+        rb_raise(rb_eIndexError, "index=%"SZF"d out of shape[%d]=%"SZF"d",
+                 pos, orig_dim, size);
+    }
 
     q->n    = n;
     q->beg  = 0;
