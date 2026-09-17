@@ -1517,23 +1517,40 @@ class NArrayTest < Test::Unit::TestCase
         assert_equal 8 * dtype::ELEMENT_BYTE_SIZE, a.to_binary.bytesize
       end
 
-      test "a non-contiguous view is refused" do
+      test "a strided view takes the bytes at its own elements" do
         a = dtype.new(8).seq
-        assert_raise(ArgumentError) do
-          a[(0..7).step(2)].store_binary(dtype[9, 9, 9, 9].to_binary)
-        end
-        assert_equal dtype.new(8).seq.to_a, a.to_a
+        assert_equal 4 * dtype::ELEMENT_BYTE_SIZE,
+                     a[(0..7).step(2)].store_binary(dtype[9, 8, 7, 6].to_binary)
+        assert_equal dtype[9, 1, 8, 3, 7, 5, 6, 7].to_a, a.to_a
       end
 
-      test "an index view, which can name more elements than its base holds, is refused" do
-        a = dtype.new(1).seq
+      test "a strided view reads back what store_binary wrote" do
+        a = dtype.new(8).seq
+        v = a[(0..7).step(2)]
+        v.store_binary(dtype[5, 4, 3, 2].to_binary)
+        assert_equal dtype[5, 4, 3, 2].to_a, v.to_a
+        v.store_binary(v.to_binary)
+        assert_equal dtype[5, 4, 3, 2].to_a, v.to_a
+        assert_equal dtype[5, 1, 4, 3, 3, 5, 2, 7].to_a, a.to_a
+      end
+
+      # An index view can name an element more than once, and used to be refused
+      # here because whole bytes from one address would have run past the base.
+      # Going through store instead walks the list, so the base keeps its own
+      # size and which of the writes lands is left open, the way it is for any
+      # other assignment through such a view.
+      test "an index view, which can name more elements than its base holds, is written through" do
+        # The list names element zero 4096 times over a base of 4096, so bytes
+        # laid from one address would fill the whole of it. Walking the list
+        # writes that one element over and over and leaves the rest alone,
+        # which is what the refusal here used to stand in for.
+        a = dtype.new(4096).fill(7)
         v = a[[0] * 4096]
         assert_false v.contiguous?
-        error = assert_raise(ArgumentError) do
-          v.store_binary("\xAA".b * (4096 * dtype::ELEMENT_BYTE_SIZE))
-        end
-        assert_equal "cannot store binary data into a non-contiguous view", error.message
-        assert_equal dtype.new(1).seq.to_a, a.to_a
+        src = dtype.new(4096).seq(1)
+        assert_equal 4096 * dtype::ELEMENT_BYTE_SIZE, v.store_binary(src.to_binary)
+        assert_includes src.to_a, a.to_a[0]
+        assert_equal dtype.new(4095).fill(7).to_a, a[1..-1].to_a
       end
 
       test "a zero-dimensional view is written at its own element" do

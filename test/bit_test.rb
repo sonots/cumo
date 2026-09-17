@@ -826,24 +826,38 @@ class BitTest < Test::Unit::TestCase
     assert_equal("swap_byte,hton,to_network,to_swapped", reader.value)
   end
 
-  test "store_binary on a bit view that does not start at bit 0 is refused" do
+  # A byte is the smallest thing memcpy moves, so a view that does not begin
+  # and end on one is written a bit at a time instead, which leaves the rest of
+  # the base alone.
+  test "store_binary reaches a bit view that does not start at bit 0" do
     a = Cumo::Bit.new(16).fill(0)
-    e = assert_raise(ArgumentError) { a[8..15].store_binary("\xFF".b) }
-    assert_equal("cannot store binary data into a bit view that does not begin at bit 0", e.message)
-    e = assert_raise(ArgumentError) { a[1..8].store_binary("\xFF".b) }
-    assert_equal("cannot store binary data into a bit view that does not begin at bit 0", e.message)
-    assert_equal 0, Integer(a.count_true)
+    a[8..15].store_binary("\xFF".b)
+    assert_equal("0" * 8 + "1" * 8, a.to_a.join)
+
+    b = Cumo::Bit.new(16).fill(0)
+    b[1..8].store_binary("\xFF".b)
+    assert_equal("0" + "1" * 8 + "0" * 7, b.to_a.join)
   end
 
-  # A byte is the smallest thing memcpy moves, so a view ending mid-byte would
-  # take the bits after it along, and those belong to the rest of the base.
-  test "store_binary on a bit view that ends mid-byte is refused" do
+  test "store_binary reaches a bit view that ends mid-byte" do
     a = Cumo::Bit.new(16).fill(0)
-    e = assert_raise(ArgumentError) { a[0..3].store_binary("\xFF".b) }
-    assert_equal("cannot store binary data into a bit view that does not end on a byte", e.message)
-    e = assert_raise(ArgumentError) { a[0..11].store_binary("\xFF\xFF".b) }
-    assert_equal("cannot store binary data into a bit view that does not end on a byte", e.message)
-    assert_equal 0, Integer(a.count_true)
+    a[0..3].store_binary("\xFF".b)
+    assert_equal("1" * 4 + "0" * 12, a.to_a.join)
+
+    b = Cumo::Bit.new(16).fill(0)
+    b[0..11].store_binary("\xFF\xFF".b)
+    assert_equal("1" * 12 + "0" * 4, b.to_a.join)
+  end
+
+  test "store_binary and to_binary round trip a bit view" do
+    a = Cumo::Bit.new(24).fill(0)
+    a[4..7] = 1
+    v = a[4..7]
+    # Bit zero of the byte is element zero, so 0b0101 lands as 1, 0, 1, 0.
+    v.store_binary([0b0101].pack("C"))
+    assert_equal("0" * 4 + "1010" + "0" * 16, a.to_a.join)
+    v.store_binary(v.to_binary)
+    assert_equal("0" * 4 + "1010" + "0" * 16, a.to_a.join)
   end
 
   test "store_binary fills a whole byte of a bit view" do
