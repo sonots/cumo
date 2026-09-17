@@ -108,7 +108,16 @@ bool SingleDeviceMemoryPool::RemoveFromFreeList(size_t size, std::shared_ptr<Chu
     }
     assert(arena.size() > arena_index);
     FreeList& free_list = arena[arena_index];
-    return EraseFromFreeList(free_list, chunk);
+    if (!EraseFromFreeList(free_list, chunk)) {
+        return false;
+    }
+    // A bin left empty here would be walked by every later search, and the
+    // merge path below Free empties one whenever it takes a neighbour out.
+    if (free_list.empty()) {
+        arena.erase(arena.begin() + arena_index);
+        arena_index_map.erase(arena_index_map.begin() + arena_index);
+    }
+    return true;
 }
 
 intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
@@ -132,6 +141,7 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
 
         // find best-fit, or a smallest larger allocation
         Arena& arena = GetArena(stream_ptr);
+        ArenaIndexMap& arena_index_map = GetArenaIndexMap(stream_ptr);
         size_t arena_index = GetArenaIndex(size, stream_ptr);
         size_t arena_length = arena.size();
         for (size_t i = arena_index; i < arena_length; ++i) {
@@ -141,10 +151,15 @@ intptr_t SingleDeviceMemoryPool::Malloc(size_t size, cudaStream_t stream_ptr) {
             }
             chunk = PopFromFreeList(free_list);
             if (free_list.empty()) {
-                // An emptied bin stays in the arena otherwise, and every later
-                // search walks it. Dropping it here invalidates arena and
-                // free_list, so nothing below this loop may touch them.
-                CompactIndex(stream_ptr, false);
+                // Drop just this bin. Rebuilding the whole arena instead
+                // copied every other bin's free list, and a free list holds
+                // shared pointers, so a fragmented pool touched the reference
+                // count of every chunk it held on every allocation.
+                // This leaves free_list, the elements of arena_index_map and
+                // every iterator from i on dangling, so nothing below may
+                // touch them.
+                arena.erase(arena.begin() + i);
+                arena_index_map.erase(arena_index_map.begin() + i);
             }
             break;
         }
@@ -252,7 +267,7 @@ bool SingleDeviceMemoryPool::Free(intptr_t ptr) {
     return true;
 }
 
-void SingleDeviceMemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {
+void SingleDeviceMemoryPool::CompactIndex(cudaStream_t stream_ptr) {
     // need lock ouside this function
     if (!HasArena(stream_ptr)) return;
 
@@ -266,22 +281,17 @@ void SingleDeviceMemoryPool::CompactIndex(cudaStream_t stream_ptr, bool free) {
         if (free_list.empty()) {
             continue;
         }
-        if (free) {
-            FreeList keep_list;
-            for (auto chunk : free_list) {
-                if (chunk->prev() != nullptr || chunk->next() != nullptr) {
-                    keep_list.emplace_back(chunk);
-                }
+        FreeList keep_list;
+        for (auto chunk : free_list) {
+            if (chunk->prev() != nullptr || chunk->next() != nullptr) {
+                keep_list.emplace_back(chunk);
             }
-            if (keep_list.size() == 0) {
-                continue;
-            }
-            new_arena_index_map.emplace_back(arena_index_map[arena_index]);
-            new_arena.emplace_back(keep_list);
-        } else {
-            new_arena_index_map.emplace_back(arena_index_map[arena_index]);
-            new_arena.emplace_back(free_list);
         }
+        if (keep_list.size() == 0) {
+            continue;
+        }
+        new_arena_index_map.emplace_back(arena_index_map[arena_index]);
+        new_arena.emplace_back(keep_list);
     }
     if (new_arena.empty()) {
         index_.erase(stream_ptr);
@@ -299,7 +309,7 @@ void SingleDeviceMemoryPool::FreeAllBlocks() {
     std::vector<cudaStream_t> keys(free_.size());
     transform(free_.begin(), free_.end(), keys.begin(), [](auto pair) { return pair.first; });
     for (cudaStream_t stream_ptr : keys) {
-        CompactIndex(stream_ptr, true);
+        CompactIndex(stream_ptr);
     }
 }
 
@@ -307,7 +317,7 @@ void SingleDeviceMemoryPool::FreeAllBlocks() {
 void SingleDeviceMemoryPool::FreeAllBlocks(cudaStream_t stream_ptr) {
     std::lock_guard<std::recursive_mutex> lock{mutex_};
 
-    CompactIndex(stream_ptr, true);
+    CompactIndex(stream_ptr);
 }
 
 size_t SingleDeviceMemoryPool::GetNumFreeBlocks() {
