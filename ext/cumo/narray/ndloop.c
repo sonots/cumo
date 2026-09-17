@@ -1580,7 +1580,9 @@ ndloop_run(VALUE vlp)
     orig_args = lp->vargs;
     nf = lp->ndfunc;
 
-    args = rb_obj_dup(orig_args);
+    // Every caller of ndloop_alloc builds this with rb_ary_new3/4 or
+    // rb_assoc_new, so the general path through Ruby's dispatch buys nothing.
+    args = rb_ary_dup(orig_args);
 
     // setup ndloop iterator with arguments
     ndloop_init_args(nf, lp, args);
