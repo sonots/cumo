@@ -26,7 +26,7 @@ set acc_one:             "1.0f"
 set cublas_dtype:        "CUDA_R_16F"
 set cublas_prefix:        ""
 set cutype:              "cumo_half"
-set step_down:           "cumo_half_step_down"
+set step_down:           "cumo_f16_step_down"
 set need_align:          true
 
 set cudnn_dtype:         "CUDNN_DATA_HALF"
