@@ -1746,20 +1746,24 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
         rb_raise(rb_eArgError, "string is too long to store");
     }
 
-    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
-        // Whole bytes from one address reach the view's own elements only if it
-        // walks its base in order and, for Bit, begins and ends on a byte.
-        // Contiguity is also what keeps an index list, which can name more
-        // elements than the base holds, away from the copy below.
-        if (cumo_na_check_contiguous(self) != Qtrue) {
-            rb_raise(rb_eArgError, "cannot store binary data into a non-contiguous view");
-        }
-        if (!cumo_na_view_offset_reaches_bytes(self)) {
-            rb_raise(rb_eArgError, "cannot store binary data into a bit view that does not begin at bit 0");
-        }
-        if (cumo_na_type_info(self)->element_bits > 0 && size % 8 != 0) {
-            rb_raise(rb_eArgError, "cannot store binary data into a bit view that does not end on a byte");
-        }
+    // Whole bytes from one address reach the view's own elements only if it
+    // walks its base in order and, for Bit, begins and ends on a byte. Any
+    // other view takes the bytes into an array of its own and lets store walk
+    // them into place, which is how every other assignment reaches one, and
+    // which an index list that names an element more than once needs anyway.
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T &&
+        (cumo_na_check_contiguous(self) != Qtrue ||
+         !cumo_na_view_offset_reaches_bytes(self) ||
+         (cumo_na_type_info(self)->element_bits > 0 && size % 8 != 0))) {
+        VALUE tmp = cumo_na_new(rb_obj_class(self), CUMO_NA_NDIM(na), CUMO_NA_SHAPE(na));
+        VALUE args[2];
+
+        args[0] = vstr;
+        args[1] = SIZET2NUM(offset);
+        cumo_na_store_binary(2, args, tmp);
+        cumo_na_store(self, tmp);
+        RB_GC_GUARD(tmp);
+        return SIZET2NUM(byte_size);
     }
 
     if (byte_size > 0) {
