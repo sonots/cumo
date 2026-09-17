@@ -176,6 +176,22 @@ cumo_na_make_iarray_stridx(cumo_na_loop_args_t* arg)
     return iarray;
 }
 
+// Whether any argument of the loop is backed by an index array. With
+// INDEX_LOOP an operand can arrive carrying one, and cumo_na_iarray_t holds
+// byte steps only: an indexed dimension has a step of zero there, so a loop
+// that answers yes has to address its operands through the stridx form above.
+static int
+cumo_na_loop_has_index(cumo_na_loop_t *const lp)
+{
+    int j, i;
+    for (j = 0; j < lp->narg; ++j) {
+        for (i = 0; i < lp->args[j].ndim; ++i) {
+            if (lp->args[j].iter[i].idx) return 1;
+        }
+    }
+    return 0;
+}
+
 static cumo_na_bit_iarray_stridx_t
 cumo_na_make_bit_iarray_stridx(cumo_na_loop_args_t* arg)
 {
