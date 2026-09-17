@@ -163,16 +163,10 @@ static void
     cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    //<% if is_int and %w[div mod].include? name %>
-    int *divzero = cumo_cuda_runtime_error_flag_new();
-    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,y,&a3,&indexer,divzero,0);
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    if (cumo_cuda_runtime_error_flag_get(divzero)) {
-        lp->err_type = rb_eZeroDivError;
-    }
-    //<% else %>
+    // The divisor came in as the Ruby operand, so it is here rather than on
+    // the device: nothing has to be read back to know whether it is zero.
+    check_intdivzero(y);
     <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,y,&a3,&indexer,0,0);
-    //<% end %>
 }
 //<% end %>
 #undef check_intdivzero
