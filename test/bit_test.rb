@@ -868,6 +868,30 @@ class BitTest < Test::Unit::TestCase
     assert_equal([191], a[1..8].to_binary.bytes)
   end
 
+  # The rest of the last byte used to hold whatever lay beside the array: the
+  # base's bits for a view read in place, the memory pool's for one copied
+  # first, which made the same expression answer differently between runs.
+  test "to_binary clears the bits past the end of a bit array" do
+    assert_equal([255, 15], Cumo::Bit.new(12).fill(1).to_binary.bytes)
+    assert_equal([13], Cumo::Bit.cast([1, 0, 1, 1, 0]).to_binary.bytes)
+
+    a = Cumo::Bit.new(24).fill(1)
+    assert_equal([15], a[0..3].to_binary.bytes)
+    assert_equal([15], a[4..7].to_binary.bytes)
+    assert_equal([255, 15], a[0..11].to_binary.bytes)
+    assert_equal([255], a[0..7].to_binary.bytes)
+    assert_equal([255, 255, 255], a.to_binary.bytes)
+  end
+
+  test "to_binary counts the bits off the array its bytes came from" do
+    klass = Class.new(Cumo::Bit) do
+      def dup = Cumo::Bit.new(16).fill(1)
+    end
+    # Not byte aligned, so the bytes come from the dup and fill both of them.
+    # Counting the view's twelve bits instead would clear four that are in use.
+    assert_equal([255, 255], klass.new(24).fill(0)[1..12].to_binary.bytes)
+  end
+
   test "store_binary fills a whole bit array" do
     a = Cumo::Bit.new(8).fill(0)
     a[true].store_binary("\xFF".b)
