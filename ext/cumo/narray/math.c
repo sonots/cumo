@@ -105,6 +105,34 @@ static VALUE cumo_na_math_method_missing(int argc, VALUE *argv, VALUE mod)
 }
 
 
+/*
+  Tells whether method_missing would find the method, so that respond_to?
+  answers for sqrt and gelu the way it does for a defined method.
+  The dtype decides which Math module a call lands in and respond_to? is not
+  given one, so this asks the module that a call can reach with the widest set
+  of methods. Every other module a call can reach defines a subset of those.
+  @overload respond_to_missing?(name,include_private)
+  @param [Symbol] name  method name.
+  @param [Boolean] include_private  whether to look at private methods too.
+  @return [Boolean]
+*/
+static VALUE
+cumo_na_math_respond_to_missing_p(VALUE mod, VALUE name, VALUE include_private)
+{
+    VALUE typemod;
+    ID id = rb_check_id(&name);
+
+    if (!id) {  // a name nothing has interned cannot be a method anywhere
+        return Qfalse;
+    }
+    typemod = rb_hash_aref(rb_const_get(mod, cumo_id_DISPATCH), cumo_cDFloat);
+    if (NIL_P(typemod)) {
+        return Qfalse;
+    }
+    return rb_obj_respond_to(typemod, id, RTEST(include_private)) ? Qtrue : Qfalse;
+}
+
+
 void
 Init_cumo_na_math()
 {
@@ -112,6 +140,7 @@ Init_cumo_na_math()
 
     cumo_mNMath = rb_define_module_under(mCumo, "NMath");
     rb_define_singleton_method(cumo_mNMath, "method_missing", cumo_na_math_method_missing, -1);
+    rb_define_singleton_method(cumo_mNMath, "respond_to_missing?", cumo_na_math_respond_to_missing_p, 2);
 
     hCast = rb_hash_new();
     rb_define_const(cumo_mNMath, "DISPATCH", hCast);

@@ -681,6 +681,33 @@ class NArrayMathTest < CumoTestBase
     end
   end
 
+  def test_respond_to_a_dispatched_method
+    %i[sqrt exp log gelu gelu_tanh silu].each do |name|
+      assert_true(Cumo::NMath.respond_to?(name), name.to_s)
+      assert_kind_of(Method, Cumo::NMath.method(name))
+    end
+    assert_false(Cumo::NMath.respond_to?(:no_such_math_function))
+    assert_raise(NameError) { Cumo::NMath.method(:no_such_math_function) }
+  end
+
+  def test_respond_to_a_method_no_dtype_can_reach
+    %i[gamma lgamma].each do |name|
+      assert_true(Math.respond_to?(name), name.to_s)
+      assert_raise(NoMethodError) { Cumo::NMath.send(name, 3.0) }
+      assert_raise(NoMethodError) { Cumo::NMath.send(name, Cumo::DFloat[3.0]) }
+      assert_false(Cumo::NMath.respond_to?(name), name.to_s)
+    end
+  end
+
+  def test_dfloat_math_answers_for_every_module_a_call_can_reach
+    reachable = Cumo::NMath::DISPATCH.select { |type,| type < Cumo::NArray }.values.uniq
+    assert_operator(reachable.size, :>, 1)
+    assert_include(reachable, Cumo::DFloat::Math)
+    reachable.each do |mod|
+      assert_equal([], mod.singleton_methods - Cumo::DFloat::Math.singleton_methods, mod.to_s)
+    end
+  end
+
   private
 
   def assert_close(expected, actual, rtol = nil)
