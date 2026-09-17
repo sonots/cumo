@@ -284,7 +284,9 @@ public:
     //         be found in the free list as the chunk is allocated.)
     bool RemoveFromFreeList(size_t size, std::shared_ptr<Chunk>& chunk, cudaStream_t stream_ptr);
 
-    void CompactIndex(cudaStream_t stream_ptr, bool free);
+    // Drops every chunk that was never split from a larger one, and every
+    // bin left empty by that.
+    void CompactIndex(cudaStream_t stream_ptr);
 };
 
 // Memory pool for all GPU devices on the host.

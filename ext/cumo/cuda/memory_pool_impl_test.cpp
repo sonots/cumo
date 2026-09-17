@@ -337,10 +337,10 @@ public:
         assert(pool_->GetFreeBytes() == kRoundSize * 8);
     }
 
-    // RemoveFromFreeList leaves an emptied bin in the arena -- it erases the
-    // chunk and returns, where Malloc drops one through CompactIndex. The
-    // assertions below spell that out, so they describe the arena as it is
-    // rather than wait on a compaction this path is not getting.
+    // RemoveFromFreeList drops a bin its erase leaves empty, the same as
+    // Malloc. The merge path below Free empties one whenever it takes a
+    // neighbour out, so a bin left behind here would be walked by every later
+    // search.
     void TestRemoveFromFreeList() {
         Arena& arena = pool_->GetArena(stream_ptr_);
         ArenaIndexMap& arena_index_map = pool_->GetArenaIndexMap(stream_ptr_);
@@ -372,36 +372,30 @@ public:
         assert(arena_index_map[1] == 3);
         assert(arena_index_map[2] == 4);
 
-        // remove two from two
+        // remove two from two, which empties that bin
         pool_->RemoveFromFreeList(chunk2->size(), chunk2, stream_ptr_);
-        assert(arena.size() == 3);
+        assert(arena.size() == 2);
         assert(arena[0].size() == 1);
-        assert(arena[1].size() == 0);
-        assert(arena[2].size() == 1);
-        assert(arena_index_map.size() == 3);
+        assert(arena[1].size() == 1);
+        assert(arena_index_map.size() == 2);
         assert(arena_index_map[0] == 2);
-        assert(arena_index_map[1] == 3);
-        assert(arena_index_map[2] == 4);
+        assert(arena_index_map[1] == 4);
 
         pool_->RemoveFromFreeList(chunk3->size(), chunk3, stream_ptr_);
-        assert(arena.size() == 3);
+        assert(arena.size() == 1);
         assert(arena[0].size() == 1);
-        assert(arena[1].size() == 0);
-        assert(arena[2].size() == 0);
-        assert(arena_index_map.size() == 3);
+        assert(arena_index_map.size() == 1);
         assert(arena_index_map[0] == 2);
-        assert(arena_index_map[1] == 3);
-        assert(arena_index_map[2] == 4);
 
         pool_->RemoveFromFreeList(chunk4->size(), chunk4, stream_ptr_);
-        assert(arena.size() == 3);
-        assert(arena[0].size() == 0);
-        assert(arena[1].size() == 0);
-        assert(arena[2].size() == 0);
-        assert(arena_index_map.size() == 3);
-        assert(arena_index_map[0] == 2);
-        assert(arena_index_map[1] == 3);
-        assert(arena_index_map[2] == 4);
+        assert(arena.size() == 0);
+        assert(arena_index_map.size() == 0);
+
+        // A chunk that is not in the free list leaves the arena alone.
+        pool_->AppendToFreeList(chunk1->size(), chunk1, stream_ptr_);
+        assert(!pool_->RemoveFromFreeList(chunk2->size(), chunk2, stream_ptr_));
+        assert(arena.size() == 1);
+        assert(arena[0].size() == 1);
     }
 
     void TestMalloc() {
