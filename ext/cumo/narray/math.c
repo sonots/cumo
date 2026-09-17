@@ -40,6 +40,8 @@ static VALUE cumo_na_math_cast2(VALUE type1, VALUE type2)
     if ( RTEST(rb_class_inherited_p( type2, cNArray )) ){
 	return cumo_na_type_s_upcast( type2, type1 );
     }
+    // Unreachable from cumo_na_mathcast for the same reason the Float and
+    // Complex rows of DISPATCH went away: type1 is always an NArray class.
     if ( RTEST(rb_class_inherited_p( type1, rb_cNumeric )) &&
 	 RTEST(rb_class_inherited_p( type2, rb_cNumeric )) ){
 	if ( RTEST(rb_class_inherited_p( type1, rb_cComplex)) ||
@@ -159,14 +161,13 @@ Init_cumo_na_math()
     rb_hash_aset(hCast, cumo_cHFloat,   cumo_mHFloatMath);
     rb_hash_aset(hCast, cumo_cBFloat,   cumo_mBFloatMath);
     rb_hash_aset(hCast, cumo_cSComplex, cumo_mSComplexMath);
-#ifdef RUBY_INTEGER_UNIFICATION
-    rb_hash_aset(hCast, rb_cInteger, rb_mMath);
-#else
-    rb_hash_aset(hCast, rb_cFixnum,  rb_mMath);
-    rb_hash_aset(hCast, rb_cBignum,  rb_mMath);
-#endif
-    rb_hash_aset(hCast, rb_cFloat,   rb_mMath);
-    rb_hash_aset(hCast, rb_cComplex, cumo_mDComplexMath);
+    // A bare Ruby numeric used to be sent to ::Math from here, under keys of
+    // Integer, Float and Complex. cumo_na_mathcast asks
+    // cumo_na_ary_composition_dtype for the type first, and that answers an
+    // NArray class for one of those, so the keys were never looked up: a
+    // Float takes the Cumo::DFloat row and a Complex the Cumo::DComplex one.
+    // Sending them to ::Math instead would lose gelu and the rest, which
+    // ::Math does not define.
 
     cumo_id_send     = rb_intern("send");
     cumo_id_UPCAST   = rb_intern("UPCAST");
