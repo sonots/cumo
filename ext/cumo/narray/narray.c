@@ -1802,6 +1802,26 @@ cumo_na_to_binary(VALUE self)
     // type rather than by byte_size, which asks the class.
     len = cumo_na_type_byte_size(self);
     str = rb_usascii_str_new(ptr+offset,len);
+    // Elements narrower than a byte leave the rest of the last one holding
+    // whatever lies beside them: the base's bits for a view read in place, the
+    // pool's for the copy above. The string is this method's own, so the bits
+    // that belong to nobody are cleared here rather than handed out.
+    if (len > 0) {
+        const cumo_narray_type_info_t *info = cumo_na_type_info(self);
+
+        if (info->element_bits > 0) {
+            cumo_narray_t *nb;
+            size_t rem;
+
+            // Counted off the array the bytes came from, which the dup above
+            // may have replaced, so that the length and the count agree.
+            CumoGetNArray(self,nb);
+            rem = (nb->size * info->element_bits) % 8;
+            if (rem != 0) {
+                RSTRING_PTR(str)[len-1] &= (char)((1u << rem) - 1);
+            }
+        }
+    }
     RB_GC_GUARD(self);
     return str;
 }
