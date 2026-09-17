@@ -1,5 +1,6 @@
 #include "cumo/narray_kernel.h"
 #include "cumo/indexer.h"
+#include "cumo/template_kernel.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -289,8 +290,67 @@ void cumo_iter_copy_bytes_stridx_kernel_launch(cumo_na_iarray_stridx_t* a1, cumo
     cumo_cuda_runtime_check_kernel_launch();
 }
 
+// A copy of a transposed view has one side strided whichever way it is walked,
+// so it stages a square tile in shared memory the way the typed store does. The
+// element size is only known here at run time, so there is one kernel per size
+// a tile can carry.
+struct cumo_copy_bytes_elm16 { uint64_t lo, hi; };
+
+#define CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(SZ, TYPE) \
+__global__ void cumo_iter_copy_bytes_transpose_kernel_##SZ( \
+        char *dst, char *src, uint64_t rows, uint64_t cols) { \
+    CUMO_TRANSPOSE_TILE_DECL(TYPE, tile); \
+    CUMO_TRANSPOSE_TILE_LOOP(tile, rows, cols, \
+        *(TYPE*)(src + cumo_tile_src * sizeof(TYPE)), \
+        *(TYPE*)(dst + cumo_tile_dst * sizeof(TYPE)) = cumo_tile_val; \
+    ); \
+}
+
+CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(1, uint8_t)
+CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(2, uint16_t)
+CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(4, uint32_t)
+CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(8, uint64_t)
+CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(16, cumo_copy_bytes_elm16)
+
+// True when the source runs along its columns and the destination along its
+// rows. a1 is the source here and a2 the destination, the other way round from
+// the typed store.
+static int
+cumo_iter_copy_bytes_is_transpose(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz)
+{
+    return (elmsz == 1 || elmsz == 2 || elmsz == 4 || elmsz == 8 || elmsz == 16) &&
+        CUMO_TRANSPOSE_TILE_FITS(indexer) &&
+        a2->step[1] == elmsz &&
+        a2->step[0] == elmsz * (ssize_t)indexer->shape[1] &&
+        a1->step[0] == elmsz &&
+        a1->step[1] == elmsz * (ssize_t)indexer->shape[0];
+}
+
 void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz)
 {
+    if (cumo_iter_copy_bytes_is_transpose(a1, a2, indexer, elmsz)) {
+        uint64_t rows = indexer->shape[0];
+        uint64_t cols = indexer->shape[1];
+        switch (elmsz) {
+        case 1:
+            CUMO_TRANSPOSE_LAUNCH(cumo_iter_copy_bytes_transpose_kernel_1, rows, cols, a2->ptr, a1->ptr);
+            break;
+        case 2:
+            CUMO_TRANSPOSE_LAUNCH(cumo_iter_copy_bytes_transpose_kernel_2, rows, cols, a2->ptr, a1->ptr);
+            break;
+        case 4:
+            CUMO_TRANSPOSE_LAUNCH(cumo_iter_copy_bytes_transpose_kernel_4, rows, cols, a2->ptr, a1->ptr);
+            break;
+        case 8:
+            CUMO_TRANSPOSE_LAUNCH(cumo_iter_copy_bytes_transpose_kernel_8, rows, cols, a2->ptr, a1->ptr);
+            break;
+        default:
+            CUMO_TRANSPOSE_LAUNCH(cumo_iter_copy_bytes_transpose_kernel_16, rows, cols, a2->ptr, a1->ptr);
+            break;
+        }
+        cumo_cuda_runtime_check_kernel_launch();
+        return;
+    }
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
