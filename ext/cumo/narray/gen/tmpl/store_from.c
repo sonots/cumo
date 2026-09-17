@@ -1,21 +1,6 @@
 //<% unless c_iter.include? 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer);
 void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_iarray_stridx_t* a2, cumo_na_indexer_t* indexer);
-
-// With INDEX_LOOP on either operand can arrive carrying an index array, and
-// cumo_na_iarray_t carries byte steps only: an indexed operand has a step of
-// zero there, so those are addressed through cumo_na_iarray_stridx_t instead.
-static int
-<%=c_iter%>_has_index(cumo_na_loop_t *const lp)
-{
-    int j, i;
-    for (j = 0; j < 2; ++j) {
-        for (i = 0; i < lp->args[j].ndim; ++i) {
-            if (lp->args[j].iter[i].idx) return 1;
-        }
-    }
-    return 0;
-}
 //<% end %>
 
 static void
@@ -72,7 +57,7 @@ static void
     {
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-        if (<%=c_iter%>_has_index(lp)) {
+        if (cumo_na_loop_has_index(lp)) {
             cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
             cumo_na_iarray_stridx_t b2 = cumo_na_make_iarray_stridx(&lp->args[1]);
 

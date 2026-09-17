@@ -84,26 +84,12 @@ iter_copy_bytes(cumo_na_loop_t *const lp)
     LOOP_UNARY_PTR(lp,m_memcpy);
 }
 
-static int
-copy_bytes_has_index(cumo_na_loop_t *const lp)
-{
-    int j, i;
-    for (j = 0; j < lp->narg; ++j) {
-        for (i = 0; i < lp->args[j].ndim; ++i) {
-            if (lp->args[j].iter[i].idx) return 1;
-        }
-    }
-    return 0;
-}
-
 static void
 iter_copy_bytes_indexer(cumo_na_loop_t *const lp)
 {
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    // A dimension backed by an index array carries a step of zero, so it is
-    // addressed through cumo_na_iarray_stridx_t instead.
-    if (copy_bytes_has_index(lp)) {
+    if (cumo_na_loop_has_index(lp)) {
         cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
         cumo_na_iarray_stridx_t b2 = cumo_na_make_iarray_stridx(&lp->args[1]);
 
