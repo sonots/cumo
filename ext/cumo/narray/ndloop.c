@@ -1570,6 +1570,139 @@ ndloop_sync_md_index(cumo_na_md_loop_t *lp)
 static void
 loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp);
 
+// The data object a view reads through, or the array itself. A view made from
+// another one already points at the original, so one hop is enough.
+static VALUE
+ndloop_alias_base(VALUE v)
+{
+    cumo_narray_t *na;
+
+    CumoGetNArray(v,na);
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        return CUMO_NA_VIEW(na)->data;
+    }
+    return v;
+}
+
+// The offset and per-dimension strides an argument walks with. A whole array
+// is the contiguous case of a view. Answers 0 for an index array, which walks
+// wherever the index says.
+static int
+ndloop_addressing(VALUE v, int nd, size_t *offset, ssize_t *stride)
+{
+    cumo_narray_t *na;
+    cumo_narray_view_t *nv;
+    ssize_t s;
+    int i;
+
+    CumoGetNArray(v,na);
+    if (CUMO_NA_TYPE(na) != CUMO_NARRAY_VIEW_T) {
+        *offset = 0;
+        s = (ssize_t)cumo_na_element_stride(v);
+        for (i=nd; i--;) {
+            stride[i] = s;
+            s *= (ssize_t)na->shape[i];
+        }
+        return 1;
+    }
+    nv = CUMO_NA_VIEW(na);
+    for (i=0; i<nd; i++) {
+        if (CUMO_SDX_IS_INDEX(nv->stridx[i])) {
+            return 0;
+        }
+        stride[i] = CUMO_SDX_GET_STRIDE(nv->stridx[i]);
+    }
+    *offset = nv->offset;
+    return 1;
+}
+
+// Whether the two put their i-th element at the same address for every i.
+static int
+ndloop_walks_alike(VALUE v1, VALUE v2)
+{
+    cumo_narray_t *na1, *na2;
+    size_t o1, o2;
+    ssize_t *s1, *s2;
+    int i, nd;
+
+    CumoGetNArray(v1,na1);
+    CumoGetNArray(v2,na2);
+    nd = na1->ndim;
+    if (nd != na2->ndim) {
+        return 0;
+    }
+    for (i=0; i<nd; i++) {
+        if (na1->shape[i] != na2->shape[i]) {
+            return 0;
+        }
+    }
+    s1 = ALLOCA_N(ssize_t, nd+1);
+    s2 = ALLOCA_N(ssize_t, nd+1);
+    if (!ndloop_addressing(v1,nd,&o1,s1) || !ndloop_addressing(v2,nd,&o2,s2)) {
+        return 0;
+    }
+    if (o1 != o2) {
+        return 0;
+    }
+    for (i=0; i<nd; i++) {
+        if (na1->shape[i] > 1 && s1[i] != s2[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// An elementwise op writes each output element from the operands at the same
+// position, so an operand sharing the output's memory is only safe where it
+// sits at the same addresses. A transposed or broadcast one does not: the
+// element a thread reads is one another thread is writing, and on a device
+// nothing orders the two. Take a copy, so the answer is the one the same
+// expression gives out of place.
+static void
+ndloop_copy_aliased_args(cumo_ndfunc_t *nf, VALUE args)
+{
+    VALUE out = Qnil, type, base, v;
+    int j;
+
+    // With one input there is nothing to look at but the one being written.
+    if (nf->nin < 2 || !CUMO_NDF_TEST(nf,CUMO_NDF_INPLACE)) {
+        return;
+    }
+    for (j=0; j<nf->nin; j++) {
+        v = RARRAY_AREF(args,j);
+        if (CumoIsNArray(v) && CUMO_TEST_INPLACE(v)) {
+            out = v;
+            break;
+        }
+    }
+    if (NIL_P(out)) {
+        return;
+    }
+    // A named output class the flagged one is not, such as the Bit a comparison
+    // answers, means nothing here can be written in place.
+    type = nf->nout > 0 ? nf->aout[0].type : Qnil;
+    if (rb_obj_is_kind_of(type, rb_cClass) && type != rb_obj_class(out)) {
+        return;
+    }
+    base = ndloop_alias_base(out);
+    for (j=0; j<nf->nin; j++) {
+        if (nf->ain[j].type == CUMO_OVERWRITE) {
+            continue;
+        }
+        v = RARRAY_AREF(args,j);
+        if (!CumoIsNArray(v) || ndloop_alias_base(v) != base) {
+            continue;
+        }
+        // ndloop_find_inplace weighs shape and class as well, so a later
+        // flagged argument can be the one written. Copying it would send the
+        // answer to the copy and leave the caller's array alone.
+        if (CUMO_TEST_INPLACE(v) || ndloop_walks_alike(out,v)) {
+            continue;
+        }
+        rb_ary_store(args, j, cumo_na_copy(v));
+    }
+}
+
 static VALUE
 ndloop_run(VALUE vlp)
 {
@@ -1583,6 +1716,7 @@ ndloop_run(VALUE vlp)
     // Every caller of ndloop_alloc builds this with rb_ary_new3/4 or
     // rb_assoc_new, so the general path through Ruby's dispatch buys nothing.
     args = rb_ary_dup(orig_args);
+    ndloop_copy_aliased_args(nf, args);
 
     // setup ndloop iterator with arguments
     ndloop_init_args(nf, lp, args);

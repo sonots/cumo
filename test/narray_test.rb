@@ -7367,6 +7367,69 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(want.join(","), reader.value)
   end
 
+  # The sizes below are the ones where the operand and the output actually
+  # race. Smaller ones answer right even with the copy taken out. A race does
+  # not always land the wrong way, so each runs a few rounds.
+  test "an inplace op reads a transposed operand from before its own writes" do
+    want = (Cumo::SFloat.new(512, 512).seq + Cumo::SFloat.new(512, 512).seq.transpose).to_a
+    3.times do |round|
+      b = Cumo::SFloat.new(512, 512).seq
+      b.inplace + b.transpose
+      assert_equal(want, b.to_a, "round #{round}")
+    end
+  end
+
+  test "an inplace op reads a broadcast row it is about to overwrite" do
+    a = Cumo::Int32.new(256, 256).seq
+    want = (a + a[0, true]).to_a
+    3.times do |round|
+      b = Cumo::Int32.new(256, 256).seq
+      b.inplace + b[0, true]
+      assert_equal(want, b.to_a, "round #{round}")
+    end
+  end
+
+  test "an inplace op reads a reversed operand from before its own writes" do
+    n = 1 << 20
+    a = Cumo::Int32.new(n).seq
+    want = (a + a.reverse).to_a
+    3.times do |round|
+      b = Cumo::Int32.new(n).seq
+      b.inplace + b.reverse
+      assert_equal(want, b.to_a, "round #{round}")
+    end
+  end
+
+  # ndloop_find_inplace weighs shape and class too, so the first argument
+  # carrying the flag is not always the one written.
+  test "an inplace flag the output selection turns down does not lose the write" do
+    a = Cumo::SFloat.new(4, 4).seq
+    want = (a + a[0, true]).to_a
+    a[0, true].inplace + a.inplace
+    assert_equal(want, a.to_a)
+  end
+
+  test "a comparison does not copy an operand it could never write over" do
+    a = Cumo::SFloat.new(512, 512).seq
+    want = (a > a.transpose).to_a
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
+    GC.start
+    before = Cumo::CUDA::MemoryPool.used_bytes
+    bits = a.inplace > a.transpose
+    assert_equal(512 * 512 / 8, Cumo::CUDA::MemoryPool.used_bytes - before)
+    assert_equal(want, bits.to_a)
+  end
+
+  test "an inplace op does not copy an operand that sits where the output does" do
+    a = Cumo::SFloat.new(64, 64).seq
+    Cumo::CUDA::Runtime.cudaDeviceSynchronize
+    GC.start
+    before = Cumo::CUDA::MemoryPool.used_bytes
+    a.inplace + a
+    assert_equal(before, Cumo::CUDA::MemoryPool.used_bytes)
+    assert_equal([0.0, 2.0, 4.0, 6.0], a[0, 0..3].to_a)
+  end
+
   sub_test_case "storing a Ruby Array of NArrays" do
     test "each sub-narray keeps its own offset" do
       store_types.each do |dtype|
