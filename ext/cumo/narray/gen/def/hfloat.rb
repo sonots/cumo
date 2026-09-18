@@ -19,6 +19,7 @@ set is_real:             true
 set is_comparable:       true
 set is_double_precision: false
 set acc_type:            "float"
+set acc_class:           "cumo_cSFloat"
 set to_acc:              "cumo_half2float"
 set from_acc:            "cumo_float2half"
 set acc_zero:            "0.0f"

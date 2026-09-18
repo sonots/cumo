@@ -19,6 +19,7 @@ set is_real:             true
 set is_comparable:       true
 set is_double_precision: false
 set acc_type:            ""
+set acc_class:           "cT"
 set to_acc:              ""
 set from_acc:            ""
 set acc_zero:            "m_zero"

@@ -23,9 +23,9 @@
 
 namespace cumo_detail {
 
-template <typename TypeIn, typename Impl, typename Apply>
+template <typename TypeIn, typename TypeOut, typename Stats, typename Impl, typename Apply>
 __global__ void row_reduce_apply_kernel(
-        const TypeIn* x, TypeIn* y, uint64_t rows, uint64_t cols, Impl impl, Apply apply)
+        const TypeIn* x, TypeOut* y, Stats* stats_out, uint64_t rows, uint64_t cols, Impl impl, Apply apply)
 {
     typedef decltype(impl.Identity(0)) Accum;
     static_assert(alignof(Accum) <= 8,
@@ -38,7 +38,7 @@ __global__ void row_reduce_apply_kernel(
 
     for (uint64_t row = blockIdx.x; row < rows; row += gridDim.x) {
         const TypeIn* xr = x + row * cols;
-        TypeIn* yr = y + row * cols;
+        TypeOut* yr = y + row * cols;
         Accum accum = impl.Identity(0);
 
         for (uint64_t i = tid; i < cols; i += blockDim.x) {
@@ -50,6 +50,12 @@ __global__ void row_reduce_apply_kernel(
         reduce_in_block(accum, sdata, tid, 1, blockDim.x, true, impl);
         auto stats = impl.MapOut(sdata[0]);
 
+        // What the row was reduced to, for a caller that wants it back. One
+        // thread writes it, and the pass below reads only registers, so no
+        // barrier is owed between the two.
+        if (stats_out != NULL && tid == 0) {
+            stats_out[row] = stats;
+        }
         for (uint64_t i = tid; i < cols; i += blockDim.x) {
             yr[i] = apply(xr[i], i, stats);
         }
@@ -62,13 +68,13 @@ __global__ void row_reduce_apply_kernel(
 
 // The second half of the split path. blockIdx.y names the row, so finding one
 // costs no division, and this path is only taken where rows is small.
-template <typename TypeIn, typename Stats, typename Apply>
+template <typename TypeIn, typename TypeOut, typename Stats, typename Apply>
 __global__ void row_apply_kernel(
-        const TypeIn* x, TypeIn* y, const Stats* stats, uint64_t cols, Apply apply)
+        const TypeIn* x, TypeOut* y, const Stats* stats, uint64_t cols, Apply apply)
 {
     uint64_t row = blockIdx.y;
     const TypeIn* xr = x + row * cols;
-    TypeIn* yr = y + row * cols;
+    TypeOut* yr = y + row * cols;
     Stats st = stats[row];
 
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < cols;
@@ -82,9 +88,14 @@ __global__ void row_apply_kernel(
 // Reduces each row of a contiguous rows x cols array with impl and writes the
 // row back through apply. Both arrays are laid out the same way and neither may
 // be the other.
-template <typename TypeIn, typename Impl, typename Apply>
-void cumo_row_reduce_apply(
-        char* px, char* py, uint64_t rows, uint64_t cols, Impl impl, Apply apply)
+//
+// pstats, when it is not NULL, takes what each row reduced to. Its elements are
+// the accumulator type, decltype(impl.MapOut(...)), which is not the element
+// type for a class whose accumulator is wider, so the buffer behind it has to
+// be sized in those. Nothing is written there for a row of no length.
+template <typename TypeIn, typename TypeOut, typename Impl, typename Apply>
+void cumo_row_reduce_apply_out(
+        char* px, char* py, char* pstats, uint64_t rows, uint64_t cols, Impl impl, Apply apply)
 {
     typedef decltype(impl.Identity(0)) Accum;
     typedef decltype(impl.MapOut(impl.Identity(0))) Stats;
@@ -111,7 +122,11 @@ void cumo_row_reduce_apply(
     if (rows < (uint64_t)cumo_detail::min_grid_size &&
             cols > (uint64_t)(cumo_detail::max_block_size * cumo_detail::min_reduce_per_thread)) {
         cumo_na_reduction_arg_t arg;
-        Stats* stats = (Stats*)cumo_cuda_runtime_malloc(rows * sizeof(Stats));
+        // The reduction writes the row totals wherever it is pointed, so a
+        // caller that wants them back is handed the buffer rather than a copy.
+        Stats* stats = pstats != NULL
+            ? (Stats*)pstats
+            : (Stats*)cumo_cuda_runtime_malloc(rows * sizeof(Stats));
         // rows is below min_grid_size to be here, which is well inside the y
         // limit, but that is a threshold from reduce_kernel.h and not a promise
         // about this axis, so the clamp is written out rather than assumed.
@@ -133,11 +148,19 @@ void cumo_row_reduce_apply(
         arg.out_indexer.total_size = rows;
         arg.out_indexer.shape[0] = rows;
 
-        cumo_reduce_split<TypeIn, Stats, Impl>(arg, Impl(impl), (char*)stats);
-        cumo_detail::row_apply_kernel<TypeIn, Stats, Apply><<<apply_grid, apply_block>>>(
-                (const TypeIn*)px, (TypeIn*)py, stats, cols, apply);
-        cumo_check_launch_holding(stats);
-        cumo_cuda_runtime_free((char*)stats);
+        // held is what the failure path frees, so it may only ever name scratch.
+        // Handing it a buffer a live Ruby array owns would return that to the
+        // pool and leave the array's own free to come back to it.
+        cumo_reduce_split<TypeIn, Stats, Impl>(arg, Impl(impl),
+                                               pstats != NULL ? NULL : (char*)stats);
+        cumo_detail::row_apply_kernel<TypeIn, TypeOut, Stats, Apply><<<apply_grid, apply_block>>>(
+                (const TypeIn*)px, (TypeOut*)py, stats, cols, apply);
+        if (pstats != NULL) {
+            cumo_cuda_runtime_check_kernel_launch();
+        } else {
+            cumo_check_launch_holding(stats);
+            cumo_cuda_runtime_free((char*)stats);
+        }
         return;
     }
 
@@ -162,9 +185,18 @@ void cumo_row_reduce_apply(
     grid_dim = (unsigned int)(rows < max_row_blocks ? rows : max_row_blocks);
     shared_mem_size = block_dim * sizeof(Accum);
 
-    cumo_detail::row_reduce_apply_kernel<TypeIn, Impl, Apply><<<grid_dim, block_dim, shared_mem_size>>>(
-            (const TypeIn*)px, (TypeIn*)py, rows, cols, impl, apply);
+    cumo_detail::row_reduce_apply_kernel<TypeIn, TypeOut, Stats, Impl, Apply><<<grid_dim, block_dim, shared_mem_size>>>(
+            (const TypeIn*)px, (TypeOut*)py, (Stats*)pstats, rows, cols, impl, apply);
     cumo_cuda_runtime_check_kernel_launch();
+}
+
+// The shape layer_norm, rms_norm and softmax take: one array in, one of the
+// same type out, and nothing kept from the reduction.
+template <typename TypeIn, typename Impl, typename Apply>
+void cumo_row_reduce_apply(
+        char* px, char* py, uint64_t rows, uint64_t cols, Impl impl, Apply apply)
+{
+    cumo_row_reduce_apply_out<TypeIn, TypeIn, Impl, Apply>(px, py, NULL, rows, cols, impl, apply);
 }
 
 #endif // CUMO_ROW_KERNEL_H
