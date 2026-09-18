@@ -122,7 +122,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
 
         cumo_reduce_split<dtype, <%=acc%>, <%="cumo_#{c_iter}_max_impl"%>>(
                 arg, <%="cumo_#{c_iter}_max_impl"%>{}, (char*)stats);
-        cumo_detail::row_apply_kernel<dtype, <%=acc%>, <%="cumo_#{c_iter}_shift_apply"%>>
+        cumo_detail::row_apply_kernel<dtype, dtype, <%=acc%>, <%="cumo_#{c_iter}_shift_apply"%>>
                 <<<apply_grid, apply_block>>>(
                     (const dtype*)px, (dtype*)py, stats, cols, <%="cumo_#{c_iter}_shift_apply"%>{});
         cumo_check_launch_holding(stats);
@@ -132,7 +132,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
         arg.in.ptr = py;
         cumo_reduce_split<dtype, <%=acc%>, <%="cumo_#{c_iter}_rden_impl"%>>(
                 arg, <%="cumo_#{c_iter}_rden_impl"%>{}, (char*)stats);
-        cumo_detail::row_apply_kernel<dtype, <%=acc%>, <%="cumo_#{c_iter}_scale_apply"%>>
+        cumo_detail::row_apply_kernel<dtype, dtype, <%=acc%>, <%="cumo_#{c_iter}_scale_apply"%>>
                 <<<apply_grid, apply_block>>>(
                     (const dtype*)py, (dtype*)py, stats, cols, <%="cumo_#{c_iter}_scale_apply"%>{});
         cumo_check_launch_holding(stats);

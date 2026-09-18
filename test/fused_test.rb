@@ -483,4 +483,62 @@ class FusedTest < CumoTestBase
       end
     end
   end
+
+  # The scale comes back in the class the reduction accumulates in, which is
+  # wider than the element for the 16-bit ones. Reading it as the element type
+  # answered a scale that was not even positive.
+  FUSED_FLOAT_TYPES.each do |dtype|
+    test "quantize_symmetric answers the scale of every row #{dtype}" do
+      x = dtype.cast(Cumo::SFloat[[1.0, -2.0, 4.0, -8.0], [0.5, 0.25, -1.0, 0.125]])
+      q, s = x.quantize_symmetric
+      assert_equal(Cumo::Int8, q.class)
+      assert_equal([2], s.shape)
+      assert_equal([[16, -32, 64, -127], [64, 32, -127, 16]], q.to_a)
+      s.to_a.zip([8.0 / 127, 1.0 / 127]).each do |got, want|
+        assert_in_delta(want, got, want * 1e-2)
+      end
+    end
+
+    test "quantize_symmetric answers a positive finite scale for every row #{dtype}" do
+      x = dtype.cast(Cumo::SFloat.new(64, 16).seq + 1)
+      _, s = x.quantize_symmetric
+      assert_equal([64], s.shape)
+      s.to_a.each_with_index do |v, i|
+        assert(v.finite? && v > 0, "row #{i} answered #{v}")
+      end
+    end
+
+    test "quantize_symmetric takes a row of zeros and a row with an infinity apart #{dtype}" do
+      x = dtype.cast(Cumo::SFloat[[0.0, 0.0], [1.0, Float::INFINITY], [Float::NAN, 1.0]])
+      q, s = x.quantize_symmetric
+      assert_equal([[0, 0], [0, 0], [0, 0]], q.to_a)
+      assert_equal(0.0, s[0].to_f)
+      assert_equal(Float::INFINITY, s[1].to_f)
+      assert(s[2].to_f.nan?, "a row holding a NaN answers one")
+    end
+  end
+
+  test "quantize_symmetric matches the spelling it replaces" do
+    [[4, 8], [3, 5, 32], [1, 4]].each do |shape|
+      x = (Cumo::SFloat.new(*shape).seq % 211) - 105
+      q, s = x.quantize_symmetric
+      want_s = x.abs.max(axis: -1, keepdims: true) / 127.0
+      want_q = (x / want_s.clip(1e-30, nil)).round
+      assert_equal(want_q.to_a, Cumo::SFloat.cast(q).to_a, shape.inspect)
+      assert_equal(want_s.reshape(*s.shape).to_a, s.to_a, shape.inspect)
+    end
+  end
+
+  test "quantize_symmetric answers a scale for a row with nothing in it" do
+    q, s = Cumo::SFloat.new(2, 0).quantize_symmetric
+    assert_equal([2, 0], q.shape)
+    assert_equal([0.0, 0.0], s.to_a)
+  end
+
+  test "quantize_symmetric drops the last axis from the scale" do
+    _, s = Cumo::SFloat.new(2, 3, 4).seq.quantize_symmetric
+    assert_equal([2, 3], s.shape)
+    _, s1 = Cumo::SFloat.new(4).seq.quantize_symmetric
+    assert_equal(0, s1.ndim)
+  end
 end

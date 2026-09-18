@@ -262,14 +262,17 @@ The 0-dimensional form has no effect under Numo, where `[]` returns a Ruby Float
 
 ### Fused Operations
 
-`layer_norm`, `rms_norm` and `softmax` normalize along the last axis in one kernel each.
-Written out of the operators they take nine launches, six and five, and a launch costs about two microseconds whatever it is handed, so a short row pays for the launches rather than for its bytes.
+`layer_norm`, `rms_norm` and `softmax` normalize along the last axis in one kernel each, and `quantize_symmetric` takes it to 8-bit integers in one more.
+Written out of the operators they take nine launches, six, five and six, and a launch costs about two microseconds whatever it is handed, so a short row pays for the launches rather than for its bytes.
 
 ```ruby
 y = x.layer_norm(gamma, beta, eps: 1e-5)   # (x - mean) / sqrt(var + eps) * gamma + beta
 z = x.rms_norm(gamma, eps: 1e-5)           # x / sqrt(mean(x * x) + eps) * gamma
 probs = scores.softmax                     # exp(x - max) / sum(exp(x - max))
+xq, scale = x.quantize_symmetric           # scale = max(|x|) / 127, xq = round(x / scale)
 ```
+
+`quantize_symmetric` answers a `Cumo::Int8` shaped like self and the scale of every row, which is self's shape without its last axis. `xq * scale[false, :new]` is what the row stood for. A row of zeros has no scale to divide by and answers zero for both, and a row holding an infinity or a NaN answers that in its scale and zeros in the row, since neither is a value 8 bits could carry. The scale comes back in the class the reduction accumulates in, which is `Cumo::SFloat` for `Cumo::HFloat` and `Cumo::BFloat` and self's own otherwise.
 
 On an RTX 5070 Ti Laptop, against the same arithmetic spelled with operators, in microseconds:
 
@@ -296,7 +299,18 @@ shape              fused  written    fused  written    fused  written
 1 x 1000000         12.5     35.8     23.7    102.2     12.0     33.2
 ```
 
-The three tables were taken in separate sessions, so read each row against the row beside it and not across the tables.
+```
+quantize_symmetric      SFloat            DFloat            HFloat
+shape              fused  written    fused  written    fused  written
+1 x 768              3.7     20.2      6.0     15.7      2.3     11.9
+256 x 768            4.7     15.0     20.2     21.3      4.7     13.0
+4096 x 768          24.4    105.4    289.5    333.3     23.8     80.3
+1 x 1000000         18.8     40.8     97.1     81.6     15.7     37.5
+```
+
+The tables were taken in separate sessions, so read each row against the row beside it and not across the tables.
+
+`quantize_symmetric` in `Cumo::DFloat` is worth less than the others and loses outright on a million elements, whatever shape they are in. The division it does per element is what costs: on this card one row of a million takes 44.0 us to divide in double against 10.8 in single, where the reduction over the same row takes 25.3 and 15.4. Six kernels give that division a kernel of its own to fill the device with, and one kernel leaves it behind the reduction.
 
 All three pay off in every precision, by the most where the row is short enough that the launches were all it was doing, and by the least in double, where the reduction itself costs more than the launches ever did.
 The memory clock on this card steps between 9001 and 11001 MHz under a benchmark this short, and the absolute figures move with it.
