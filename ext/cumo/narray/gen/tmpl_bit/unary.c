@@ -38,7 +38,13 @@ static VALUE
 {
     cumo_ndfunc_arg_in_t ain[1] = {{cT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
+<% if name == "copy" %>
+    // A copy is a new array whatever flags its receiver carries, so it takes
+    // the loop specs that do not offer the operand as an output.
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP_NIP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain, aout };
+<% else %>
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain, aout };
+<% end %>
 
     return cumo_na_ndloop(&ndf, 1, self);
 }

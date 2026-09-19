@@ -1049,4 +1049,48 @@ class BitTest < Test::Unit::TestCase
     a[[1, 0], [2, 0]].each_with_index { |x, *i| yielded << [x, i] }
     assert_equal [[1, [0, 0]], [0, [0, 1]], [1, [1, 0]], [1, [1, 1]]], yielded
   end
+
+  # copy carried the loop spec that lets ndloop answer with its own input, so an
+  # inplace receiver got itself back. Writing to the copy then reached the
+  # original, and every reduction that copies an index-backed view first walked
+  # the view it meant to have copied.
+  test "copy of an inplace bit array is a new array" do
+    src = [[0, 0, 0, 0, 0], [0, 1, 0, 0, 0], [1, 1, 1, 1, 1], [1, 1, 1, 0, 1]]
+
+    flagged = Cumo::Bit.cast(src).inplace!
+    refute_same(flagged, flagged.copy, "the copy of an inplace array is a new one")
+    refute_predicate(flagged.copy, :inplace?, "and does not carry the flag itself")
+    plain = Cumo::Bit.cast(src)
+    refute_same(plain, plain.copy, "and so is the copy of a plain one")
+
+    ones = Cumo::Bit.cast([[1, 1, 1]]).inplace!
+    written = ones.copy
+    written[0, 0] = 0
+    assert_equal([[1, 1, 1]], ones.to_a, "writing to the copy leaves the original")
+    assert_equal([[0, 1, 1]], written.to_a, "and reaches the copy")
+
+    v = Cumo::Bit.cast(src)[Cumo::Int32[1, 3], true]
+    rows = [src[1], src[3]]
+    assert_equal(rows.map { |r| r.all?(1) ? 1 : 0 }, v.inplace.all?(axis: 1).to_a, "all?")
+    assert_equal(rows.map { |r| r.any?(1) ? 1 : 0 }, v.inplace.any?(axis: 1).to_a, "any?")
+    assert_equal(rows.map { |r| r.any?(1) ? 0 : 1 }, v.inplace.none?(axis: 1).to_a, "none?")
+    assert_equal(rows.map { |r| r.count(1) }, v.inplace.count_true(axis: 1).to_a, "count_true")
+    assert_equal(rows.map { |r| r.count(0) }, v.inplace.count_false(axis: 1).to_a, "count_false")
+    assert_equal(rows.map { |r| r.count(1).fdiv(r.size) }, v.inplace.mean(axis: 1).to_a, "mean")
+    # var, stddev and rms have no exact answer to write down, and the plain
+    # receiver never took the path that broke, so it stands as the reference.
+    %i[var stddev rms].each do |name|
+      assert_equal(v.send(name, axis: 1).to_a, v.inplace.send(name, axis: 1).to_a, name.to_s)
+    end
+  end
+
+  test "not still writes an inplace bit receiver" do
+    flagged = Cumo::Bit.cast([1, 0, 1])
+    assert_equal([0, 1, 0], flagged.inplace.~.to_a)
+    assert_equal([0, 1, 0], flagged.to_a, "inplace not writes the receiver")
+
+    plain = Cumo::Bit.cast([1, 0, 1])
+    assert_equal([0, 1, 0], (plain.~).to_a)
+    assert_equal([1, 0, 1], plain.to_a, "plain not leaves it")
+  end
 end
