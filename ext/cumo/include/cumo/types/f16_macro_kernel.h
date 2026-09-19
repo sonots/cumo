@@ -210,7 +210,8 @@ __host__ __device__ static inline float cumo_f16_gelu_tanh(float x)
 }
 
 // x * sigmoid(x) as one division. Going through cumo_f16_sigmoid rounds a
-// second time and moves a quarter of the answers, so the two are written apart.
+// second time. That moves the last bits, and the two forms disagree about
+// where the tail reaches zero, so they are written apart.
 __host__ __device__ static inline float cumo_f16_silu(float x)
 {
     return x / (1.0f + expf(-x));

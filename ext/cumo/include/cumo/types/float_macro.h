@@ -216,7 +216,8 @@ static inline dtype cumo_gelu_tanh(dtype x)
 }
 
 // x * sigmoid(x) as one division. Going through cumo_sigmoid rounds a second
-// time and moves a quarter of the answers, so the two are written apart.
+// time. That moves the last bits, and the two forms disagree about where the
+// tail reaches zero, so they are written apart.
 static inline dtype cumo_silu(dtype x)
 {
     return x / ((dtype)1 + exp(-x));
