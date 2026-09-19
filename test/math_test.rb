@@ -579,6 +579,10 @@ class NArrayMathTest < CumoTestBase
     6.0 => 5.985164261060191,
   }.freeze
 
+  # The definition evaluated at 200 decimal places and rounded once, so these
+  # are neither this kernel's spelling nor another implementation's. Written
+  # out, log(1 + exp(x)) is about an ulp off the true value for a negative x,
+  # the sum losing what the logarithm then asks for.
   def test_silu
     FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
       b = Cumo::NMath.silu(dtype[*SILU.keys])
@@ -640,6 +644,82 @@ class NArrayMathTest < CumoTestBase
     assert_close(Cumo::NMath.silu(view.dup), Cumo::NMath.silu(view))
   end
 
+  # The definition evaluated at 200 decimal places and rounded once, so these
+  # are neither this kernel's spelling nor another implementation's.
+  SOFTPLUS = {
+    -6.0 => 0.0024756851377304495,
+    -2.5 => 0.07888973429254963,
+    -2.0 => 0.1269280110429725,
+    -1.0 => 0.3132616875182228,
+    0.0 => 0.6931471805599453,
+    1.0 => 1.3132616875182228,
+    2.0 => 2.1269280110429727,
+    2.5 => 2.5788897342925496,
+    6.0 => 6.00247568513773,
+  }.freeze
+
+  def test_softplus
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      b = Cumo::NMath.softplus(dtype[*SOFTPLUS.keys])
+      assert_kind_of(dtype, b)
+      assert_close(dtype[*SOFTPLUS.values], b)
+    end
+  end
+
+  # Writing the same thing out of the operators reaches an infinity as soon as
+  # exp does. The three widths give out at the same x, the sixteen-bit ones
+  # taking the single-precision exp, and what changes between them is how far
+  # the type can carry the answer afterwards.
+  def test_softplus_answers_x_where_exp_gives_out
+    [[Cumo::HFloat, 60000.0], [Cumo::BFloat, 100.0], [Cumo::BFloat, 3.0e38],
+     [Cumo::SFloat, 89.0], [Cumo::SFloat, 200.0], [Cumo::DFloat, 800.0]].each do |dtype, x|
+      written_out = Cumo::NMath.log(1.0 + Cumo::NMath.exp(dtype[x])).to_a.first
+      assert_equal(Float::INFINITY, written_out, "#{dtype} at #{x} was expected to overflow written out")
+      assert_equal(dtype[x].to_a.first, Cumo::NMath.softplus(dtype[x]).to_a.first, "#{dtype} at #{x}")
+    end
+  end
+
+  # An x that exp still reaches keeps the value the written-out spelling
+  # answers, bit for bit. The range runs past where each type overflows, so
+  # the two halves of the branch are both walked.
+  def test_softplus_matches_the_written_out_form_where_it_is_finite
+    [[Cumo::SFloat, 90.0], [Cumo::DFloat, 712.0]].each do |dtype, top|
+      x = dtype.new(2001).seq * (top / 1000.0) - top
+      written_out = Cumo::NMath.log(1.0 + Cumo::NMath.exp(x))
+      finite = written_out.isfinite
+      assert_operator(finite.count_false, :>, 0, "#{dtype}: the range never overflowed")
+      assert_operator(finite.count_true, :>, 1900, "#{dtype}: too few finite points to compare")
+      assert_equal(written_out[finite].to_a, Cumo::NMath.softplus(x)[finite].to_a, dtype.to_s)
+    end
+  end
+
+  # The cost of the spelling, at the other end. Adding one drops what exp
+  # answers once it falls under the type's epsilon, so softplus reaches zero
+  # where the true value is still a number log1p would have kept. Single gives
+  # out at -17 and double at -37; the error grows without bound before that,
+  # 4.3% at DFloat -36 and 5.9% at SFloat -16.
+  def test_softplus_reaches_zero_where_adding_one_loses_exp
+    [[Cumo::SFloat, -17.0], [Cumo::HFloat, -17.0], [Cumo::BFloat, -17.0],
+     [Cumo::DFloat, -37.0]].each do |dtype, x|
+      assert_equal(0.0, Cumo::NMath.softplus(dtype[x]).to_a.first, "#{dtype} at #{x}")
+    end
+    assert_operator(Cumo::NMath.softplus(Cumo::SFloat[-16.0]).to_a.first, :>, 0.0)
+    assert_operator(Cumo::NMath.softplus(Cumo::DFloat[-36.0]).to_a.first, :>, 0.0)
+  end
+
+  def test_softplus_at_infinity
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      y = Cumo::NMath.softplus(dtype[-Float::INFINITY, Float::INFINITY]).to_a
+      assert_equal(0.0, y[0], "softplus #{dtype} at -Infinity answered #{y[0]}")
+      assert_equal(1, y[1].infinite?, "softplus #{dtype} at +Infinity answered #{y[1]}")
+      assert(Cumo::NMath.softplus(dtype[Float::NAN]).to_a.first.nan?, dtype.to_s)
+    end
+  end
+
+  def test_softplus_reads_a_non_contiguous_view
+    view = (Cumo::DFloat.new(4, 3).seq(-6) / 2).transpose
+    assert_close(Cumo::NMath.softplus(view.dup), Cumo::NMath.softplus(view))
+  end
   def test_log1p
     FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
       a = dtype[-0.5, 0, 1, 2]

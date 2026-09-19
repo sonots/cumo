@@ -127,6 +127,7 @@ __host__ __device__ static inline float cumo_f16_floored_mod(float x, float y)
 #define m_gelu(x)      CUMO_F_TO_F16(cumo_f16_gelu(CUMO_F16_TO_F(x)))
 #define m_gelu_tanh(x) CUMO_F_TO_F16(cumo_f16_gelu_tanh(CUMO_F16_TO_F(x)))
 #define m_silu(x)      CUMO_F_TO_F16(cumo_f16_silu(CUMO_F16_TO_F(x)))
+#define m_softplus(x)  CUMO_F_TO_F16(cumo_f16_softplus(CUMO_F16_TO_F(x)))
 #define m_ldexp(x,y) CUMO_F_TO_F16(cumo_f16_ldexp(CUMO_F16_TO_F(x),CUMO_F16_TO_F(y)))
 #define m_frexp(x,exp) CUMO_F_TO_F16(frexpf(CUMO_F16_TO_F(x),exp))
 
@@ -211,4 +212,13 @@ __host__ __device__ static inline float cumo_f16_gelu_tanh(float x)
 __host__ __device__ static inline float cumo_f16_silu(float x)
 {
     return x / (1.0f + expf(-x));
+}
+
+// Not log1p(exp(x)): the sum is taken first here, which is a different number
+// and the one the implementations this follows answer. Taken that way it
+// reaches an infinity once exp does, where softplus is x to the last bit.
+__host__ __device__ static inline float cumo_f16_softplus(float x)
+{
+    float e = expf(x);
+    return isinf(e) ? x : logf(1.0f + e);
 }
