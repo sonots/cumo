@@ -10,11 +10,6 @@
 #define ROW_SIZE(na) ((na)->shape[(na)->ndim-2])
 #define COL_SIZE(na) ((na)->shape[(na)->ndim-1])
 
-#define CHECK_NARRAY_TYPE(x,t)                                 \
-    if (rb_obj_class(x)!=(t)) {                                    \
-        rb_raise(rb_eTypeError,"invalid NArray type (class)"); \
-    }
-
 // Error Class ??
 #define CHECK_DIM_GE(na,nd)                                     \
     if ((na)->ndim<(nd)) {                                      \
@@ -455,7 +450,6 @@ static VALUE
 
 #undef ROW_SIZE
 #undef COL_SIZE
-#undef CHECK_NARRAY_TYPE
 #undef CHECK_DIM_GE
 #undef CHECK_DIM_EQ
 #undef CHECK_SQUARE

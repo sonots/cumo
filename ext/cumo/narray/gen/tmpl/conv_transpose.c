@@ -128,8 +128,8 @@ static VALUE
     CumoGetNArray(w, nw);
 
     CUMO_CHECK_DIM_EQ(nx->ndim, nw->ndim);
-    CUMO_CHECK_NARRAY_TYPE(x, cT);
-    CUMO_CHECK_NARRAY_TYPE(w, cT);
+    CUMO_CHECK_NARRAY_TYPE(x, cT, "x");
+    CUMO_CHECK_NARRAY_TYPE(w, cT, "w");
     if (nx->ndim - 2 < 2) {
         rb_raise(cumo_na_eShapeError, "CUDNN convolution requires number of spatial "
                 "dimensions to be greater than or equal to 2, but %d", nx->ndim - 2);

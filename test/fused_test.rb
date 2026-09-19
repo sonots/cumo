@@ -541,4 +541,47 @@ class FusedTest < CumoTestBase
     _, s1 = Cumo::SFloat.new(4).seq.quantize_symmetric
     assert_equal(0, s1.ndim)
   end
+
+  test "a rejected operand is named, and so are both classes" do
+    x = Cumo::SFloat.new(2, 6).seq
+    right = Cumo::SFloat.new(6).fill(1.0)
+    wrong = Cumo::HFloat.new(6).fill(1.0)
+    [["gamma", -> { x.rms_norm(wrong) }],
+     ["gamma", -> { x.layer_norm(wrong, right) }],
+     ["beta", -> { x.layer_norm(right, wrong) }]].each do |operand, call|
+      message = assert_raise(TypeError) { call.call }.message
+      assert_equal("#{operand} must be Cumo::SFloat, not Cumo::HFloat", message)
+    end
+  end
+
+  test "two operands turned down side by side do not read alike" do
+    x = Cumo::SFloat.new(2, 6).seq
+    right = Cumo::SFloat.new(6).fill(1.0)
+    wrong = Cumo::HFloat.new(6).fill(1.0)
+    gamma = assert_raise(TypeError) { x.rms_norm(wrong) }.message
+    beta = assert_raise(TypeError) { x.layer_norm(right, wrong) }.message
+    refute_equal(gamma, beta)
+  end
+
+  SUBCLASS = Class.new(Cumo::SFloat)
+
+  test "a rejected receiver is named, and so are both classes" do
+    a = SUBCLASS.new(2, 6).seq
+    [-> { a.quantize_symmetric },
+     -> { a.rms_norm(Cumo::SFloat.new(6).fill(1.0)) },
+     -> { a.softmax }].each do |call|
+      message = assert_raise(TypeError) { call.call }.message
+      assert_equal("self must be Cumo::SFloat, not #{SUBCLASS.name}", message)
+    end
+  end
+
+  test "a class name outside ASCII survives into the message" do
+    klass = Class.new(Cumo::SFloat)
+    Object.const_set(:"Cumoテスト", klass)
+    message = assert_raise(TypeError) { klass.new(2, 6).seq.softmax }.message
+    assert_equal(Encoding::UTF_8, message.encoding)
+    assert { message.include?("Cumoテスト") }
+  ensure
+    Object.send(:remove_const, :"Cumoテスト")
+  end
 end

@@ -113,7 +113,7 @@ static VALUE
         }
     }
 
-    CUMO_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CHECK_NARRAY_TYPE(x, cT, "x");
     cumo_cuda_cudnn_check_param_type(gamma, <%=cudnn_param_class%>, "gamma");
     cumo_cuda_cudnn_check_param_type(beta, <%=cudnn_param_class%>, "beta");
     if (running_mean != Qnil) cumo_cuda_cudnn_check_param_type(running_mean, <%=cudnn_param_class%>, "running_mean");

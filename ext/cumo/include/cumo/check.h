@@ -11,10 +11,18 @@ extern "C" {
 #endif
 #endif
 
-#define CUMO_CHECK_NARRAY_TYPE(x,t)                            \
-    if (rb_obj_class(x)!=(t)) {                                \
-        rb_raise(rb_eTypeError,"invalid NArray type (class)"); \
+// Two of these often sit side by side, so the message has to say which array
+// was turned down as well as what it is.
+static inline void
+cumo_na_check_narray_type(VALUE x, VALUE type, const char *name)
+{
+    if (rb_obj_class(x) != type) {
+        rb_raise(rb_eTypeError, "%s must be %" PRIsVALUE ", not %" PRIsVALUE,
+                 name, type, rb_obj_class(x));
     }
+}
+
+#define CUMO_CHECK_NARRAY_TYPE(x,t,name) cumo_na_check_narray_type((x),(t),(name))
 
 #define CUMO_CHECK_SIZE_EQ(sz1,sz2)                  \
     if ((sz1) != (sz2)) {                            \
