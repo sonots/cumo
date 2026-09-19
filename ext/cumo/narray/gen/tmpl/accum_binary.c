@@ -2,6 +2,9 @@
 
 <% unless type_name == 'robject' %>
 void <%="cumo_#{type_name}_#{name}#{nan}_kernel_launch"%>(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* in2);
+<% from_types.each do |from| %>
+void <%="cumo_#{type_name}_#{name}#{nan}_from_#{from[:id]}_kernel_launch"%>(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* in2);
+<% end %>
 <% end %>
 
 static void
@@ -53,6 +56,21 @@ static void
     }
     <% end %>
 }
+
+<% unless type_name == 'robject' %>
+<% from_types.each do |from| %>
+// The second operand is still <%=from[:name]%> here: ndloop was told not to
+// cast it, so the kernel converts each element as it reads it.
+static void
+<%=c_iter%><%=nan%>_from_<%=from[:id]%>(cumo_na_loop_t *const lp)
+{
+    cumo_na_reduction_arg_t arg = cumo_na_make_reduction_arg(lp, 2);
+    cumo_na_iarray_t in2 = cumo_na_make_iarray_given_ndim(&lp->args[1], lp->args[0].ndim);
+
+    <%="cumo_#{type_name}_#{name}#{nan}_from_#{from[:id]}_kernel_launch"%>(&arg, &in2);
+}
+<% end %>
+<% end %>
 //<% end %>
 
 static VALUE
@@ -70,18 +88,37 @@ static VALUE
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP, 3, 1, ain, aout };
     <% end %>
+    //<% if is_float %>
+    cumo_na_iter_func_t iter_nan = <%=c_iter%>_nan;
+    //<% else %>
+    cumo_na_iter_func_t iter_nan = 0;
+    //<% end %>
 
     if (argc < 1) {
         rb_raise(rb_eArgError,"wrong number of arguments (%d for >=1)",argc);
     }
+    //<% if type_name != 'robject' && !from_types.empty? %>
+    // A type this one absorbs needs no array of its own: a Qnil type is not
+    // CASTABLE, so ndloop leaves the operand alone and the kernel below reads
+    // it where it already is.
+    if (CumoIsNArray(argv[0])) {
+        VALUE ocls = rb_obj_class(argv[0]);
+
+        <% from_types.each_with_index do |from, i| %>
+        <%= i.zero? ? "if" : "} else if" %> (ocls == cumo_c<%=from[:name]%>) {
+            ain[1].type = Qnil;
+            ndf.func = <%=c_iter%>_from_<%=from[:id]%>;
+            //<% if is_float %>
+            iter_nan = <%=c_iter%>_nan_from_<%=from[:id]%>;
+            //<% end %>
+        <% end %>
+        }
+    }
+    //<% end %>
     // should fix below: [self.ndim,other.ndim].max or?
     naryv[0] = self;
     naryv[1] = argv[0];
-    //<% if is_float %>
-    reduce = cumo_na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, <%=c_iter%>_nan);
-    //<% else %>
-    reduce = cumo_na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, 0);
-    //<% end %>
+    reduce = cumo_na_reduce_dimension(argc-1, argv+1, 2, naryv, &ndf, iter_nan);
 
     //<% if type_name == 'robject' %>
     v =  cumo_na_ndloop(&ndf, 4, self, argv[0], reduce, m_<%=name%>_init);
@@ -129,6 +166,25 @@ static VALUE
     klass = cumo_na_upcast(rb_obj_class(self),rb_obj_class(argv[0]));
     if (klass==cT) {
         return <%=c_func%>_self(argc, argv, self);
+    } else if (CumoIsNArray(argv[0]) && klass == rb_obj_class(argv[0]) &&
+               klass != cumo_cRObject && cumo_na_upcast(klass, cT) == klass) {
+        // <%=name%> multiplies numbers, which gives the same answer whichever
+        // operand comes first, so let the one whose type already wins take the
+        // receiver's place. That call sees this array as the argument, where it
+        // can be read without being cast into an array of the wider type first.
+        // The second upcast above is the one that call tests, so it takes the
+        // branch overhead and this cannot recurse. Cumo::RObject is left out:
+        // it multiplies with a method of its own, which need not commute, and
+        // it reads no operand in place to make up for it.
+        VALUE *swapped = ALLOCA_N(VALUE, argc);
+
+        MEMCPY(swapped, argv, VALUE, argc);
+        swapped[0] = self;
+        //<% if Gem::Version.create(RUBY_VERSION) < Gem::Version.create('2.7.0') %>
+        return rb_funcall2(argv[0], rb_intern("<%=name%>"), argc, swapped);
+        //<% else %>
+        return rb_funcallv_kw(argv[0], rb_intern("<%=name%>"), argc, swapped, RB_PASS_CALLED_KEYWORDS);
+        //<% end %>
     } else {
         v = rb_funcall(klass, cumo_id_cast, 1, self);
         //<% if Gem::Version.create(RUBY_VERSION) < Gem::Version.create('2.7.0') %>
