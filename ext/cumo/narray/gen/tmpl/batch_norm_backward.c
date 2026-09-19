@@ -94,9 +94,9 @@ static VALUE
         }
     }
 
-    CUMO_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CHECK_NARRAY_TYPE(x, cT, "x");
     cumo_cuda_cudnn_check_param_type(gamma, <%=cudnn_param_class%>, "gamma");
-    CUMO_CHECK_NARRAY_TYPE(gy, cT);
+    CUMO_CHECK_NARRAY_TYPE(gy, cT, "gy");
     if (mean != Qnil) cumo_cuda_cudnn_check_param_type(mean, <%=cudnn_param_class%>, "mean");
     if (inv_std != Qnil) cumo_cuda_cudnn_check_param_type(inv_std, <%=cudnn_param_class%>, "inv_std");
 

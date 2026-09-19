@@ -38,7 +38,7 @@ cumo_cuda_cudnn_check_output(VALUE out, VALUE type, size_t ndim, size_t *shape)
 {
     cumo_narray_t *na;
 
-    CUMO_CHECK_NARRAY_TYPE(out, type);
+    CUMO_CHECK_NARRAY_TYPE(out, type, "output");
     CumoGetNArray(out, na);
     CUMO_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
     for (size_t idim = 0; idim < ndim; ++idim) {
@@ -75,7 +75,7 @@ cumo_cuda_cudnn_check_input(VALUE in, VALUE type, size_t ndim, size_t *shape)
 {
     cumo_narray_t *na;
 
-    CUMO_CHECK_NARRAY_TYPE(in, type);
+    CUMO_CHECK_NARRAY_TYPE(in, type, "input");
     CumoGetNArray(in, na);
     CUMO_CHECK_DIM_EQ((size_t)(na->ndim), ndim);
     for (size_t idim = 0; idim < ndim; ++idim) {
@@ -88,10 +88,7 @@ cumo_cuda_cudnn_check_input(VALUE in, VALUE type, size_t ndim, size_t *shape)
 static inline void
 cumo_cuda_cudnn_check_param_type(VALUE param, VALUE type, const char* name)
 {
-    if (rb_obj_class(param) != type) {
-        rb_raise(rb_eTypeError, "%s must be %s, not %s",
-                 name, rb_class2name(type), rb_obj_classname(param));
-    }
+    CUMO_CHECK_NARRAY_TYPE(param, type, name);
 }
 
 void

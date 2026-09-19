@@ -90,9 +90,9 @@ cumo_row_prepare(VALUE self, VALUE klass, const char *what,
     VALUE y;
     int i;
 
-    CUMO_CHECK_NARRAY_TYPE(self, klass);
+    CUMO_CHECK_NARRAY_TYPE(self, klass, "self");
     for (i = 0; i < n_ops; ++i) {
-        CUMO_CHECK_NARRAY_TYPE(a->ops[i].value, klass);
+        CUMO_CHECK_NARRAY_TYPE(a->ops[i].value, klass, a->ops[i].name);
     }
 
     a->self_cont = cumo_na_as_contiguous_array(self);
@@ -114,9 +114,9 @@ cumo_row_prepare(VALUE self, VALUE klass, const char *what,
 
     /* cumo_na_as_contiguous_array answers what dup gave it, which a class is
      * free to define, so what these carry is not what was checked above. */
-    CUMO_CHECK_NARRAY_TYPE(a->self_cont, klass);
+    CUMO_CHECK_NARRAY_TYPE(a->self_cont, klass, "self");
     for (i = 0; i < n_ops; ++i) {
-        CUMO_CHECK_NARRAY_TYPE(a->ops[i].cont, klass);
+        CUMO_CHECK_NARRAY_TYPE(a->ops[i].cont, klass, a->ops[i].name);
     }
     CumoGetNArray(a->self_cont, nx);
     CumoGetNArray(y, ny);

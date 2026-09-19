@@ -24,7 +24,7 @@ static VALUE
     size_t rows = 1, cols;
     int i;
 
-    CUMO_CHECK_NARRAY_TYPE(self, cT);
+    CUMO_CHECK_NARRAY_TYPE(self, cT, "self");
     cont = cumo_na_as_contiguous_array(self);
     CumoGetNArray(cont, nx);
     if (nx->ndim < 1) {
@@ -43,7 +43,7 @@ static VALUE
     pq = cumo_na_get_offset_pointer_for_write(q);
     ps = cumo_na_get_offset_pointer_for_write(s);
 
-    CUMO_CHECK_NARRAY_TYPE(cont, cT);
+    CUMO_CHECK_NARRAY_TYPE(cont, cT, "self");
     CumoGetNArray(cont, nx);
     CumoGetNArray(q, nq);
     CumoGetNArray(s, ns);

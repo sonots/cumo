@@ -44,7 +44,7 @@ static VALUE
 
     CumoGetNArray(x, nx);
 
-    CUMO_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CHECK_NARRAY_TYPE(x, cT, "x");
     if (nx->ndim - 2 < 2) {
         rb_raise(cumo_na_eShapeError, "cuDNN pooling requires number of spatial "
                 "dimensions to be greater than or equal to 2, but %d", nx->ndim - 2);

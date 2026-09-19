@@ -72,7 +72,7 @@ static VALUE
         CUMO_CHECK_SIZE_EQ(nvar->size, reduced_total_size);
     }
 
-    CUMO_CHECK_NARRAY_TYPE(x, cT);
+    CUMO_CHECK_NARRAY_TYPE(x, cT, "x");
     cumo_cuda_cudnn_check_param_type(gamma, <%=cudnn_param_class%>, "gamma");
     cumo_cuda_cudnn_check_param_type(beta, <%=cudnn_param_class%>, "beta");
     cumo_cuda_cudnn_check_param_type(mean, <%=cudnn_param_class%>, "mean");
