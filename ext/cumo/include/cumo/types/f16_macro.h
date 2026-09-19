@@ -115,6 +115,7 @@ static inline float cumo_f16_floored_mod(float x, float y)
 #define m_gelu(x)      CUMO_F_TO_F16(cumo_f16_gelu(CUMO_F16_TO_F(x)))
 #define m_gelu_tanh(x) CUMO_F_TO_F16(cumo_f16_gelu_tanh(CUMO_F16_TO_F(x)))
 #define m_silu(x)      CUMO_F_TO_F16(cumo_f16_silu(CUMO_F16_TO_F(x)))
+#define m_sigmoid(x)   CUMO_F_TO_F16(cumo_f16_sigmoid(CUMO_F16_TO_F(x)))
 #define m_softplus(x)  CUMO_F_TO_F16(cumo_f16_softplus(CUMO_F16_TO_F(x)))
 #define m_ldexp(x,y) CUMO_F_TO_F16(cumo_f16_ldexp(CUMO_F16_TO_F(x),CUMO_F16_TO_F(y)))
 #define m_frexp(x,exp) CUMO_F_TO_F16(frexpf(CUMO_F16_TO_F(x),exp))
@@ -185,10 +186,20 @@ static inline float cumo_f16_gelu_tanh(float x)
     return 0.5f * x * (1.0f + tanhf((float)CUMO_M_SQRT_2_OVER_PI * (x + (float)CUMO_GELU_TANH_CUBIC * x * x * x)));
 }
 
-// x * sigmoid(x) as one division, cumo having no sigmoid to call.
+// x * sigmoid(x) as one division. Going through cumo_f16_sigmoid rounds a
+// second time and moves a quarter of the answers, so the two are written apart.
 static inline float cumo_f16_silu(float x)
 {
     return x / (1.0f + expf(-x));
+}
+
+// 1 / (1 + exp(-x)) written so the exponent never takes a positive argument,
+// which the plain spelling does: it overflows below -89 and answers a zero
+// where the value is still a number. One exponential either way.
+static inline float cumo_f16_sigmoid(float x)
+{
+    float t = expf(-fabsf(x));
+    return (x < 0.0f ? t : 1.0f) / (1.0f + t);
 }
 
 // Not log1p(exp(x)): the sum is taken first here, which is a different number

@@ -363,7 +363,7 @@ runs out of significant digits and answers zero, and `-Float::INFINITY` answers
 
 ### SiLU
 
-`Cumo::NMath.silu` is `x * sigmoid(x)`, the activation Llama and the models after it use where GPT-2 uses `gelu_tanh`.
+`Cumo::NMath.silu` is `x / (1 + exp(-x))`, the activation Llama and the models after it use where GPT-2 uses `gelu_tanh`. It is the curve `x * sigmoid(x)` names, written as one division, and the two spellings do not answer alike: see Sigmoid below.
 It is also called Swish.
 
 ```ruby
@@ -388,6 +388,45 @@ At the edges it matches torch exactly: `-Float::INFINITY` answers `NaN`, since t
 Where that zero starts depends on the type, and not on `exp` alone.
 Single and bfloat16 reach it at -89, where `exp(-x)` passes what a float holds, and double never does.
 Half reaches it at -21, because the round back to half gets there first.
+
+### Sigmoid
+
+`Cumo::NMath.sigmoid` is `1 / (1 + exp(-x))`, the logistic curve.
+
+```ruby
+Cumo::NMath.sigmoid(x)   # in one kernel rather than four
+```
+
+Written out of the operators it costs four launches, and one kernel runs 1.2x to 4.8x faster on an RTX 5070 Ti Laptop, in microseconds:
+
+```
+sigmoid                 SFloat            DFloat            HFloat
+elements           fused  written    fused  written    fused  written
+768                  2.9      9.0      2.5      8.8      2.0      9.6
+786432               5.6     23.0     94.6    111.3      7.3     23.6
+16777216           343.5   1234.7   1978.5   2941.1    210.5    798.1
+```
+
+The kernel keeps the exponent's argument negative, which the plain quotient does not: writing `1 / (1 + exp(-x))` out asks `exp` for a value it cannot hold once `x` is negative enough, and the quotient then answers a zero where the curve is still a number the type carries.
+
+```ruby
+Cumo::NMath.sigmoid(Cumo::SFloat[-100.0]).to_a.first            #=> 3.783506e-44
+(1.0 / (1.0 + Cumo::NMath.exp(Cumo::SFloat[100.0]))).to_a.first #=> 0.0
+```
+
+Where each type reaches zero, written the one way and the other:
+
+```
+             sigmoid   written out
+Cumo::HFloat   -17.5         -11.5
+Cumo::BFloat   -93.0         -89.0
+Cumo::SFloat  -104.0         -89.0
+Cumo::DFloat  -745.0        -710.0
+```
+
+A non-negative `x` takes the plain quotient unchanged, bit for bit, so only the negative half moves. It moves toward the true value more often than away, but not by much and not always: over the 360,000 single points between -88 and 0 the guarded spelling is closer at 90,423, further at 72,593 and the same at the rest, and both spellings pass one unit in the last place, the guarded one at 2,289 points and the plain one at 4,489, neither worse than three.
+
+`silu` is `x / (1 + exp(-x))` rather than `x * sigmoid(x)`, one division rather than a division and a multiply. The second spelling rounds once more and moves a third of the answers, and it moves them in kind at the bottom: `silu` answers the signed zero torch answers below -89, where `x * sigmoid(x)` still carries a number. The two are written apart for that reason.
 
 ### Softplus
 
@@ -576,7 +615,7 @@ The two do not contain each other, so an expression mixing them promotes to `Cum
 
 Everything else promotes as `Cumo::SFloat` does, so an integer array or a Ruby Float mixed in stays bfloat16 while anything wider takes over.
 
-`layer_norm`, `rms_norm`, `softmax`, `silu`, `softplus` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
+`layer_norm`, `rms_norm`, `softmax`, `silu`, `softplus`, `sigmoid` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
 The cuDNN methods take it too: `conv`, `conv_transpose`, `conv_grad_w`, `max_pool`, `avg_pool` and the three batch norm entries.
 
 Reductions accumulate in single precision and round once at the end, exactly as they do for half, so a sum passes 256 without stopping there:
