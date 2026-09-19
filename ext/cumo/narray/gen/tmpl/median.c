@@ -41,7 +41,7 @@ static void
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
-    VALUE v, reduce;
+    VALUE v, copy, reduce;
     cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
     cumo_ndfunc_t ndf = {0, CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE, 2,1, ain,aout};
@@ -53,10 +53,10 @@ static VALUE
     ndf.func = <%=c_iter%>;
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
-    self = cumo_na_copy(self); // the reduction cannot address an index array
+    copy = cumo_na_copy(self); // the reduction cannot address an index array
     // or rather than assign: cumo_na_reduce_dimension may have set
     // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
     ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
-    v = cumo_na_ndloop(&ndf, 2, self, reduce);
+    v = cumo_na_ndloop(&ndf, 2, copy, reduce);
     return <%=type_name%>_extract(v);
 }
