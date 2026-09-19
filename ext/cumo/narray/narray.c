@@ -2143,6 +2143,26 @@ cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
     return cumo_na_reduce_options((narg)?axes:Qnil, opts, naryc, naryv, ndf);
 }
 
+// The axes a view marks with :sum, :reduce or :+ live on the narray, and
+// cumo_na_reduce_options reads them from the first argument only. A method that
+// hands the receiver's place to another array has to carry them over, or the
+// reduction it asks for is not the one the caller marked.
+VALUE
+cumo_na_get_reduce(VALUE v)
+{
+    cumo_narray_t *na;
+    CumoGetNArray(v, na);
+    return na->reduce;
+}
+
+void
+cumo_na_set_reduce(VALUE v, VALUE reduce)
+{
+    cumo_narray_t *na;
+    CumoGetNArray(v, na);
+    na->reduce = reduce;
+}
+
 /*
   Return true if column major.
 */

@@ -54,6 +54,8 @@ void cumo_na_release_lock(VALUE); // currently do nothing
 // used in reduce methods
 VALUE cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
                             cumo_ndfunc_t *ndf, cumo_na_iter_func_t nan_iter);
+VALUE cumo_na_get_reduce(VALUE v);
+void cumo_na_set_reduce(VALUE v, VALUE reduce);
 
 VALUE cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
                           cumo_ndfunc_t *ndf);
