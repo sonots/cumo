@@ -396,6 +396,47 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
+  # A [:sum, true] mark names the axes without passing an argument, and the
+  # reduction read argc to tell whether it had been given one. A mark that left
+  # an axis behind reached rb_bug, which aborts the interpreter.
+  test "all?, any? and none? take axes from a reduce mark" do
+    rows = 4
+    cols = 6
+    [->(r, c) { 1 },
+     ->(r, c) { 0 },
+     ->(r, c) { (r + c) % 3 == 0 ? 1 : 0 },
+     ->(r, c) { c == cols - 1 && r.even? ? 0 : 1 },
+     ->(r, c) { r.zero? ? 1 : 0 }].each_with_index do |gen, k|
+      src = (0...rows).map { |r| (0...cols).map { |c| gen.call(r, c) } }
+      down = src.transpose
+      a = Cumo::Bit.cast(src)
+      at = "pattern #{k}"
+
+      assert_equal(down.map { |col| col.all?(1) ? 1 : 0 }, a[:sum, true].all?.to_a, "#{at} all? mark on axis 0")
+      assert_equal(down.map { |col| col.any?(1) ? 1 : 0 }, a[:sum, true].any?.to_a, "#{at} any? mark on axis 0")
+      assert_equal(down.map { |col| col.any?(1) ? 0 : 1 }, a[:sum, true].none?.to_a, "#{at} none? mark on axis 0")
+      assert_equal(src.map { |row| row.all?(1) ? 1 : 0 }, a[true, :sum].all?.to_a, "#{at} all? mark on axis 1")
+      assert_equal(src.map { |row| row.any?(1) ? 1 : 0 }, a[true, :sum].any?.to_a, "#{at} any? mark on axis 1")
+      assert_equal(src.map { |row| row.any?(1) ? 0 : 1 }, a[true, :sum].none?.to_a, "#{at} none? mark on axis 1")
+
+      # A mark that covers every axis leaves nothing, which is the boolean.
+      assert_equal(src.flatten.all?(1), a[:sum, :sum].all?, "#{at} all? mark on both axes")
+      assert_equal(src.flatten.any?(1), a[:sum, :sum].any?, "#{at} any? mark on both axes")
+      assert_equal(!src.flatten.any?(1), a[:sum, :sum].none?, "#{at} none? mark on both axes")
+      assert_equal(src.flatten.all?(1), a.flatten[:sum].all?, "#{at} all? mark on the only axis")
+
+      # A view carrying an index array reaches the reduction through a copy, and
+      # keepdims still comes from the argument.
+      picked = [src[1], src[0]].transpose
+      assert_equal(picked.map { |col| col.all?(1) ? 1 : 0 }, a[[1, 0], true][:sum, true].all?.to_a, "#{at} all? mark on an index view")
+      assert_equal([down.map { |col| col.all?(1) ? 1 : 0 }], a[:sum, true].all?(keepdims: true).to_a, "#{at} all? mark with keepdims")
+
+      # An axis argument that covers every axis keeps answering a Bit.
+      assert_equal([], a.all?(axis: [0, 1]).shape, "#{at} all? axis 0 and 1")
+      assert_equal(src.flatten.all?(1) ? 1 : 0, a.all?(axis: [0, 1]).to_a.first, "#{at} all? axis 0 and 1 value")
+    end
+  end
+
   # An operand whose rows are runs of bits but which sit apart -- a column slice
   # -- was read one bit at a time through the indexer, two runtime divisions an
   # element, while the output took whole words from one thread each. The word is
