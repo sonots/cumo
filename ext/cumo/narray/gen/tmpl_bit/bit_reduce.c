@@ -14,11 +14,12 @@ static void
 <% when /^all/ %>
   Return true if all of bits are one (true).
 <% end %>
-  If argument is supplied, return Bit-array reduced along the axes.
+  Reduced whole with no argument, answer true or false. An axis argument, or a
+  [:sum, true] mark on the receiver, answers the Bit the named axes reduced to.
   @overload <%=op_map%>(axis:nil, keepdims:false)
   @param [Integer,Array,Range] axis (keyword) axes to be reduced.
   @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-  @return [Cumo::Bit] .
+  @return [TrueClass,FalseClass,Cumo::Bit] .
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
@@ -43,20 +44,13 @@ static VALUE
     } else {
         v = cumo_na_ndloop(&ndf, 2, self, reduce);
     }
-    if (argc > 0) {
+    // An axis argument asks for an array, and so does a [:sum, true] mark, which
+    // names the axes without an argument of its own.
+    CumoGetNArray(v,na);
+    if (argc > 0 || na->ndim > 0) {
         return v;
     }
-    // all?, any? and none? answer with a Ruby boolean either way, so this
-    // reads the bit rather than handing back the zero-dimensional Bit that
-    // extract returns outside compatible mode.
-    v = <%=find_tmpl("extract_cpu").c_func%>(v);
-    switch (v) {
-    case INT2FIX(0):
-        return Qfalse;
-    case INT2FIX(1):
-        return Qtrue;
-    default:
-        rb_bug("unexpected result");
-        return v;
-    }
+    // Nothing is left to index, and these three answer with a Ruby boolean
+    // rather than the zero-dimensional Bit that extract returns.
+    return (<%=find_tmpl("extract_cpu").c_func%>(v) == INT2FIX(1)) ? Qtrue : Qfalse;
 }
