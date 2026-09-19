@@ -51,7 +51,11 @@ VALUE cumo_na_upcast(VALUE type1, VALUE type2);
 
 void cumo_na_release_lock(VALUE); // currently do nothing
 
-// used in reduce methods
+// used in reduce methods. The axes a [:sum, true] view marks live on the
+// receiver and are read from naryv[0] only, so call this before handing the
+// receiver's place to another array, or carry them over with
+// cumo_na_set_reduce. It parses arguments, so Ruby runs inside it: take any
+// flag of the receiver you mean to act on before the call, not after.
 VALUE cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
                             cumo_ndfunc_t *ndf, cumo_na_iter_func_t nan_iter);
 VALUE cumo_na_get_reduce(VALUE v);

@@ -1707,6 +1707,74 @@ class NArrayTest < Test::Unit::TestCase
     assert { a[:sum, true].mulsum(wide) == Cumo::SFloat.cast(a)[:sum, true].mulsum(wide) }
   end
 
+  # median and sort stood a copy of the receiver in its place before reading the
+  # axes it marked, and the copy does not carry the marking. sort_index in the
+  # same directory reads them first and copies after, which is what these do now.
+  test "median and sort reduce the axes a view marked" do
+    f = Cumo::SFloat.new(4, 6).seq + 1
+    assert_equal(f.median(axis: 0).to_a, f[:sum, true].median.to_a, "median on axis 0")
+    assert_equal(f.median(axis: 1).to_a, f[true, :sum].median.to_a, "median on axis 1")
+    assert_equal(f.median.to_a, f[:sum, :sum].median.to_a, "median on every axis")
+    assert_equal([1, 6], f[:sum, true].median(keepdims: true).shape, "median with keepdims")
+    assert_equal([f.median(axis: 0).to_a], f[:sum, true].median(keepdims: true).to_a, "median with keepdims answers the axis")
+
+    i = Cumo::Int32.cast([[3, 1, 2], [9, 8, 7], [4, 6, 5]])
+    assert_equal(i.median(axis: 0).to_a, i[:sum, true].median.to_a, "median of an integer type")
+
+    src = [[3, 1, 2, 9], [9, 8, 7, 0], [4, 6, 5, 1]]
+    make = -> { Cumo::Int32.cast(src) }
+    down = [[3, 1, 2, 0], [4, 6, 5, 1], [9, 8, 7, 9]]
+    assert_equal(down, make.call.sort(axis: 0).to_a, "sort on axis 0 answers its columns")
+    assert_equal(down, make.call[:sum, true].sort.to_a, "sort on axis 0")
+    assert_equal(make.call.sort(axis: 1).to_a, make.call[true, :sum].sort.to_a, "sort on axis 1")
+
+    # A column slice and an index-backed view reach the reduction by other
+    # routes, and the marking has to survive those too.
+    assert_equal(make.call[true, 0..2].sort(axis: 1).to_a,
+                 make.call[true, 0..2][true, :sum].sort.to_a, "sort of a column slice")
+    picked = Cumo::Int32[2, 0]
+    assert_equal(make.call[picked, true].sort(axis: 1).to_a,
+                 make.call[picked, true][true, :sum].sort.to_a, "sort of an index view")
+    assert_equal(make.call[picked, true].median(axis: 1).to_a,
+                 make.call[picked, true][true, :sum].median.to_a, "median of an index view")
+
+    # The copy still runs where it ran before: sort writes the receiver only
+    # when it was handed one to write, and median never writes its input.
+    written = make.call
+    written.inplace.sort
+    assert_equal(make.call.sort.to_a, written.to_a, "inplace sort writes the receiver")
+    left = make.call
+    left.sort
+    assert_equal(src, left.to_a, "sort leaves a plain receiver")
+    whole = Cumo::SFloat[3, 1, 2]
+    whole.median
+    assert_equal([3.0, 1.0, 2.0], whole.to_a, "median leaves its input")
+    assert(Cumo::SFloat[3.0, Float::NAN, 1.0].median(nan: true).to_a.first.nan?, "nan: still reaches the iterator")
+
+    # inplace! is the only spelling that leaves both the marking and the flag
+    # standing, and it writes the marked axes back through a view with no copy.
+    flagged = make.call
+    flagged[:sum, true].inplace!.sort
+    assert_equal(down, flagged.to_a, "an inplace! marked view writes its columns back")
+
+    # inplace hands back a view without the marking, which is settled as spec.
+    assert_equal(make.call.sort.to_a, make.call[:sum, true].inplace.sort.to_a, "inplace drops the marking")
+
+    # An argument can run Ruby while it is parsed, so the flag the copy turns on
+    # has to be read before that and not after.
+    sneaky = Class.new do
+      def initialize(t) = @t = t
+      def <=>(_other) = 0
+      def to_int
+        @t.inplace!
+        0
+      end
+    end
+    target = make.call
+    target.sort(axis: (sneaky.new(target)..0))
+    assert_equal(src, target.to_a, "a flag set while the axis is parsed does not reach the copy")
+  end
+
   test "UPCAST names the types initialised after it" do
     all_types = [Cumo::DComplex, Cumo::DFloat, Cumo::SComplex, Cumo::SFloat, Cumo::HFloat, Cumo::BFloat,
                  Cumo::Int64, Cumo::UInt64, Cumo::Int32, Cumo::UInt32, Cumo::Int16,

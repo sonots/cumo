@@ -32,7 +32,8 @@ static void
 <% else %>
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-  @param [Numeric,Array,Range] axis  Finds <%=name%> along the axis.
+  @param [Numeric,Array,Range] axis  Finds <%=name%> along the axis. A
+    [:sum, true] mark on the receiver names the axes the same way.
   @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
   @return [Cumo::<%=class_name%>] returns <%=name%> of self.
 */
@@ -45,7 +46,6 @@ static VALUE
     cumo_ndfunc_arg_out_t aout[1] = {{INT2FIX(0),0}};
     cumo_ndfunc_t ndf = {0, CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE, 2,1, ain,aout};
 
-    self = cumo_na_copy(self); // as temporary buffer
   <% if is_float %>
     ndf.func = <%=c_iter%>_ignan;
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_prnan);
@@ -53,6 +53,7 @@ static VALUE
     ndf.func = <%=c_iter%>;
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
   <% end %>
+    self = cumo_na_copy(self); // the reduction cannot address an index array
     // or rather than assign: cumo_na_reduce_dimension may have set
     // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
     ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
