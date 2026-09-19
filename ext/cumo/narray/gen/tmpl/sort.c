@@ -42,7 +42,8 @@ static void
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
-  @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
+  @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis. A
+    [:sum, true] mark on the receiver names the axes the same way.
   @return [Cumo::<%=class_name%>] returns result of <%=name%>.
   @example
       Cumo::DFloat[3,4,1,2].sort # => Cumo::DFloat[1,2,3,4]
@@ -51,14 +52,16 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     VALUE reduce;
+    int inplace;
     cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_t ndf = {0, CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE, 2,0, ain,0};
 
-    if (!CUMO_TEST_INPLACE(self)) {
+    ndf.func = <%=c_iter%>_kernel;
+    inplace = CUMO_TEST_INPLACE(self);
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    if (!inplace) {
         self = cumo_na_copy(self);
     }
-    ndf.func = <%=c_iter%>_kernel;
-    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     // or rather than assign: cumo_na_reduce_dimension may have set
     // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
     ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
