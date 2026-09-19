@@ -720,6 +720,88 @@ class NArrayMathTest < CumoTestBase
     view = (Cumo::DFloat.new(4, 3).seq(-6) / 2).transpose
     assert_close(Cumo::NMath.softplus(view.dup), Cumo::NMath.softplus(view))
   end
+
+  # The definition evaluated at 200 decimal places and rounded once, so these
+  # are neither this kernel's spelling nor another implementation's.
+  SIGMOID = {
+    -6.0 => 0.0024726231566347743,
+    -2.5 => 0.07585818002124355,
+    -2.0 => 0.11920292202211756,
+    -1.0 => 0.2689414213699951,
+    0.0 => 0.5,
+    1.0 => 0.7310585786300049,
+    2.0 => 0.8807970779778824,
+    2.5 => 0.9241418199787564,
+    6.0 => 0.9975273768433652,
+  }.freeze
+
+  def test_sigmoid
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      b = Cumo::NMath.sigmoid(dtype[*SIGMOID.keys])
+      assert_kind_of(dtype, b)
+      assert_close(dtype[*SIGMOID.values], b)
+    end
+  end
+
+  # Keeping the exponent's argument negative is what the fabs and the pick
+  # between t and one are for. Written the plain way the exponent overflows and
+  # the quotient answers a zero, where the value is a number the type holds.
+  #
+  # Everything the guard buys is subnormal, which is where the relative spacing
+  # a type usually gives no longer holds: bfloat16 reaches its smallest normal
+  # value at about -87 and the plain spelling only gives out at -89, so there
+  # is no normal answer in between to ask for. The tolerances are for that, not
+  # for the exp. What tells the guard from its absence is the zero, and every
+  # row asserts that separately.
+  def test_sigmoid_keeps_a_value_where_the_plain_quotient_gives_out
+    [[Cumo::BFloat, -90.0, 8.19e-40, 0.25], [Cumo::SFloat, -89.0, 2.227e-39, 0.02],
+     [Cumo::SFloat, -100.0, 3.72e-44, 0.10], [Cumo::DFloat, -740.0, 4.2e-322, 0.50]].each do |dtype, x, want, rtol|
+      plain = (1.0 / (1.0 + Cumo::NMath.exp(dtype[-x]))).to_a.first
+      assert_equal(0.0, plain, "#{dtype} at #{x} was expected to give out written plainly")
+      got = Cumo::NMath.sigmoid(dtype[x]).to_a.first
+      assert_operator(got, :>, 0.0, "#{dtype} at #{x} gave out too")
+      assert_in_delta(want, got, want * rtol, "#{dtype} at #{x}")
+    end
+  end
+
+  # A non-negative x takes exp(0) for a numerator, which is one exactly, so the
+  # guarded spelling is the plain quotient there and nothing moves.
+  def test_sigmoid_is_the_plain_quotient_for_a_non_negative_x
+    [Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      x = dtype.new(2001).seq / 25.0
+      plain = 1.0 / (1.0 + Cumo::NMath.exp(-x))
+      assert_equal(plain.to_a, Cumo::NMath.sigmoid(x).to_a, dtype.to_s)
+    end
+  end
+
+  def test_sigmoid_at_infinity
+    FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
+      y = Cumo::NMath.sigmoid(dtype[-Float::INFINITY, Float::INFINITY]).to_a
+      assert_equal(0.0, y[0], "sigmoid #{dtype} at -Infinity answered #{y[0]}")
+      assert_equal(1.0, y[1], "sigmoid #{dtype} at +Infinity answered #{y[1]}")
+      assert(Cumo::NMath.sigmoid(dtype[Float::NAN]).to_a.first.nan?, dtype.to_s)
+    end
+  end
+
+  # silu is x / (1 + exp(-x)) and not x * sigmoid(x). The second spelling rounds
+  # once more, which moves a third of the answers, and at the bottom it changes
+  # kind: silu keeps the signed zero test_silu_underflows_like_torch pins.
+  def test_sigmoid_is_not_how_silu_is_written
+    x = Cumo::SFloat.new(4001).seq / 100.0 - 20.0
+    moved = (Cumo::NMath.silu(x).ne(x * Cumo::NMath.sigmoid(x))).count_true
+    assert_operator(moved, :>, 1000, "only #{moved} of 4001 answers moved")
+    assert_operator(moved, :<, 2000, "#{moved} of 4001 answers moved")
+
+    deep = Cumo::SFloat[-100.0]
+    assert_equal(0.0, Cumo::NMath.silu(deep).to_a.first.abs)
+    assert_operator((deep * Cumo::NMath.sigmoid(deep)).to_a.first.abs, :>, 0.0)
+  end
+
+  def test_sigmoid_reads_a_non_contiguous_view
+    view = (Cumo::DFloat.new(4, 3).seq(-6) / 2).transpose
+    assert_close(Cumo::NMath.sigmoid(view.dup), Cumo::NMath.sigmoid(view))
+  end
+
   def test_log1p
     FLOAT_TYPES.reject { |t| complex_type?(t) }.each do |dtype|
       a = dtype[-0.5, 0, 1, 2]
@@ -762,7 +844,7 @@ class NArrayMathTest < CumoTestBase
   end
 
   def test_respond_to_a_dispatched_method
-    %i[sqrt exp log gelu gelu_tanh silu].each do |name|
+    %i[sqrt exp log gelu gelu_tanh silu softplus sigmoid].each do |name|
       assert_true(Cumo::NMath.respond_to?(name), name.to_s)
       assert_kind_of(Method, Cumo::NMath.method(name))
     end

@@ -313,7 +313,7 @@ op(:scalar, 'scalar_left') { |c| c.scalar - c.sc.inplace }
 # NMath
 %w[sqrt exp exp2 exp10 expm1 log log2 log10 log1p sin cos tan asin acos atan
    sinh cosh tanh asinh acosh atanh cbrt erf erfc sinc gelu gelu_tanh silu
-   softplus].each do |f|
+   softplus sigmoid].each do |f|
   op(:math, f, :float) { |c| XM::NMath.send(f, c.usc.inplace) }
 end
 op(:math, 'atan2', :float) { |c| XM::NMath.atan2(c.sc.inplace, c.b) }

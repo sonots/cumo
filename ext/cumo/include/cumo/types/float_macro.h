@@ -117,6 +117,7 @@ static inline dtype m_floored_mod(dtype x, dtype y) {
 #define m_gelu(x)      cumo_gelu(x)
 #define m_gelu_tanh(x) cumo_gelu_tanh(x)
 #define m_silu(x)      cumo_silu(x)
+#define m_sigmoid(x)   cumo_sigmoid(x)
 #define m_softplus(x)  cumo_softplus(x)
 #define m_ldexp(x,y) ldexp(x,y)
 #define m_frexp(x,exp) frexp(x,exp)
@@ -214,10 +215,20 @@ static inline dtype cumo_gelu_tanh(dtype x)
                                              (x + (dtype)CUMO_GELU_TANH_CUBIC * x * x * x)));
 }
 
-// x * sigmoid(x) as one division, cumo having no sigmoid to call.
+// x * sigmoid(x) as one division. Going through cumo_sigmoid rounds a second
+// time and moves a quarter of the answers, so the two are written apart.
 static inline dtype cumo_silu(dtype x)
 {
     return x / ((dtype)1 + exp(-x));
+}
+
+// 1 / (1 + exp(-x)) written so the exponent never takes a positive argument,
+// which the plain spelling does: it overflows below -89 in single and answers
+// a zero where the value is still a number. One exponential either way.
+static inline dtype cumo_sigmoid(dtype x)
+{
+    dtype t = exp(-fabs(x));
+    return (x < 0 ? t : (dtype)1) / ((dtype)1 + t);
 }
 
 // Not log1p(exp(x)): the sum is taken first here, which is a different number
