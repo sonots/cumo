@@ -167,7 +167,8 @@ static VALUE
     if (klass==cT) {
         return <%=c_func%>_self(argc, argv, self);
     } else if (CumoIsNArray(argv[0]) && klass == rb_obj_class(argv[0]) &&
-               klass != cumo_cRObject && cumo_na_upcast(klass, cT) == klass) {
+               klass != cumo_cRObject && cumo_na_upcast(klass, cT) == klass &&
+               cumo_na_get_reduce(self) == INT2FIX(0)) {
         // <%=name%> multiplies numbers, which gives the same answer whichever
         // operand comes first, so let the one whose type already wins take the
         // receiver's place. That call sees this array as the argument, where it
@@ -187,6 +188,7 @@ static VALUE
         //<% end %>
     } else {
         v = rb_funcall(klass, cumo_id_cast, 1, self);
+        cumo_na_set_reduce(v, cumo_na_get_reduce(self));
         //<% if Gem::Version.create(RUBY_VERSION) < Gem::Version.create('2.7.0') %>
         return rb_funcall2(v, rb_intern("<%=name%>"), argc, argv);
         //<% else %>

@@ -1677,6 +1677,36 @@ class NArrayTest < Test::Unit::TestCase
     assert { Cumo::NArray.cast(object) == [1, 2, 3] }
   end
 
+  # A view marks the axes it wants reduced, and mulsum used to answer another
+  # class by standing a copy of the receiver in its place, which does not carry
+  # the marking. Numo answers the whole array here too.
+  test "mulsum reduces the axes a view marked even when the operands differ" do
+    a = Cumo::Int8.new(4, 6).seq % 5
+    same = Cumo::Int8.new(4, 6).fill(2)
+    types = [Cumo::SFloat, Cumo::DFloat, Cumo::Int32, Cumo::Int64]
+    [[[:sum, true], [6]], [[true, :sum], [4]], [[:sum, :sum], []]].each do |index, shape|
+      marked = a[*index]
+      want = Cumo::DFloat.cast(a)[*index].mulsum(Cumo::DFloat.cast(same))
+      assert_equal(shape, marked.mulsum(same).shape, index.inspect)
+      types.each do |other|
+        got = marked.mulsum(other.cast(same))
+        assert_equal(shape, got.shape, "#{index.inspect} #{other}")
+        assert { got == other.upcast(Cumo::Int8).cast(want) }
+      end
+    end
+  end
+
+  test "mulsum keeps the marking through the operand order it picks" do
+    a = Cumo::Int8.new(4, 6).seq % 5
+    wide = Cumo::SFloat.new(4, 6).fill(2.0)
+    # The wider operand takes the receiver's place when nothing is marked, and
+    # that is the path the marking has to survive.
+    assert_equal([], a.mulsum(wide).shape)
+    assert_equal([6], a[:sum, true].mulsum(wide).shape)
+    assert_equal([4], a[true, :sum].mulsum(wide).shape)
+    assert { a[:sum, true].mulsum(wide) == Cumo::SFloat.cast(a)[:sum, true].mulsum(wide) }
+  end
+
   test "UPCAST names the types initialised after it" do
     all_types = [Cumo::DComplex, Cumo::DFloat, Cumo::SComplex, Cumo::SFloat, Cumo::HFloat, Cumo::BFloat,
                  Cumo::Int64, Cumo::UInt64, Cumo::Int32, Cumo::UInt32, Cumo::Int16,
