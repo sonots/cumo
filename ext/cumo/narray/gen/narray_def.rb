@@ -78,7 +78,7 @@ module NArrayMethod
 
   def accum_binary(meth, ope=nil)
     ope = meth if ope.nil?
-    def_method(meth, "accum_binary", op:ope)
+    def_method(meth, "accum_binary", op:ope, from_types:absorbed_types)
   end
 end
 
@@ -153,6 +153,28 @@ module NArrayType
     a.concat(args)
   end
 
+  # Each entry is [class name, C type, the macro that converts one element of
+  # that type to this one]. It mirrors the store_from list in spec.rb, whose
+  # macros every type defines. A class the two lists disagree on is simply left
+  # out below, which costs the caller the cast it would have saved and nothing
+  # else.
+  UPCAST_SOURCES = [
+    ["HFloat",   "cumo_half",     "m_from_half"],
+    ["BFloat",   "cumo_bfloat",   "m_from_bfloat"],
+    ["DFloat",   "double",        "m_from_real"],
+    ["SFloat",   "float",         "m_from_real"],
+    ["Int64",    "int64_t",       "m_from_int64"],
+    ["Int32",    "int32_t",       "m_from_int32"],
+    ["Int16",    "int16_t",       "m_from_sint"],
+    ["Int8",     "int8_t",        "m_from_sint"],
+    ["UInt64",   "u_int64_t",     "m_from_uint64"],
+    ["UInt32",   "u_int32_t",     "m_from_uint32"],
+    ["UInt16",   "u_int16_t",     "m_from_sint"],
+    ["UInt8",    "u_int8_t",      "m_from_sint"],
+    ["SComplex", "cumo_scomplex", "m_from_scomplex"],
+    ["DComplex", "cumo_dcomplex", "m_from_dcomplex"],
+  ].freeze
+
   def upcast(c=nil, t=nil)
     @opts[:upcast] ||= []
     if c
@@ -161,10 +183,22 @@ module NArrayType
       else
         t = "cT"
       end
+      # The def files spell the receiver either way, as cT or by its own name.
+      if c != class_name && (t == "cT" || t == "cumo_c#{class_name}")
+        (@opts[:absorbed] ||= []) << c
+      end
       @opts[:upcast] << "rb_hash_aset(hCast, cumo_c#{c}, #{t});"
     else
       @opts[:upcast]
     end
+  end
+
+  # The types this one absorbs, as UPCAST_SOURCES triples. An operand of such a
+  # type is what a binary method would otherwise have ndloop cast to this one.
+  def absorbed_types
+    names = @opts[:absorbed] || []
+    UPCAST_SOURCES.select { |name,| names.include?(name) }
+      .map { |name, ctype, macro| { name: name, ctype: ctype, macro: macro, id: name.downcase } }
   end
 
   def upcast_rb(c, t=nil)

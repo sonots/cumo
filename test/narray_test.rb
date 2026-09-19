@@ -26,6 +26,7 @@ class NArrayTest < Test::Unit::TestCase
     Cumo::DComplex,
   ]
   store_types = types + [Cumo::RObject]
+  operand_types = types.dup
 
   if ENV['DTYPE']
     types.select! { |type| type.to_s.downcase.include?(ENV['DTYPE'].downcase) }
@@ -959,6 +960,109 @@ class NArrayTest < Test::Unit::TestCase
         a = small.call([2, 3, 4])
         assert { a.mulsum(a, axis: 1, keepdims: true) == (a * a).sum(axis: 1, keepdims: true) }
         assert { a.mulsum(a, axis: [0, 1], keepdims: true) == (a * a).sum(axis: [0, 1], keepdims: true) }
+      end
+
+      # The types whose operands this one would otherwise have ndloop cast into
+      # an array of its own before the reduction could read them.
+      # operand_types, not types: DTYPE narrows which receiver runs, not which
+      # operand types exist.
+      absorbed = operand_types.select { |other| other != dtype && dtype.upcast(other) == dtype }
+      nan_capable = [Cumo::DFloat, Cumo::SFloat, Cumo::HFloat, Cumo::BFloat,
+                     Cumo::DComplex, Cumo::SComplex]
+      # The operand is built in its own type: a complex dtype casts up to but
+      # never down to the real one it absorbs.
+      narrow = lambda do |other, shape|
+        other.cast(Array.new(shape.reduce(:*)) { |i| i % 4 + 1 }).reshape(*shape)
+      end
+      # Values 1..4 are exact everywhere, so on their own they never reach a
+      # conversion that loses anything. These do: Int16 absorbs UInt16, Int32
+      # absorbs UInt32 and HFloat absorbs Int64, and each drops what does not
+      # fit. Whatever these land on in the operand, both paths have to drop the
+      # same thing.
+      big = lambda do |other, shape|
+        other.cast(Array.new(shape.reduce(:*)) { |i| (i + 1) * 4001 }).reshape(*shape)
+      end
+
+      unless absorbed.empty?
+        # The kernel reads such an operand where it already is, so every answer
+        # has to stay where the cast left it. The reference is the same call
+        # with the operand cast by hand, which is the path this replaces.
+        test "mulsum reads an operand of an absorbed type without casting it" do
+          a = small.call([4, 3])
+          absorbed.each do |other|
+            b = narrow.call(other, [4, 3])
+            want = dtype.cast(b)
+            assert { a.mulsum(b) == a.mulsum(want) }
+            [0, 1, -1, [0, 1]].each do |axis|
+              assert { a.mulsum(b, axis: axis) == a.mulsum(want, axis: axis) }
+            end
+            assert { a.mulsum(b, axis: 1, keepdims: true) == a.mulsum(want, axis: 1, keepdims: true) }
+          end
+        end
+
+        # mulsum gives the same answer whichever operand comes first, so the one
+        # whose type wins takes the receiver's place rather than the other being
+        # cast up to it.
+        test "mulsum takes an operand of an absorbed type either way round" do
+          a = small.call([4, 3])
+          absorbed.each do |other|
+            b = narrow.call(other, [4, 3])
+            # The right side is the path this replaces: casting the operand and
+            # reducing two arrays of one dtype. Comparing against a.mulsum(b)
+            # would compare the swap with itself.
+            want = dtype.cast(b)
+            assert { b.mulsum(a) == want.mulsum(a) }
+            assert { b.mulsum(a, axis: 0) == want.mulsum(a, axis: 0) }
+            assert { b.mulsum(a, axis: 1, keepdims: true) == want.mulsum(a, axis: 1, keepdims: true) }
+          end
+        end
+
+        # A conversion that loses something has to lose exactly what the cast
+        # loses, both on the way in and on the way back out of the swap.
+        test "mulsum converts an absorbed operand the way the cast would" do
+          a = small.call([4, 3])
+          absorbed.each do |other|
+            b = big.call(other, [4, 3])
+            want = dtype.cast(b)
+            assert { a.mulsum(b) == a.mulsum(want) }
+            assert { a.mulsum(b, axis: 0) == a.mulsum(want, axis: 0) }
+            assert { a.mulsum(b, axis: 1) == a.mulsum(want, axis: 1) }
+            assert { b.mulsum(a) == want.mulsum(a) }
+          end
+        end
+
+        # Reading the operand in place means its own steps reach the kernel, so
+        # a view and a broadcast have to arrive as they are.
+        test "mulsum reads an absorbed operand through a view" do
+          absorbed.each do |other|
+            b = narrow.call(other, [4, 3])
+            views = [b.reverse(0), b[(0..3).step(2), true], b[[3, 1, 0, 2], true], b.transpose]
+            views.each do |v|
+              x = small.call(v.shape)
+              assert { x.mulsum(v, axis: 0) == x.mulsum(dtype.cast(v), axis: 0) }
+              assert { v.mulsum(x, axis: 0) == x.mulsum(dtype.cast(v), axis: 0) }
+            end
+            a = small.call([4, 3])
+            c = narrow.call(other, [1, 1])
+            assert { a.mulsum(c) == a.mulsum(dtype.cast(c)) }
+            assert { a.mulsum(c, axis: 0) == a.mulsum(dtype.cast(c), axis: 0) }
+          end
+        end
+
+        if nan_capable.include?(dtype) && absorbed.any? { |o| nan_capable.include?(o) }
+          # A NaN can only reach the kernel through an operand wide enough to
+          # carry one. Both sides of this hold a real number, so the comparison
+          # fails if either answer comes back NaN.
+          test "mulsum skips a NaN in an absorbed operand when asked" do
+            a = small.call([6])
+            absorbed.select { |o| nan_capable.include?(o) }.each do |other|
+              b = narrow.call(other, [6])
+              b[0] = Float::NAN
+              assert { a.mulsum(b, nan: true) == a.mulsum(dtype.cast(b), nan: true) }
+              assert { b.mulsum(a, nan: true) == a.mulsum(dtype.cast(b), nan: true) }
+            end
+          end
+        end
       end
     end
 
