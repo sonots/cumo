@@ -132,8 +132,24 @@ static inline int64_t reduce_addr_div(bool flat, const TIarray& iarray, const cu
     return div;
 }
 
+// The innermost step of each of the two axis groups. out_inner is decided from
+// these, and a zip decides again from both operands', so they are handed back
+// rather than kept in cumo_reduce_addr_t: that one is a kernel parameter, and
+// the note above says what a wider one costs.
+typedef struct {
+    ssize_t out;
+    ssize_t reduce;
+} cumo_inner_steps_t;
+
+// The out axis runs along memory when its step is real and shorter than the
+// reduce axis's, which is what decides how a block shares its threads.
+static inline bool inner_steps_say_out(const cumo_inner_steps_t& inner) {
+    return inner.out != 0 &&
+        (inner.reduce == 0 || step_magnitude(inner.out) < step_magnitude(inner.reduce));
+}
+
 template <typename TArg>
-static inline cumo_reduce_addr_t make_reduce_addr(const TArg& arg, int64_t reduce_total_size) {
+static inline cumo_reduce_addr_t make_reduce_addr(const TArg& arg, int64_t reduce_total_size, cumo_inner_steps_t* inner = 0) {
     cumo_reduce_addr_t ad;
     int in_ndim = arg.in_indexer.ndim;
     ssize_t whole_step;
@@ -181,22 +197,51 @@ static inline cumo_reduce_addr_t make_reduce_addr(const TArg& arg, int64_t reduc
         }
     }
 
+    ad.out_step = 0;
     ad.out_flat = axes_are_flat(arg.out, arg.out_indexer, 0, arg.out_indexer.ndim, &ad.out_step);
     ad.out2_flat = true;
     ad.out2_step = 0;
 
-    ssize_t out_inner_step, reduce_inner_step;
+    cumo_inner_steps_t steps;
     if (ad.in_out_flat && ad.in_reduce_flat) {
-        out_inner_step = ad.in_out_step;
-        reduce_inner_step = ad.in_reduce_step;
+        steps.out = ad.in_out_step;
+        steps.reduce = ad.in_reduce_step;
     } else {
-        out_inner_step = ad.split > 0 ? arg.in.step[ad.split - 1] : 0;
-        reduce_inner_step = (ad.split >= 0 && ad.split < in_ndim) ? arg.in.step[in_ndim - 1] : 0;
+        steps.out = ad.split > 0 ? arg.in.step[ad.split - 1] : 0;
+        steps.reduce = (ad.split >= 0 && ad.split < in_ndim) ? arg.in.step[in_ndim - 1] : 0;
     }
-    ad.out_inner = out_inner_step != 0 &&
-        (reduce_inner_step == 0 || step_magnitude(out_inner_step) < step_magnitude(reduce_inner_step));
+    ad.out_inner = inner_steps_say_out(steps);
+    if (inner != 0) {
+        *inner = steps;
+    }
 
     return ad;
+}
+
+// The shorter of two steps, counting a zero as no step at all: an operand that
+// does not move along an axis reads one address for the whole of it, so it has
+// no say in which axis runs along memory.
+static inline ssize_t shorter_step(ssize_t a, ssize_t b) {
+    if (a == 0) return b;
+    if (b == 0) return a;
+    return step_magnitude(a) < step_magnitude(b) ? a : b;
+}
+
+// A zip reduction reads both operands through one thread layout, so the layout
+// has to answer for both. Taking the shorter step of the two along each axis
+// gives the same answer whichever operand the caller wrote first, which a
+// decision read off one of them does not.
+template <typename TArg>
+static inline void make_zip_reduce_addrs(const TArg& arg, const TArg& arg2, int64_t reduce_total_size,
+        cumo_reduce_addr_t* ad, cumo_reduce_addr_t* ad2) {
+    cumo_inner_steps_t inner, inner2, both;
+
+    *ad = make_reduce_addr(arg, reduce_total_size, &inner);
+    *ad2 = make_reduce_addr(arg2, reduce_total_size, &inner2);
+
+    both.out = shorter_step(inner.out, inner2.out);
+    both.reduce = shorter_step(inner.reduce, inner2.reduce);
+    ad->out_inner = ad2->out_inner = inner_steps_say_out(both);
 }
 
 static inline void set_reduce_addr_out2(cumo_reduce_addr_t* ad, const cumo_na_reduction_arg_t& arg, const cumo_na_iarray_t& out2) {
@@ -914,8 +959,8 @@ void cumo_reduce_zip(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, Reductio
     int64_t reduce_total_size = arg.in_indexer.total_size / arg.out_indexer.total_size;
     cumo_na_reduction_arg_t arg2 = arg;
     arg2.in = in2;
-    cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
-    cumo_detail::cumo_reduce_addr_t ad2 = cumo_detail::make_reduce_addr(arg2, reduce_total_size);
+    cumo_detail::cumo_reduce_addr_t ad, ad2;
+    cumo_detail::make_zip_reduce_addrs(arg, arg2, reduce_total_size, &ad, &ad2);
 
     int64_t out_block_size, reduce_block_size;
     cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
@@ -948,8 +993,8 @@ void cumo_reduce_zip_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, Re
     int64_t reduce_total_size = arg.in_indexer.total_size / arg.out_indexer.total_size;
     cumo_na_reduction_arg_t arg2 = arg;
     arg2.in = in2;
-    cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
-    cumo_detail::cumo_reduce_addr_t ad2 = cumo_detail::make_reduce_addr(arg2, reduce_total_size);
+    cumo_detail::cumo_reduce_addr_t ad, ad2;
+    cumo_detail::make_zip_reduce_addrs(arg, arg2, reduce_total_size, &ad, &ad2);
 
     int64_t out_block_size, reduce_block_size;
     cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
