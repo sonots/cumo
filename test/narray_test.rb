@@ -1735,6 +1735,7 @@ class NArrayTest < Test::Unit::TestCase
     picked = Cumo::Int32[2, 0]
     assert_equal(make.call[picked, true].sort(axis: 1).to_a,
                  make.call[picked, true][true, :sum].sort.to_a, "sort of an index view")
+    assert_equal([4, 2], make.call[picked, true].median(axis: 1).to_a, "median of an index view answers its rows")
     assert_equal(make.call[picked, true].median(axis: 1).to_a,
                  make.call[picked, true][true, :sum].median.to_a, "median of an index view")
 
