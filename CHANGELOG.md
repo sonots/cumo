@@ -1,3 +1,37 @@
+# 0.9.0 (2026/09/19)
+
+Breaking changes:
+
+* An integer array divided by a zero Ruby number raises `ZeroDivisionError` before the kernel runs rather than after it, so `a.inplace / 0` leaves `a` alone where it wrote over it first. The divisor was on the host all along, so the flag the device raised and the `cudaDeviceSynchronize` that read it back are gone: `Cumo::Int32.new(1, 768)` costs 2.34us for `a / 2` where it cost 9.27, and 2.20 for `a % 2` where it cost 7.88. `2 / a` and an array by an array keep the flag, the divisor really being on the device there (PR #466)
+
+Fixes:
+
+* Fix `mulsum` reducing everything where the receiver is a view that marked its axes with `:sum`, `:reduce` or `:+` and the operands have different dtypes. The marking lives on the array the method is asked of, and `mulsum` answers another class by putting a different array in the receiver's place, so `Cumo::Int8.new(4, 6)[:sum, true].mulsum(a_float)` answered a scalar where the same call with matching dtypes answers a row of six. numo answers the same wrong thing (PR #480)
+* Fix an elementwise operation whose inplace receiver shares memory with an operand that walks it differently, `a.inplace + a.transpose` answering something new on every run: the element a thread reads is one another thread is writing, and nothing orders the two on a device. An operand sitting exactly where the output does is left alone, which is the common `a.inplace + a` (PR #473)
+* Fix `to_binary` handing out whatever lay past the end of a `Cumo::Bit` array whose size is not a multiple of eight. `Cumo::Bit.new(24).fill(1)[0..3].to_binary` answered `[255]` where four bits belong to it, and a view copied first answered the memory pool's contents, so the same expression could answer differently from one run to the next. `marshal_dump` goes through here too (PR #471)
+* Fix an inplace view built from an index array reducing from the wrong rows. The copy that makes such a view contiguous carried `CUMO_NDF_INPLACE`, so for an inplace receiver it answered self and the reduction walked the index-backed view it meant to have copied. `median` and `max_index` answered their own wrong rows the same way, and inplace survives an operation, so `(v.inplace * 2).sum(axis: 2)` reached it too (PR #461)
+* Hold `layer_norm`, `rms_norm` and `softmax` to the same checks. `softmax` measured the result by its element count where the other two compare the shape, so an `allocate` that reshaped either side to the same count left every check true: reshaping the result answered the right values under the wrong shape, and reshaping the receiver normalized along the wrong axis (PR #459)
+
+Changes:
+
+* Add `rms_norm`, which normalizes a row in one kernel rather than the six it is written out of. This is `layer_norm` without the centring, the layer Llama and the models after it normalize with, so it takes no beta. On SFloat `[1, 768]` it goes from 14.2 to 2.9us and `[4096, 768]` from 122.5 to 38.5. No shape is slower (PR #458)
+* Add `silu` to `Cumo::NMath`, which takes one kernel rather than the five it is written out of: 768 elements go from 13.4 to 3.6us. It follows `torch.nn.functional.silu`, answering within one unit in the last place of the true value at the nine double points measured, and matching it at the edges (PR #460)
+* Add `quantize_symmetric`, which quantizes a row to `Cumo::Int8` in one kernel rather than the six it is written out of and hands the scale back. A launch costs about two microseconds whatever it is handed, so a short row pays for those rather than for its bytes (PR #476)
+* Speed up `mulsum`. Operands of different dtypes are read where they already are and converted one element at a time rather than cast into an array of the wider type first, so `SFloat#mulsum(Int8)` at `[4096, 4096]` goes from 384 to 53us. A broadcast operand no longer falls off the fast path, `1000x12x64` against `1000x12x1` over axis 0 going from 13.5 to 4.9us, and the thread layout takes the shorter step of the two operands rather than the first one's, so `DFloat[64,1].mulsum(DFloat[64,1024], axis: 1)` goes from 16.26 to 5.68 whichever order it is written in (PR #479, PR #477, PR #475)
+* Fix every allocation slowing down as the memory pool fragments, the arena having been rebuilt whenever an allocation emptied a bin. GPT-2 124M generating 256 tokens goes from 11.9 to 3.2 seconds in fp16, where the pool ends up with 4035 free chunks against fp32's 71 (PR #474)
+* Range check an NArray index on the device rather than copying the indices to the host and back. `Cumo::SFloat.new(50257, 768)`, `a[idx, true]`: 4096 indices go from 58.2 to 22.2us and 64 from 20.8 to 13.8. Nothing reads managed memory from the host on that path any more, which is what breaks under Ractor (sonots/cumo#180) (PR #470)
+* Copy a transposed view through the shared-memory tile the typed store has used since 0.7.0. `Cumo::SFloat.new(4096, 1024)`: `a.transpose.copy` goes from 338 to 97us, level with `a.transpose.dup` at 102, and `a.transpose.max_index(axis: 1)` from 362 to 107. Every reduction that needs a contiguous operand goes through this copy (PR #468)
+* Reduce a view built from an index array without staging it in a buffer first. Copying a `[6250, 64]` view of a `[100000, 64]` array goes from 13.9 to 7.2us and reducing it from 25.1 to 18.3 (PR #462)
+* Let `store_binary` reach a view it could only read back from. `to_binary` reads any view, so `v.store_binary(v.to_binary)` raised for the same `v` that had just produced the string. A view the bytes cannot move into directly now takes them through an array of its own class and shape (PR #472)
+* Answer `respond_to?` for the methods `Cumo::NMath` dispatches. Every one of them arrives through `method_missing`, so `respond_to?` answered false for `sqrt` and `exp` alike, which code that checks for a feature before calling it reads as absence (PR #463)
+* Take one Ruby method dispatch out of every ndloop call, the argument list always being a plain Array where `rb_obj_dup` took the general path: about 800 fewer retired instructions per operation, 3.4% of the 23,200 an operation takes (PR #465)
+* Tell which array a type check rejected and what it wanted. It said "invalid NArray type (class)", naming neither, so two checks side by side read exactly alike; it now says "gamma must be Cumo::SFloat, not Cumo::HFloat" (PR #478)
+* Say in the README that `reshape` answers a copy where slicing answers a view, priced across four shapes: on a GPU it is an allocation and a copy kernel every call, 58.1us and 12MB for a `4096x768` SFloat against 0.22us and nothing for `reshape!` (PR #457)
+* Show the changelog, source and issue links on the gem page, and require multi-factor authentication to push the gem (PR #456)
+* Share one body between the half and bfloat16 macros so a fix reaches both, 399 duplicated lines where it would have reached one. The compiled code is unchanged: the device SASS is identical (PR #464)
+* Keep the index-array test in one place so copy and store cannot drift apart, 172 generated copies of it becoming one (PR #467)
+* Drop the `Cumo::NMath::DISPATCH` rows no argument can reach. A bare Ruby numeric takes an NArray row, so the `Integer`, `Float` and `Complex` ones were never read: 944 calls over 16 kinds of argument reached them zero times (PR #469)
+
 # 0.8.0 (2026/09/16)
 
 Breaking changes:
