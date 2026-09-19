@@ -389,6 +389,47 @@ Where that zero starts depends on the type, and not on `exp` alone.
 Single and bfloat16 reach it at -89, where `exp(-x)` passes what a float holds, and double never does.
 Half reaches it at -21, because the round back to half gets there first.
 
+### Softplus
+
+`Cumo::NMath.softplus` is `log(1 + exp(x))`, the smooth positive part, and the function a selective state space model puts its step size through.
+
+```ruby
+Cumo::NMath.softplus(x)   # log(1 + exp(x)), in one kernel rather than three
+```
+
+Written out of the operators it costs three launches, and one kernel runs 1.0x to 3.1x faster on an RTX 5070 Ti Laptop, in microseconds:
+
+```
+softplus                SFloat            DFloat            HFloat
+elements           fused  written    fused  written    fused  written
+768                  2.0      6.1      2.3      6.2      2.1      6.0
+786432               5.9     18.3    166.6    171.8      5.7     15.0
+16777216           344.2    939.5   3503.7   3938.2    206.2    591.2
+```
+
+Double barely moves at the two larger sizes, the arithmetic rather than the launches being what it pays for there.
+
+Writing it out also gives out earlier than the kernel does, because the intermediate is an array of the receiver's type:
+
+```ruby
+x = Cumo::HFloat[22.26]
+Cumo::NMath.log(1.0 + Cumo::NMath.exp(x))   #=> Infinity
+Cumo::NMath.softplus(x)                     #=> 22.265625
+```
+
+Half holds `exp(x)` only to 11.09 and single to 88.7, where softplus is `x` to the last bit. The kernel takes the single-precision `exp` whatever the type, and hands back `x` where even that has no value to give, so nothing overflows at either width.
+
+It is not `log1p(exp(x))`, which is a different number: the sum is taken before the logarithm, as the definition reads and as the implementations this follows compute. `torch.nn.functional.softplus` takes the other spelling and switches to `x` above 20, so the two differ by about an ulp where both are finite.
+
+Taking the sum first costs the other end. Once `exp(x)` falls under the type's epsilon the sum drops it, so softplus reaches zero while the true value is still a number:
+
+```ruby
+Cumo::NMath.softplus(Cumo::SFloat[-17.0])   #=> 0.0, where the value is 4.1e-08
+Cumo::NMath.softplus(Cumo::DFloat[-37.0])   #=> 0.0, where the value is 8.5e-17
+```
+
+Single and both sixteen-bit types reach that zero at -17 and double at -37, and the error grows before it: 5.9% at -16 in single and 4.3% at -36 in double. `log1p` is what to reach for where a small negative `x` has to keep its digits.
+
 ### Half Precision
 
 `Cumo::HFloat`, also reachable as `Cumo::Float16`, holds IEEE binary16: one sign bit, five of exponent and ten of mantissa.
@@ -535,7 +576,7 @@ The two do not contain each other, so an expression mixing them promotes to `Cum
 
 Everything else promotes as `Cumo::SFloat` does, so an integer array or a Ruby Float mixed in stays bfloat16 while anything wider takes over.
 
-`layer_norm`, `rms_norm`, `softmax`, `silu` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
+`layer_norm`, `rms_norm`, `softmax`, `silu`, `softplus` and both spellings of `gelu` take it, and so do the reductions, `sort`, `median`, `cumsum`, `rand` and `dot`.
 The cuDNN methods take it too: `conv`, `conv_transpose`, `conv_grad_w`, `max_pool`, `avg_pool` and the three batch norm entries.
 
 Reductions accumulate in single precision and round once at the end, exactly as they do for half, so a sum passes 256 without stopping there:

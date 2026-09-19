@@ -461,6 +461,7 @@ def_module do
     math "gelu"
     math "gelu_tanh"
     math "silu"
+    math "softplus"
     math "log1p"
     math "expm1"
     math "ldexp", 2

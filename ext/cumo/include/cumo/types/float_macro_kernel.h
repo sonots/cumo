@@ -120,6 +120,7 @@ __host__ __device__ static inline dtype m_floored_mod(dtype x, dtype y) {
 #define m_gelu(x)      cumo_gelu(x)
 #define m_gelu_tanh(x) cumo_gelu_tanh(x)
 #define m_silu(x)      cumo_silu(x)
+#define m_softplus(x)  cumo_softplus(x)
 #define m_ldexp(x,y) ldexp(x,y)
 #define m_frexp(x,exp) frexp(x,exp)
 
@@ -177,6 +178,15 @@ __host__ __device__ static inline dtype cumo_gelu_tanh(dtype x)
 __host__ __device__ static inline dtype cumo_silu(dtype x)
 {
     return x / ((dtype)1 + exp(-x));
+}
+
+// Not log1p(exp(x)): the sum is taken first here, which is a different number
+// and the one the implementations this follows answer. Taken that way it
+// reaches an infinity once exp does, where softplus is x to the last bit.
+__host__ __device__ static inline dtype cumo_softplus(dtype x)
+{
+    dtype e = exp(x);
+    return isinf(e) ? x : log((dtype)1 + e);
 }
 
 #endif // CUMO_FLOAT_MACRO_KERNEL_H
