@@ -274,6 +274,16 @@ xq, scale = x.quantize_symmetric           # scale = max(|x|) / 127, xq = round(
 
 `quantize_symmetric` answers a `Cumo::Int8` shaped like self and the scale of every row, which is self's shape without its last axis. `xq * scale[false, :new]` is what the row stood for. A row of zeros has no scale to divide by and answers zero for both, and a row holding an infinity or a NaN answers that in its scale and zeros in the row, since neither is a value 8 bits could carry. The scale comes back in the class the reduction accumulates in, which is `Cumo::SFloat` for `Cumo::HFloat` and `Cumo::BFloat` and self's own otherwise.
 
+The rounding takes a tie away from zero, which is the rule `round` follows here and the rule Ruby's `Float#round` follows. numpy and torch take a tie to the nearest even value instead, so code ported from either answers differently wherever the quotient lands exactly halfway.
+
+```
+x / scale             -2.5  -1.5  -0.5   0.5   1.5   2.5
+quantize_symmetric      -3    -2    -1     1     2     3
+numpy, torch            -2    -2     0     0     2     2
+```
+
+`rint` is the other rule, at the cost of writing the quantization out: `(x / scale[false, :new]).rint.clip(-127, 127)` answers what numpy answers. A tie needs `x` to be an exact odd multiple of half the scale, so whether one ever comes up is a property of the data rather than of the arithmetic. Over a million random single-precision elements the two spellings disagreed four times, and every disagreement was a tie.
+
 On an RTX 5070 Ti Laptop, against the same arithmetic spelled with operators, in microseconds:
 
 ```
