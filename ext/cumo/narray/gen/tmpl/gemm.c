@@ -208,8 +208,9 @@ make_gemm_layout(VALUE a)
     } else {
         layout.ld = (int)COL_SIZE(na);
         layout.trans = CUBLAS_OP_N;  // transposed
-        // force c-contiguous
-        layout.a = is_c_contiguous(a) ? a : rb_funcall(a, rb_intern("dup"), 0);
+        // force c-contiguous. cuBLAS is given the dimensions of the operand
+        // handed in, so the copy has to hold the same elements.
+        layout.a = cumo_na_as_contiguous_array(a);
     }
     // cuBLAS walks the operand by this stride once per batch, so an operand that
     // holds a single matrix has to be re-read rather than advanced past its end.

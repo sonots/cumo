@@ -1352,6 +1352,38 @@ class NArrayTest < Test::Unit::TestCase
           assert_raise(Cumo::NArray::ShapeError) { dtype.new(0, 3).gemm(dtype.new(3, 4).seq) }
           assert_raise(Cumo::NArray::ShapeError) { dtype.new(2, 0).gemm(dtype.new(0, 4)) }
         end
+        test "matrix.gemm(matrix) copies an operand it cannot hand to cuBLAS as it is" do
+          a = dtype.new(8, 4).seq[(0...8).step(2), true]
+          b = dtype.new(4, 4).seq
+          assert { a.gemm(b) == dtype.cast(a.to_a).gemm(b) }
+        end
+        # Only an operand that is copied asks for a dup, and the dimensions
+        # cuBLAS is given come from the operand handed in, so a copy holding
+        # something else was walked with the original's shape.
+        test "matrix.gemm(matrix) rejects a dup that does not answer the same array" do
+          b = dtype.new(4, 4).seq
+          strided = -> { dtype.new(8, 4).seq[(0...8).step(2), true] }
+
+          shorter = strided.call
+          small = dtype.new(1, 1).seq
+          shorter.define_singleton_method(:dup) { small }
+          assert_raise(Cumo::NArray::ShapeError) { shorter.gemm(b) }
+
+          other_type = strided.call
+          ints = Cumo::Int32.new(4, 4).seq
+          other_type.define_singleton_method(:dup) { ints }
+          assert_raise(TypeError) { other_type.gemm(b) }
+
+          still_a_view = strided.call
+          view = strided.call
+          still_a_view.define_singleton_method(:dup) { view }
+          assert_raise(RuntimeError) { still_a_view.gemm(b) }
+
+          # the operand given as the argument is copied the same way
+          arg = strided.call
+          arg.define_singleton_method(:dup) { small }
+          assert_raise(Cumo::NArray::ShapeError) { dtype.new(4, 4).seq.gemm(arg) }
+        end
         test "matrix.gemm(matrix) rejects an inplace c that is not contiguous" do
           a = dtype.new(4, 4).seq
           b = dtype.new(4, 4).seq
