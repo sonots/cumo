@@ -938,13 +938,24 @@ class BitTest < Test::Unit::TestCase
     assert_equal([255, 255, 255], a.to_binary.bytes)
   end
 
-  test "to_binary counts the bits off the array its bytes came from" do
-    klass = Class.new(Cumo::Bit) do
-      def dup = Cumo::Bit.new(16).fill(1)
+  # Not byte aligned, so the bytes have to come from the dup. Reading them as
+  # one run needs the dup to hold the same elements in the same layout, which
+  # is what the checks below ask for rather than assume.
+  test "to_binary refuses a dup that does not answer the same array" do
+    other_class = Class.new(Cumo::Bit) do
+      def dup = Cumo::Bit.new(12).fill(1)
     end
-    # Not byte aligned, so the bytes come from the dup and fill both of them.
-    # Counting the view's twelve bits instead would clear four that are in use.
-    assert_equal([255, 255], klass.new(24).fill(0)[1..12].to_binary.bytes)
+    assert_raise(TypeError) { other_class.new(24).fill(0)[1..12].to_binary }
+
+    other_shape = Class.new(Cumo::Bit) do
+      def dup = self.class.new(16).fill(1)
+    end
+    assert_raise(Cumo::NArray::ShapeError) { other_shape.new(24).fill(0)[1..12].to_binary }
+
+    still_a_view = Class.new(Cumo::Bit) do
+      def dup = self.class.new(24).fill(1)[1..12]
+    end
+    assert_raise(RuntimeError) { still_a_view.new(24).fill(0)[1..12].to_binary }
   end
 
   test "store_binary fills a whole bit array" do

@@ -1233,19 +1233,16 @@ cumo_na_set_newaxis_strides(cumo_narray_view_t *na2, const int *newaxis,
     }
 }
 
-VALUE
-cumo_na_as_contiguous_array(VALUE a)
+// dup is Ruby, so the properties asked for here are the ones it is free not to
+// have. Every caller goes on to walk the answer as one run of elements, and
+// the class decides how those bytes are read, so both are settled before the
+// walk rather than trusted.
+static void
+check_dup_answer(VALUE a, VALUE b)
 {
-    VALUE b;
     cumo_narray_t *na, *nb;
     int i;
 
-    if (cumo_na_check_contiguous(a) == Qtrue) {
-        return a;
-    }
-    b = rb_funcall(a, rb_intern("dup"), 0);
-    // dup is Ruby, so the one property this is asked for is the one it is free
-    // not to have. Callers go on to walk the answer from a single pointer.
     if (!CumoIsNArray(b) || rb_obj_class(b) != rb_obj_class(a)) {
         rb_raise(rb_eTypeError, "dup did not answer a %s", rb_obj_classname(a));
     }
@@ -1259,6 +1256,18 @@ cumo_na_as_contiguous_array(VALUE a)
             rb_raise(cumo_na_eShapeError, "dup did not answer an array shaped like the one it was given");
         }
     }
+}
+
+VALUE
+cumo_na_as_contiguous_array(VALUE a)
+{
+    VALUE b;
+
+    if (cumo_na_check_contiguous(a) == Qtrue) {
+        return a;
+    }
+    b = rb_funcall(a, rb_intern("dup"), 0);
+    check_dup_answer(a, b);
     if (cumo_na_check_contiguous(b) != Qtrue) {
         rb_raise(rb_eRuntimeError, "dup did not answer a contiguous array");
     }
@@ -1783,29 +1792,35 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
 static VALUE
 cumo_na_to_binary(VALUE self)
 {
-    size_t len, offset=0;
+    size_t len;
     char *ptr;
     VALUE str;
     cumo_narray_t *na;
 
     CumoGetNArray(self,na);
-    if (na->type == CUMO_NARRAY_VIEW_T) {
-        if (cumo_na_view_offset_reaches_bytes(self) && cumo_na_check_contiguous(self)==Qtrue) {
-            offset = CUMO_NA_VIEW_OFFSET(na);
-        } else {
-            self = rb_funcall(self,cumo_id_dup,0);
+    if (na->type == CUMO_NARRAY_VIEW_T &&
+        !(cumo_na_view_offset_reaches_bytes(self) && cumo_na_check_contiguous(self)==Qtrue)) {
+        VALUE b = rb_funcall(self,cumo_id_dup,0);
+
+        check_dup_answer(self,b);
+        if (!cumo_na_view_offset_reaches_bytes(b) || cumo_na_check_contiguous(b)!=Qtrue) {
+            rb_raise(rb_eRuntimeError, "dup did not answer an array that can be read in place");
         }
+        self = b;
     }
     // After the dup above, not before it: the copy is a kernel and the string
     // is built by reading its result from the host.
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
     cumo_cuda_runtime_device_synchronize();
 
-    ptr = cumo_na_get_pointer_for_read(self);
+    // Offset through the helper rather than by hand: the branch above leaves
+    // either the receiver or the dup here, and only one of those is the array
+    // the offset belongs to.
+    ptr = cumo_na_get_offset_pointer_for_read(self);
     // Measured after the pointer, since taking one runs allocate, and by the
     // type rather than by byte_size, which asks the class.
     len = cumo_na_type_byte_size(self);
-    str = rb_usascii_str_new(ptr+offset,len);
+    str = rb_usascii_str_new(ptr,len);
     // Elements narrower than a byte leave the rest of the last one holding
     // whatever lies beside them: the base's bits for a view read in place, the
     // pool's for the copy above. The string is this method's own, so the bits
@@ -1850,17 +1865,15 @@ cumo_na_marshal_dump(VALUE self)
     if (rb_obj_class(self) == cumo_cRObject) {
         cumo_narray_t *na;
         VALUE *ptr;
-        size_t offset=0;
+        // The words below are handed back as Ruby objects, so what the dup
+        // answers decides what they are. rb_obj_class reads past a singleton
+        // class, so one defined on the object itself reaches here, and the
+        // shared check is what says it holds the same elements as one run.
+        self = cumo_na_as_contiguous_array(self);
+        ptr = (VALUE*)cumo_na_get_offset_pointer_for_read(self);
+        // Counted after the pointer, since taking one runs allocate.
         CumoGetNArray(self,na);
-        if (na->type == CUMO_NARRAY_VIEW_T) {
-            if (cumo_na_check_contiguous(self)==Qtrue) {
-                offset = CUMO_NA_VIEW_OFFSET(na) / sizeof(VALUE);
-            } else {
-                self = rb_funcall(self,cumo_id_dup,0);
-            }
-        }
-        ptr = (VALUE*)cumo_na_get_pointer_for_read(self);
-        rb_ary_push(a, rb_ary_new4(CUMO_NA_SIZE(na), ptr+offset));
+        rb_ary_push(a, rb_ary_new4(CUMO_NA_SIZE(na), ptr));
     } else {
         rb_ary_push(a, cumo_na_to_binary(self));
     }
