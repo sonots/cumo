@@ -625,15 +625,18 @@ A 1x768 by 768x50257 gemv takes 0.211 ms with that odd 50257 and 0.205 ms with 5
 Pad the inner dimensions of a real matrix product; leave a gemv alone.
 
 `conv` is a different story, and worth reading before reaching for half in a network.
-cuDNN chooses its algorithm from the ones that fit in a scratch buffer, and the half algorithms that use the tensor cores ask for more than the default 8MB ceiling allows.
-Left at the default, a half convolution is no faster than a single-precision one.
+cuDNN chooses its algorithm from the ones that fit in a scratch buffer, and the half algorithms that use the tensor cores ask for a lot of it.
+The default ceiling reaches them; the 8MB one Cumo used to ship does not.
 N=32, C=K=64, 56x56, 3x3:
 
 ```
-                              HFloat     SFloat
-CUMO_CUDNN_MAX_WORKSPACE_SIZE unset      1.13 ms    1.03 ms
-CUMO_CUDNN_MAX_WORKSPACE_SIZE=268435456  0.56 ms    0.68 ms
+                                         HFloat     BFloat     SFloat
+CUMO_CUDNN_MAX_WORKSPACE_SIZE=8388608    1.27 ms    1.26 ms    1.19 ms
+unset (128MB)                            0.54 ms    0.60 ms    1.19 ms
+CUMO_CUDNN_MAX_WORKSPACE_SIZE=268435456  0.52 ms    0.59 ms    0.59 ms
 ```
+
+This shape's single-precision algorithm wants more than the default, which is the other half of the reason to look at the ceiling for a network that spends its time in `conv`.
 
 Tensor cores also want the channel counts to be multiples of eight, which the first layer of a network never satisfies.
 That layer is still faster in half, but for the other reason:
@@ -737,7 +740,7 @@ A `dot` on a pre-Ampere card is the one to expect trouble from.
 cuDNN reaches bfloat16 as `CUDNN_DATA_BFLOAT16`, and its own bfloat16 kernels want Ampere for the same reason cuBLAS does.
 A convolution is given `CUDNN_DATA_FLOAT` to accumulate in, so it passes 256 the way a reduction does.
 The batch norm parameters are `Cumo::SFloat`, the same as they are for `Cumo::HFloat`.
-The workspace ceiling matters here as much as it does for half: left at the default 8MB, a bfloat16 convolution is no faster than a single-precision one.
+The workspace ceiling matters here as much as it does for half, and for the same reason.
 See [Raise the cuDNN workspace ceiling](#raise-the-cudnn-workspace-ceiling).
 
 #### An index rounds here rather than saturating
@@ -928,12 +931,22 @@ export CUMO_SHOW_WARNING_ONCE=OFF
 
 ### Raise the cuDNN workspace ceiling
 
-cuDNN picks a convolution algorithm by benchmarking the ones that fit in a scratch buffer, and the ceiling on that buffer is 8MB.
-The fastest half precision algorithms, the ones that reach the tensor cores, ask for more than that and are left out of the search.
-To let them in:
+cuDNN picks a convolution algorithm by benchmarking the ones that fit in a scratch buffer, and the ceiling on that buffer is 128MB.
+The search reserves the whole ceiling whatever the convolution's size and hands it back to the pool afterwards, so the ceiling costs a peak rather than a residency.
+
+Some shapes want more than the default. The twenty convolutions of a ResNet-18 forward pass at batch 16, and the single-precision case from [Half Precision](#half-precision):
 
 ```
-export CUMO_CUDNN_MAX_WORKSPACE_SIZE=67108864
+                                         ResNet-18    N=32, C=K=64, 56x56, 3x3
+CUMO_CUDNN_MAX_WORKSPACE_SIZE=8388608      9.80 ms                     1.19 ms
+unset (128MB)                              5.23 ms                     1.19 ms
+CUMO_CUDNN_MAX_WORKSPACE_SIZE=268435456    5.24 ms                     0.59 ms
+```
+
+To raise it:
+
+```
+export CUMO_CUDNN_MAX_WORKSPACE_SIZE=268435456
 ```
 
 The value is in bytes and only bounds the search; each convolution reserves what its chosen algorithm actually needs.

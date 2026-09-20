@@ -988,6 +988,14 @@ class CUDNNTest < Test::Unit::TestCase
     Float(run_child(WORST_CONV_ERROR, env: env)[/WORST=(\S+)/, 1])
   end
 
+  sub_test_case "workspace ceiling" do
+    # the README reports what each of these buys, so the number is part of it
+    test "the default is the one the README reports" do
+      omit("set from the environment") if ENV["CUMO_CUDNN_MAX_WORKSPACE_SIZE"].to_s =~ /\A[1-9][0-9]*\z/
+      assert_equal 128 << 20, Cumo::CUDA::CUDNN.max_workspace_size
+    end
+  end
+
   sub_test_case "tensor cores" do
     test "a misspelled CUMO_CUDNN_ALLOW_TF32 leaves them off" do
       asked = ENV["CUMO_CUDNN_ALLOW_TF32"].to_s
