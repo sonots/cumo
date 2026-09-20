@@ -677,6 +677,25 @@ The batch norm parameters are `Cumo::SFloat`, the same as they are for `Cumo::HF
 The workspace ceiling matters here as much as it does for half: left at the default 8MB, a bfloat16 convolution is no faster than a single-precision one.
 See [Raise the cuDNN workspace ceiling](#raise-the-cudnn-workspace-ceiling).
 
+#### An index rounds here rather than saturating
+
+[Half Precision](#half-precision) says an index has to be built in a wider type and cast afterwards. That holds here at 256 rather than 2048, and it goes wrong more quietly:
+
+```ruby
+Cumo::BFloat[79800]   #=> 79872.0
+Cumo::HFloat[79800]   #=> Infinity
+```
+
+A binary16 hands back an infinity, which the next operation carries somewhere visible. A bfloat16 hands back a plausible integer, and whatever reads it goes on. Where the index is an angle, the answer comes back with the wrong sign:
+
+```ruby
+Cumo::NMath.cos(Cumo::SFloat[79800])   #=> -0.9190999865531921
+Cumo::NMath.cos(Cumo::SFloat[79872])   #=> 0.989012598991394
+```
+
+Not every integer past 256 is lost, which is what makes this one hard to catch by sampling: `Cumo::BFloat[1000]` is exact, since 1000 is a multiple of 8.
+What ends at 256 is that consecutive integers stay distinct.
+
 ### Select a GPU device ID
 
 Set the `CUDA_VISIBLE_DEVICES=id` environment variable, or
@@ -696,6 +715,32 @@ GPU memory pool is enabled by default. To disable it, set `CUMO_MEMORY_POOL=OFF`
 require 'cumo'
 Cumo::CUDA::MemoryPool.disable
 ```
+
+### Reading The Memory Numbers
+
+cumo allocates with `cudaMallocManaged`, so a page can sit on the host, and `nvidia-smi` counts only what the card is holding at that moment.
+It reports less than cumo has taken, and the gap is not a fixed one.
+A library that allocates with `cudaMalloc` reports everything it took, so the two numbers do not belong side by side in a comparison.
+
+From inside, the pool answers two different questions:
+
+```ruby
+Cumo::CUDA::MemoryPool.total_bytes   # what the pool has taken from the card
+Cumo::CUDA::MemoryPool.used_bytes    # what it has handed out and not taken back
+```
+
+`used_bytes` still counts blocks whose last reference is gone but which Ruby's garbage collector has not reached, so read it after `GC.start` when you mean the arrays that are alive:
+
+```ruby
+a = Cumo::SFloat.new(1024, 1024).seq
+t = a + 1
+t = nil
+Cumo::CUDA::MemoryPool.used_bytes    #=> 8388608
+GC.start
+Cumo::CUDA::MemoryPool.used_bytes    #=> 4194304
+```
+
+`total_bytes` does not move with the collector and counts the free blocks the pool is keeping, so it answers how much this took rather than how much is alive.
 
 ## Documentation
 
