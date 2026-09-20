@@ -163,7 +163,7 @@ class BitTest < Test::Unit::TestCase
       assert { a.where == [] }
       assert { a.where2 == [[], []] }
       assert { a.mask(Cumo::DFloat[]) == [] }
-      assert { !a.all? }
+      assert { a.all? }
       assert { !a.any? }
       assert { a.none? }
     end
@@ -1082,6 +1082,30 @@ class BitTest < Test::Unit::TestCase
     %i[var stddev rms].each do |name|
       assert_equal(v.send(name, axis: 1).to_a, v.inplace.send(name, axis: 1).to_a, name.to_s)
     end
+  end
+
+  # An empty array has nothing to look at, so the answer is the identity the
+  # reduction starts from. One early return answered false for both, which is
+  # what any? wants and the opposite of what all? wants.
+  test "all?, any? and none? of an empty bit array answer the identity" do
+    [[0, 3], [3, 0], [0], [0, 0]].each do |shape|
+      e = Cumo::Bit.new(*shape)
+      assert_equal(0, e.size, shape.inspect)
+      assert_equal(true, e.all?, "all? of #{shape.inspect}")
+      assert_equal(false, e.any?, "any? of #{shape.inspect}")
+      assert_equal(true, e.none?, "none? of #{shape.inspect}")
+    end
+
+    # Ruby answers the same way, and for the same reason.
+    assert_equal([].all?, Cumo::Bit.new(0).all?)
+    assert_equal([].any?, Cumo::Bit.new(0).any?)
+    assert_equal([].none?, Cumo::Bit.new(0).none?)
+
+    # A row of no elements is not an empty array, and still reduces.
+    a = Cumo::Bit.cast([[1, 0, 1], [1, 1, 1]])
+    assert_equal([0, 1], a.all?(axis: 1).to_a, "a non-empty receiver is unchanged")
+    assert_equal(false, a.all?)
+    assert_equal(true, a.any?)
   end
 
   test "not still writes an inplace bit receiver" do

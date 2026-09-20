@@ -32,7 +32,9 @@ static VALUE
 
     CumoGetNArray(self,na);
     if (CUMO_NA_SIZE(na)==0) {
-        return Qfalse;
+        // Nothing to look at, so the answer is the identity the reduction
+        // starts from: all? of nothing holds, any? of nothing does not.
+        return <%= init_bit == 1 ? "Qtrue" : "Qfalse" %>;
     }
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     if (cumo_na_has_idx_p(self)) {
