@@ -260,6 +260,39 @@ Cumo::SFloat::Math.atan2(a, 2.0)   #=> Cumo::SFloat
 
 The 0-dimensional form has no effect under Numo, where `[]` returns a Ruby Float.
 
+### A Transposed Operand Goes To cuBLAS As It Is
+
+`dot` and `gemm` hand a transposed operand to cuBLAS with its transpose flag set, rather than copying it into the layout cuBLAS reads fastest.
+That saves the copy and the memory it needs.
+What it costs is the kernel cuBLAS then picks, which for most shapes is slower than the one it picks for an operand already laid out its way.
+
+RTX 5070 Ti Laptop, `Cumo::SFloat`, `q[M,K].dot(k[N,K].transpose)`, medians of nine rounds:
+
+```
+M     K     N       M*K      as it is   copied first   the copy
+1     64    1500         64      5.6 us       11.4 us      2.8 us
+512   64    512      32,768      8.5         11.2         2.9
+1500  64    1500     96,000     33.0         29.3         3.0
+512   256   512     131,072     21.8         20.7         2.8
+4096  64    4096    262,144    229.1        179.3         4.2
+512   768   512     393,216     54.0         39.2         3.3
+256   3072  768     786,432    131.1        103.0        12.5
+```
+
+The copy weighs `N * K`, and the faster kernel it buys is worth `M * N * K`, so `M` is what decides.
+A matrix-vector product, where `M` is one, is the clearest case against copying: it takes twice as long that way.
+Past an `M * K` of roughly fifty thousand on this card the copy starts paying for itself, and past a few hundred thousand it is worth a fifth of the time.
+
+Where a profile says one of these multiplications matters, hand it an operand that is already contiguous:
+
+```ruby
+kt = k.transpose.dup    # or build k transposed in the first place
+q.dot(kt)
+```
+
+The table above is two-dimensional, where cuBLAS is given one matrix.
+A batched multiplication takes another path through the same flag, and these numbers do not cover it.
+
 ### Fused Operations
 
 `layer_norm`, `rms_norm` and `softmax` normalize along the last axis in one kernel each, and `quantize_symmetric` takes it to 8-bit integers in one more.
