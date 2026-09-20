@@ -3,6 +3,8 @@
 require_relative "test_helper"
 
 class CUDNNTest < Test::Unit::TestCase
+  include CumoChildProcess
+
   float_types = [
     Cumo::HFloat,
     Cumo::BFloat,
@@ -941,6 +943,7 @@ class CUDNNTest < Test::Unit::TestCase
         ENV["CUMO_CUDNN_MAX_WORKSPACE_SIZE"].to_s =~ /\A[1-9][0-9]*\z/
     end
 
+
     test "the convolution accumulates over more channels than the element type can count" do
       # 40000 ones summed in the element type would stop at 2048 for binary16
       # and at 256 for bfloat16. The accumulation is exact and only the store
@@ -950,5 +953,53 @@ class CUDNNTest < Test::Unit::TestCase
       assert_equal hf[40_000.0].to_a.first, x.conv(w).to_a.flatten.first
     end
    end
+  end
+
+  # cuDNN reads CUDNN_DEFAULT_MATH as "tensor cores are allowed", so raising the
+  # search ceiling moves a single-precision convolution onto them and costs two
+  # digits of accuracy without anything having asked. Which algorithm the search
+  # settles on depends on what ran before it, so this takes a run of layers
+  # rather than one convolution, and a child because the ceiling is read once.
+  WORST_CONV_ERROR = <<~'RUBY'
+    require "cumo/narray"
+    worst = [
+      [[4,   3, 224, 224], [ 64,  3, 7, 7], 2, 3],
+      [[4,  64,  56,  56], [ 64, 64, 3, 3], 1, 1],
+      [[4,  64,  56,  56], [128, 64, 3, 3], 2, 1],
+      [[4, 128,  28,  28], [128, 128, 3, 3], 1, 1],
+      [[4, 128,  28,  28], [256, 128, 3, 3], 2, 1],
+      [[4, 256,  14,  14], [256, 256, 3, 3], 1, 1],
+    ].map do |xs, ws, st, pd|
+      x = Cumo::SFloat.new(*xs); x.seq(0.0, 1.0 / x.size)
+      w = Cumo::SFloat.new(*ws); w.seq(-0.5, 1.0 / w.size)
+      y = x.conv(w, stride: st, pad: pd)
+      d = Cumo::DFloat.cast(x).conv(Cumo::DFloat.cast(w), stride: st, pad: pd)
+      e = (Cumo::DFloat.cast(y) - d).abs.max.to_f / d.abs.max.to_f
+      x = w = y = d = nil
+      GC.start
+      e
+    end.max
+    puts "WORST=#{worst}"
+  RUBY
+
+  def worst_conv_error(allow_tf32)
+    env = { "CUMO_CUDNN_MAX_WORKSPACE_SIZE" => (64 << 20).to_s,
+            "CUMO_CUDNN_ALLOW_TF32" => (allow_tf32 ? "1" : nil) }
+    Float(run_child(WORST_CONV_ERROR, env: env)[/WORST=(\S+)/, 1])
+  end
+
+  sub_test_case "tensor cores" do
+    test "a misspelled CUMO_CUDNN_ALLOW_TF32 leaves them off" do
+      asked = ENV["CUMO_CUDNN_ALLOW_TF32"].to_s
+      assert_equal %w[1 on yes true].include?(asked.downcase), Cumo::CUDA::CUDNN.allow_tf32?
+    end
+
+    test "single precision keeps its accuracy when the search ceiling is raised" do
+      # the same run answers about 2e-04 once tensor cores are allowed, and a
+      # card that has none answers the same either way, leaving nothing to check
+      allowed = worst_conv_error(true)
+      omit("this card does not put single precision on tensor cores") if allowed < 1e-4
+      assert_operator worst_conv_error(false), :<, 5e-5
+    end
   end
 end

@@ -53,6 +53,43 @@ BAD:
             env, cudnn_max_workspace_size);
 }
 
+static int cudnn_allow_tf32 = 0;
+
+int
+cumo_cuda_cudnn_allow_tf32()
+{
+    return cudnn_allow_tf32;
+}
+
+// The words cumo.c's flags take, plus true and false, in any case. Ruby's
+// compare is used rather than strcasecmp because it does not follow the locale.
+static int
+read_env_truth(const char* env, int* out)
+{
+    static const char* const yes[] = {"1", "on", "yes", "true"};
+    static const char* const no[]  = {"0", "off", "no", "false"};
+    size_t i;
+
+    for (i = 0; i < sizeof(yes) / sizeof(yes[0]); ++i) {
+        if (st_locale_insensitive_strcasecmp(env, yes[i]) == 0) { *out = 1; return 1; }
+        if (st_locale_insensitive_strcasecmp(env, no[i]) == 0)  { *out = 0; return 1; }
+    }
+    return 0;
+}
+
+static void
+init_allow_tf32(void)
+{
+    // default is false. cumo.c reads its flags as "anything that is not a no",
+    // which turns a misspelling into a silent yes. Here a yes costs accuracy,
+    // so anything unrecognised stays a no and says so.
+    const char* env = getenv("CUMO_CUDNN_ALLOW_TF32");
+
+    if (env == NULL || *env == '\0') return;
+    if (read_env_truth(env, &cudnn_allow_tf32)) return;
+    rb_warn("CUMO_CUDNN_ALLOW_TF32=%s is not a yes or a no, leaving single precision off the tensor cores", env);
+}
+
 VALUE
 cumo_cuda_cudnn_release_conv_held(VALUE held)
 {
@@ -113,6 +150,19 @@ rb_cudnn_max_workspace_size(VALUE self)
 {
     return SIZET2NUM(cumo_cuda_cudnn_max_workspace_size());
 }
+
+/*
+  Returns whether a single-precision convolution may run on tensor cores, set
+  by CUMO_CUDNN_ALLOW_TF32. Off unless asked for: tensor cores round the
+  operands to a 10 bit significand.
+
+  @return [Boolean]
+ */
+static VALUE
+rb_cudnn_allow_tf32_p(VALUE self)
+{
+    return cumo_cuda_cudnn_allow_tf32() ? Qtrue : Qfalse;
+}
 #endif // CUDNN_FOUND
 
 static VALUE
@@ -141,7 +191,9 @@ Init_cumo_cuda_cudnn(void)
     rb_define_singleton_method(mCUDNN, "available?", rb_cudnn_available_p, 0);
 #ifdef CUDNN_FOUND
     init_max_workspace_size();
+    init_allow_tf32();
     rb_define_singleton_method(mCUDNN, "max_workspace_size", rb_cudnn_max_workspace_size, 0);
+    rb_define_singleton_method(mCUDNN, "allow_tf32?", rb_cudnn_allow_tf32_p, 0);
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX_DETERMINISTIC", INT2NUM(CUDNN_POOLING_MAX_DETERMINISTIC));
     rb_define_const(mCUDNN, "CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING));

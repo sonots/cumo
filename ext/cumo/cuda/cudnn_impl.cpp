@@ -227,10 +227,35 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
     }
     if (status != CUDNN_STATUS_SUCCESS) return status;
 
-    // Tensor cores are not reached under CUDNN_DEFAULT_MATH, and asking for
-    // them where they do not apply is not an error, so every dtype names what
-    // it wants.
+    // CUDNN_DEFAULT_MATH reads as "tensor cores are allowed", so a single
+    // precision convolution takes them as soon as the algorithm search reaches
+    // an algorithm that has them, and rounds the operands to a 10 bit
+    // significand. The half types name CUDNN_TENSOR_OP_MATH and are asking for
+    // exactly that; single precision is not.
+    if (math_type == CUDNN_DEFAULT_MATH &&
+        compute_dtype == CUDNN_DATA_FLOAT &&
+        !cumo_cuda_cudnn_allow_tf32()) {
+        math_type = CUDNN_FMA_MATH;
+    }
     return cudnnSetConvolutionMathType(*desc, math_type);
+}
+
+// The search reports the math type it settled on, and the descriptor has to
+// name the same one or the convolution is rejected. It reports
+// CUDNN_DEFAULT_MATH even where the descriptor refused tensor cores, so taking
+// the report as it comes would put single precision back on them.
+cudnnStatus_t
+cumo_cuda_cudnn_SetConvolutionMathTypeFromPerf(
+        cudnnConvolutionDescriptor_t desc,
+        cudnnMathType_t found)
+{
+    cudnnMathType_t asked;
+    cudnnStatus_t status = cudnnGetConvolutionMathType(desc, &asked);
+    if (status != CUDNN_STATUS_SUCCESS) return status;
+    // The search ran against this descriptor, so the algorithm it picked is one
+    // that runs without tensor cores. Keeping the refusal needs no fallback.
+    if (asked == CUDNN_FMA_MATH) return CUDNN_STATUS_SUCCESS;
+    return cudnnSetConvolutionMathType(desc, found);
 }
 
 cudnnStatus_t
