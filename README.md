@@ -149,6 +149,36 @@ Float(a.sum)          #=> 7.0 in either mode
 They are methods on an NArray, so chaining one onto a result that `compatible_mode` has already turned into a Ruby object, as in `a.sum.extract_cpu`, raises `NoMethodError` while the mode is on.
 `Kernel#Float` and `Kernel#Integer` read either representation, and read Numo's too, so they are what code that runs against both libraries wants.
 
+#### A Length-One Axis Does Not Break Contiguity
+
+`contiguous?` answers true for some views Numo calls false.
+An axis of length one is only ever indexed at zero, so whatever stride it carries is multiplied by zero and never moves the pointer.
+Cumo leaves such an axis out of the chain it walks; Numo does not, and calls the view strided because of an axis that cannot stride.
+
+```ruby
+a = Cumo::DFloat.new(1, 4).seq
+a[true, 0...2].contiguous?   #=> true, where Numo gives false
+a[true, 0...2].to_a          #=> [[0.0, 1.0]], the same either way
+
+Cumo::DFloat.new(2, 4).seq[true, 0...2].contiguous?   #=> false in both
+```
+
+The elements the view holds are the same in either library.
+What changes is who is willing to read them where they lie:
+
+* `reshape!` is accepted on these views, where Numo raises
+* `dot`, `gemm`, `conv` and the rest take them as they are, instead of copying them into a contiguous array first
+
+A three-dimensional slice behaves the same way, and so does the transpose of a single row:
+
+```ruby
+Cumo::DFloat.new(1, 1, 4).seq[true, true, 0...2].contiguous?   #=> true
+Cumo::DFloat.new(1, 3).seq.transpose.contiguous?               #=> true
+```
+
+Code that runs against both libraries should not read `contiguous?` and expect the same answer.
+Where it wants a contiguous array it can ask for one, since `dup` answers one in either library.
+
 ### Keeping Scalars On The Device
 
 The 0-dimensional return is what lets an iterative loop stay on the GPU.
