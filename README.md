@@ -939,6 +939,30 @@ export CUMO_CUDNN_MAX_WORKSPACE_SIZE=67108864
 The value is in bytes and only bounds the search; each convolution reserves what its chosen algorithm actually needs.
 `Cumo::CUDA::CUDNN.max_workspace_size` reads back the value in force.
 
+### Single precision convolutions stay off the tensor cores
+
+cuDNN reads its default math mode as "tensor cores are allowed", so a single precision convolution moves onto them as soon as the algorithm search reaches an algorithm that has them.
+The operands are rounded to a 10 bit significand on the way, and nothing in the call said to do that.
+Cumo asks cuDNN to keep single precision off the tensor cores, so raising the workspace ceiling buys speed at single precision accuracy.
+A different algorithm rounds differently, so the answer still moves; what it does not do is drop two digits.
+The half types name the tensor cores themselves and are not affected.
+
+To trade the accuracy for the speed:
+
+```
+export CUMO_CUDNN_ALLOW_TF32=1
+```
+
+Measured over the convolutions of a ResNet-18 forward pass at batch 16, with the ceiling raised to 256MB, each layer against a double precision reference:
+
+```
+                              pass      worst layer
+tensor cores off (default)   5.24 ms      1.4e-05
+tensor cores on              4.31 ms      2.4e-04
+```
+
+`Cumo::CUDA::CUDNN.allow_tf32?` reads back the value in force.
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/sonots/cumo.

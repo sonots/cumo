@@ -64,8 +64,9 @@ static VALUE
             r->ndim,
             cudnn_dtype);
     if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
-    // The descriptor asked for a math type; use the one the search settled on.
-    r->status = cudnnSetConvolutionMathType(r->held.conv_desc, perf_result.mathType);
+    // The convolution needs the descriptor to name the math type the search
+    // settled on, except where the descriptor refused tensor cores.
+    r->status = cumo_cuda_cudnn_SetConvolutionMathTypeFromPerf(r->held.conv_desc, perf_result.mathType);
     if (r->status != CUDNN_STATUS_SUCCESS) return Qnil;
 
     // The search may look at algorithms needing up to max_workspace_size,
