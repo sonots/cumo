@@ -1233,19 +1233,25 @@ cumo_na_set_newaxis_strides(cumo_narray_view_t *na2, const int *newaxis,
     }
 }
 
-// dup is Ruby, so the properties asked for here are the ones it is free not to
-// have. Every caller goes on to walk the answer as one run of elements, and
-// the class decides how those bytes are read, so both are settled before the
-// walk rather than trusted.
+// dup is Ruby, so the class is the first thing the answer is free not to have,
+// and every caller reads those bytes by the class it asked for.
+void
+cumo_na_check_dup_class(VALUE a, VALUE b)
+{
+    if (!CumoIsNArray(b) || rb_obj_class(b) != rb_obj_class(a)) {
+        rb_raise(rb_eTypeError, "dup did not answer a %s", rb_obj_classname(a));
+    }
+}
+
+// The rest of what a caller that walks the answer as one run of elements needs
+// settled before the walk rather than trusted.
 static void
 check_dup_answer(VALUE a, VALUE b)
 {
     cumo_narray_t *na, *nb;
     int i;
 
-    if (!CumoIsNArray(b) || rb_obj_class(b) != rb_obj_class(a)) {
-        rb_raise(rb_eTypeError, "dup did not answer a %s", rb_obj_classname(a));
-    }
+    cumo_na_check_dup_class(a, b);
     CumoGetNArray(a, na);
     CumoGetNArray(b, nb);
     if (nb->ndim != na->ndim) {

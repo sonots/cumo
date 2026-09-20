@@ -854,6 +854,48 @@ class NArrayAltCoverageTest < CumoTestBase
     assert_raise(Cumo::NArray::CastError) { a[8..15].to_binary }
   end
 
+  # reshape writes the shape it checked straight over what dup answered, and
+  # dup is Ruby. An answer holding fewer elements used to leave a shape
+  # claiming more than the buffer has, on an object the caller already holds.
+  def test_reshape_rejects_a_dup_that_does_not_answer_the_same_array
+    shorter = Cumo::SFloat.new(100).seq
+    small = Cumo::SFloat.new(1).seq
+    shorter.define_singleton_method(:dup) { small }
+    assert_raise(Cumo::NArray::ShapeError) { shorter.reshape(10, 10) }
+    assert_equal([1], small.shape)
+
+    other_type = Cumo::SFloat.new(100).seq
+    ints = Cumo::Int32.new(100).seq
+    other_type.define_singleton_method(:dup) { ints }
+    assert_raise(TypeError) { other_type.reshape(10, 10) }
+
+    # setup_shape rewrites the shape without the strides beside it, so a view
+    # would be left describing more dimensions than it has entries for
+    a_view = Cumo::SFloat.new(100).seq
+    view = Cumo::SFloat.new(200).seq[0...100]
+    a_view.define_singleton_method(:dup) { view }
+    assert_raise(RuntimeError) { a_view.reshape(10, 10) }
+
+    # reshape! refuses the same write, so the two no longer disagree about it
+    a_frozen = Cumo::SFloat.new(100).seq
+    frozen = Cumo::SFloat.new(100).seq.freeze
+    a_frozen.define_singleton_method(:dup) { frozen }
+    assert_raise(RuntimeError) { a_frozen.reshape(10, 10) }
+    assert_equal([100], frozen.shape)
+  end
+
+  # The count is checked against the shape asked for rather than against the
+  # receiver, which the dup itself may have left holding something else.
+  def test_reshape_rejects_a_dup_that_shrank_the_receiver
+    a = Cumo::SFloat.new(100).seq
+    a.define_singleton_method(:dup) do
+      marshal_load([1, [1], 0, [1.5].pack("f")])
+      Cumo::SFloat.new(1).seq
+    end
+
+    assert_raise(Cumo::NArray::ShapeError) { a.reshape(10, 10) }
+  end
+
   def test_reshape_bang_leaves_the_array_untouched_when_it_raises
     ones = [1] * (CUMO_NA_MAX_DIMENSION + 1)
     a = Cumo::DFloat.new(1).seq
