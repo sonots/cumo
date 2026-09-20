@@ -21,12 +21,13 @@ extern VALUE cumo_cuda_eCUDNNError;
 
 extern VALUE cumo_na_eShapeError;
 
-#define CUMO_CUDA_CUDNN_DEFAULT_MAX_WORKSPACE_SIZE (8 * 1024 * 1024)
+#define CUMO_CUDA_CUDNN_DEFAULT_MAX_WORKSPACE_SIZE (128 * 1024 * 1024)
 
-// How much scratch cuDNN may use to pick a convolution algorithm. The fastest
-// half algorithms are the ones that need the most, so the default keeps every
-// dtype on the algorithms it has always used and CUMO_CUDNN_MAX_WORKSPACE_SIZE
-// raises the ceiling for whoever wants them.
+// How much scratch cuDNN may use to pick a convolution algorithm. The faster
+// algorithms are the ones that need the most, and the search leaves out
+// whatever does not fit. The search reserves the whole ceiling whatever the
+// convolution's size and hands it back to the pool afterwards, so the ceiling
+// costs a peak rather than a residency. CUMO_CUDNN_MAX_WORKSPACE_SIZE moves it.
 size_t
 cumo_cuda_cudnn_max_workspace_size();
 
