@@ -26,7 +26,7 @@ module Cumo::CUDA
       prev_id = Runtime.cudaGetDevice
       @_device_stack << prev_id
       begin
-        Runtime.cudaSetDevice(@id) unless prev_id != @id
+        Runtime.cudaSetDevice(@id) if prev_id != @id
         yield
       ensure
         prev_id = @_device_stack.pop

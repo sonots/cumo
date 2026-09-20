@@ -19,6 +19,39 @@ module Cumo::CUDA
       end
     end
 
+    # The switch used to happen only where there was nothing to switch to, so
+    # asking for another device left the block running on the one it started on.
+    def test_with_switches_to_another_device
+      count = Runtime.cudaGetDeviceCount
+      omit("needs a second device") if count < 2
+
+      Device.new(1).with do
+        assert { Device.new.id == 1 }
+      end
+      assert { Device.new.id == 0 }
+    end
+
+    # Where there is one device, a second one is what shows whether the switch
+    # is made at all: making it is what fails, and skipping it does not. The
+    # failure stays in the slot the next CUDA call reads, so it goes in a child.
+    def test_with_reports_a_device_that_is_not_there
+      lib = File.expand_path("../../lib", __dir__)
+      script = <<~RUBY
+        require "cumo/narray"
+        count = Cumo::CUDA::Runtime.cudaGetDeviceCount
+        begin
+          Cumo::CUDA::Device.new(count).with { print "ran:" }
+          print "no-error"
+        rescue Cumo::CUDA::RuntimeError
+          print "raised"
+        end
+        print ":back-on-\#{Cumo::CUDA::Runtime.cudaGetDevice}"
+      RUBY
+
+      out = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+      assert_equal("raised:back-on-0", out)
+    end
+
     def test_synchronize
       assert_nothing_raised { Device.new.synchronize }
     end
