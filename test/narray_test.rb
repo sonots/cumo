@@ -3949,6 +3949,37 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # A scan shorter than CUMO_CUM_MIN_KERNEL_SIZE runs on the host and a longer
+  # one on the device, and the lengths below cross that boundary. Only the
+  # nan-aware test reached the host side before, and only at one length.
+  test "cumsum and cumprod over short arrays and views" do
+    [1, 2, 3, 7, 8, 32, 255, 256, 257, 1023, 1024, 8191, 8192, 8193].each do |n|
+      adds = Array.new(n) { |i| (i % 3) + 1 }
+      slices = [
+        ["flat", (0...n).to_a, ->(v) { v }],
+        ["step 2", (0...n).step(2).to_a, ->(v) { v[(0...n).step(2)] }],
+        ["reversed", (n - 1).downto(0).to_a, ->(v) { v[(n - 1).step(0, -1)] }],
+      ]
+
+      [Cumo::Int32, Cumo::Int64, Cumo::DFloat, Cumo::SFloat, Cumo::DComplex].each do |klass|
+        a = klass.cast(adds)
+        slices.each do |label, idxs, slice|
+          want = running(idxs.map { |i| adds[i] }) { |x, y| x + y }
+          assert_equal(want, slice.call(a).cumsum.to_a, "#{klass} cumsum #{label} n=#{n}")
+        end
+      end
+    end
+
+    # cumprod needs values whose product stays exact, so it gets its own sizes
+    [1, 2, 3, 8, 17, 32].each do |n|
+      muls = Array.new(n) { |i| i.even? ? 2 : 0.5 }
+      want = running(muls) { |x, y| x * y }
+      [Cumo::DFloat, Cumo::SFloat].each do |klass|
+        assert_equal(want, klass.cast(muls).cumprod.to_a, "#{klass} cumprod n=#{n}")
+      end
+    end
+  end
+
   test "cumsum and cumprod along an axis" do
     rows = 6
     cols = 20_000
