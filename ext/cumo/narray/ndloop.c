@@ -1056,7 +1056,15 @@ cumo_ndfunc_set_user_indexer_loop(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         // in
         LARG(lp,0).ndim = lp->user.ndim;
         LARG(lp,0).shape = &(lp->n[lp->ndim]);
-        // out is constructed at cumo_na_make_reduction_arg from in and lp->reduce
+        // out is constructed at cumo_na_make_reduction_arg from in and lp->reduce,
+        // except for a cumulative function, whose output keeps the shape it was
+        // given and so is laid out like the input rather than like a reduction.
+        if (CUMO_NDF_TEST(nf,CUMO_NDF_CUM)) {
+            for (j=1; j<lp->narg; j++) {
+                LARG(lp,j).ndim = lp->user.ndim;
+                LARG(lp,j).shape = &(lp->n[lp->ndim]);
+            }
+        }
 
         lp->user.n = &(lp->n[lp->ndim]);
         for (j=0; j<lp->narg; j++) {

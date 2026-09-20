@@ -1,6 +1,8 @@
 <% unless type_name == 'robject' %>
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
-cudaError_t <%="cumo_#{type_name}_#{name}#{j}_kernel_launch"%>(char *p1, char *p2, ssize_t s1, ssize_t s2, uint64_t n);
+cudaError_t <%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
+        cumo_na_iarray_stridx_t* a_in, cumo_na_iarray_stridx_t* a_out,
+        cumo_na_indexer_t* indexer, uint64_t row_len, int flat_in, int flat_out);
 <% end %>
 <% end %>
 
@@ -12,17 +14,63 @@ static void
     char    *p1, *p2;
     ssize_t  s1, s2;
     dtype    x, y;
+  <% unless type_name == 'robject' %>
+    // Every row goes in one call, so a scan down a short axis costs no more
+    // launches than a scan down a long one. The rows the scan must not run
+    // across are the ones the reduction names.
+    cumo_na_iarray_stridx_t a_in = cumo_na_make_iarray_stridx(&lp->args[0]);
+    cumo_na_iarray_stridx_t a_out = cumo_na_make_iarray_stridx(&lp->args[1]);
+    cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
+    uint64_t row_len = 1;
+    int k, flat_in = 1, flat_out = 1, single_run;
+    ssize_t expect;
 
+    for (k = indexer.ndim - lp->reduce_dim; k < indexer.ndim; ++k) {
+        row_len *= (uint64_t)indexer.shape[k];
+    }
+    // The scan addresses its rows end to end, so anything laid out otherwise is
+    // copied into a buffer that is.
+    expect = sizeof(dtype);
+    for (k = indexer.ndim; --k >= 0;) {
+        if (!CUMO_SDX_IS_STRIDE(a_in.stridx[k]) || CUMO_SDX_GET_STRIDE(a_in.stridx[k]) != expect) { flat_in = 0; break; }
+        expect *= (ssize_t)indexer.shape[k];
+    }
+    expect = sizeof(dtype);
+    for (k = indexer.ndim; --k >= 0;) {
+        if (!CUMO_SDX_IS_STRIDE(a_out.stridx[k]) || CUMO_SDX_GET_STRIDE(a_out.stridx[k]) != expect) { flat_out = 0; break; }
+        expect *= (ssize_t)indexer.shape[k];
+    }
+
+    // A single short row is the one shape the host still wins: the scan costs
+    // less there than the launch it would take, and the wait it needs is paid
+    // once. Every other shape amortizes the launch over its rows.
+    //
+    // The loop below walks with one stride, so the elements have to lie on one.
+    // Holding the whole array in a single row is not enough for that: the axes
+    // before the last may still be there with an extent of one apiece, and a
+    // transposed or indexed view puts its elements somewhere else entirely.
+    single_run = (row_len < CUMO_CUM_MIN_KERNEL_SIZE) &&
+                 (row_len == indexer.total_size) && indexer.ndim > 0 &&
+                 CUMO_SDX_IS_STRIDE(a_in.stridx[indexer.ndim - 1]) &&
+                 CUMO_SDX_IS_STRIDE(a_out.stridx[indexer.ndim - 1]);
+    for (k = 0; single_run && k < indexer.ndim - 1; ++k) {
+        if (indexer.shape[k] != 1) { single_run = 0; }
+    }
+    if (single_run) {
+        i = (size_t)row_len;
+        p1 = a_in.ptr;
+        p2 = a_out.ptr;
+        s1 = CUMO_SDX_GET_STRIDE(a_in.stridx[indexer.ndim - 1]);
+        s2 = CUMO_SDX_GET_STRIDE(a_out.stridx[indexer.ndim - 1]);
+    } else {
+        cumo_cuda_runtime_check_status(<%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
+                &a_in, &a_out, &indexer, row_len, flat_in, flat_out));
+        return;
+    }
+  <% else %>
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR(lp, 0, p1, s1);
     CUMO_INIT_PTR(lp, 1, p2, s2);
-    //printf("i=%lu p1=%lx s1=%lu p2=%lx s2=%lu\n",i,(size_t)p1,s1,(size_t)p2,s2);
-
-  <% unless type_name == 'robject' %>
-    if (i >= CUMO_CUM_MIN_KERNEL_SIZE) {
-        cumo_cuda_runtime_check_status(<%="cumo_#{type_name}_#{name}#{j}_kernel_launch"%>(p1,p2,s1,s2,i));
-        return;
-    }
   <% end %>
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
@@ -53,12 +101,10 @@ static void
 <% else %>
     CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
     CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
-    //printf("i=%lu x=%f\n",i,x);
     for (i--; i--;) {
         CUMO_GET_DATA_STRIDE(p1,s1,dtype,y);
         m_<%=name%><%=j%>(x,y);
         CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
-        //printf("i=%lu x=%f\n",i,x);
     }
 <% end %>
 }
@@ -79,11 +125,21 @@ static VALUE
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM,
                      2, 1, ain, aout };
+  <% unless type_name == 'robject' %>
+    // The whole array reaches the iterator at once, which is what lets the scan
+    // take every row in one call.
+    ndf.flag = CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM;
+  <% end %>
 
   <% if is_float %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);
   <% else %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+  <% end %>
+  <% unless type_name == 'robject' %>
+    // or rather than assign: cumo_na_reduce_dimension may have set
+    // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
+    ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
   <% end %>
     return cumo_na_ndloop(&ndf, 2, self, reduce);
 }
