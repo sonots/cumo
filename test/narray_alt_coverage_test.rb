@@ -789,6 +789,49 @@ class NArrayAltCoverageTest < CumoTestBase
     end
   end
 
+  def test_marshal_dump_of_a_non_contiguous_robject_view
+    a = Cumo::RObject.cast(%i[a b c d e f g h])
+
+    [a[[6, 1, 4, 0]], a[(0...8).step(3)], a[[2, 2, 2]]].each do |v|
+      assert_not_predicate(v, :contiguous?)
+      assert_equal([1, [v.size], 0, v.to_a], v.marshal_dump)
+      assert_equal(v.to_a, Marshal.load(Marshal.dump(v)).to_a)
+    end
+  end
+
+  # A view that cannot be read in place is replaced by its dup, and dup is
+  # Ruby: rb_obj_class reads past a singleton class, so one defined on the
+  # object itself reaches the branch. The words are handed back as Ruby
+  # objects, so an answer of another shape, class or layout used to be read
+  # out of bounds or read from the wrong place.
+  data("shorter",   [->(a) { Cumo::RObject.cast(["only"]) },        Cumo::NArray::ShapeError])
+  data("longer",    [->(a) { a },                                   Cumo::NArray::ShapeError])
+  data("other type", [->(a) { Cumo::DFloat.cast([1.0] * 5) },       TypeError])
+  data("still a view", [->(a) { a[[1, 3, 5, 7, 9]] },               RuntimeError])
+  def test_marshal_dump_of_a_robject_view_whose_dup_answers_wrongly(data)
+    answer, error = data
+    a = Cumo::RObject.cast((0...64).map { |i| "obj#{i}" })
+    v = a[[0, 2, 4, 6, 8]]
+    replacement = answer.call(a)
+    v.define_singleton_method(:dup) { replacement }
+
+    assert_raise(error) { v.marshal_dump }
+  end
+
+  # to_binary replaces the receiver the same way, and the bytes go into a
+  # String the caller reads, so a dup reaching past its own buffer used to
+  # hand out whatever lay beyond it.
+  def test_to_binary_of_a_view_whose_dup_reaches_past_its_buffer
+    short = Cumo::DFloat.cast([7.5])
+    a = Cumo::DFloat.cast([1.0, 2.0, 3.0, 4.0])
+    v = a[[3, 2, 1, 0]]
+    big = short[Array.new(4096, 0)]
+    v.define_singleton_method(:dup) { big }
+
+    assert_raise(Cumo::NArray::ShapeError) { v.to_binary }
+    assert_raise(Cumo::NArray::ShapeError) { Marshal.dump(v) }
+  end
+
   def test_to_binary_of_a_bit_view_with_an_offset
     bits = Array.new(200) { |i| (i * 7 % 5).zero? ? 1 : 0 }
     a = Cumo::Bit.cast(bits)
