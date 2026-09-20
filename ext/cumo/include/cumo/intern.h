@@ -37,6 +37,7 @@ int cumo_na_last_dim_with_elements(const cumo_narray_t *na, int start_dim);
 VALUE cumo_na_check_ladder(VALUE self, int start_dim);
 void cumo_na_set_newaxis_strides(cumo_narray_view_t *na2, const int *newaxis, int n_newaxis, int ndim, ssize_t elmsz);
 VALUE cumo_na_check_contiguous(VALUE self);
+void cumo_na_check_dup_class(VALUE a, VALUE b);
 VALUE cumo_na_as_contiguous_array(VALUE a);
 
 VALUE cumo_na_flatten_dim(VALUE self, int sd);

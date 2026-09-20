@@ -517,15 +517,37 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
 static VALUE
 cumo_na_reshape(int argc, VALUE *argv, VALUE self)
 {
-    size_t *shape;
+    int i;
+    size_t *shape, total;
     cumo_narray_t *na;
     VALUE    copy, tmp;
 
     shape = RB_ALLOCV_N(size_t, tmp, argc);
     cumo_na_check_reshape(argc, argv, self, shape);
 
+    // dup runs Ruby and is free to answer anything, and the shape checked above
+    // is written straight over the answer. So the count is taken from the
+    // answer rather than from the receiver, which the same Ruby may have left
+    // holding something else, and only an array with its own data has a shape
+    // that can be rewritten without the strides beside it.
     copy = rb_funcall(self, rb_intern("dup"), 0);
+    cumo_na_check_dup_class(self, copy);
+    // reshape! refuses to write to a frozen array, and the write below is the
+    // same one.
+    if (OBJ_FROZEN(copy)) {
+        rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
+    }
     CumoGetNArray(copy, na);
+    if (CUMO_NA_TYPE(na) != CUMO_NARRAY_DATA_T) {
+        rb_raise(rb_eRuntimeError, "dup did not answer an array holding its own data");
+    }
+    for (i=0, total=1; i<argc; ++i) {
+        total *= shape[i];
+    }
+    if (CUMO_NA_SIZE(na) != total) {
+        rb_raise(cumo_na_eShapeError,
+                 "dup did not answer an array of %"SZF"u elements", total);
+    }
     cumo_na_setup_shape(na, argc, shape);
     RB_ALLOCV_END(tmp);
     return copy;
