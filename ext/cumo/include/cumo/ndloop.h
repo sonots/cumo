@@ -56,10 +56,12 @@ typedef struct {
 // ndloop would lose the shape anyway. cumo_na_reduce_empty builds it.
 #define CUMO_NDF_EMPTY_IDENTITY      (1<<11)
 
-// Cumo custom. Set by cumo_na_reduce_options when the call named axes, by an
-// argument or by the axis keyword. A reduction that answers an array for named
-// axes and a plain value otherwise reads this, since the number of arguments
-// counts a keyword that only restates a default.
+// Cumo custom. Set by cumo_na_reduce_options when an argument or the axis
+// keyword named at least one axis. A reduction that answers an array for named
+// axes and a plain value otherwise reads this. Neither the number of arguments
+// nor the presence of the keyword says as much: one counts a keyword that only
+// restates a default, and the other is given for an empty list that names
+// nothing.
 #define CUMO_NDF_AXES_NAMED          (1<<12)
 
 #define CUMO_FULL_LOOP       (CUMO_NDF_HAS_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP|CUMO_NDF_INPLACE)

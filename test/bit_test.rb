@@ -233,6 +233,26 @@ class BitTest < Test::Unit::TestCase
     assert { v.count_true == 0 }
   end
 
+  # An empty list names no axis. Numo reduces every axis for one, which is what
+  # cumo does too; numpy reads an empty tuple the other way and reduces none.
+  test "an empty axis list answers what naming no axis answers" do
+    a = Cumo::Bit[1, 1, 0]
+    b = Cumo::Bit[[1, 1], [1, 0]]
+
+    assert_equal(false, a.all?(axis: []))
+    assert_equal(true,  a.any?(axis: []))
+    assert_equal(false, a.none?(axis: []))
+    assert_equal(false, b.all?(axis: []))
+
+    # keepdims leaves an axis to index, so this one still answers an array.
+    assert_equal([0], a.all?(axis: [], keepdims: true).to_a)
+
+    e = Cumo::Bit.new(0, 3)
+    assert_equal(true, e.all?(axis: []))
+    assert_equal(false, e.any?(axis: []))
+    assert_equal([[1]], e.all?(axis: [], keepdims: true).to_a)
+  end
+
   test "a reduction over an empty Bit reserves nothing where it answers a value" do
     omit("needs the memory pool to count with") unless Cumo::CUDA::MemoryPool.enabled?
     e = Cumo::Bit.new(0, 3)
@@ -248,6 +268,7 @@ class BitTest < Test::Unit::TestCase
     assert_equal(0, grew.call(-> { e.all? }), "all?")
     assert_equal(0, grew.call(-> { e.any? }), "any?")
     assert_equal(0, grew.call(-> { e.none? }), "none?")
+    assert_equal(0, grew.call(-> { e.all?(axis: []) }), "all? axis []")
 
     # These answer an array, so one has to be made whatever it holds.
     assert_operator(grew.call(-> { e.all?(axis: 0) }), :>, 0, "all? axis 0")

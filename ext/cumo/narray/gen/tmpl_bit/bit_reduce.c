@@ -14,8 +14,9 @@ static void
 <% when /^all/ %>
   Return true if all of bits are one (true).
 <% end %>
-  Reduced whole with no argument, answer true or false. Named axes, or a
-  [:sum, true] mark on the receiver, answer the Bit they reduced to.
+  Reduced whole with no argument, answer true or false. An axis named by an
+  argument or the axis keyword, or a [:sum, true] mark on the receiver, answers
+  the Bit it reduced to. An empty list names no axis.
   @overload <%=op_map%>(axis:nil, keepdims:false)
   @param [Integer,Array,Range] axis (keyword) axes to be reduced.
   @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
@@ -52,9 +53,7 @@ static VALUE
     } else {
         v = cumo_na_ndloop(&ndf, 2, self, reduce);
     }
-    // Named axes ask for an array, and so does anything the reduction left. The
-    // question used to be put to the number of arguments, which counts a
-    // keyword that only restates a default.
+    // An axis named asks for an array, and so does anything the reduction left.
     CumoGetNArray(v,na);
     if (CUMO_NDF_TEST(&ndf, CUMO_NDF_AXES_NAMED) || na->ndim > 0) {
         return v;

@@ -2191,10 +2191,14 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
 
     if (NIL_P(axes)) return reduce;
 
-    if (ndf) {
+    // Asked of the reduction the list turned into, rather than of the list: a
+    // list that names an axis sets that axis's bit, so a reduction of none of
+    // them came from a list that named none.
+    reduce = cumo_na_get_reduce_flag_from_axes(naryv[max_arg], axes);
+    if (ndf && reduce != INT2FIX(0)) {
         ndf->flag |= CUMO_NDF_AXES_NAMED;
     }
-    return cumo_na_get_reduce_flag_from_axes(naryv[max_arg], axes);
+    return reduce;
 }
 
 
