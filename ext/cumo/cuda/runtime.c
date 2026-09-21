@@ -1,10 +1,12 @@
 #include <ruby.h>
+#include <string.h>
 #include <assert.h>
 #include <cuda_runtime.h>
 #include "cumo/cuda/runtime.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/template_kernel.h"
 #include "cumo/cuda/handle.h"
+#include "cumo/intern.h"
 
 VALUE cumo_cuda_eRuntimeError;
 VALUE cumo_cuda_mRuntime;
@@ -16,6 +18,8 @@ static cumo_cuda_handle_set_t events;
 // How many threads have each stream current, so that none of them can
 // destroy a stream another is launching on. The value is the count.
 static cumo_cuda_handle_set_t in_use;
+// Pinned host buffers this process allocated, each with its size as the value.
+static cumo_cuda_handle_set_t pinned;
 
 static void
 in_use_add(cudaStream_t stream, long delta)
@@ -512,6 +516,203 @@ rb_current_stream_set(VALUE self, VALUE stream)
     return stream;
 }
 
+static char*
+pinned_get(VALUE v, size_t *size)
+{
+    size_t handle = NUM2SIZET(v);
+    st_data_t n = 0;
+    int found;
+    rb_nativethread_lock_lock(&pinned.lock);
+    found = st_lookup(pinned.table, (st_data_t)handle, &n);
+    rb_nativethread_lock_unlock(&pinned.lock);
+    if (!found) {
+        rb_raise(rb_eArgError, "not a live pinned host buffer");
+    }
+    if (size) { *size = (size_t)n; }
+    return (char*)handle;
+}
+
+/*
+  Allocates page-locked host memory, which a copy to or from the device can
+  be asynchronous with.
+
+  @param [Integer] bytes
+  @param [Integer] flags CUDA_HOST_ALLOC_DEFAULT, PORTABLE, MAPPED and WRITE_COMBINED, or'ed
+  @return [Integer] the buffer handle
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaHostAlloc(VALUE self, VALUE bytes, VALUE flags)
+{
+    size_t _bytes = NUM2SIZET(bytes);
+    void *ptr = NULL;
+    if (_bytes == 0) {
+        rb_raise(rb_eArgError, "a pinned host buffer has at least one byte");
+    }
+    cumo_cuda_runtime_check_status(cudaHostAlloc(&ptr, _bytes, NUM2UINT(flags)));
+    rb_nativethread_lock_lock(&pinned.lock);
+    st_insert(pinned.table, (st_data_t)ptr, (st_data_t)_bytes);
+    rb_nativethread_lock_unlock(&pinned.lock);
+    return SIZET2NUM((size_t)ptr);
+}
+
+/*
+  Frees a pinned host buffer.
+
+  @param [Integer] buffer
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaFreeHost(VALUE self, VALUE buffer)
+{
+    size_t handle = NUM2SIZET(buffer);
+    st_data_t key = (st_data_t)handle;
+    int found;
+    rb_nativethread_lock_lock(&pinned.lock);
+    found = st_delete(pinned.table, &key, 0);
+    rb_nativethread_lock_unlock(&pinned.lock);
+    if (!found) {
+        rb_raise(rb_eArgError, "not a live pinned host buffer");
+    }
+    cumo_cuda_runtime_check_status(cudaFreeHost((void*)handle));
+    return Qnil;
+}
+
+/*
+  Returns the size of a pinned host buffer in bytes.
+
+  @param [Integer] buffer
+  @return [Integer]
+ */
+static VALUE
+rb_pinned_size(VALUE self, VALUE buffer)
+{
+    size_t size;
+    pinned_get(buffer, &size);
+    return SIZET2NUM(size);
+}
+
+static void
+pinned_range(size_t size, size_t offset, size_t len)
+{
+    if (offset > size || len > size - offset) {
+        rb_raise(rb_eRangeError, "%"PRIuSIZE" bytes at %"PRIuSIZE" do not fit in a pinned host buffer of %"PRIuSIZE, len, offset, size);
+    }
+}
+
+/*
+  Reads bytes out of a pinned host buffer.
+
+  @param [Integer] buffer
+  @param [Integer] offset
+  @param [Integer] length
+  @return [String]
+ */
+static VALUE
+rb_pinned_read(VALUE self, VALUE buffer, VALUE offset, VALUE length)
+{
+    size_t size, off = NUM2SIZET(offset), len = NUM2SIZET(length);
+    char *ptr = pinned_get(buffer, &size);
+    pinned_range(size, off, len);
+    return rb_str_new(ptr + off, (long)len);
+}
+
+/*
+  Writes a String into a pinned host buffer.
+
+  @param [Integer] buffer
+  @param [Integer] offset
+  @param [String] bytes
+  @return [Integer] the number of bytes written
+ */
+static VALUE
+rb_pinned_write(VALUE self, VALUE buffer, VALUE offset, VALUE bytes)
+{
+    size_t size, off = NUM2SIZET(offset), len;
+    char *ptr;
+    StringValue(bytes);
+    ptr = pinned_get(buffer, &size);
+    len = (size_t)RSTRING_LEN(bytes);
+    pinned_range(size, off, len);
+    memcpy(ptr + off, RSTRING_PTR(bytes), len);
+    RB_GC_GUARD(bytes);
+    return SIZET2NUM(len);
+}
+
+static void
+pinned_narray_check(VALUE narray, size_t bytes)
+{
+    cumo_narray_t *na;
+    if (!rb_obj_is_kind_of(narray, cumo_cNArray)) {
+        rb_raise(rb_eTypeError, "an NArray is needed, got a %s", rb_obj_classname(narray));
+    }
+    if (rb_obj_is_kind_of(narray, cumo_cBit) || rb_obj_is_kind_of(narray, cumo_cRObject)) {
+        rb_raise(rb_eTypeError, "a %s cannot be copied to or from a pinned host buffer", rb_obj_classname(narray));
+    }
+    if (cumo_na_check_contiguous(narray) != Qtrue) {
+        rb_raise(rb_eArgError, "the NArray is not contiguous");
+    }
+    CumoGetNArray(narray, na);
+    if (CUMO_NA_SIZE(na) * (size_t)cumo_na_element_stride(narray) != bytes) {
+        rb_raise(rb_eArgError, "the NArray holds %"PRIuSIZE" bytes where the pinned host buffer holds %"PRIuSIZE,
+                 CUMO_NA_SIZE(na) * (size_t)cumo_na_element_stride(narray), bytes);
+    }
+}
+
+// Taking the pointer can run allocate, which is Ruby, so the array is
+// measured again after it.
+static char*
+pinned_narray_pointer(VALUE narray, size_t bytes, int write)
+{
+    char *ptr;
+    pinned_narray_check(narray, bytes);
+    ptr = write ? cumo_na_get_offset_pointer_for_write(narray) : cumo_na_get_offset_pointer_for_read(narray);
+    pinned_narray_check(narray, bytes);
+    return ptr;
+}
+
+static cudaStream_t
+stream_or_current(VALUE stream)
+{
+    return NIL_P(stream) ? cumo_cuda_stream() : cumo_cuda_stream_get(stream);
+}
+
+/*
+  Copies a pinned host buffer into an NArray, asynchronously on a stream.
+
+  @param [Integer] buffer
+  @param [Cumo::NArray] narray contiguous, and of the buffer's size
+  @param [Integer, nil] stream nil for the current stream
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_memcpy_pinned_to_narray(VALUE self, VALUE buffer, VALUE narray, VALUE stream)
+{
+    size_t size;
+    char *src = pinned_get(buffer, &size);
+    char *dst = pinned_narray_pointer(narray, size, 1);
+    cumo_cuda_runtime_check_status(cudaMemcpyAsync(dst, src, size, cudaMemcpyHostToDevice, stream_or_current(stream)));
+    return Qnil;
+}
+
+/*
+  Copies an NArray into a pinned host buffer, asynchronously on a stream.
+
+  @param [Cumo::NArray] narray contiguous, and of the buffer's size
+  @param [Integer] buffer
+  @param [Integer, nil] stream nil for the current stream
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_memcpy_narray_to_pinned(VALUE self, VALUE narray, VALUE buffer, VALUE stream)
+{
+    size_t size;
+    char *dst = pinned_get(buffer, &size);
+    char *src = pinned_narray_pointer(narray, size, 0);
+    cumo_cuda_runtime_check_status(cudaMemcpyAsync(dst, src, size, cudaMemcpyDeviceToHost, stream_or_current(stream)));
+    return Qnil;
+}
+
 /*
   Wait for compute device to finish.
 
@@ -562,5 +763,17 @@ Init_cumo_cuda_runtime()
     rb_define_const(mRuntime, "CUDA_EVENT_DISABLE_TIMING", UINT2NUM(cudaEventDisableTiming));
     cumo_cuda_handle_set_init(&streams);
     cumo_cuda_handle_set_init(&events);
+    rb_define_singleton_method(mRuntime, "cudaHostAlloc", rb_cudaHostAlloc, 2);
+    rb_define_singleton_method(mRuntime, "cudaFreeHost", rb_cudaFreeHost, 1);
+    rb_define_singleton_method(mRuntime, "pinned_size", rb_pinned_size, 1);
+    rb_define_singleton_method(mRuntime, "pinned_read", rb_pinned_read, 3);
+    rb_define_singleton_method(mRuntime, "pinned_write", rb_pinned_write, 3);
+    rb_define_singleton_method(mRuntime, "memcpy_pinned_to_narray", rb_memcpy_pinned_to_narray, 3);
+    rb_define_singleton_method(mRuntime, "memcpy_narray_to_pinned", rb_memcpy_narray_to_pinned, 3);
+    rb_define_const(mRuntime, "CUDA_HOST_ALLOC_DEFAULT", UINT2NUM(cudaHostAllocDefault));
+    rb_define_const(mRuntime, "CUDA_HOST_ALLOC_PORTABLE", UINT2NUM(cudaHostAllocPortable));
+    rb_define_const(mRuntime, "CUDA_HOST_ALLOC_MAPPED", UINT2NUM(cudaHostAllocMapped));
+    rb_define_const(mRuntime, "CUDA_HOST_ALLOC_WRITE_COMBINED", UINT2NUM(cudaHostAllocWriteCombined));
     cumo_cuda_handle_set_init(&in_use);
+    cumo_cuda_handle_set_init(&pinned);
 }
