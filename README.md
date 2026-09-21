@@ -762,6 +762,35 @@ Cumo::NMath.cos(Cumo::SFloat[79872])   #=> 0.989012598991394
 Not every integer past 256 is lost, which is what makes this one hard to catch by sampling: `Cumo::BFloat[1000]` is exact, since 1000 is a multiple of 8.
 What ends at 256 is that consecutive integers stay distinct.
 
+### Launching Your Own Kernel
+
+A kernel written in CUDA C can be compiled with NVRTC and launched on the arrays.
+It runs on the stream Cumo's own kernels use, so it sees the results of the operations issued before it and the operations after it see its.
+
+```ruby
+source = <<~CUDA
+  extern "C" __global__ void axpy(float* y, const float* x, float a, int n) {
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
+      y[i] = a * x[i] + y[i];
+    }
+  }
+CUDA
+mod = Cumo::CUDA::Compiler.new.compile_with_cache(source)
+axpy = mod.get_function("axpy")
+
+x = Cumo::SFloat.new(1000).seq
+y = Cumo::SFloat.ones(1000)
+axpy.launch([y, x, [2.5].pack("f"), [1000].pack("l")], grid: 4, block: 256)
+```
+
+An NArray argument hands over its device pointer, so it has to be contiguous.
+An Integer is passed as a `long long` and a Float as a `double`.
+Anything narrower, and a struct passed by value, goes as the packed bytes of a String: `[n].pack("l")` is an `int` and `[x].pack("f")` a `float`.
+`grid` and `block` take one to three sizes each, and `shared_mem:` is the dynamic shared memory in bytes.
+The kernel is asked for by the name in the source, so it is declared inside `extern "C"`, or asked for by its mangled name.
+On CUDA 12.4 or later the count and the size of the arguments are checked against the kernel before the launch, so an Integer handed to an `int` is refused rather than read wrong.
+A kernel may write any NArray it is handed, so a frozen one is refused, and one that has not been allocated yet is allocated on the way and holds whatever was there.
+
 ### Select a GPU device ID
 
 Set the `CUDA_VISIBLE_DEVICES=id` environment variable, or
