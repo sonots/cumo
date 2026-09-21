@@ -4,8 +4,17 @@
   # and float for the half types, which accumulate in it. The compute type
   # follows the precision; a dtype that needs another rule needs another line
   # here, and one without a cuBLAS data type is stopped here rather than in C.
+  # The half types are on the tensor cores already, so only single precision
+  # inputs have a TF32 to opt into.
   raise "gemm needs cublas_dtype for #{type_name}" if get(:cublas_dtype).to_s.empty?
-  cublas_compute = is_double_precision ? 'CUBLAS_COMPUTE_64F' : 'CUBLAS_COMPUTE_32F'
+  cublas_compute =
+    if is_double_precision
+      'CUBLAS_COMPUTE_64F'
+    elsif %w[CUDA_R_32F CUDA_C_32F].include?(cublas_dtype)
+      '(cumo_allow_tf32_p() ? CUBLAS_COMPUTE_32F_FAST_TF32 : CUBLAS_COMPUTE_32F)'
+    else
+      'CUBLAS_COMPUTE_32F'
+    end
   scalar_t = acc_type.empty? ? 'dtype' : acc_type
   num_to_scalar = acc_type.empty? ? 'm_num_to_data' : "(#{acc_type})NUM2DBL"
   scalar_one = acc_one

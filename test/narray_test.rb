@@ -3968,6 +3968,43 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # A TF32 answer is about 1e-4 from the truth where a single precision one
+  # is within 1e-6. The reference does not go through cuBLAS.
+  GEMM_TF32_ERROR = <<~'RUBY'
+    require "cumo/narray"
+    n = 512
+    a = Cumo::DFloat.new(n, n).rand(-1, 1)
+    b = Cumo::DFloat.new(n, n).rand(-1, 1)
+    ref = Cumo::DComplex.cast(a[true, true, :new].mulsum(b[:new, true, true], axis: 1))
+    puts [Cumo::SFloat, Cumo::SComplex, Cumo::DFloat].map { |dt|
+      c = Cumo::DComplex.cast(dt.cast(a).gemm(dt.cast(b)))
+      "#{dt.name.split('::').last}=#{(c - ref).abs.max.to_f / ref.abs.max.to_f}"
+    }.join(" ")
+  RUBY
+
+  # NVIDIA_TF32_OVERRIDE=0 in the developer's shell would keep cuBLAS off the
+  # tensor cores whatever the flag says.
+  def gemm_errors(allow_tf32)
+    env = { "CUMO_ALLOW_TF32" => (allow_tf32 ? "1" : nil), "NVIDIA_TF32_OVERRIDE" => nil }
+    out = run_child(GEMM_TF32_ERROR, env: env)
+    out.scan(/(\w+)=(\S+)/).to_h { |k, v| [k, Float(v)] }
+  end
+
+  test "gemm keeps single precision unless CUMO_ALLOW_TF32 puts it on the tensor cores" do
+    off = gemm_errors(false)
+    assert_operator off["SFloat"], :<, 1e-5
+    assert_operator off["SComplex"], :<, 1e-5
+    assert_operator off["DFloat"], :<, 1e-12
+
+    omit("tensor cores with TF32 start at compute capability 8.0") if Cumo::CUDA::Device.new.compute_capability.to_i < 80
+    on = gemm_errors(true)
+    assert_operator on["SFloat"], :>, 1e-4
+    assert_operator on["SFloat"], :<, 1e-2
+    assert_operator on["SComplex"], :>, 1e-4
+    assert_operator on["SComplex"], :<, 1e-2
+    assert_operator on["DFloat"], :<, 1e-12
+  end
+
   # ndloop zeroed every dimension of an empty loop, so (0, 3) came back (0, 0)
   # from anything that went through it, while a view kept the shape.
   test "an empty array keeps its shape through ndloop" do
