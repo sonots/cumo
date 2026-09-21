@@ -3949,6 +3949,25 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # cuBLAS reads gemm's alpha and beta in the compute type, so for the complex
+  # types they are complex. A real-valued Complex(3) cannot tell that apart
+  # from a scalar read as a float; an imaginary part can.
+  test "gemm takes a complex alpha and beta for the complex types" do
+    [Cumo::SComplex, Cumo::DComplex].each do |dtype|
+      a = dtype[[1, 2], [3, 4]] + dtype[[1, 0], [0, 1]] * Complex(0, 1)
+      b = dtype[[2, 0], [1, 1]]
+      c0 = dtype[[1, 1], [1, 1]]
+      alpha = Complex(2, 1)
+      beta = Complex(0, 3)
+      aa = a.to_a.map { |row| row.map { |x| Complex(x) } }
+      bb = b.to_a
+      cc = c0.to_a
+      want = (0..1).map { |i| (0..1).map { |j| alpha * (0..1).sum { |k| aa[i][k] * bb[k][j] } + beta * Complex(cc[i][j]) } }
+      got = a.gemm(b, c0, alpha: alpha, beta: beta).to_a
+      assert_equal(want, got, dtype.to_s)
+    end
+  end
+
   # ndloop zeroed every dimension of an empty loop, so (0, 3) came back (0, 0)
   # from anything that went through it, while a view kept the shape.
   test "an empty array keeps its shape through ndloop" do

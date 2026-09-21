@@ -24,9 +24,7 @@ set to_acc:              ""
 set from_acc:            ""
 set acc_zero:            "m_zero"
 set acc_one:             "m_one"
-set cublas_dtype:        ""
-set cublas_prefix:        "D"
-set cutype:              "double"
+set cublas_dtype:        "CUDA_R_64F"
 set step_down:           ""
 set need_align:          true
 
