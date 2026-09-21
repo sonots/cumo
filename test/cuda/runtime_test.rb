@@ -49,5 +49,26 @@ module Cumo::CUDA
     def test_cudaDeviceSynchronize
       assert_nothing_raised { Runtime.cudaDeviceSynchronize }
     end
+
+    # A device never has peer access to itself, and a device that is not
+    # there is reported rather than answered. A report must not be left as
+    # the last error for the next kernel launch to find.
+    def test_cudaDeviceCanAccessPeer
+      n = Runtime.cudaGetDeviceCount
+      n.times do |d|
+        assert_equal(0, Runtime.cudaDeviceCanAccessPeer(d, d))
+        n.times { |p| assert_include([0, 1], Runtime.cudaDeviceCanAccessPeer(d, p)) if p != d }
+      end
+      assert_raise(Cumo::CUDA::RuntimeError) { Runtime.cudaDeviceCanAccessPeer(0, n) }
+      assert_raise(Cumo::CUDA::RuntimeError) { Runtime.cudaDeviceCanAccessPeer(n, 0) }
+      assert_raise(TypeError) { Runtime.cudaDeviceCanAccessPeer(0, nil) }
+      assert_equal(6.0, Cumo::SFloat.new(4).seq.sum.to_f)
+    end
+
+    def test_a_failed_call_does_not_fail_the_next_launch
+      n = Runtime.cudaGetDeviceCount
+      assert_raise(Cumo::CUDA::RuntimeError) { Runtime.cudaSetDevice(n) }
+      assert_equal(6.0, Cumo::SFloat.new(4).seq.sum.to_f)
+    end
   end
 end

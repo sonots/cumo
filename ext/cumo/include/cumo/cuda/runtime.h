@@ -20,10 +20,14 @@ extern VALUE cumo_cuda_eRuntimeError;
 // advances it, and a count that is behind costs a wait rather than correctness.
 extern uint64_t cumo_cuda_sync_epoch;
 
+// A failure stays as the runtime's last error until something reads it,
+// and the next kernel launch would read it as its own, so it is cleared
+// before it is raised.
 static inline void
 cumo_cuda_runtime_check_status(cudaError_t status)
 {
     if (status != 0) {
+        cudaGetLastError();
         rb_raise(cumo_cuda_eRuntimeError, "%s (error=%d)", cudaGetErrorString(status), status);
     }
 }

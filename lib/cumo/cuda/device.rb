@@ -43,5 +43,12 @@ module Cumo::CUDA
       minor = Runtime.cudaDeviceGetAttributes(76, @id)
       "#{major}#{minor}"
     end
+
+    # Whether this device can directly access the memory of another.
+    def can_access_peer?(peer)
+      peer = peer.id if peer.is_a?(Device)
+      raise TypeError, "a peer is a device id or a Device, not a #{peer.class}" unless peer.is_a?(Integer)
+      Runtime.cudaDeviceCanAccessPeer(@id, peer) != 0
+    end
   end
 end
