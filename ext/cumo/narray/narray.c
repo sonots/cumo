@@ -2112,25 +2112,49 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
 }
 
 
-// The array a reduction over an array with no elements answers, empty of the
-// axes it keeps. ndloop cannot be asked for it: it zeroes every dimension of an
-// empty loop, so the length of the axes that survive is lost. The values are
-// the caller's to write, since only it knows what it reduces to.
-VALUE
-cumo_na_reduce_empty(VALUE self, VALUE reduce, VALUE klass, int keepdims)
+// The shape a reduction leaves, written into shape when one is given. ndloop
+// cannot be asked for it where the array has no elements: it zeroes every
+// dimension of an empty loop, so the length of the axes that survive is lost.
+static int
+cumo_na_reduced_shape(VALUE self, VALUE reduce, int keepdims, size_t *shape)
 {
     cumo_narray_t *na;
-    size_t shape[CUMO_NA_MAX_DIMENSION];
     int i, ndim = 0;
+    size_t n;
 
     CumoGetNArray(self,na);
     for (i=0; i<na->ndim; i++) {
         if (cumo_na_test_reduce(reduce,i)) {
-            if (keepdims) shape[ndim++] = 1;
+            if (!keepdims) continue;
+            n = 1;
         } else {
-            shape[ndim++] = na->shape[i];
+            n = na->shape[i];
         }
+        if (shape) shape[ndim] = n;
+        ndim++;
     }
+    return ndim;
+}
+
+
+// How many dimensions the reduction leaves. A caller that answers a plain value
+// where nothing is left asks this before building an array it would only read
+// one number back out of.
+int
+cumo_na_reduce_ndim(VALUE self, VALUE reduce, int keepdims)
+{
+    return cumo_na_reduced_shape(self, reduce, keepdims, NULL);
+}
+
+
+// The array a reduction over an array with no elements answers. The values are
+// the caller's to write, since only it knows what it reduces to.
+VALUE
+cumo_na_reduce_empty(VALUE self, VALUE reduce, VALUE klass, int keepdims)
+{
+    size_t shape[CUMO_NA_MAX_DIMENSION];
+    int ndim = cumo_na_reduced_shape(self, reduce, keepdims, shape);
+
     return cumo_na_new(klass, ndim, shape);
 }
 
