@@ -609,7 +609,6 @@ ndloop_init_args(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
     int *dim_map;
     int max_nd = lp->ndim + lp->user.ndim;
     int flag;
-    size_t s;
 
 /*
 na->shape[i] == lp->n[ dim_map[i] ]
@@ -653,15 +652,6 @@ na->shape[i] == lp->n[ dim_map[i] ]
             for (i=0; i<=max_nd; i++) {
                 LITER(lp,i,j).step = 1;
             }
-        }
-    }
-    // check whether # of element is zero
-    for (s=1,i=0; i<=max_nd; i++) {
-        s *= lp->n[i];
-    }
-    if (s==0) {
-        for (i=0; i<=max_nd; i++) {
-            lp->n[i] = 0;
         }
     }
 }
@@ -1799,6 +1789,19 @@ ndloop_run(VALUE vlp)
 
 // ---------------------------------------------------------------------------
 
+// A zero in any dimension, not only the first, leaves nothing to visit.
+static int
+ndloop_is_empty(cumo_na_md_loop_t *lp)
+{
+    int i, n = lp->ndim + lp->user.ndim;
+
+    for (i=0; i<n; i++) {
+        if (lp->n[i] == 0) return 1;
+    }
+    return 0;
+}
+
+
 static void
 loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
@@ -1808,6 +1811,9 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 
     if (nd<0) {
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
+    }
+    if (ndloop_is_empty(lp)) {
+        return;
     }
 
     // One wait settles every index array the loop below reads, so the loop
@@ -2027,11 +2033,9 @@ loop_inspect(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     //opt = *(VALUE*)(lp->user.opt_ptr);
     opt = lp->user.option;
 
-    for (i=0; i<nd; i++) {
-        if (lp->n[i] == 0) {
-            rb_str_cat(buf,"[]",2);
-            return;
-        }
+    if (ndloop_is_empty(lp)) {
+        rb_str_cat(buf,"[]",2);
+        return;
     }
 
     rb_str_cat(buf,"\n",1);
@@ -2213,6 +2217,10 @@ loop_store_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     VALUE  *a;
     int nd = lp->ndim;
 
+    if (ndloop_is_empty(lp)) {
+        return;
+    }
+
     ndloop_sync_md_index(lp);
 
     // counter
@@ -2389,7 +2397,7 @@ static void
 loop_narray_to_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
     size_t *c;
-    int i;
+    int i, zd;
     //int nargs = nf->narg + nf->nres;
     int nd = lp->ndim;
     VALUE *a;
@@ -2406,9 +2414,14 @@ loop_narray_to_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     a = ALLOCA_N(VALUE, nd+1);
     a[0] = a0 = lp->loop_opt;
 
+    // The first loop dimension of zero, or nd. Nothing lies inside it, so no
+    // array is nested past it and no row is read; the iterator reads a row of
+    // its own dimension's length, which is zero only when that is the zero.
+    for (zd=0; zd<nd && lp->n[zd]!=0; zd++) ;
+
     // loop body
     for (i=0;;) {
-        for (; i<nd; i++) {
+        for (; i<nd && i<=zd; i++) {
             if (LITER(lp,i,0).idx) {
                 LITER(lp,i+1,0).pos = LITER(lp,i,0).pos + LITER(lp,i,0).idx[c[i]];
             } else {
@@ -2420,9 +2433,11 @@ loop_narray_to_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
             }
         }
 
-        //lp->user.info = a[i];
-        LARG(lp,1).value = a[i];
-        (*(nf->func))(&(lp->user));
+        if (zd == nd) {
+            //lp->user.info = a[i];
+            LARG(lp,1).value = a[i];
+            (*(nf->func))(&(lp->user));
+        }
 
         for (;;) {
             if (i<=0) goto loop_end;
@@ -2470,7 +2485,7 @@ loop_narray_with_index(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     if (nd < 0) {
         rb_bug("bug? lp->ndim = %d\n", lp->ndim);
     }
-    if (lp->n[0] == 0) { // empty array
+    if (ndloop_is_empty(lp)) {
         return;
     }
 

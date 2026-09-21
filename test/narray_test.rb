@@ -3949,6 +3949,51 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # ndloop zeroed every dimension of an empty loop, so (0, 3) came back (0, 0)
+  # from anything that went through it, while a view kept the shape.
+  test "an empty array keeps its shape through ndloop" do
+    [Cumo::Int32, Cumo::DFloat, Cumo::Bit].each do |dtype|
+      [[0, 3], [3, 0], [2, 0, 3], [0, 0], [0, 3, 4]].each do |shape|
+        a = dtype.new(*shape)
+        label = "#{dtype} #{shape.inspect}"
+        assert_equal(shape, a.copy.shape, "#{label} copy")
+        assert_equal(shape, a.eq(a).shape, "#{label} eq")
+        assert_equal(shape.reverse, a.transpose.copy.shape, "#{label} transpose copy")
+        assert_equal(shape, Cumo::DFloat.cast(a).shape, "#{label} cast")
+        assert_equal(shape, (a + 1).shape, "#{label} plus") unless dtype == Cumo::Bit
+      end
+    end
+  end
+
+  # The zeroing also kept every host loop off an empty buffer. What reads one
+  # now is a segmentation fault, so a child takes these; to_a nests the way
+  # numpy's tolist does.
+  test "an empty array is left alone by every host loop" do
+    script = <<~'RUBY'
+      require "cumo/narray"
+      out = []
+      [[0, 3], [2, 0, 3], [3, 0], [0], [0, 3, 4], [2, 0, 3, 4]].each do |shape|
+        a = Cumo::Int32.new(*shape)
+        out << a.to_a
+        out << a.inspect.include?("(empty)")
+        out << Cumo::Int32.new(*shape).store(a.to_a).shape
+        out << a.map_with_index { |x, *| x }.shape
+        out << (Cumo::RObject.new(*shape) + 1).shape
+        out << a.each_with_index { }.class
+      end
+      print out.inspect
+    RUBY
+    want = [
+      [[],           true, [0, 3],       [0, 3],       [0, 3],       Cumo::Int32],
+      [[[], []],     true, [2, 0, 3],    [2, 0, 3],    [2, 0, 3],    Cumo::Int32],
+      [[[], [], []], true, [3, 0],       [3, 0],       [3, 0],       Cumo::Int32],
+      [[],           true, [0],          [0],          [0],          Cumo::Int32],
+      [[],           true, [0, 3, 4],    [0, 3, 4],    [0, 3, 4],    Cumo::Int32],
+      [[[], []],     true, [2, 0, 3, 4], [2, 0, 3, 4], [2, 0, 3, 4], Cumo::Int32],
+    ].flatten(1)
+    assert_equal(want.inspect, run_child(script))
+  end
+
   # The answer is the same whichever path the scan takes, so what it reserves is
   # the only thing that says which one it took. A view that walks one stride is
   # scanned where it lies; gathering it into a buffer first cost a second array
