@@ -32,11 +32,11 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t*
     switch (indexer->ndim) {
     <% (0..opt_indexer_ndim).each do |idim| %>
     case <%=idim%>:
-        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*a4,*indexer,divzero);
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*a4,*indexer,divzero);
         break;
     <% end %>
     default:
-        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*a4,*indexer,divzero);
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*a4,*indexer,divzero);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();

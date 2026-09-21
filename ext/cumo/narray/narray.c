@@ -773,10 +773,8 @@ cumo_na_view_reach_end(cumo_narray_view_t *nv, size_t unit)
             size_t *host = (size_t*)RSTRING_PTR(buf);
             size_t k, max = 0;
 
-            // A blocking cudaMemcpy queues behind stream 0, the only stream
-            // cumo uses, so the fill of idx is done by the time it returns.
             cumo_cuda_runtime_check_status(
-                cudaMemcpy(host, idx, sizeof(size_t)*n, cudaMemcpyDeviceToHost));
+                cumo_cuda_runtime_memcpy_to_host(host, idx, sizeof(size_t)*n));
             for (k=0; k<n; k++) {
                 if (host[k] > max) {
                     max = host[k];
@@ -1489,7 +1487,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
                     idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                     idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
                     cumo_na_index_own(na2,i,idx2);
-                    cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,0));
+                    cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,cumo_cuda_stream()));
                 }
             } else {
                 stride = CUMO_SDX_GET_STRIDE(na1->stridx[i]);

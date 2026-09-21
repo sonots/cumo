@@ -4,10 +4,26 @@
 #include "cumo/cuda/runtime.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/template_kernel.h"
+#include "cumo/cuda/handle.h"
 
 VALUE cumo_cuda_eRuntimeError;
 VALUE cumo_cuda_mRuntime;
 uint64_t cumo_cuda_sync_epoch = 0;
+
+static __thread cudaStream_t current_stream = 0;
+static cumo_cuda_handle_set_t streams;
+
+cudaStream_t
+cumo_cuda_stream(void)
+{
+    return current_stream;
+}
+
+void
+cumo_cuda_stream_set(cudaStream_t stream)
+{
+    current_stream = stream;
+}
 #define eRuntimeError cumo_cuda_eRuntimeError
 #define mRuntime cumo_cuda_mRuntime
 
@@ -70,7 +86,7 @@ void
 cumo_cuda_runtime_return_scratch(char *ptr, int wait_for_stream, cudaError_t *status)
 {
     if (wait_for_stream) {
-        cudaError_t wait = cudaStreamSynchronize(0);
+        cudaError_t wait = cudaStreamSynchronize(cumo_cuda_stream());
         if (status != NULL && *status == cudaSuccess) { *status = wait; }
     }
     if (ptr != NULL) { cumo_cuda_runtime_free_no_raise(ptr); }
@@ -261,6 +277,84 @@ rb_cudaDeviceCanAccessPeer(VALUE self, VALUE device, VALUE peer_device)
 }
 
 /*
+  Creates a stream. cudaStreamNonBlocking makes one that does not wait for
+  the legacy stream 0.
+
+  @param [Integer] flags CUDA_STREAM_DEFAULT or CUDA_STREAM_NON_BLOCKING
+  @return [Integer] the stream handle
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
+{
+    cudaStream_t stream;
+    cumo_cuda_runtime_check_status(cudaStreamCreateWithFlags(&stream, NUM2UINT(flags)));
+    cumo_cuda_handle_set_add(&streams, (size_t)stream);
+    return SIZET2NUM((size_t)stream);
+}
+
+/*
+  Destroys a stream. The current stream cannot be destroyed.
+
+  @param [Integer] stream
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaStreamDestroy(VALUE self, VALUE stream)
+{
+    if ((cudaStream_t)NUM2SIZET(stream) == current_stream) {
+        rb_raise(rb_eArgError, "the current stream cannot be destroyed");
+    }
+    cumo_cuda_runtime_check_status(cudaStreamDestroy((cudaStream_t)cumo_cuda_handle_take(&streams, stream, "cudaStream_t")));
+    return Qnil;
+}
+
+static cudaStream_t
+stream_get(VALUE v)
+{
+    if (NUM2SIZET(v) == 0) { return 0; }
+    return (cudaStream_t)cumo_cuda_handle_get(&streams, v, "cudaStream_t");
+}
+
+/*
+  Waits for everything queued on a stream. 0 is the legacy default stream.
+
+  @param [Integer] stream
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaStreamSynchronize(VALUE self, VALUE stream)
+{
+    cumo_cuda_runtime_check_status(cudaStreamSynchronize(stream_get(stream)));
+    return Qnil;
+}
+
+/*
+  Returns the stream Cumo launches its kernels and copies on in this thread.
+  0 until set.
+
+  @return [Integer]
+ */
+static VALUE
+rb_current_stream(VALUE self)
+{
+    return SIZET2NUM((size_t)current_stream);
+}
+
+/*
+  Sets the stream Cumo launches its kernels and copies on in this thread.
+
+  @param [Integer] stream a stream this process created, or 0
+  @return [Integer] the stream
+ */
+static VALUE
+rb_current_stream_set(VALUE self, VALUE stream)
+{
+    current_stream = stream_get(stream);
+    return stream;
+}
+
+/*
   Wait for compute device to finish.
 
   @raise [Cumo::CUDA::RuntimeError]
@@ -290,4 +384,12 @@ Init_cumo_cuda_runtime()
     rb_define_singleton_method(mRuntime, "cudaSetDevice", rb_cudaSetDevice, 1);
     rb_define_singleton_method(mRuntime, "cudaDeviceCanAccessPeer", rb_cudaDeviceCanAccessPeer, 2);
     rb_define_singleton_method(mRuntime, "cudaDeviceSynchronize", rb_cudaDeviceSynchronize, 0);
+    rb_define_singleton_method(mRuntime, "cudaStreamCreateWithFlags", rb_cudaStreamCreateWithFlags, 1);
+    rb_define_singleton_method(mRuntime, "cudaStreamDestroy", rb_cudaStreamDestroy, 1);
+    rb_define_singleton_method(mRuntime, "cudaStreamSynchronize", rb_cudaStreamSynchronize, 1);
+    rb_define_singleton_method(mRuntime, "current_stream", rb_current_stream, 0);
+    rb_define_singleton_method(mRuntime, "current_stream=", rb_current_stream_set, 1);
+    rb_define_const(mRuntime, "CUDA_STREAM_DEFAULT", UINT2NUM(cudaStreamDefault));
+    rb_define_const(mRuntime, "CUDA_STREAM_NON_BLOCKING", UINT2NUM(cudaStreamNonBlocking));
+    cumo_cuda_handle_set_init(&streams);
 }

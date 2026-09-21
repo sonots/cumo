@@ -45,8 +45,8 @@ void cumo_bit_mask_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t 
 
     if (nblocks > CUMO_BIT_WHERE_MAX_BLOCKS) nblocks = CUMO_BIT_WHERE_MAX_BLOCKS;
     cpb = (nchunks + nblocks - 1) / nblocks;
-    cumo_bit_where_partial_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,0,nchunks,cpb,block_sums);
-    cumo_bit_where_scan_kernel<<<1, CUMO_BIT_CHUNK_BLOCK>>>(block_sums,nblocks,running);
-    cumo_bit_mask_scatter_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,nchunks,cpb,out,p2,s2,idx2,cap,block_sums);
+    cumo_bit_where_partial_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK, 0, cumo_cuda_stream()>>>(a,p,s,idx,n,nw,contiguous,0,nchunks,cpb,block_sums);
+    cumo_bit_where_scan_kernel<<<1, CUMO_BIT_CHUNK_BLOCK, 0, cumo_cuda_stream()>>>(block_sums,nblocks,running);
+    cumo_bit_mask_scatter_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK, 0, cumo_cuda_stream()>>>(a,p,s,idx,n,nw,contiguous,nchunks,cpb,out,p2,s2,idx2,cap,block_sums);
     cumo_cuda_runtime_check_kernel_launch();
 }

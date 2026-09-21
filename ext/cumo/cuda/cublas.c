@@ -46,7 +46,10 @@ cumo_cuda_cublas_check_status(cublasStatus_t status)
 cublasHandle_t
 cumo_cuda_cublas_handle()
 {
-    static cublasHandle_t *handles = 0;  // handle is never destroyed
+    // One table per thread: the stream is set on the handle before each call,
+    // and another thread with another current stream must not reset it in
+    // between. A handle is never destroyed.
+    static __thread cublasHandle_t *handles = 0;
     int device;
     if (handles == 0) {
         int i;
@@ -62,6 +65,7 @@ cumo_cuda_cublas_handle()
         // CUBLAS_STATUS_NOT_INITIALIZED at the next call instead of the reason.
         cumo_cuda_cublas_check_status(cublasCreate(&handles[device]));
     }
+    cumo_cuda_cublas_check_status(cublasSetStream(handles[device], cumo_cuda_stream()));
     return handles[device];
 }
 

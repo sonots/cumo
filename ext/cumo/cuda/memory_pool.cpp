@@ -39,8 +39,7 @@ static enum pool_outcome
 pool_malloc(size_t size, char **ptr, struct pool_error *err)
 {
     try {
-        // TODO(sonots): Get current CUDA stream and pass it
-        *ptr = reinterpret_cast<char*>(pool.Malloc(size));
+        *ptr = reinterpret_cast<char*>(pool.Malloc(size, cumo_cuda_stream()));
         return POOL_OK;
     } catch (const cumo::internal::CUDARuntimeError& e) {
         err->status = e.status();

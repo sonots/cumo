@@ -6,6 +6,7 @@
 #include "cumo/cuda/handle.h"
 #include "cumo/narray.h"
 #include "cumo/intern.h"
+#include "cumo/cuda/runtime.h"
 
 VALUE cumo_cuda_eDriverError;
 VALUE cumo_cuda_mDriver;
@@ -325,7 +326,7 @@ rb_cuModuleGetGlobal(VALUE self, VALUE hmod, VALUE name)
 
     // _dptr addresses device memory, which the host cannot read directly.
     ret = rb_str_new(NULL, (long)_bytes);
-    check_status(cuMemcpyDtoH(RSTRING_PTR(ret), _dptr, _bytes));
+    cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_host(RSTRING_PTR(ret), (const void*)_dptr, _bytes));
     return ret;
 }
 
@@ -525,7 +526,7 @@ rb_cuLaunchKernel(VALUE self, VALUE hfunc,
     CUresult status;
 
     if (NUM2SIZET(stream) != 0) {
-        rb_raise(rb_eArgError, "a stream other than 0 is not supported yet");
+        rb_raise(rb_eArgError, "a stream other than 0 is not supported yet; 0 is the current stream");
     }
     Check_Type(args, T_ARRAY);
     n = RARRAY_LEN(args);
@@ -556,7 +557,7 @@ rb_cuLaunchKernel(VALUE self, VALUE hfunc,
     status = cuLaunchKernel(f,
                             NUM2UINT(grid_x), NUM2UINT(grid_y), NUM2UINT(grid_z),
                             NUM2UINT(block_x), NUM2UINT(block_y), NUM2UINT(block_z),
-                            NUM2UINT(shared_mem), (CUstream)0,
+                            NUM2UINT(shared_mem), (CUstream)cumo_cuda_stream(),
                             params, NULL);
     ALLOCV_END(sizes_buf);
     ALLOCV_END(params_buf);

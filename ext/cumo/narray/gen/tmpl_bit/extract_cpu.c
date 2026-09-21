@@ -25,7 +25,7 @@ static VALUE
             // Reading through the managed pointer faults the whole page back from
             // the device, which costs more than the kernel that wrote it.
             CUMO_BIT_DIGIT word;
-            cumo_cuda_runtime_check_status(cudaMemcpy(&word, ptr+(pos)/CUMO_NB, sizeof(CUMO_BIT_DIGIT), cudaMemcpyDeviceToHost));
+            cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_host(&word, ptr+(pos)/CUMO_NB, sizeof(CUMO_BIT_DIGIT)));
             val = (word >> ((pos)%CUMO_NB)) & 1u;
         }
         cumo_na_release_lock(self);

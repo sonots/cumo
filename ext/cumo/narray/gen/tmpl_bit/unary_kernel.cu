@@ -50,7 +50,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_iarray_stridx_t* a1, cumo_n
         cumo_bit_run_t run = cumo_bit_make_run(a1, indexer);
         if (run.ok) {
             uint64_t w3 = (indexer->total_size + CUMO_NB - 1) / CUMO_NB;
-            <%="cumo_#{c_iter}_run_kernel"%><<<cumo_get_grid_dim(w3), cumo_get_block_dim(w3)>>>(
+            <%="cumo_#{c_iter}_run_kernel"%><<<cumo_get_grid_dim(w3), cumo_get_block_dim(w3), 0, cumo_cuda_stream()>>>(
                 *a1, *indexer, run, out, indexer->total_size, w3);
             cumo_cuda_runtime_check_kernel_launch();
             return;
@@ -64,11 +64,11 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_iarray_stridx_t* a1, cumo_n
     switch (indexer->ndim) {
     <% (0..opt_indexer_ndim).each do |idim| %>
     case <%=idim%>:
-        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*a3,*indexer,end,out);
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a3,*indexer,end,out);
         break;
     <% end %>
     default:
-        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a3,*indexer,end,out);
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a3,*indexer,end,out);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();
@@ -81,6 +81,6 @@ void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p
     uint64_t w3 = (p3 + n + CUMO_NB - 1) / CUMO_NB;
     size_t grid_dim = cumo_get_grid_dim(w3);
     size_t block_dim = cumo_get_block_dim(w3);
-    <%="cumo_#{c_iter}_contiguous_kernel"%><<<grid_dim, block_dim>>>(a1,o1,w1,a3,p3,n,w3);
+    <%="cumo_#{c_iter}_contiguous_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(a1,o1,w1,a3,p3,n,w3);
     cumo_cuda_runtime_check_kernel_launch();
 }

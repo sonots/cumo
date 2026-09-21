@@ -47,9 +47,9 @@ __global__ void <%="cumo_#{c_iter}_#{bits}_kernel"%>(char *p1, ssize_t s1, size_
 
 void <%="cumo_#{c_iter}_#{bits}_kernel_launch"%>(char *p1, ssize_t s1, size_t *idx1, uint64_t count, char *p2, ssize_t s2, uint64_t n, int *oor, size_t *item)
 {
-    <%="cumo_#{c_iter}_#{bits}_init_kernel"%><<<cumo_get_grid_dim(n), cumo_get_block_dim(n)>>>(p2,s2,n);
+    <%="cumo_#{c_iter}_#{bits}_init_kernel"%><<<cumo_get_grid_dim(n), cumo_get_block_dim(n), 0, cumo_cuda_stream()>>>(p2,s2,n);
     cumo_cuda_runtime_check_kernel_launch();
-    <%="cumo_#{c_iter}_#{bits}_kernel"%><<<cumo_get_grid_dim(count), cumo_get_block_dim(count)>>>(p1,s1,idx1,count,p2,s2,n,oor,item);
+    <%="cumo_#{c_iter}_#{bits}_kernel"%><<<cumo_get_grid_dim(count), cumo_get_block_dim(count), 0, cumo_cuda_stream()>>>(p1,s1,idx1,count,p2,s2,n,oor,item);
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>
@@ -76,9 +76,9 @@ __global__ void <%="cumo_#{c_iter}_#{fn}_kernel"%>(char *p1, ssize_t s1, char *p
 
 void <%="cumo_#{c_iter}_#{fn}_kernel_launch"%>(char *p1, ssize_t s1, char *p2, ssize_t s2, uint64_t count, char *p3, ssize_t s3, uint64_t n, int *oor, size_t *item)
 {
-    <%="cumo_#{c_iter}_#{fn}_init_kernel"%><<<cumo_get_grid_dim(n), cumo_get_block_dim(n)>>>(p3,s3,n);
+    <%="cumo_#{c_iter}_#{fn}_init_kernel"%><<<cumo_get_grid_dim(n), cumo_get_block_dim(n), 0, cumo_cuda_stream()>>>(p3,s3,n);
     cumo_cuda_runtime_check_kernel_launch();
-    <%="cumo_#{c_iter}_#{fn}_kernel"%><<<cumo_get_grid_dim(count), cumo_get_block_dim(count)>>>(p1,s1,p2,s2,count,p3,s3,n,oor,item);
+    <%="cumo_#{c_iter}_#{fn}_kernel"%><<<cumo_get_grid_dim(count), cumo_get_block_dim(count), 0, cumo_cuda_stream()>>>(p1,s1,p2,s2,count,p3,s3,n,oor,item);
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

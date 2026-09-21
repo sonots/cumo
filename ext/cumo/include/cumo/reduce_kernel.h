@@ -835,9 +835,9 @@ TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t 
     int64_t shared_mem_size = sizeof(TypeReduce) * max_block_size;
 
     if (ad.in_out_flat && ad.in_reduce_flat) {
-        reduction_partial_kernel<true,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+        reduction_partial_kernel<true,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     } else {
-        reduction_partial_kernel<false,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+        reduction_partial_kernel<false,ARG,TypeIn,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, ad, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     }
     cumo_check_launch_holding(partial, held);
 
@@ -869,11 +869,11 @@ TypeReduce* reduce_zip_partial_pass(cumo_na_reduction_arg_t arg, cumo_na_iarray_
     int64_t shared_mem_size = sizeof(TypeReduce) * max_block_size;
 
     if (zip_axes_are_flat(ad, ad2)) {
-        reduction_zip_partial_kernel<true,TypeIn,TypeIn2,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+        reduction_zip_partial_kernel<true,TypeIn,TypeIn2,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     } else if (zip_axes_need_no_dim(ad, ad2)) {
-        reduction_zip_nodim_partial_kernel<TypeIn,TypeIn2,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+        reduction_zip_nodim_partial_kernel<TypeIn,TypeIn2,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     } else {
-        reduction_zip_partial_kernel<false,TypeIn,TypeIn2,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
+        reduction_zip_partial_kernel<false,TypeIn,TypeIn2,TypeReduce,ReductionImpl><<<grid_size, max_block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, in2, ad, ad2, partial, n_split, chunk, out_block_size, reduce_block_size, impl);
     }
     cumo_check_launch_holding(partial, held);
 
@@ -909,9 +909,9 @@ void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* held0 
     int64_t shared_mem_size = sizeof(decltype(impl.Identity(0))) * block_size;
 
     if (ad.in_out_flat && ad.in_reduce_flat && ad.out_flat) {
-        cumo_detail::reduction_kernel<true,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, ad, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_kernel<true,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, ad, out_block_size, reduce_block_size, impl);
     } else {
-        cumo_detail::reduction_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, ad, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, ad, out_block_size, reduce_block_size, impl);
     }
     cumo_check_launch_holding(held0, held1);
 }
@@ -971,11 +971,11 @@ void cumo_reduce_zip(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, Reductio
     int64_t shared_mem_size = sizeof(decltype(impl.Identity(0))) * block_size;
 
     if (cumo_detail::zip_axes_are_flat(ad, ad2) && ad.out_flat) {
-        cumo_detail::reduction_zip_kernel<true,TypeIn,TypeIn2,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_zip_kernel<true,TypeIn,TypeIn2,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
     } else if (cumo_detail::zip_axes_need_no_dim(ad, ad2)) {
-        cumo_detail::reduction_zip_nodim_kernel<TypeIn,TypeIn2,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_zip_nodim_kernel<TypeIn,TypeIn2,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
     } else {
-        cumo_detail::reduction_zip_kernel<false,TypeIn,TypeIn2,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_zip_kernel<false,TypeIn,TypeIn2,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, in2, ad, ad2, out_block_size, reduce_block_size, impl);
     }
     cumo_check_launch_holding(held0, held1);
 }
@@ -1034,9 +1034,9 @@ void cumo_reduce_pair(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, Reduct
     int64_t shared_mem_size = sizeof(decltype(impl.Identity(0))) * block_size;
 
     if (ad.in_out_flat && ad.in_reduce_flat && ad.out_flat && ad.out2_flat) {
-        cumo_detail::reduction_pair_kernel<true,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, out2, ad, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_pair_kernel<true,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, out2, ad, out_block_size, reduce_block_size, impl);
     } else {
-        cumo_detail::reduction_pair_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, out2, ad, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_pair_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, out2, ad, out_block_size, reduce_block_size, impl);
     }
     cumo_check_launch_holding(held0, held1);
 }
@@ -1089,9 +1089,9 @@ void cumo_reduce_arg(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* he
     int64_t shared_mem_size = sizeof(decltype(impl.Identity(0))) * block_size;
 
     if (ad.in_out_flat && ad.in_reduce_flat && ad.out_flat) {
-        cumo_detail::reduction_arg_kernel<true,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, ad, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_arg_kernel<true,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, ad, out_block_size, reduce_block_size, impl);
     } else {
-        cumo_detail::reduction_arg_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size>>>(arg, ad, out_block_size, reduce_block_size, impl);
+        cumo_detail::reduction_arg_kernel<false,TypeIn,TypeOut,ReductionImpl><<<grid_size, block_size, shared_mem_size, cumo_cuda_stream()>>>(arg, ad, out_block_size, reduce_block_size, impl);
     }
     cumo_check_launch_holding(held0, held1);
 }

@@ -147,18 +147,18 @@ cudaError_t sort_pairs(const Key* kin, Key* kout, const Value* vin, Value* vout,
     size_t bytes = 0;
     cudaError_t st = cudaSuccess;
     if (n_rows == 1) {
-        st = cub::DeviceRadixSort::SortPairs(nullptr, bytes, kin, kout, vin, vout, total);
+        st = cub::DeviceRadixSort::SortPairs(nullptr, bytes, kin, kout, vin, vout, total, 0, sizeof(Key) * 8, cumo_cuda_stream());
         if (st != cudaSuccess) { return st; }
         char* tmp = cumo_cuda_runtime_malloc(bytes);
-        st = cub::DeviceRadixSort::SortPairs(tmp, bytes, kin, kout, vin, vout, total);
+        st = cub::DeviceRadixSort::SortPairs(tmp, bytes, kin, kout, vin, vout, total, 0, sizeof(Key) * 8, cumo_cuda_stream());
         cumo_cuda_runtime_free(tmp);
     } else {
         st = cub::DeviceSegmentedRadixSort::SortPairs(nullptr, bytes, kin, kout, vin, vout, total, n_rows,
-                                                     row_begins(row_len), row_ends(row_len));
+                                                     row_begins(row_len), row_ends(row_len), 0, sizeof(Key) * 8, cumo_cuda_stream());
         if (st != cudaSuccess) { return st; }
         char* tmp = cumo_cuda_runtime_malloc(bytes);
         st = cub::DeviceSegmentedRadixSort::SortPairs(tmp, bytes, kin, kout, vin, vout, total, n_rows,
-                                                 row_begins(row_len), row_ends(row_len));
+                                                 row_begins(row_len), row_ends(row_len), 0, sizeof(Key) * 8, cumo_cuda_stream());
         cumo_cuda_runtime_free(tmp);
     }
     return st;
@@ -169,18 +169,18 @@ cudaError_t sort_keys(const Key* kin, Key* kout, int64_t total, int64_t n_rows, 
     size_t bytes = 0;
     cudaError_t st = cudaSuccess;
     if (n_rows == 1) {
-        st = cub::DeviceRadixSort::SortKeys(nullptr, bytes, kin, kout, total);
+        st = cub::DeviceRadixSort::SortKeys(nullptr, bytes, kin, kout, total, 0, sizeof(Key) * 8, cumo_cuda_stream());
         if (st != cudaSuccess) { return st; }
         char* tmp = cumo_cuda_runtime_malloc(bytes);
-        st = cub::DeviceRadixSort::SortKeys(tmp, bytes, kin, kout, total);
+        st = cub::DeviceRadixSort::SortKeys(tmp, bytes, kin, kout, total, 0, sizeof(Key) * 8, cumo_cuda_stream());
         cumo_cuda_runtime_free(tmp);
     } else {
         st = cub::DeviceSegmentedRadixSort::SortKeys(nullptr, bytes, kin, kout, total, n_rows,
-                                                    row_begins(row_len), row_ends(row_len));
+                                                    row_begins(row_len), row_ends(row_len), 0, sizeof(Key) * 8, cumo_cuda_stream());
         if (st != cudaSuccess) { return st; }
         char* tmp = cumo_cuda_runtime_malloc(bytes);
         st = cub::DeviceSegmentedRadixSort::SortKeys(tmp, bytes, kin, kout, total, n_rows,
-                                               row_begins(row_len), row_ends(row_len));
+                                               row_begins(row_len), row_ends(row_len), 0, sizeof(Key) * 8, cumo_cuda_stream());
         cumo_cuda_runtime_free(tmp);
     }
     return st;
@@ -198,7 +198,7 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
     T* gathered = 0;
     if (!flat) {
         gathered = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
-#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim>>>(*a, *indexer, gathered)
+#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, gathered)
         CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
 #undef CUMO_SORT_L
         cumo_check_launch_holding(gathered);
@@ -210,7 +210,7 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
         typedef typename float_key<T>::type key_t;
         key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
         key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
-        float_key_kernel<T><<<grid_dim, block_dim>>>(data, kin, total);
+        float_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
         cumo_check_launch_holding(kin, kout, out, gathered);
         cumo_check_status_holding(sort_pairs(kin, kout, data, out, total, n_rows, row_len),
                              kin, kout, out, gathered);
@@ -221,9 +221,9 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
     }
 
     if (flat) {
-        cudaMemcpyAsync(data, out, sizeof(T) * total, cudaMemcpyDeviceToDevice, 0);
+        cudaMemcpyAsync(data, out, sizeof(T) * total, cudaMemcpyDeviceToDevice, cumo_cuda_stream());
     } else {
-#define CUMO_SORT_L(N) scatter_kernel<N><<<grid_dim, block_dim>>>(*a, *indexer, out)
+#define CUMO_SORT_L(N) scatter_kernel<N><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, out)
         CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
 #undef CUMO_SORT_L
     }
@@ -288,7 +288,7 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat, int prnan) {
     T* gathered = 0;
     if (!flat) {
         gathered = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
-#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim>>>(arg->in, arg->in_indexer, gathered)
+#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(arg->in, arg->in_indexer, gathered)
         CUMO_SORT_BY_RANK(arg->in_indexer.ndim, CUMO_SORT_L);
 #undef CUMO_SORT_L
         cumo_check_launch_holding(gathered);
@@ -300,7 +300,7 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat, int prnan) {
         typedef typename float_key<T>::type key_t;
         key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
         key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
-        float_key_kernel<T><<<grid_dim, block_dim>>>(data, kin, total);
+        float_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
         cumo_check_launch_holding(kin, kout, sorted, gathered);
         cumo_check_status_holding(sort_pairs(kin, kout, data, sorted, total, n_rows, row_len),
                              kin, kout, sorted, gathered);
@@ -310,7 +310,7 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat, int prnan) {
         cumo_check_status_holding(sort_keys(data, sorted, total, n_rows, row_len), sorted, gathered);
     }
 
-#define CUMO_SORT_L(N) median_kernel<N, T, IS_FLOAT><<<cumo_get_grid_dim(n_rows), cumo_get_block_dim(n_rows)>>>( \
+#define CUMO_SORT_L(N) median_kernel<N, T, IS_FLOAT><<<cumo_get_grid_dim(n_rows), cumo_get_block_dim(n_rows), 0, cumo_cuda_stream()>>>( \
         sorted, row_len, prnan, arg->out, arg->out_indexer)
     CUMO_SORT_BY_RANK(arg->out_indexer.ndim, CUMO_SORT_L);
 #undef CUMO_SORT_L
@@ -355,7 +355,7 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
     T* gathered = 0;
     if (!flat) {
         gathered = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
-#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim>>>(*a, *indexer, gathered)
+#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, gathered)
         CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
 #undef CUMO_SORT_L
         cumo_check_launch_holding(gathered);
@@ -364,14 +364,14 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
 
     I* pin = (I*)cumo_cuda_runtime_malloc(sizeof(I) * total);
     I* pout = (I*)cumo_cuda_runtime_malloc(sizeof(I) * total);
-    iota_kernel<I><<<grid_dim, block_dim>>>(pin, total);
+    iota_kernel<I><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(pin, total);
     cumo_check_launch_holding(pin, pout, gathered);
 
     if constexpr (IS_FLOAT) {
         typedef typename float_key<T>::type key_t;
         key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
         key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
-        float_key_kernel<T><<<grid_dim, block_dim>>>(data, kin, total);
+        float_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
         cumo_check_launch_holding(kin, kout, pin, pout, gathered);
         cumo_check_status_holding(sort_pairs(kin, kout, pin, pout, total, n_rows, row_len),
                              kin, kout, pin, pout, gathered);
@@ -384,7 +384,7 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
         cumo_cuda_runtime_free((char*)kout);
     }
 
-#define CUMO_SORT_L(N) sort_index_scatter_kernel<N><<<grid_dim, block_dim>>>(*idx, *out, *indexer, pout)
+#define CUMO_SORT_L(N) sort_index_scatter_kernel<N><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*idx, *out, *indexer, pout)
     CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
 #undef CUMO_SORT_L
     cumo_check_launch_holding(pin, pout, gathered);

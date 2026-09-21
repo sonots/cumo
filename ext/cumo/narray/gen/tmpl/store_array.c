@@ -149,14 +149,14 @@ static void
             // been copied into the driver's staging buffer and the buffer may
             // be released right away.
             cumo_cuda_runtime_check_status(
-                cudaMemcpyAsync(p1,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0));
+                cudaMemcpyAsync(p1,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,cumo_cuda_stream()));
         } else {
             // n, not i: every row of the walk is n long, and a row that
             // converts fewer would otherwise ask for a size of its own.
             dtype *device_z = (dtype*)cumo_na_stage_pool_get(
                     (cumo_na_stage_pool_t*)(lp->opt_ptr), sizeof(dtype) * (n ? n : 1));
             cudaError_t status =
-                cudaMemcpyAsync(device_z,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,0);
+                cudaMemcpyAsync(device_z,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,cumo_cuda_stream());
             if (status == cudaSuccess && i > 0) {
                 if (idx1) {
                     <%="cumo_#{c_iter}_index_kernel_launch"%>(p1,idx1,device_z,i);

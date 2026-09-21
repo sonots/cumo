@@ -57,31 +57,31 @@ void cumo_ndloop_copy_from_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
         case 1:
-            cumo_ndloop_copy_from_buffer_kernel_dim1<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim1<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 2:
-            cumo_ndloop_copy_from_buffer_kernel_dim2<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim2<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 3:
-            cumo_ndloop_copy_from_buffer_kernel_dim3<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim3<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 4:
-            cumo_ndloop_copy_from_buffer_kernel_dim4<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim4<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 5:
-            cumo_ndloop_copy_from_buffer_kernel_dim5<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim5<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 6:
-            cumo_ndloop_copy_from_buffer_kernel_dim6<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim6<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 7:
-            cumo_ndloop_copy_from_buffer_kernel_dim7<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim7<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 8:
-            cumo_ndloop_copy_from_buffer_kernel_dim8<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim8<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         default:
-            cumo_ndloop_copy_from_buffer_kernel_dim<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_from_buffer_kernel_dim<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
     }
     cumo_cuda_runtime_check_kernel_launch();
@@ -93,31 +93,31 @@ void cumo_ndloop_copy_to_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_n
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
         case 1:
-            cumo_ndloop_copy_to_buffer_kernel_dim1<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim1<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 2:
-            cumo_ndloop_copy_to_buffer_kernel_dim2<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim2<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 3:
-            cumo_ndloop_copy_to_buffer_kernel_dim3<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim3<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 4:
-            cumo_ndloop_copy_to_buffer_kernel_dim4<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim4<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 5:
-            cumo_ndloop_copy_to_buffer_kernel_dim5<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim5<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 6:
-            cumo_ndloop_copy_to_buffer_kernel_dim6<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim6<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 7:
-            cumo_ndloop_copy_to_buffer_kernel_dim7<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim7<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         case 8:
-            cumo_ndloop_copy_to_buffer_kernel_dim8<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim8<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
         default:
-            cumo_ndloop_copy_to_buffer_kernel_dim<<<grid_dim, block_dim>>>(*a,*indexer,buf,elmsz);
+            cumo_ndloop_copy_to_buffer_kernel_dim<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a,*indexer,buf,elmsz);
             break;
     }
     cumo_cuda_runtime_check_kernel_launch();

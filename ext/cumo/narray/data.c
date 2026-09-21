@@ -854,7 +854,7 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
                     idx0 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                     idx1 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*na->shape[i]);
                     cumo_na_index_own(na2,k,idx1);
-                    cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx1,idx0,sizeof(size_t)*na->shape[i],cudaMemcpyDeviceToDevice,0));
+                    cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx1,idx0,sizeof(size_t)*na->shape[i],cudaMemcpyDeviceToDevice,cumo_cuda_stream()));
                 }
                 k++;
             }

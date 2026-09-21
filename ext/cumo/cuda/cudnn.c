@@ -75,7 +75,9 @@ cumo_cuda_cudnn_release_conv_held(VALUE held)
 cudnnHandle_t
 cumo_cuda_cudnn_handle()
 {
-    static cudnnHandle_t *handles = 0;  // handle is never destroyed
+    // One table per thread, as in cublas.c: the stream set on the handle must
+    // not be reset by another thread before the call. A handle is never destroyed.
+    static __thread cudnnHandle_t *handles = 0;
     int device;
     if (handles == 0) {
         int i;
@@ -91,6 +93,7 @@ cumo_cuda_cudnn_handle()
         // CUDNN_STATUS_NOT_INITIALIZED at the next call instead of the reason.
         cumo_cuda_cudnn_check_status(cudnnCreate(&handles[device]));
     }
+    cumo_cuda_cudnn_check_status(cudnnSetStream(handles[device], cumo_cuda_stream()));
     return handles[device];
 }
 

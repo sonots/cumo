@@ -50,7 +50,7 @@ void <%="cumo_#{c_iter}_index_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, si
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_index_kernel"%><<<grid_dim, block_dim>>>(a1,p1,idx1,z,n);
+    <%="cumo_#{c_iter}_index_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(a1,p1,idx1,z,n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -58,7 +58,7 @@ void <%="cumo_#{c_iter}_stride_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p1, s
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim>>>(a1,p1,s1,z,n);
+    <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(a1,p1,s1,z,n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -68,7 +68,7 @@ void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t p
     uint64_t w1 = (p1 + n + CUMO_NB - 1) / CUMO_NB;
     size_t grid_dim = cumo_get_grid_dim(w1);
     size_t block_dim = cumo_get_block_dim(w1);
-    <%="cumo_#{c_iter}_contiguous_kernel"%><<<grid_dim, block_dim>>>(a1,p1,z,nz,n,w1);
+    <%="cumo_#{c_iter}_contiguous_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(a1,p1,z,nz,n,w1);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -76,7 +76,7 @@ void <%="cumo_#{c_iter}_index_scalar_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_t
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_index_scalar_kernel"%><<<grid_dim, block_dim>>>(a1,p1,idx1,z,n);
+    <%="cumo_#{c_iter}_index_scalar_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(a1,p1,idx1,z,n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -84,6 +84,6 @@ void <%="cumo_#{c_iter}_stride_scalar_kernel_launch"%>(CUMO_BIT_DIGIT *a1, size_
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_stride_scalar_kernel"%><<<grid_dim, block_dim>>>(a1,p1,s1,z,n);
+    <%="cumo_#{c_iter}_stride_scalar_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(a1,p1,s1,z,n);
     cumo_cuda_runtime_check_kernel_launch();
 }
