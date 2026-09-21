@@ -791,6 +791,33 @@ The kernel is asked for by the name in the source, so it is declared inside `ext
 On CUDA 12.4 or later the count and the size of the arguments are checked against the kernel before the launch, so an Integer handed to an `int` is refused rather than read wrong.
 A kernel may write any NArray it is handed, so a frozen one is refused, and one that has not been allocated yet is allocated on the way and holds whatever was there.
 
+### Streams And Events
+
+Every kernel and copy Cumo issues goes to the current stream of the thread, which is the null stream until a `Cumo::CUDA::Stream` is used.
+`Stream#with` runs a block on a stream of its own, waits for everything the block queued, and puts the previous stream back, so what the block produced is complete when it returns.
+The block's work is ordered after what the previous stream had queued, so an input still being computed when the block starts is read complete.
+
+```ruby
+s = Cumo::CUDA::Stream.new(non_blocking: true)
+c = s.with { a.gemm(b) }   # queued on s, and finished when with returns
+```
+
+`Stream#use` makes a stream current without a block, `Stream.current` answers the current one and `Stream.null` the null stream.
+`Stream#record` records an `Event` after everything queued so far, and `Stream#wait_event` makes what is queued after it wait for one, which is how two streams are ordered against each other.
+`Event#synchronize` waits for an event on the host, and `Cumo::CUDA.get_elapsed_time(start, stop)` answers the milliseconds between two recorded events, which is how a kernel is timed without a device-wide wait.
+
+```ruby
+start = Cumo::CUDA::Event.new.record
+c = a.gemm(b)
+stop = Cumo::CUDA::Event.new.record
+stop.synchronize
+Cumo::CUDA.get_elapsed_time(start, stop)   # => milliseconds
+```
+
+Under a stream of the caller's, a host read such as `to_a` or `each` waits for the whole device rather than for that stream, since what it reads may have been written on another one.
+The current stream is per thread, and fibers of one thread share it.
+A `Function#launch` takes `stream:` to launch on a stream other than the current one.
+
 ### Writing An Elementwise Kernel
 
 `Cumo::CUDA::ElementwiseKernel` takes one piece of CUDA C and applies it to every element, the way CuPy's `ElementwiseKernel` does.

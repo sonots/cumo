@@ -8,6 +8,8 @@ end
 require_relative 'cuda/compile_error'
 require_relative 'cuda/compiler'
 require_relative 'cuda/device'
+require_relative 'cuda/stream'
+require_relative 'cuda/event'
 require_relative 'cuda/module'
 require_relative 'cuda/function'
 require_relative 'cuda/elementwise_kernel'

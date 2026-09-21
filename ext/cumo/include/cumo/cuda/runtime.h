@@ -15,12 +15,15 @@ extern VALUE cumo_cuda_eRuntimeError;
 
 cudaStream_t cumo_cuda_stream(void);
 void cumo_cuda_stream_set(cudaStream_t stream);
+// The stream an Integer handle names: 0, or one this process created.
+cudaStream_t cumo_cuda_stream_get(VALUE stream);
 
 // How many times the whole device has been seen to settle, which is what a host
 // read of managed memory needs. One settling covers every kernel and copy issued
 // before it, so code that recorded the count when it queued work can skip a wait
-// the moment the count has moved on. Only cumo_cuda_runtime_device_synchronize
-// advances it, and a count that is behind costs a wait rather than correctness.
+// the moment the count has moved on. cumo_cuda_runtime_device_synchronize
+// advances it, and so does a host read under a stream of the caller's, and a
+// count that is behind costs a wait rather than correctness.
 extern uint64_t cumo_cuda_sync_epoch;
 
 // A failure stays as the runtime's last error until something reads it,
@@ -48,22 +51,46 @@ cumo_cuda_runtime_device_synchronize(void)
 // whenever the block stayed off the device. Neither answer advances the settle
 // count: one stream going quiet is not the whole device settling, and a host read
 // of managed memory needs the latter where concurrentManagedAccess is 0.
+// Under a stream of the caller's, what the host is about to read may have
+// been written on the null stream as well, and nothing records which, so
+// unless both are idle the whole device is waited for. The idle check is what
+// keeps an each, which asks per element, from waiting per element.
+static inline int
+cumo_cuda_runtime_streams_idle(void)
+{
+    return cudaStreamQuery(0) == cudaSuccess && cudaStreamQuery(cumo_cuda_stream()) == cudaSuccess;
+}
+
 static inline int
 cumo_cuda_runtime_sync_if_busy(void)
 {
-    if (cudaStreamQuery(cumo_cuda_stream()) == cudaSuccess) {
+    if (cumo_cuda_stream() != 0) {
+        if (cumo_cuda_runtime_streams_idle()) {
+            return 0;
+        }
+        cumo_cuda_runtime_device_synchronize();
+        return 1;
+    }
+    if (cudaStreamQuery(0) == cudaSuccess) {
         return 0;
     }
-    cumo_cuda_runtime_check_status(cudaStreamSynchronize(cumo_cuda_stream()));
+    cumo_cuda_runtime_check_status(cudaStreamSynchronize(0));
     return 1;
 }
 
 // A host read of device memory has to come after the work queued on the
-// current stream, which a plain cudaMemcpy only does for the legacy one.
+// current stream, which a plain cudaMemcpy only does for the legacy one, and
+// under a stream of the caller's after every stream, as above.
 static inline cudaError_t
 cumo_cuda_runtime_memcpy_to_host(void *dst, const void *src, size_t bytes)
 {
-    cudaError_t status = cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cumo_cuda_stream());
+    cudaError_t status;
+    if (cumo_cuda_stream() != 0 && !cumo_cuda_runtime_streams_idle()) {
+        status = cudaDeviceSynchronize();
+        if (status != cudaSuccess) { return status; }
+        cumo_cuda_sync_epoch++;
+    }
+    status = cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cumo_cuda_stream());
     if (status != cudaSuccess) { return status; }
     return cudaStreamSynchronize(cumo_cuda_stream());
 }

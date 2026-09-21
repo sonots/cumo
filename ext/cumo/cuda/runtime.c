@@ -12,6 +12,33 @@ uint64_t cumo_cuda_sync_epoch = 0;
 
 static __thread cudaStream_t current_stream = 0;
 static cumo_cuda_handle_set_t streams;
+static cumo_cuda_handle_set_t events;
+// How many threads have each stream current, so that none of them can
+// destroy a stream another is launching on. The value is the count.
+static cumo_cuda_handle_set_t in_use;
+
+static void
+in_use_add(cudaStream_t stream, long delta)
+{
+    st_data_t n = 0;
+    if (stream == 0) { return; }
+    rb_nativethread_lock_lock(&in_use.lock);
+    st_lookup(in_use.table, (st_data_t)stream, &n);
+    n = (st_data_t)((long)n + delta);
+    if (n == 0) { st_data_t key = (st_data_t)stream; st_delete(in_use.table, &key, 0); }
+    else { st_insert(in_use.table, (st_data_t)stream, n); }
+    rb_nativethread_lock_unlock(&in_use.lock);
+}
+
+static int
+in_use_p(cudaStream_t stream)
+{
+    int found;
+    rb_nativethread_lock_lock(&in_use.lock);
+    found = st_lookup(in_use.table, (st_data_t)stream, 0);
+    rb_nativethread_lock_unlock(&in_use.lock);
+    return found;
+}
 
 cudaStream_t
 cumo_cuda_stream(void)
@@ -22,6 +49,9 @@ cumo_cuda_stream(void)
 void
 cumo_cuda_stream_set(cudaStream_t stream)
 {
+    if (stream == current_stream) { return; }
+    in_use_add(current_stream, -1);
+    in_use_add(stream, 1);
     current_stream = stream;
 }
 #define eRuntimeError cumo_cuda_eRuntimeError
@@ -294,7 +324,8 @@ rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
 }
 
 /*
-  Destroys a stream. The current stream cannot be destroyed.
+  Destroys a stream. A stream that is current in any thread cannot be
+  destroyed.
 
   @param [Integer] stream
   @raise [Cumo::CUDA::RuntimeError]
@@ -302,18 +333,145 @@ rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
 static VALUE
 rb_cudaStreamDestroy(VALUE self, VALUE stream)
 {
-    if ((cudaStream_t)NUM2SIZET(stream) == current_stream) {
-        rb_raise(rb_eArgError, "the current stream cannot be destroyed");
+    if (in_use_p((cudaStream_t)NUM2SIZET(stream))) {
+        rb_raise(rb_eArgError, "a stream that is current in a thread cannot be destroyed");
     }
     cumo_cuda_runtime_check_status(cudaStreamDestroy((cudaStream_t)cumo_cuda_handle_take(&streams, stream, "cudaStream_t")));
     return Qnil;
 }
 
-static cudaStream_t
-stream_get(VALUE v)
+cudaStream_t
+cumo_cuda_stream_get(VALUE v)
 {
     if (NUM2SIZET(v) == 0) { return 0; }
     return (cudaStream_t)cumo_cuda_handle_get(&streams, v, "cudaStream_t");
+}
+
+static cudaEvent_t
+event_get(VALUE v)
+{
+    return (cudaEvent_t)cumo_cuda_handle_get(&events, v, "cudaEvent_t");
+}
+
+// cudaSuccess and cudaErrorNotReady are the two answers of a query; anything
+// else is an error.
+static VALUE
+query_result(cudaError_t status)
+{
+    if (status == cudaSuccess) { return Qtrue; }
+    if (status == cudaErrorNotReady) { return Qfalse; }
+    cumo_cuda_runtime_check_status(status);
+    return Qfalse;
+}
+
+/*
+  Returns whether everything queued on a stream has finished.
+
+  @param [Integer] stream
+  @return [Boolean]
+ */
+static VALUE
+rb_cudaStreamQuery(VALUE self, VALUE stream)
+{
+    return query_result(cudaStreamQuery(cumo_cuda_stream_get(stream)));
+}
+
+/*
+  Makes everything queued on a stream after this call wait for an event.
+
+  @param [Integer] stream
+  @param [Integer] event
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaStreamWaitEvent(VALUE self, VALUE stream, VALUE event)
+{
+    cumo_cuda_runtime_check_status(cudaStreamWaitEvent(cumo_cuda_stream_get(stream), event_get(event), 0));
+    return Qnil;
+}
+
+/*
+  Creates an event.
+
+  @param [Integer] flags CUDA_EVENT_DEFAULT, CUDA_EVENT_BLOCKING_SYNC and CUDA_EVENT_DISABLE_TIMING, or'ed
+  @return [Integer] the event handle
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaEventCreateWithFlags(VALUE self, VALUE flags)
+{
+    cudaEvent_t event;
+    cumo_cuda_runtime_check_status(cudaEventCreateWithFlags(&event, NUM2UINT(flags)));
+    cumo_cuda_handle_set_add(&events, (size_t)event);
+    return SIZET2NUM((size_t)event);
+}
+
+/*
+  Destroys an event.
+
+  @param [Integer] event
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaEventDestroy(VALUE self, VALUE event)
+{
+    cumo_cuda_runtime_check_status(cudaEventDestroy((cudaEvent_t)cumo_cuda_handle_take(&events, event, "cudaEvent_t")));
+    return Qnil;
+}
+
+/*
+  Records an event on a stream, after everything queued on it so far.
+
+  @param [Integer] event
+  @param [Integer] stream 0 is the legacy default stream
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaEventRecord(VALUE self, VALUE event, VALUE stream)
+{
+    cumo_cuda_runtime_check_status(cudaEventRecord(event_get(event), cumo_cuda_stream_get(stream)));
+    return Qnil;
+}
+
+/*
+  Waits for an event to be reached.
+
+  @param [Integer] event
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaEventSynchronize(VALUE self, VALUE event)
+{
+    cumo_cuda_runtime_check_status(cudaEventSynchronize(event_get(event)));
+    return Qnil;
+}
+
+/*
+  Returns whether an event has been reached.
+
+  @param [Integer] event
+  @return [Boolean]
+ */
+static VALUE
+rb_cudaEventQuery(VALUE self, VALUE event)
+{
+    return query_result(cudaEventQuery(event_get(event)));
+}
+
+/*
+  Returns the milliseconds between two recorded events.
+
+  @param [Integer] start
+  @param [Integer] stop
+  @return [Float] milliseconds
+  @raise [Cumo::CUDA::RuntimeError]
+ */
+static VALUE
+rb_cudaEventElapsedTime(VALUE self, VALUE start, VALUE stop)
+{
+    float ms = 0;
+    cumo_cuda_runtime_check_status(cudaEventElapsedTime(&ms, event_get(start), event_get(stop)));
+    return DBL2NUM((double)ms);
 }
 
 /*
@@ -325,7 +483,7 @@ stream_get(VALUE v)
 static VALUE
 rb_cudaStreamSynchronize(VALUE self, VALUE stream)
 {
-    cumo_cuda_runtime_check_status(cudaStreamSynchronize(stream_get(stream)));
+    cumo_cuda_runtime_check_status(cudaStreamSynchronize(cumo_cuda_stream_get(stream)));
     return Qnil;
 }
 
@@ -350,7 +508,7 @@ rb_current_stream(VALUE self)
 static VALUE
 rb_current_stream_set(VALUE self, VALUE stream)
 {
-    current_stream = stream_get(stream);
+    cumo_cuda_stream_set(cumo_cuda_stream_get(stream));
     return stream;
 }
 
@@ -391,5 +549,18 @@ Init_cumo_cuda_runtime()
     rb_define_singleton_method(mRuntime, "current_stream=", rb_current_stream_set, 1);
     rb_define_const(mRuntime, "CUDA_STREAM_DEFAULT", UINT2NUM(cudaStreamDefault));
     rb_define_const(mRuntime, "CUDA_STREAM_NON_BLOCKING", UINT2NUM(cudaStreamNonBlocking));
+    rb_define_singleton_method(mRuntime, "cudaStreamQuery", rb_cudaStreamQuery, 1);
+    rb_define_singleton_method(mRuntime, "cudaStreamWaitEvent", rb_cudaStreamWaitEvent, 2);
+    rb_define_singleton_method(mRuntime, "cudaEventCreateWithFlags", rb_cudaEventCreateWithFlags, 1);
+    rb_define_singleton_method(mRuntime, "cudaEventDestroy", rb_cudaEventDestroy, 1);
+    rb_define_singleton_method(mRuntime, "cudaEventRecord", rb_cudaEventRecord, 2);
+    rb_define_singleton_method(mRuntime, "cudaEventSynchronize", rb_cudaEventSynchronize, 1);
+    rb_define_singleton_method(mRuntime, "cudaEventQuery", rb_cudaEventQuery, 1);
+    rb_define_singleton_method(mRuntime, "cudaEventElapsedTime", rb_cudaEventElapsedTime, 2);
+    rb_define_const(mRuntime, "CUDA_EVENT_DEFAULT", UINT2NUM(cudaEventDefault));
+    rb_define_const(mRuntime, "CUDA_EVENT_BLOCKING_SYNC", UINT2NUM(cudaEventBlockingSync));
+    rb_define_const(mRuntime, "CUDA_EVENT_DISABLE_TIMING", UINT2NUM(cudaEventDisableTiming));
     cumo_cuda_handle_set_init(&streams);
+    cumo_cuda_handle_set_init(&events);
+    cumo_cuda_handle_set_init(&in_use);
 }
