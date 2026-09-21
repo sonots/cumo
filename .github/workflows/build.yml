@@ -113,7 +113,7 @@ jobs:
           export PATH=/opt/ccache-bin:$PATH
 
           export CCACHE_DIR=~/.cache/ccache
-          export CCACHE_MAXSIZE=1024M
+          export CCACHE_MAXSIZE=2048M
           export CCACHE_CPP2=1
           ccache -z
 
