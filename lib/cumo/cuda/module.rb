@@ -32,13 +32,12 @@ module Cumo::CUDA
       Driver.cuModuleGetGlobal(@ptr, name)
     end
 
-    # Answering nil here left the caller holding one, and finding out at
-    # whatever it tried to do with it. What is missing is the launch rather than
-    # the lookup: Driver.cuModuleGetFunction is bound, cuLaunchKernel is not,
-    # and there is no object to put a CUfunction in.
+    # Answers the kernel of that name as a Function. The name is the one in
+    # the source, so a kernel outside extern "C" has to be asked for by its
+    # mangled name.
     def get_function(name)
-      raise NotImplementedError,
-            "Cumo cannot launch a kernel it compiled: cuLaunchKernel is not bound"
+      raise ArgumentError, "no module is loaded" unless @ptr
+      Function.new(self, Driver.cuModuleGetFunction(@ptr, name), name)
     end
   end
 end
