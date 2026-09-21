@@ -779,6 +779,35 @@ class NArrayAltCoverageTest < CumoTestBase
 
   class BitSubclass < Cumo::Bit; end
 
+  class RObjectSubclass < Cumo::RObject; end
+  class Int32Subclass < Cumo::Int32; end
+
+  # RObject holds Ruby objects, so its buffer is addresses and to_binary is
+  # undefined for it. marshal_dump asked for the exact class, which sent a
+  # subclass down the other branch and wrote those addresses out.
+  def test_marshal_of_a_robject_subclass_carries_its_elements
+    a = RObjectSubclass.new(2)
+    a.store(Cumo::RObject.cast(%w[hello world]))
+
+    assert_equal([1, [2], 0, %w[hello world]], a.marshal_dump)
+    assert_include(Marshal.dump(a), "hello")
+
+    b = Marshal.load(Marshal.dump(a))
+    assert_equal(RObjectSubclass, b.class)
+    assert_equal(%w[hello world], b.to_a)
+  end
+
+  def test_marshal_of_a_subclass_of_another_dtype_still_goes_through_bytes
+    a = Int32Subclass.new(3)
+    a.store(Cumo::Int32[1, 2, 3])
+
+    assert_equal([1, 2, 3].pack("l*"), a.marshal_dump[3])
+
+    b = Marshal.load(Marshal.dump(a))
+    assert_equal(Int32Subclass, b.class)
+    assert_equal([1, 2, 3], b.to_a)
+  end
+
   def test_marshal_dump_of_a_robject_view_with_an_offset
     a = Cumo::RObject.cast(%i[a b c d e f g h])
 
@@ -800,10 +829,9 @@ class NArrayAltCoverageTest < CumoTestBase
   end
 
   # A view that cannot be read in place is replaced by its dup, and dup is
-  # Ruby: rb_obj_class reads past a singleton class, so one defined on the
-  # object itself reaches the branch. The words are handed back as Ruby
-  # objects, so an answer of another shape, class or layout used to be read
-  # out of bounds or read from the wrong place.
+  # Ruby: a singleton method defined on the object itself reaches the branch.
+  # The words are handed back as Ruby objects, so an answer of another shape,
+  # class or layout used to be read out of bounds or read from the wrong place.
   data("shorter",   [->(a) { Cumo::RObject.cast(["only"]) },        Cumo::NArray::ShapeError])
   data("longer",    [->(a) { a },                                   Cumo::NArray::ShapeError])
   data("other type", [->(a) { Cumo::DFloat.cast([1.0] * 5) },       TypeError])

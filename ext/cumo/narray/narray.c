@@ -1868,13 +1868,16 @@ cumo_na_marshal_dump(VALUE self)
     rb_ary_push(a, INT2FIX(1));     // version
     rb_ary_push(a, cumo_na_shape(self));
     rb_ary_push(a, INT2FIX(CUMO_NA_FLAG0(self)));
-    if (rb_obj_class(self) == cumo_cRObject) {
+    // A subclass holds Ruby objects just as its base does, so it is asked what
+    // it is a kind of rather than what it is. The other branch would hand out
+    // the buffer as bytes, and those bytes are addresses.
+    if (RTEST(rb_obj_is_kind_of(self, cumo_cRObject))) {
         cumo_narray_t *na;
         VALUE *ptr;
         // The words below are handed back as Ruby objects, so what the dup
-        // answers decides what they are. rb_obj_class reads past a singleton
-        // class, so one defined on the object itself reaches here, and the
-        // shared check is what says it holds the same elements as one run.
+        // answers decides what they are. A singleton method defined on the
+        // object itself reaches here, and the shared check is what says it
+        // holds the same elements as one run.
         self = cumo_na_as_contiguous_array(self);
         ptr = (VALUE*)cumo_na_get_offset_pointer_for_read(self);
         // Counted after the pointer, since taking one runs allocate.
@@ -1931,7 +1934,9 @@ cumo_na_marshal_load(VALUE self, VALUE a)
     cumo_na_initialize(self, RARRAY_AREF(a,1));
     CUMO_NA_FL0_SET(self,NUM2INT(rb_ary_entry(a,2)));
     v = rb_ary_entry(a,3);
-    if (rb_obj_class(self) == cumo_cRObject) {
+    // Whatever marshal_dump wrote for this class is what is read back, so the
+    // two agree on which branch a subclass takes.
+    if (RTEST(rb_obj_is_kind_of(self, cumo_cRObject))) {
         char *ptr;
         if (TYPE(v) != T_ARRAY) {
             rb_raise(rb_eArgError,"RObject content should be array");
