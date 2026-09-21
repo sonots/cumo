@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <ruby.h>
 #include <cudnn.h>
+#include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/template.h"
 #include "cumo/cuda/runtime.h"
@@ -234,7 +235,7 @@ cumo_cuda_cudnn_CreateConvolutionDescriptor(
     // exactly that; single precision is not.
     if (math_type == CUDNN_DEFAULT_MATH &&
         compute_dtype == CUDNN_DATA_FLOAT &&
-        !cumo_cuda_cudnn_allow_tf32()) {
+        !cumo_allow_tf32_p()) {
         math_type = CUDNN_FMA_MATH;
     }
     return cudnnSetConvolutionMathType(*desc, math_type);

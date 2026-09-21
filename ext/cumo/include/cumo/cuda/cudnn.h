@@ -31,13 +31,6 @@ extern VALUE cumo_na_eShapeError;
 size_t
 cumo_cuda_cudnn_max_workspace_size();
 
-// Whether a single-precision convolution may run on tensor cores. cuDNN reads
-// CUDNN_DEFAULT_MATH as "TF32 is allowed", so a single-precision convolution
-// drops to a 10 bit significand as soon as the algorithm search reaches an
-// algorithm that takes tensor cores. CUMO_CUDNN_ALLOW_TF32=1 asks for that.
-int
-cumo_cuda_cudnn_allow_tf32();
-
 // An output array given by the caller is written through a descriptor built
 // from another operand, or as if it were contiguous, so cuDNN never learns how
 // long it really is. It has to be checked here instead.

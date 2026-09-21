@@ -16,6 +16,8 @@ extern "C" {
 bool cumo_compatible_mode_enabled_p();
 bool cumo_show_warning_enabled_p();
 bool cumo_show_warning_once_enabled_p();
+// Whether single precision may run on tensor cores, set by CUMO_ALLOW_TF32.
+bool cumo_allow_tf32_p();
 
 // Reads an environment variable that is a yes or a no. 1/on/yes/true and
 // 0/off/no/false answer themselves in any case. Unset or empty answers dflt,

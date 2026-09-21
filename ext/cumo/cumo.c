@@ -99,6 +99,13 @@ bool cumo_show_warning_once_enabled_p()
     return cumo_show_warning_once_enabled;
 }
 
+static bool cumo_allow_tf32;
+
+bool cumo_allow_tf32_p()
+{
+    return cumo_allow_tf32;
+}
+
 /*
   Enable Numo NArray compatible mode.
 
@@ -143,6 +150,19 @@ rb_compatible_mode_enabled_p(VALUE self)
     return (cumo_compatible_mode_enabled ? Qtrue : Qfalse);
 }
 
+/*
+  Returns whether single precision may run on tensor cores, set by
+  CUMO_ALLOW_TF32. Off unless asked for: tensor cores round the operands to
+  a 10 bit significand.
+
+  @return [Boolean]
+ */
+static VALUE
+rb_allow_tf32_p(VALUE self)
+{
+    return (cumo_allow_tf32 ? Qtrue : Qfalse);
+}
+
 /* initialization of Cumo Module */
 void
 Init_cumo()
@@ -160,10 +180,12 @@ Init_cumo()
     rb_define_singleton_method(mCumo, "enable_compatible_mode", rb_enable_compatible_mode, 0);
     rb_define_singleton_method(mCumo, "disable_compatible_mode", rb_disable_compatible_mode, 0);
     rb_define_singleton_method(mCumo, "compatible_mode_enabled?", rb_compatible_mode_enabled_p, 0);
+    rb_define_singleton_method(mCumo, "allow_tf32?", rb_allow_tf32_p, 0);
 
     cumo_compatible_mode_enabled = cumo_env_truth("CUMO_COMPATIBLE_MODE", 0);
     cumo_show_warning_enabled = cumo_env_truth("CUMO_SHOW_WARNING", 0);
     cumo_show_warning_once_enabled = cumo_env_truth("CUMO_SHOW_WARNING_ONCE", 1);
+    cumo_allow_tf32 = cumo_env_truth("CUMO_ALLOW_TF32", 0);
 
     Init_cumo_narray();
 

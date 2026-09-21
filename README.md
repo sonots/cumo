@@ -963,7 +963,7 @@ The half types name the tensor cores themselves and are not affected.
 To trade the accuracy for the speed:
 
 ```
-export CUMO_CUDNN_ALLOW_TF32=1
+export CUMO_ALLOW_TF32=1
 ```
 
 Measured over the convolutions of a ResNet-18 forward pass at batch 16, with the ceiling raised to 256MB, each layer against a double precision reference:
@@ -974,7 +974,8 @@ tensor cores off (default)   5.24 ms      1.4e-05
 tensor cores on              4.31 ms      2.4e-04
 ```
 
-`Cumo::CUDA::CUDNN.allow_tf32?` reads back the value in force.
+`Cumo.allow_tf32?` reads back the value in force.
+So far only the convolutions read it: `dot` and `gemm` stay at single precision either way.
 
 ## Contributing
 
