@@ -170,6 +170,33 @@ class BitTest < Test::Unit::TestCase
 
   end
 
+  # The answer followed the number of arguments, which counts a keyword that
+  # only restates a default, so writing one turned false into a zero-dimensional
+  # Bit. That Bit is truthy whatever it holds, so the answer read as true.
+  test "the documented defaults answer what leaving them out answers" do
+    a = Cumo::Bit[1, 1, 0]
+
+    assert_equal(false, a.all?)
+    assert_equal(false, a.all?(axis: nil))
+    assert_equal(false, a.all?(keepdims: false))
+    assert_equal(false, a.all?(axis: nil, keepdims: false))
+    assert_equal(true,  a.any?)
+    assert_equal(true,  a.any?(axis: nil))
+    assert_equal(true,  a.any?(nan: false))
+    assert_equal(false, a.none?)
+    assert_equal(false, a.none?(axis: nil))
+
+    # Naming axes still asks for an array, whatever rank it leaves, which is
+    # what Numo answers too.
+    assert_equal([], a.all?(axis: 0).shape)
+    assert_equal([0], a.all?(axis: 0).to_a)
+    assert_equal([0], a.all?(keepdims: true).to_a)
+
+    b = Cumo::Bit[[1, 1], [1, 0]]
+    assert_equal([], b.all?(axis: [0, 1]).shape)
+    assert_equal([1, 0], b.all?(axis: 0).to_a)
+  end
+
   test "a reduction over an empty Bit answers its identity" do
     e = Cumo::Bit.new(0, 3)
 

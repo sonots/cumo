@@ -2167,6 +2167,9 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
 
     if (NIL_P(axes)) return reduce;
 
+    if (ndf) {
+        ndf->flag |= CUMO_NDF_AXES_NAMED;
+    }
     return cumo_na_get_reduce_flag_from_axes(naryv[max_arg], axes);
 }
 
