@@ -77,7 +77,7 @@ DTYPES = (ENV['DTYPES'] == 'all' ? DTYPE_SETS['all'] : (ENV['DTYPES']&.split(','
 
 LAYOUT_SETS = {
   'default' => %i[contig colslice],
-  'all' => %i[contig colslice transpose step2 index]
+  'all' => %i[contig colslice transpose step2 index reverse]
 }.freeze
 LAYOUTS = (ENV['LAYOUTS'] == 'all' ? LAYOUT_SETS['all'] : (ENV['LAYOUTS']&.split(',')&.map(&:to_sym) || LAYOUT_SETS['default']))
 
@@ -156,6 +156,9 @@ def operand(klass, rows, cols, layout)
   when :transpose then base(klass, cols, rows).transpose
   when :step2     then base(klass, rows, cols * 2)[true, (0...(cols * 2)).step(2)]
   when :index     then base(klass, rows, cols)[true, (0...cols).to_a.rotate(7)]
+  # walks one stride like contig does, but backwards, which is the shape a
+  # kernel that only knows +elmsz hands to a buffer instead
+  when :reverse   then base(klass, rows, cols).reverse(1)
   else raise ArgumentError, "unknown layout #{layout}"
   end
 end

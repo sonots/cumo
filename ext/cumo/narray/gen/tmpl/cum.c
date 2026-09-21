@@ -2,8 +2,37 @@
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
 cudaError_t <%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
         cumo_na_iarray_stridx_t* a_in, cumo_na_iarray_stridx_t* a_out,
-        cumo_na_indexer_t* indexer, uint64_t row_len, int flat_in, int flat_out);
+        cumo_na_indexer_t* indexer, uint64_t row_len, ssize_t step_in, ssize_t step_out);
 <% end %>
+<% end %>
+
+<% unless type_name == 'robject' %>
+// How far the scan moves for one step along the last axis, in elements, or 0
+// where one number cannot say it. A reversed view answers a negative step and
+// a flat one answers 1; an index or a transpose answers 0 and is gathered.
+// An axis of extent one is never indexed, so whatever stride it carries is
+// not reached.
+static ssize_t
+<%=c_iter%>_walk_step(cumo_na_iarray_stridx_t *a, cumo_na_indexer_t *indexer)
+{
+    ssize_t step, want;
+    int k, last = indexer->ndim - 1;
+
+    if (indexer->ndim == 0) { return 1; }
+    if (!CUMO_SDX_IS_STRIDE(a->stridx[last])) { return 0; }
+    step = CUMO_SDX_GET_STRIDE(a->stridx[last]);
+    if (step == 0 || step % (ssize_t)sizeof(dtype) != 0) { return 0; }
+    step /= (ssize_t)sizeof(dtype);
+
+    want = step;
+    for (k = last; --k >= 0;) {
+        want *= (ssize_t)indexer->shape[k + 1];
+        if (indexer->shape[k] == 1) { continue; }
+        if (!CUMO_SDX_IS_STRIDE(a->stridx[k])) { return 0; }
+        if (CUMO_SDX_GET_STRIDE(a->stridx[k]) != want * (ssize_t)sizeof(dtype)) { return 0; }
+    }
+    return step;
+}
 <% end %>
 
 <% (is_float ? ["","_nan"] : [""]).each do |j| %>
@@ -22,24 +51,17 @@ static void
     cumo_na_iarray_stridx_t a_out = cumo_na_make_iarray_stridx(&lp->args[1]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
     uint64_t row_len = 1;
-    int k, flat_in = 1, flat_out = 1, single_run;
-    ssize_t expect;
+    int k, single_run;
+    ssize_t step_in, step_out;
 
     for (k = indexer.ndim - lp->reduce_dim; k < indexer.ndim; ++k) {
         row_len *= (uint64_t)indexer.shape[k];
     }
-    // The scan addresses its rows end to end, so anything laid out otherwise is
-    // copied into a buffer that is.
-    expect = sizeof(dtype);
-    for (k = indexer.ndim; --k >= 0;) {
-        if (!CUMO_SDX_IS_STRIDE(a_in.stridx[k]) || CUMO_SDX_GET_STRIDE(a_in.stridx[k]) != expect) { flat_in = 0; break; }
-        expect *= (ssize_t)indexer.shape[k];
-    }
-    expect = sizeof(dtype);
-    for (k = indexer.ndim; --k >= 0;) {
-        if (!CUMO_SDX_IS_STRIDE(a_out.stridx[k]) || CUMO_SDX_GET_STRIDE(a_out.stridx[k]) != expect) { flat_out = 0; break; }
-        expect *= (ssize_t)indexer.shape[k];
-    }
+    // The scan reads base[i * step], so an operand that walks one stride needs
+    // no buffer whichever way it walks. Anything else is copied into one that
+    // does.
+    step_in = <%=c_iter%>_walk_step(&a_in, &indexer);
+    step_out = <%=c_iter%>_walk_step(&a_out, &indexer);
 
     // A single short row is the one shape the host still wins: the scan costs
     // less there than the launch it would take, and the wait it needs is paid
@@ -64,7 +86,7 @@ static void
         s2 = CUMO_SDX_GET_STRIDE(a_out.stridx[indexer.ndim - 1]);
     } else {
         cumo_cuda_runtime_check_status(<%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
-                &a_in, &a_out, &indexer, row_len, flat_in, flat_out));
+                &a_in, &a_out, &indexer, row_len, step_in, step_out));
         return;
     }
   <% else %>
