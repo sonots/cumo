@@ -122,6 +122,7 @@ module Cumo::CUDA
       assert_equal((picked * picked).to_a, GENERIC.call(picked, 0).to_a)
       table = Cumo::SFloat.new(3).seq.freeze
       assert_equal([0, 1, 4], SQUARED_DIFF.call(table, 0).to_a)
+      assert_raise(FrozenError) { SQUARED_DIFF.call(table, 0, Cumo::SFloat.zeros(3).freeze) }
       zero_dim = Cumo::SFloat.new(2, 3).seq[1, 2]
       assert_equal([[25, 25, 25], [25, 25, 25]], SQUARED_DIFF.call(Cumo::SFloat.zeros(2, 3), zero_dim).to_a)
     end

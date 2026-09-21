@@ -814,6 +814,26 @@ Inputs are `const`, so an operation that writes one does not compile, and a numb
 `preamble:` is placed before the kernel, after the typedefs of the letters, so a device function can be written in terms of `T`.
 `Cumo::Bit`, `Cumo::HFloat`, `Cumo::BFloat`, `Cumo::SComplex`, `Cumo::DComplex` and `Cumo::RObject` cannot be handed to one of these kernels yet.
 
+### Writing A Reduction Kernel
+
+`Cumo::CUDA::ReductionKernel` reduces along axes with three expressions, the way CuPy's `ReductionKernel` does: a map applied to every element, a reduce between two mapped values `a` and `b`, and a post map that writes the reduced value `a` to the output.
+The identity starts every reduction.
+
+```ruby
+l2norm = Cumo::CUDA::ReductionKernel.new(
+  "T x", "T y", "x * x", "a + b", "y = sqrt(a)", "0", "l2norm")
+
+x = Cumo::SFloat.new(2, 5).seq
+l2norm.call(x, axis: 1)   # => [5.477, 15.969]
+l2norm.call(x)            # => the 0-dimensional norm of everything
+```
+
+The parameters, the types and the broadcasting follow `ElementwiseKernel`, and `axis:` and `keepdims:` follow `sum`.
+`reduce_type:` names the type the values are accumulated in, as a C type, a type name or one of the letters, and is the output's type unless said otherwise.
+The post map may be several statements, so a kernel can write several outputs.
+A `raw` parameter is not taken, since a reduction indexes every argument itself.
+A long axis reduced to a few outputs is split across blocks and folded in a second pass, so it runs as fast as `sum`.
+
 ### Select a GPU device ID
 
 Set the `CUDA_VISIBLE_DEVICES=id` environment variable, or
