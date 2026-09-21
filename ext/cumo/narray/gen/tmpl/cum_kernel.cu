@@ -35,9 +35,6 @@ struct <%="cumo_thrust_#{name}_row"%>
     __host__ __device__ uint64_t operator()(uint64_t i) const { return i / row_len; }
 };
 
-// A row that is not laid out end to end is copied into a buffer that is, and
-// put back afterwards, which is two passes over the data against one launch a
-// row.
 // base[i * step] as an iterator, so an operand that walks one stride is scanned
 // where it lies however it walks. A flat operand takes the plain pointer
 // instead, which is what lets thrust read it wide.
@@ -62,19 +59,56 @@ static <%="cumo_#{type_name}_#{name}_strided_it"%>
             thrust::make_transform_iterator(thrust::make_counting_iterator<int64_t>(0), at));
 }
 
-template <typename Iarray>
-__global__ void <%="cumo_#{type_name}_#{name}_gather_kernel"%>(Iarray a, cumo_na_indexer_t indexer, dtype* buf) {
+// An operand no single stride reaches is copied into a buffer laid out end to
+// end, and put back afterwards, which is two passes over the data against one
+// launch a row. The address is taken with the accessor for the rank at hand:
+// the general one divides by a run time extent per axis per element, and that
+// costs more than the copy it is paying for.
+<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+__global__ void <%="cumo_#{type_name}_#{name}_gather_kernel_dim#{idim}"%>(cumo_na_iarray_stridx_t a, cumo_na_indexer_t indexer, dtype* buf) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim(&indexer, i);
-        buf[i] = *(dtype*)cumo_na_iarray_stridx_at_dim(&a, &indexer);
+        cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
+        buf[i] = *(dtype*)cumo_na_iarray_stridx_at_dim<%=idim%>(&a, &indexer);
     }
 }
 
-template <typename Iarray>
-__global__ void <%="cumo_#{type_name}_#{name}_scatter_kernel"%>(Iarray a, cumo_na_indexer_t indexer, const dtype* buf) {
+__global__ void <%="cumo_#{type_name}_#{name}_scatter_kernel_dim#{idim}"%>(cumo_na_iarray_stridx_t a, cumo_na_indexer_t indexer, const dtype* buf) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim(&indexer, i);
-        *(dtype*)cumo_na_iarray_stridx_at_dim(&a, &indexer) = buf[i];
+        cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
+        *(dtype*)cumo_na_iarray_stridx_at_dim<%=idim%>(&a, &indexer) = buf[i];
+    }
+}
+<% end %>
+
+static void
+<%="cumo_#{type_name}_#{name}_gather_launch"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, dtype* buf,
+        size_t grid_dim, size_t block_dim)
+{
+    switch (indexer->ndim) {
+    <% (0..opt_indexer_ndim).each do |idim| %>
+    case <%=idim%>:
+        <%="cumo_#{type_name}_#{name}_gather_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a, *indexer, buf);
+        break;
+    <% end %>
+    default:
+        <%="cumo_#{type_name}_#{name}_gather_kernel_dim"%><<<grid_dim, block_dim>>>(*a, *indexer, buf);
+        break;
+    }
+}
+
+static void
+<%="cumo_#{type_name}_#{name}_scatter_launch"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, const dtype* buf,
+        size_t grid_dim, size_t block_dim)
+{
+    switch (indexer->ndim) {
+    <% (0..opt_indexer_ndim).each do |idim| %>
+    case <%=idim%>:
+        <%="cumo_#{type_name}_#{name}_scatter_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a, *indexer, buf);
+        break;
+    <% end %>
+    default:
+        <%="cumo_#{type_name}_#{name}_scatter_kernel_dim"%><<<grid_dim, block_dim>>>(*a, *indexer, buf);
+        break;
     }
 }
 <% end %>
@@ -197,7 +231,7 @@ cudaError_t <%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
     if (step_in == 0 || scatter_back) {
         tmp = (dtype*)cumo_cuda_runtime_malloc(sizeof(dtype) * total);
         if (step_in == 0) {
-            <%="cumo_#{type_name}_#{name}_gather_kernel"%><<<grid_dim, block_dim>>>(*a_in, *indexer, tmp);
+            <%="cumo_#{type_name}_#{name}_gather_launch"%>(a_in, indexer, tmp, grid_dim, block_dim);
             cumo_check_launch_holding(tmp);
             buf_in = tmp;
             step_in = 1;
@@ -215,7 +249,7 @@ cudaError_t <%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
     cumo_check_status_holding(status, tmp);
 
     if (scatter_back) {
-        <%="cumo_#{type_name}_#{name}_scatter_kernel"%><<<grid_dim, block_dim>>>(*a_out, *indexer, tmp);
+        <%="cumo_#{type_name}_#{name}_scatter_launch"%>(a_out, indexer, tmp, grid_dim, block_dim);
         cumo_check_launch_holding(tmp);
     }
     if (tmp) { cumo_cuda_runtime_free((char*)tmp); }

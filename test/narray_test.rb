@@ -3975,6 +3975,25 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # A view no single stride reaches is gathered into a buffer, and the gather
+  # takes its address with the accessor for the rank at hand, one apiece up to
+  # eight. The values stay small enough to be exact in single precision, so the
+  # order a parallel scan associates in cannot show here.
+  test "a scan over a gathered view answers the same at every rank" do
+    [[6, 5], [4, 3, 5], [2, 3, 2, 5], [2, 2, 3, 2, 5], [2, 2, 2, 2, 2, 5]].each do |shape|
+      a = Cumo::SFloat.new(*shape).seq(1, 1)
+      {
+        "transposed" => a.transpose,
+        "last axis reversed" => a.reverse(shape.size - 1),
+        "reversed" => a.reverse,
+      }.each do |label, v|
+        total = 0.0
+        want = v.to_a.flatten.map { |x| total += x }
+        assert_equal(want, v.cumsum.to_a.flatten, "#{shape.inspect} #{label}")
+      end
+    end
+  end
+
   # A scan shorter than CUMO_CUM_MIN_KERNEL_SIZE runs on the host and a longer
   # one on the device, and the lengths below cross that boundary. Only the
   # nan-aware test reached the host side before, and only at one length.
