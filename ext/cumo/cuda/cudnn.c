@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <ruby.h>
-#include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/template.h"
 #include "cumo/cuda/runtime.h"
@@ -52,21 +51,6 @@ init_max_workspace_size(void)
 BAD:
     rb_warn("CUMO_CUDNN_MAX_WORKSPACE_SIZE=%s is not a positive byte count, using %"PRIuSIZE,
             env, cudnn_max_workspace_size);
-}
-
-static int cudnn_allow_tf32 = 0;
-
-int
-cumo_cuda_cudnn_allow_tf32()
-{
-    return cudnn_allow_tf32;
-}
-
-static void
-init_allow_tf32(void)
-{
-    // default is false: a yes costs accuracy, so a misspelling must not be one.
-    cudnn_allow_tf32 = cumo_env_truth("CUMO_CUDNN_ALLOW_TF32", 0);
 }
 
 VALUE
@@ -129,19 +113,6 @@ rb_cudnn_max_workspace_size(VALUE self)
 {
     return SIZET2NUM(cumo_cuda_cudnn_max_workspace_size());
 }
-
-/*
-  Returns whether a single-precision convolution may run on tensor cores, set
-  by CUMO_CUDNN_ALLOW_TF32. Off unless asked for: tensor cores round the
-  operands to a 10 bit significand.
-
-  @return [Boolean]
- */
-static VALUE
-rb_cudnn_allow_tf32_p(VALUE self)
-{
-    return cumo_cuda_cudnn_allow_tf32() ? Qtrue : Qfalse;
-}
 #endif // CUDNN_FOUND
 
 static VALUE
@@ -170,9 +141,7 @@ Init_cumo_cuda_cudnn(void)
     rb_define_singleton_method(mCUDNN, "available?", rb_cudnn_available_p, 0);
 #ifdef CUDNN_FOUND
     init_max_workspace_size();
-    init_allow_tf32();
     rb_define_singleton_method(mCUDNN, "max_workspace_size", rb_cudnn_max_workspace_size, 0);
-    rb_define_singleton_method(mCUDNN, "allow_tf32?", rb_cudnn_allow_tf32_p, 0);
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX_DETERMINISTIC", INT2NUM(CUDNN_POOLING_MAX_DETERMINISTIC));
     rb_define_const(mCUDNN, "CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING));

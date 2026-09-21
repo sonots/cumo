@@ -11,7 +11,7 @@ class CumoTest < Test::Unit::TestCase
     require "cumo/narray"
     $stderr.sync = true
     2.times { Cumo::DFloat[1.0].to_a }
-    print [Cumo.compatible_mode_enabled?, Cumo::CUDA::MemoryPool.enabled?].inspect
+    print [Cumo.compatible_mode_enabled?, Cumo::CUDA::MemoryPool.enabled?, Cumo.allow_tf32?].inspect
   RUBY
 
   # RUBYOPT is dropped so that a -W0 in the developer's shell cannot silence
@@ -21,22 +21,23 @@ class CumoTest < Test::Unit::TestCase
   end
 
   {
-    "off"   => [false, false], "false" => [false, false], "OFF" => [false, false], "0" => [false, false],
-    "on"    => [true, true],   "TRUE"  => [true, true],   "yes" => [true, true],   "1" => [true, true],
-    ""      => [false, true],
-  }.each do |word, (compat, pool)|
-    test "CUMO_COMPATIBLE_MODE and CUMO_MEMORY_POOL read #{word.inspect} for what it says" do
-      out = flags("CUMO_COMPATIBLE_MODE" => word, "CUMO_MEMORY_POOL" => word)
-      assert_equal([compat, pool].inspect, out.lines.last)
+    "off"   => [false, false, false], "false" => [false, false, false], "OFF" => [false, false, false], "0" => [false, false, false],
+    "on"    => [true, true, true],    "TRUE"  => [true, true, true],    "yes" => [true, true, true],    "1" => [true, true, true],
+    ""      => [false, true, false],
+  }.each do |word, (compat, pool, tf32)|
+    test "CUMO_COMPATIBLE_MODE, CUMO_MEMORY_POOL and CUMO_ALLOW_TF32 read #{word.inspect} for what it says" do
+      out = flags("CUMO_COMPATIBLE_MODE" => word, "CUMO_MEMORY_POOL" => word, "CUMO_ALLOW_TF32" => word)
+      assert_equal([compat, pool, tf32].inspect, out.lines.last)
       assert_not_include(out, "is not a yes or a no")
     end
   end
 
   test "a misspelled flag keeps its default and warns" do
-    out = flags("CUMO_COMPATIBLE_MODE" => "flase", "CUMO_MEMORY_POOL" => "flase")
-    assert_equal([false, true].inspect, out.lines.last)
+    out = flags("CUMO_COMPATIBLE_MODE" => "flase", "CUMO_MEMORY_POOL" => "flase", "CUMO_ALLOW_TF32" => "flase")
+    assert_equal([false, true, false].inspect, out.lines.last)
     assert_include(out, "CUMO_COMPATIBLE_MODE=flase is not a yes or a no, leaving it off")
     assert_include(out, "CUMO_MEMORY_POOL=flase is not a yes or a no, leaving it on")
+    assert_include(out, "CUMO_ALLOW_TF32=flase is not a yes or a no, leaving it off")
   end
 
   # The warning about a method that synchronizes is the observable side of the

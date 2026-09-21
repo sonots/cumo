@@ -984,7 +984,7 @@ class CUDNNTest < Test::Unit::TestCase
 
   def worst_conv_error(allow_tf32)
     env = { "CUMO_CUDNN_MAX_WORKSPACE_SIZE" => (64 << 20).to_s,
-            "CUMO_CUDNN_ALLOW_TF32" => (allow_tf32 ? "1" : nil) }
+            "CUMO_ALLOW_TF32" => (allow_tf32 ? "1" : nil) }
     Float(run_child(WORST_CONV_ERROR, env: env)[/WORST=(\S+)/, 1])
   end
 
@@ -997,11 +997,6 @@ class CUDNNTest < Test::Unit::TestCase
   end
 
   sub_test_case "tensor cores" do
-    test "a misspelled CUMO_CUDNN_ALLOW_TF32 leaves them off" do
-      asked = ENV["CUMO_CUDNN_ALLOW_TF32"].to_s
-      assert_equal %w[1 on yes true].include?(asked.downcase), Cumo::CUDA::CUDNN.allow_tf32?
-    end
-
     test "single precision keeps its accuracy when the search ceiling is raised" do
       # the same run answers about 2e-04 once tensor cores are allowed, and a
       # card that has none answers the same either way, leaving nothing to check
