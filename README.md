@@ -952,7 +952,7 @@ export CUMO_CUDNN_MAX_WORKSPACE_SIZE=268435456
 The value is in bytes and only bounds the search; each convolution reserves what its chosen algorithm actually needs.
 `Cumo::CUDA::CUDNN.max_workspace_size` reads back the value in force.
 
-### Single precision convolutions stay off the tensor cores
+### Single precision stays off the tensor cores
 
 cuDNN reads its default math mode as "tensor cores are allowed", so a single precision convolution moves onto them as soon as the algorithm search reaches an algorithm that has them.
 The operands are rounded to a 10 bit significand on the way, and nothing in the call said to do that.
@@ -974,8 +974,13 @@ tensor cores off (default)   5.24 ms      1.4e-05
 tensor cores on              4.31 ms      2.4e-04
 ```
 
+The same flag puts `SFloat` and `SComplex` `gemm` on the tensor cores as TF32, and `dot` where it goes through `gemm`.
+Off, the answer is the one cuBLAS gives at single precision, bit for bit.
+On, a `[4096, 4096]` `SFloat` `gemm` goes from 17.8 to 28.4 TFLOP/s on an RTX 5070 Ti Laptop, 1.60 times over six interleaved rounds.
+Its answer is then about 3e-04 from a double precision reference, where it was 4e-07.
+The double types are not affected either way.
+
 `Cumo.allow_tf32?` reads back the value in force.
-So far only the convolutions read it: `dot` and `gemm` stay at single precision either way.
 
 ## Contributing
 
