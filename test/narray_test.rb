@@ -3975,6 +3975,39 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # store dispatches on the class of what it is given, and a subclass of a dtype
+  # matched no branch. It fell through to coerce_cast, which every dtype answers
+  # nil to, so an array of the same class as the receiver raised rather than
+  # being stored, and with it everything that casts an operand: arithmetic, the
+  # reductions and cast itself.
+  test "a subclass of a dtype is that dtype everywhere a dtype is read" do
+    [Cumo::Int32, Cumo::DFloat, Cumo::SComplex, Cumo::Bit].each do |dtype|
+      sub = Class.new(dtype)
+      src = sub.new(4)
+      src.store(dtype.cast([1, 0, 1, 0]))
+
+      dst = sub.new(4)
+      assert_equal([1, 0, 1, 0], dst.store(src).to_a, "#{dtype} store")
+      assert_equal([1, 0, 1, 0], sub.cast(src).to_a, "#{dtype} cast")
+      assert_equal([1, 0, 1, 0], dtype.cast(src).to_a, "#{dtype} cast to the base")
+
+      next if dtype == Cumo::Bit
+      assert_equal([2, 0, 2, 0], (src + src).to_a, "#{dtype} plus")
+      assert_equal([2, 0, 2, 0], (src + dtype.cast([1, 0, 1, 0])).to_a, "#{dtype} plus the base")
+      assert_equal(2, src.sum.to_a.first || src.sum, "#{dtype} sum") if dtype == Cumo::Int32
+    end
+  end
+
+  # RObject took the same branch, so a subclass of any dtype went in as one
+  # object repeated rather than element by element.
+  test "an RObject array takes the elements of a dtype subclass, not the array" do
+    sub = Class.new(Cumo::DFloat)
+    src = sub.new(3)
+    src.store(Cumo::DFloat.cast([1.5, 2.5, 3.5]))
+    assert_equal([1.5, 2.5, 3.5], Cumo::RObject.new(3).store(src).to_a)
+    assert_equal([Float, Float, Float], Cumo::RObject.new(3).store(src).to_a.map(&:class))
+  end
+
   # A view no single stride reaches is gathered into a buffer, and the gather
   # takes its address with the accessor for the rank at hand, one apiece up to
   # eight. The values stay small enough to be exact in single precision, so the

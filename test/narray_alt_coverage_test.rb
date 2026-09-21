@@ -851,7 +851,10 @@ class NArrayAltCoverageTest < CumoTestBase
     assert_equal(bits, a.to_a)
     assert_equal(bits.join, a.to_binary.unpack1("b*"))
     assert_equal(bits[8, 8], a[8..15].to_a)
-    assert_raise(Cumo::NArray::CastError) { a[8..15].to_binary }
+    # The dup a view takes here answers the subclass, and the store that reads
+    # it used to look for its exact class and find no branch. It now takes the
+    # class it is a kind of, so the bytes come back rather than a CastError.
+    assert_equal(bits[8, 8].join, a[8..15].to_binary.unpack1("b*"))
   end
 
   # reshape writes the shape it checked straight over what dup answered, and
