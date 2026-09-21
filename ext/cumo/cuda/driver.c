@@ -525,9 +525,7 @@ rb_cuLaunchKernel(VALUE self, VALUE hfunc,
     size_t *sizes;
     CUresult status;
 
-    if (NUM2SIZET(stream) != 0) {
-        rb_raise(rb_eArgError, "a stream other than 0 is not supported yet; 0 is the current stream");
-    }
+    CUstream _stream = NIL_P(stream) ? (CUstream)cumo_cuda_stream() : (CUstream)cumo_cuda_stream_get(stream);
     Check_Type(args, T_ARRAY);
     n = RARRAY_LEN(args);
     slots = ALLOCV_N(kernel_arg_t, slots_buf, n);
@@ -557,7 +555,7 @@ rb_cuLaunchKernel(VALUE self, VALUE hfunc,
     status = cuLaunchKernel(f,
                             NUM2UINT(grid_x), NUM2UINT(grid_y), NUM2UINT(grid_z),
                             NUM2UINT(block_x), NUM2UINT(block_y), NUM2UINT(block_z),
-                            NUM2UINT(shared_mem), (CUstream)cumo_cuda_stream(),
+                            NUM2UINT(shared_mem), _stream,
                             params, NULL);
     ALLOCV_END(sizes_buf);
     ALLOCV_END(params_buf);

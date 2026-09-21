@@ -11,8 +11,9 @@ module Cumo::CUDA
       @name = name
     end
 
-    # Launches the kernel on the stream Cumo's own kernels run on, so it runs
-    # after the operations issued before it and before the ones issued after.
+    # Launches the kernel on the current stream, the one Cumo's own kernels run
+    # on, so it runs after the operations issued before it and before the
+    # ones issued after.
     #
     # An NArray argument hands over its device pointer, so the kernel sees the
     # elements themselves; it has to be contiguous. An Integer is passed as a
@@ -21,12 +22,14 @@ module Cumo::CUDA
     # a struct passed by value.
     #
     # grid and block take one to three sizes each; shared_mem is the dynamic
-    # shared memory in bytes.
-    def launch(args, grid:, block:, shared_mem: 0)
+    # shared memory in bytes; stream: is a Stream to launch on instead of the
+    # current one.
+    def launch(args, grid:, block:, shared_mem: 0, stream: nil)
       unless shared_mem.is_a?(Integer) && shared_mem >= 0
         raise ArgumentError, "shared_mem is a byte count, got #{shared_mem.inspect}"
       end
-      Driver.cuLaunchKernel(@ptr, *dims(grid, "grid"), *dims(block, "block"), shared_mem, 0, args)
+      raise TypeError, "stream: takes a Stream, got a #{stream.class}" unless stream.nil? || stream.is_a?(Stream)
+      Driver.cuLaunchKernel(@ptr, *dims(grid, "grid"), *dims(block, "block"), shared_mem, stream&.handle, args)
     end
 
     private
