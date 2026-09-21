@@ -5,6 +5,24 @@
 #include "cumo.h"
 #include "cumo/narray.h"
 
+// Ruby's compare rather than strcasecmp, since it does not follow the locale.
+int
+cumo_env_truth(const char *name, int dflt)
+{
+    static const char* const yes[] = {"1", "on", "yes", "true"};
+    static const char* const no[]  = {"0", "off", "no", "false"};
+    const char *env = getenv(name);
+    size_t i;
+
+    if (env == NULL || *env == '\0') return dflt;
+    for (i = 0; i < sizeof(yes) / sizeof(yes[0]); ++i) {
+        if (st_locale_insensitive_strcasecmp(env, yes[i]) == 0) return 1;
+        if (st_locale_insensitive_strcasecmp(env, no[i]) == 0)  return 0;
+    }
+    rb_warn("%s=%s is not a yes or a no, leaving it %s", name, env, dflt ? "on" : "off");
+    return dflt;
+}
+
 void Init_cumo();
 void Init_cumo_narray();
 void Init_cumo_na_data();
@@ -129,7 +147,6 @@ rb_compatible_mode_enabled_p(VALUE self)
 void
 Init_cumo()
 {
-    const char* env;
     VALUE mCumo;
 
 #ifdef HAVE_RB_EXT_RACTOR_SAFE
@@ -144,17 +161,9 @@ Init_cumo()
     rb_define_singleton_method(mCumo, "disable_compatible_mode", rb_disable_compatible_mode, 0);
     rb_define_singleton_method(mCumo, "compatible_mode_enabled?", rb_compatible_mode_enabled_p, 0);
 
-    // default is false
-    env = getenv("CUMO_COMPATIBLE_MODE");
-    cumo_compatible_mode_enabled = (env != NULL && strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
-
-    // default is false
-    env = getenv("CUMO_SHOW_WARNING");
-    cumo_show_warning_enabled = (env != NULL && strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
-
-    // default is true
-    env = getenv("CUMO_SHOW_WARNING_ONCE");
-    cumo_show_warning_once_enabled = env == NULL || (strcmp(env, "OFF") != 0 && strcmp(env, "0") != 0 && strcmp(env, "NO") != 0);
+    cumo_compatible_mode_enabled = cumo_env_truth("CUMO_COMPATIBLE_MODE", 0);
+    cumo_show_warning_enabled = cumo_env_truth("CUMO_SHOW_WARNING", 0);
+    cumo_show_warning_once_enabled = cumo_env_truth("CUMO_SHOW_WARNING_ONCE", 1);
 
     Init_cumo_narray();
 
