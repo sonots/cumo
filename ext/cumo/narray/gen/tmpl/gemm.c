@@ -1,6 +1,11 @@
 <%
-  # cublasGemmStridedBatchedEx multiplies in the element type and accumulates
-  # in the wider one, and takes its scalars in the accumulator's type.
+  # cublasGemmStridedBatchedEx takes its scalars in the compute type: float or
+  # double for the real types, the matching cuComplex for the complex ones,
+  # and float for the half types, which accumulate in it. The compute type
+  # follows the precision; a dtype that needs another rule needs another line
+  # here, and one without a cuBLAS data type is stopped here rather than in C.
+  raise "gemm needs cublas_dtype for #{type_name}" if get(:cublas_dtype).to_s.empty?
+  cublas_compute = is_double_precision ? 'CUBLAS_COMPUTE_64F' : 'CUBLAS_COMPUTE_32F'
   scalar_t = acc_type.empty? ? 'dtype' : acc_type
   num_to_scalar = acc_type.empty? ? 'm_num_to_data' : "(#{acc_type})NUM2DBL"
   scalar_one = acc_one
@@ -270,7 +275,6 @@ static void
 
     if (cumo_na_debug_flag) print_gemm_args(g, &a_layout, &b_layout, stridec, batch_count);
     handle = cumo_cuda_cublas_handle();
-<% unless cublas_dtype.empty? %>
     status = cublasGemmStridedBatchedEx(
             handle,
             b_layout.trans,
@@ -293,29 +297,8 @@ static void
             g->n,
             stridec,
             batch_count,
-            CUBLAS_COMPUTE_32F,
+            <%=cublas_compute%>,
             CUBLAS_GEMM_DEFAULT);
-<% else %>
-    status = cublas<%=cublas_prefix%>gemmStridedBatched(
-            handle,
-            b_layout.trans,
-            a_layout.trans,
-            g->n,
-            g->m,
-            g->k,
-            (<%=cutype%>*)(&g->alpha),
-            (<%=cutype%>*)(cumo_na_get_pointer_for_read(b_layout.a) + cumo_na_get_offset(b_layout.a)),
-            b_layout.ld,
-            b_layout.stride,
-            (<%=cutype%>*)(cumo_na_get_pointer_for_read(a_layout.a) + cumo_na_get_offset(a_layout.a)),
-            a_layout.ld,
-            a_layout.stride,
-            (<%=cutype%>*)(&g->beta),
-            (<%=cutype%>*)(cumo_na_get_pointer_for_write(c) + cumo_na_get_offset(c)),
-            g->n,
-            stridec,
-            batch_count);
-<% end %>
     cumo_cuda_cublas_check_status(status);
 }
 
@@ -376,7 +359,7 @@ static VALUE
     beta = cumo_cuda_cublas_option_value(opts[1],Qnil);
     g.beta = RTEST(beta) ? <%=num_to_scalar%>(beta) : <%=scalar_zero%>;
 
-    // b is handed to cuBLAS as a raw <%=cutype%>*, so another dtype would be
+    // b is handed to cuBLAS as a raw pointer of this dtype, so another dtype would be
     // reinterpreted, and a narrower one read past its end.
     if (rb_obj_class(b) != cT) {
         b = rb_funcall(cT, rb_intern("cast"), 1, b);

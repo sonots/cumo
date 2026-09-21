@@ -25,8 +25,6 @@ set from_acc:            "cumo_float2bfloat"
 set acc_zero:            "0.0f"
 set acc_one:             "1.0f"
 set cublas_dtype:        "CUDA_R_16BF"
-set cublas_prefix:        ""
-set cutype:              "cumo_bfloat"
 set step_down:           "cumo_f16_step_down"
 set need_align:          true
 
