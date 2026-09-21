@@ -791,6 +791,29 @@ The kernel is asked for by the name in the source, so it is declared inside `ext
 On CUDA 12.4 or later the count and the size of the arguments are checked against the kernel before the launch, so an Integer handed to an `int` is refused rather than read wrong.
 A kernel may write any NArray it is handed, so a frozen one is refused, and one that has not been allocated yet is allocated on the way and holds whatever was there.
 
+### Writing An Elementwise Kernel
+
+`Cumo::CUDA::ElementwiseKernel` takes one piece of CUDA C and applies it to every element, the way CuPy's `ElementwiseKernel` does.
+The kernel is compiled once for each set of dtypes, once more when a different argument is a number or is broadcast, and kept for the next call.
+
+```ruby
+squared_diff = Cumo::CUDA::ElementwiseKernel.new(
+  "T x, T y", "T z", "z = (x - y) * (x - y)", "squared_diff")
+
+x = Cumo::SFloat.new(2, 5).seq
+y = Cumo::SFloat.new(5).seq
+squared_diff.call(x, y)   # => the (2, 5) array of squared differences
+squared_diff.call(x, 5)   # => the same against a scalar
+```
+
+A type is one of `float64`, `float32`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16` and `uint8`, or a single letter that stands for whichever dtype the argument has.
+Outputs decide a letter before inputs do, and a letter that only a Ruby number reaches becomes `int64` or `float64`.
+Array arguments are broadcast against each other, and an output may be given after the inputs, or is allocated.
+An argument marked `raw T y` is handed over as a pointer for the operation to index itself, with `i` the element index and `_ind.size()` the element count, and when every argument is raw or a number, `size:` says how many elements there are.
+Inputs are `const`, so an operation that writes one does not compile, and a number handed to an integer type has to be an Integer that fits.
+`preamble:` is placed before the kernel, after the typedefs of the letters, so a device function can be written in terms of `T`.
+`Cumo::Bit`, `Cumo::HFloat`, `Cumo::BFloat`, `Cumo::SComplex`, `Cumo::DComplex` and `Cumo::RObject` cannot be handed to one of these kernels yet.
+
 ### Select a GPU device ID
 
 Set the `CUDA_VISIBLE_DEVICES=id` environment variable, or
