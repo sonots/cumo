@@ -206,6 +206,9 @@ class BitTest < Test::Unit::TestCase
     assert { e.any? == false }
     assert { e.none? == true }
     assert { Cumo::Bit[].all? == true }
+    assert { e.all?(axis: nil) == true }
+    assert { e.all?(keepdims: false) == true }
+    assert { e.any?(axis: nil) == false }
     assert { e.count_true.is_a?(Cumo::UInt64) }
     assert { e.count_true == 0 }
     assert { e.count_false == 0 }
@@ -228,6 +231,27 @@ class BitTest < Test::Unit::TestCase
     assert { v.all? == true }
     assert { v.any? == false }
     assert { v.count_true == 0 }
+  end
+
+  test "a reduction over an empty Bit reserves nothing where it answers a value" do
+    omit("needs the memory pool to count with") unless Cumo::CUDA::MemoryPool.enabled?
+    e = Cumo::Bit.new(0, 3)
+    grew = lambda do |work|
+      GC.start
+      Cumo::CUDA::MemoryPool.free_all_blocks
+      before = Cumo::CUDA::MemoryPool.total_bytes
+      work.call
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      Cumo::CUDA::MemoryPool.total_bytes - before
+    end
+
+    assert_equal(0, grew.call(-> { e.all? }), "all?")
+    assert_equal(0, grew.call(-> { e.any? }), "any?")
+    assert_equal(0, grew.call(-> { e.none? }), "none?")
+
+    # These answer an array, so one has to be made whatever it holds.
+    assert_operator(grew.call(-> { e.all?(axis: 0) }), :>, 0, "all? axis 0")
+    assert_operator(grew.call(-> { e.all?(keepdims: true) }), :>, 0, "all? keepdims")
   end
 
   test "an empty Bit is told about an argument it cannot take" do

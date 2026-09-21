@@ -33,9 +33,15 @@ static VALUE
     CumoGetNArray(self,na);
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     if (CUMO_NA_SIZE(na)==0) {
-        // Every bit of no bits is one, and one of no bits is not, which is the
-        // identity this reduction starts from.
-        v = cumo_na_reduce_empty(self, reduce, cumo_cBit, CUMO_NDF_TEST(&ndf, CUMO_NDF_KEEP_DIM) != 0);
+        // Every bit of no bits is one, and one of no bits is not. Handing that
+        // back as it is saves a launch and a wait reading it off the device.
+        int keepdims = CUMO_NDF_TEST(&ndf, CUMO_NDF_KEEP_DIM) != 0;
+
+        if (!CUMO_NDF_TEST(&ndf, CUMO_NDF_AXES_NAMED) &&
+            cumo_na_reduce_ndim(self, reduce, keepdims) == 0) {
+            return (INT2FIX(<%=init_bit%>) == INT2FIX(1)) ? Qtrue : Qfalse;
+        }
+        v = cumo_na_reduce_empty(self, reduce, cumo_cBit, keepdims);
         <%=find_tmpl("fill").c_func%>(v, INT2FIX(<%=init_bit%>));
     } else if (cumo_na_has_idx_p(self)) {
         // The reduction addresses its input by stride, so an index array has to
