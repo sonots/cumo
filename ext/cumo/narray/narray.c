@@ -1995,8 +1995,12 @@ cumo_na_test_reduce(VALUE reduce, int dim)
 }
 
 
+// empty_ok says the caller has an identity to answer an array with no elements
+// with, so the check that would refuse it is left out. The axes are still read
+// afterwards, which is what tells an empty receiver about an axis that does not
+// exist.
 static VALUE
-cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
+cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg, int empty_ok)
 {
     int ndim, ndim0;
     int rowmaj;
@@ -2009,7 +2013,7 @@ cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
         rb_raise(rb_eRuntimeError,"must be positive: naryc=%d", naryc);
     }
     CumoGetNArray(naryv[0],na);
-    if (na->size==0) {
+    if (na->size==0 && !empty_ok) {
         rb_raise(cumo_na_eShapeError,"cannot reduce empty NArray");
     }
     reduce = na->reduce;
@@ -2018,7 +2022,7 @@ cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg)
     rowmaj = CUMO_TEST_COLUMN_MAJOR(naryv[0]);
     for (i=0; i<naryc; i++) {
         CumoGetNArray(naryv[i],na);
-        if (na->size==0) {
+        if (na->size==0 && !empty_ok) {
             rb_raise(cumo_na_eShapeError,"cannot reduce empty NArray");
         }
         if (CUMO_TEST_COLUMN_MAJOR(naryv[i]) != rowmaj) {
@@ -2130,7 +2134,8 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
         }
     }
 
-    reduce = cumo_na_get_reduce_flag_from_narray(naryc, naryv, &max_arg);
+    reduce = cumo_na_get_reduce_flag_from_narray(naryc, naryv, &max_arg,
+                 ndf && CUMO_NDF_TEST(ndf, CUMO_NDF_EMPTY_IDENTITY));
 
     if (NIL_P(axes)) return reduce;
 
