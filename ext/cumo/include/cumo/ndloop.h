@@ -50,12 +50,10 @@ typedef struct {
 #define CUMO_NDF_INDEXER_LOOP        (1<<9) // Cumo custom. Use cumo own indexer.
 #define CUMO_NDF_ANY_ORDER           (1<<10) // Cumo custom. The elements may be visited in any order, so ndloop may reorder the axes.
 
-// Cumo custom. The reduction has an identity, so an array with no elements is
-// answered with it rather than refused. The loop still runs and reads nothing,
-// which leaves the result holding whatever the allocation did, so a reduction
-// that sets this writes the identity itself. Only for one whose iterator can
-// face a length of zero: a host loop takes the pointer of an array that has
-// none and reads through it.
+// Cumo custom. The reduction has an identity, so cumo_na_reduce_dimension lets
+// an array with no elements through rather than refusing it. The axes are still
+// read, and the answer is the caller's to build: there is no loop to run, and
+// ndloop would lose the shape anyway. cumo_na_reduce_empty builds it.
 #define CUMO_NDF_EMPTY_IDENTITY      (1<<11)
 
 #define CUMO_FULL_LOOP       (CUMO_NDF_HAS_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP|CUMO_NDF_INPLACE)

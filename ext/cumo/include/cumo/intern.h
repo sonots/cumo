@@ -89,6 +89,7 @@ VALUE cumo_na_ndloop_with_index(cumo_ndfunc_t *nf, int argc, ...);
 VALUE cumo_na_info_str(VALUE);
 
 bool cumo_na_test_reduce(VALUE reduce, int dim);
+VALUE cumo_na_reduce_empty(VALUE self, VALUE reduce, VALUE klass, int keepdims);
 
 void cumo_na_step_array_index(VALUE self, size_t ary_size, size_t *plen, ssize_t *pbeg, ssize_t *pstep);
 void cumo_na_step_sequence(VALUE self, size_t *plen, double *pbeg, double *pstep);
