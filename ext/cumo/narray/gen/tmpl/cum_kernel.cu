@@ -38,6 +38,30 @@ struct <%="cumo_thrust_#{name}_row"%>
 // A row that is not laid out end to end is copied into a buffer that is, and
 // put back afterwards, which is two passes over the data against one launch a
 // row.
+// base[i * step] as an iterator, so an operand that walks one stride is scanned
+// where it lies however it walks. A flat operand takes the plain pointer
+// instead, which is what lets thrust read it wide.
+struct <%="cumo_thrust_#{name}_stride"%>
+{
+    int64_t step;
+    __host__ __device__ int64_t operator()(int64_t i) const { return i * step; }
+};
+
+typedef thrust::transform_iterator<<%="cumo_thrust_#{name}_stride"%>,
+        thrust::counting_iterator<int64_t> > <%="cumo_#{type_name}_#{name}_step_it"%>;
+typedef thrust::permutation_iterator<thrust::device_ptr<dtype>,
+        <%="cumo_#{type_name}_#{name}_step_it"%> > <%="cumo_#{type_name}_#{name}_strided_it"%>;
+
+static <%="cumo_#{type_name}_#{name}_strided_it"%>
+<%="cumo_#{type_name}_#{name}_strided"%>(dtype* base, int64_t step)
+{
+    <%="cumo_thrust_#{name}_stride"%> at;
+    at.step = step;
+    return thrust::make_permutation_iterator(
+            thrust::device_pointer_cast(base),
+            thrust::make_transform_iterator(thrust::make_counting_iterator<int64_t>(0), at));
+}
+
 template <typename Iarray>
 __global__ void <%="cumo_#{type_name}_#{name}_gather_kernel"%>(Iarray a, cumo_na_indexer_t indexer, dtype* buf) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
@@ -124,6 +148,25 @@ static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan"%>(Iterator1 first, It
     return cudaSuccess;
 }
 
+// One row needs no key, and the key costs a division an element.
+template<typename Iterator1, typename Iterator2>
+static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan_rows"%>(Iterator1 first, Iterator2 result, uint64_t total, uint64_t row_len)
+{
+    if (row_len == total) {
+        return <%="cumo_#{type_name}_#{name}#{j}_scan"%>(first, first + total, result);
+    }
+    return <%="cumo_#{type_name}_#{name}#{j}_scan_by_key"%>(first, first + total, result, row_len);
+}
+
+template<typename Iterator1>
+static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan_into"%>(Iterator1 first, dtype* out, int64_t step_out, uint64_t total, uint64_t row_len)
+{
+    if (step_out == 1) {
+        return <%="cumo_#{type_name}_#{name}#{j}_scan_rows"%>(first, thrust::device_pointer_cast(out), total, row_len);
+    }
+    return <%="cumo_#{type_name}_#{name}#{j}_scan_rows"%>(first, <%="cumo_#{type_name}_#{name}_strided"%>(out, step_out), total, row_len);
+}
+
 #if defined(__cplusplus)
 extern "C" {
 #if 0
@@ -133,46 +176,45 @@ extern "C" {
 
 cudaError_t <%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
         cumo_na_iarray_stridx_t* a_in, cumo_na_iarray_stridx_t* a_out,
-        cumo_na_indexer_t* indexer, uint64_t row_len, int flat_in, int flat_out)
+        cumo_na_indexer_t* indexer, uint64_t row_len, ssize_t step_in, ssize_t step_out)
 {
     uint64_t total = indexer->total_size;
     size_t grid_dim, block_dim;
     dtype *buf_in, *buf_out, *tmp = 0;
+    int scatter_back = (step_out == 0);
     cudaError_t status;
 
     if (total == 0) { return cudaSuccess; }
     grid_dim = cumo_get_grid_dim(total);
     block_dim = cumo_get_block_dim(total);
 
-    // One buffer covers whichever side is not laid out end to end: the gather
+    // One buffer covers whichever side no single stride reaches: the gather
     // fills it, the scan may read and write it in place, and the scatter empties
     // it. Two of them would put three copies of the array on the device where
     // the loop this replaces held one row.
     buf_in = (dtype*)a_in->ptr;
     buf_out = (dtype*)a_out->ptr;
-    if (!flat_in || !flat_out) {
+    if (step_in == 0 || scatter_back) {
         tmp = (dtype*)cumo_cuda_runtime_malloc(sizeof(dtype) * total);
-        if (!flat_in) {
+        if (step_in == 0) {
             <%="cumo_#{type_name}_#{name}_gather_kernel"%><<<grid_dim, block_dim>>>(*a_in, *indexer, tmp);
             cumo_check_launch_holding(tmp);
             buf_in = tmp;
+            step_in = 1;
         }
-        if (!flat_out) { buf_out = tmp; }
+        if (scatter_back) { buf_out = tmp; step_out = 1; }
     }
 
-    {
-        thrust::device_ptr<dtype> first = thrust::device_pointer_cast(buf_in);
-        thrust::device_ptr<dtype> result = thrust::device_pointer_cast(buf_out);
-        // One row needs no key, and the key costs a division an element.
-        if (row_len == total) {
-            status = <%="cumo_#{type_name}_#{name}#{j}_scan"%>(first, first + total, result);
-        } else {
-            status = <%="cumo_#{type_name}_#{name}#{j}_scan_by_key"%>(first, first + total, result, row_len);
-        }
+    if (step_in == 1) {
+        status = <%="cumo_#{type_name}_#{name}#{j}_scan_into"%>(
+                thrust::device_pointer_cast(buf_in), buf_out, step_out, total, row_len);
+    } else {
+        status = <%="cumo_#{type_name}_#{name}#{j}_scan_into"%>(
+                <%="cumo_#{type_name}_#{name}_strided"%>(buf_in, step_in), buf_out, step_out, total, row_len);
     }
     cumo_check_status_holding(status, tmp);
 
-    if (!flat_out) {
+    if (scatter_back) {
         <%="cumo_#{type_name}_#{name}_scatter_kernel"%><<<grid_dim, block_dim>>>(*a_out, *indexer, tmp);
         cumo_check_launch_holding(tmp);
     }

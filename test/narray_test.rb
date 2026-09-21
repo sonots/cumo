@@ -3949,6 +3949,32 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # The answer is the same whichever path the scan takes, so what it reserves is
+  # the only thing that says which one it took. A view that walks one stride is
+  # scanned where it lies; gathering it into a buffer first cost a second array
+  # and three times the time, and no answer moved.
+  test "a scan over a strided view reserves nothing beyond its answer" do
+    omit("needs the memory pool to count with") unless Cumo::CUDA::MemoryPool.enabled?
+    n = 20_000
+    a = Cumo::SFloat.new(n).seq(1, 1)
+    grew = lambda do |work|
+      GC.start
+      Cumo::CUDA::MemoryPool.free_all_blocks
+      before = Cumo::CUDA::MemoryPool.total_bytes
+      work.call
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+      Cumo::CUDA::MemoryPool.total_bytes - before
+    end
+    {
+      "reversed" => a.reverse,
+      "step 2" => a[(0...n).step(2)],
+      "step 2 reversed" => a[(0...n).step(2)].reverse,
+    }.each do |label, v|
+      answer = v.size * Cumo::SFloat::ELEMENT_BYTE_SIZE
+      assert_operator(grew.call(-> { v.cumsum }), :<, answer * 3 / 2, label)
+    end
+  end
+
   # A scan shorter than CUMO_CUM_MIN_KERNEL_SIZE runs on the host and a longer
   # one on the device, and the lengths below cross that boundary. Only the
   # nan-aware test reached the host side before, and only at one length.
