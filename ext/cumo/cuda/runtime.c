@@ -238,6 +238,29 @@ rb_cudaSetDevice(VALUE self, VALUE device)
 }
 
 /*
+  Returns whether a device can directly access the memory of another.
+
+  @param [Integer] device Device from which the memory would be accessed.
+  @param [Integer] peer_device Device whose memory would be accessed.
+  @return [Integer] 1 if it can, 0 if it cannot
+  @raise [Cumo::CUDA::RuntimeError]
+  @see http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__PEER.html#group__CUDART__PEER_1g4db0d04e44995d5c1c34be4ecc863f22
+ */
+static VALUE
+rb_cudaDeviceCanAccessPeer(VALUE self, VALUE device, VALUE peer_device)
+{
+    int _device = NUM2INT(device);
+    int _peer_device = NUM2INT(peer_device);
+    int can_access = 0;
+    cudaError_t status;
+
+    status = cudaDeviceCanAccessPeer(&can_access, _device, _peer_device);
+
+    check_status(status);
+    return INT2NUM(can_access);
+}
+
+/*
   Wait for compute device to finish.
 
   @raise [Cumo::CUDA::RuntimeError]
@@ -265,5 +288,6 @@ Init_cumo_cuda_runtime()
     rb_define_singleton_method(mRuntime, "cudaDeviceGetAttributes", rb_cudaDeviceGetAttributes, 2);
     rb_define_singleton_method(mRuntime, "cudaGetDeviceCount", rb_cudaGetDeviceCount, 0);
     rb_define_singleton_method(mRuntime, "cudaSetDevice", rb_cudaSetDevice, 1);
+    rb_define_singleton_method(mRuntime, "cudaDeviceCanAccessPeer", rb_cudaDeviceCanAccessPeer, 2);
     rb_define_singleton_method(mRuntime, "cudaDeviceSynchronize", rb_cudaDeviceSynchronize, 0);
 }

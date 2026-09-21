@@ -56,6 +56,15 @@ module Cumo::CUDA
       assert_nothing_raised { Device.new.synchronize }
     end
 
+    def test_can_access_peer
+      d = Device.new(0)
+      assert_equal(false, d.can_access_peer?(0))
+      assert_equal(false, d.can_access_peer?(d))
+      assert_raise(Cumo::CUDA::RuntimeError) { d.can_access_peer?(Runtime.cudaGetDeviceCount) }
+      assert_raise(TypeError) { d.can_access_peer?(0.9) }
+      assert_raise(TypeError) { d.can_access_peer?("0") }
+    end
+
     def test_compute_capability
       capability = `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`.strip
       assert { Device.new.compute_capability == capability.delete('.') }
