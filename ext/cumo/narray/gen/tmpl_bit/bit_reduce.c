@@ -28,14 +28,17 @@ static VALUE
     cumo_narray_t *na;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cumo_cBit,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP, 2,1, ain,aout};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_EMPTY_IDENTITY, 2,1, ain,aout};
 
     CumoGetNArray(self,na);
-    if (CUMO_NA_SIZE(na)==0) {
-        return Qfalse;
-    }
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
-    if (cumo_na_has_idx_p(self)) {
+    if (CUMO_NA_SIZE(na)==0) {
+        // Every bit of no bits is one, and one of no bits is not, which is the
+        // identity this reduction starts from. The loop reads nothing, so it
+        // has to be written here rather than reduced to.
+        v = cumo_na_ndloop(&ndf, 2, self, reduce);
+        <%=find_tmpl("fill").c_func%>(v, INT2FIX(<%=init_bit%>));
+    } else if (cumo_na_has_idx_p(self)) {
         // The reduction addresses its input by stride, so an index array has to
         // go first. cumo_na_copy moves whole bytes and a Bit element is one
         // bit, so the copy has to be this class's own.
