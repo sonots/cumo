@@ -3,6 +3,52 @@
 require_relative "test_helper"
 
 class CumoTest < Test::Unit::TestCase
+  include CumoChildProcess
+
+  # Each flag used to read only OFF, 0 and NO as a no, so off and false turned
+  # it on. A misspelling now keeps the default and says so.
+  FLAG_SCRIPT = <<~'RUBY'
+    require "cumo/narray"
+    $stderr.sync = true
+    2.times { Cumo::DFloat[1.0].to_a }
+    print [Cumo.compatible_mode_enabled?, Cumo::CUDA::MemoryPool.enabled?].inspect
+  RUBY
+
+  # RUBYOPT is dropped so that a -W0 in the developer's shell cannot silence
+  # the warning the misspelling test reads.
+  def flags(env)
+    run_child(FLAG_SCRIPT, env: { "RUBYOPT" => nil }.merge(env))
+  end
+
+  {
+    "off"   => [false, false], "false" => [false, false], "OFF" => [false, false], "0" => [false, false],
+    "on"    => [true, true],   "TRUE"  => [true, true],   "yes" => [true, true],   "1" => [true, true],
+    ""      => [false, true],
+  }.each do |word, (compat, pool)|
+    test "CUMO_COMPATIBLE_MODE and CUMO_MEMORY_POOL read #{word.inspect} for what it says" do
+      out = flags("CUMO_COMPATIBLE_MODE" => word, "CUMO_MEMORY_POOL" => word)
+      assert_equal([compat, pool].inspect, out.lines.last)
+      assert_not_include(out, "is not a yes or a no")
+    end
+  end
+
+  test "a misspelled flag keeps its default and warns" do
+    out = flags("CUMO_COMPATIBLE_MODE" => "flase", "CUMO_MEMORY_POOL" => "flase")
+    assert_equal([false, true].inspect, out.lines.last)
+    assert_include(out, "CUMO_COMPATIBLE_MODE=flase is not a yes or a no, leaving it off")
+    assert_include(out, "CUMO_MEMORY_POOL=flase is not a yes or a no, leaving it on")
+  end
+
+  # The warning about a method that synchronizes is the observable side of the
+  # other two flags: shown or not, and once or every time.
+  test "CUMO_SHOW_WARNING and CUMO_SHOW_WARNING_ONCE read off and false" do
+    sync = "synchronizes with CPU"
+    assert_equal(0, flags("CUMO_SHOW_WARNING" => "off").scan(sync).size)
+    assert_equal(1, flags("CUMO_SHOW_WARNING" => "true").scan(sync).size)
+    assert_equal(2, flags("CUMO_SHOW_WARNING" => "1", "CUMO_SHOW_WARNING_ONCE" => "false").scan(sync).size)
+    assert_equal(1, flags("CUMO_SHOW_WARNING" => "1", "CUMO_SHOW_WARNING_ONCE" => "flase").scan(sync).size)
+  end
+
   def setup
     @orig_compatible_mode = Cumo.compatible_mode_enabled?
   end

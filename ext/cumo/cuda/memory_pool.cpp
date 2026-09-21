@@ -1,12 +1,11 @@
 #include <ruby.h>
 #include <cuda_runtime.h>
 #include "memory_pool_impl.hpp"
+#include "cumo.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
 
 #include <cstdio>
-#include <cstdlib>
-#include <string>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -259,9 +258,7 @@ Init_cumo_cuda_memory_pool()
     rb_define_singleton_method(mMemoryPool, "free_bytes", RUBY_METHOD_FUNC(rb_memory_pool_free_bytes), 0);
     rb_define_singleton_method(mMemoryPool, "total_bytes", RUBY_METHOD_FUNC(rb_memory_pool_total_bytes), 0);
 
-    // default is true
-    const char* env = std::getenv("CUMO_MEMORY_POOL");
-    memory_pool_enabled = env == nullptr || (std::string(env) != "OFF" && std::string(env) != "0" && std::string(env) != "NO");
+    memory_pool_enabled = cumo_env_truth("CUMO_MEMORY_POOL", 1);
 }
 
 #if defined(__cplusplus)

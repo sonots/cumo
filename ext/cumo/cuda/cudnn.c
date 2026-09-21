@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <ruby.h>
+#include "cumo.h"
 #include "cumo/narray.h"
 #include "cumo/template.h"
 #include "cumo/cuda/runtime.h"
@@ -61,33 +62,11 @@ cumo_cuda_cudnn_allow_tf32()
     return cudnn_allow_tf32;
 }
 
-// The words cumo.c's flags take, plus true and false, in any case. Ruby's
-// compare is used rather than strcasecmp because it does not follow the locale.
-static int
-read_env_truth(const char* env, int* out)
-{
-    static const char* const yes[] = {"1", "on", "yes", "true"};
-    static const char* const no[]  = {"0", "off", "no", "false"};
-    size_t i;
-
-    for (i = 0; i < sizeof(yes) / sizeof(yes[0]); ++i) {
-        if (st_locale_insensitive_strcasecmp(env, yes[i]) == 0) { *out = 1; return 1; }
-        if (st_locale_insensitive_strcasecmp(env, no[i]) == 0)  { *out = 0; return 1; }
-    }
-    return 0;
-}
-
 static void
 init_allow_tf32(void)
 {
-    // default is false. cumo.c reads its flags as "anything that is not a no",
-    // which turns a misspelling into a silent yes. Here a yes costs accuracy,
-    // so anything unrecognised stays a no and says so.
-    const char* env = getenv("CUMO_CUDNN_ALLOW_TF32");
-
-    if (env == NULL || *env == '\0') return;
-    if (read_env_truth(env, &cudnn_allow_tf32)) return;
-    rb_warn("CUMO_CUDNN_ALLOW_TF32=%s is not a yes or a no, leaving single precision off the tensor cores", env);
+    // default is false: a yes costs accuracy, so a misspelling must not be one.
+    cudnn_allow_tf32 = cumo_env_truth("CUMO_CUDNN_ALLOW_TF32", 0);
 }
 
 VALUE

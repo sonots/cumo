@@ -121,7 +121,7 @@ a[0] < 1.0                  #=> Cumo::Bit#shape=[] holding 0
 `assert_operator(a[0], :<, 1.0)` passes for the same reason, so a test suite written for Numo can stay green against Cumo while asserting nothing.
 Read the value back to the host before branching on it, or run under `compatible_mode`.
 
-Set the `CUMO_COMPATIBLE_MODE` environment variable to `ON` to force Numo NArray compatibility (for worse performance).
+Set the `CUMO_COMPATIBLE_MODE` environment variable to `ON` to force Numo NArray compatibility (for worse performance). Every such flag takes `1`, `on`, `yes` or `true` for a yes and `0`, `off`, `no` or `false` for a no, in any case; anything else keeps the default and warns.
 Running a Numo test suite that way keeps its assertions meaningful.
 
 You may enable or disable `compatible_mode` as:

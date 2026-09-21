@@ -17,6 +17,11 @@ bool cumo_compatible_mode_enabled_p();
 bool cumo_show_warning_enabled_p();
 bool cumo_show_warning_once_enabled_p();
 
+// Reads an environment variable that is a yes or a no. 1/on/yes/true and
+// 0/off/no/false answer themselves in any case. Unset or empty answers dflt,
+// and so does anything else, with a warning, so a misspelling changes nothing.
+int cumo_env_truth(const char *name, int dflt);
+
 #define CUMO_SHOW_WARNING_ONCE( c_str ) \
     { \
         if (cumo_show_warning_enabled_p()) { \

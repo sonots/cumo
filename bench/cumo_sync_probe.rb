@@ -342,7 +342,7 @@ if ARGV.include?('--list')
   exit
 end
 
-warn_on = ENV['CUMO_SHOW_WARNING'].to_s.upcase == 'ON'
+warn_on = %w[1 on yes true].include?(ENV['CUMO_SHOW_WARNING'].to_s.downcase)
 
 puts "ruby        : #{RUBY_VERSION} (#{RUBY_PLATFORM})"
 puts "cumo        : #{begin
