@@ -22,6 +22,14 @@ static VALUE
     }
     <% end %>
 
+    // No dtype named itself, so one of them may still be an ancestor.
+    <% definitions.select { |x| x.class == Store }.each do |x| %>
+    if (<%=x.subclass_condition("klass")%>) {
+        <%=x.c_func%>(self,obj);
+        return self;
+    }
+    <% end %>
+
     if (CumoIsNArray(obj)) {
         r = rb_funcall(obj, rb_intern("coerce_cast"), 1, cT);
         if (rb_obj_class(r)==cT) {

@@ -269,6 +269,13 @@ class Store < DefMethod
     "#{klass}==#{type_var}"
   end
 
+  # A subclass of a dtype is that dtype, so a branch has to take it. It is asked
+  # only after every exact class has been tried, which leaves the common path
+  # the pointer comparisons it always had.
+  def subclass_condition(klass)
+    "RTEST(rb_class_inherited_p(#{klass},#{type_var}))"
+  end
+
   def extract_data(ptr, pos, x)
     case type_name
     when "Bit"

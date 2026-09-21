@@ -29,6 +29,14 @@ static dtype
         }
         <% end %>
 
+        // No dtype named itself, so one of them may still be an ancestor.
+        <% find_tmpl("store").definitions.select{|x| x.class==Store}.each do |x| %>
+        if (<%=x.subclass_condition("klass")%>) {
+            <%=x.extract_data("ptr","pos","x")%>;
+            return x;
+        }
+        <% end %>
+
         // coerce
         r = rb_funcall(obj, rb_intern("coerce_cast"), 1, cT);
         if (rb_obj_class(r)==cT) {
