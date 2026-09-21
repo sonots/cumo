@@ -5550,6 +5550,34 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # sort, sort_index and median address their rows with the accessor for the
+  # rank at hand, one apiece up to eight. Nothing above two dimensions reached
+  # them, and a view is what makes the rank visible: a contiguous array of any
+  # rank is flat and takes a different path.
+  test "sort, sort_index and median answer the same over a view of any rank" do
+    [[7, 9], [3, 4, 5], [2, 3, 2, 4], [2, 2, 2, 2, 3]].each do |shape|
+      n = shape.reduce(:*)
+      wide = shape[0..-2] + [shape[-1] * 2]
+      base = Cumo::SFloat.cast((0...(n * 2)).to_a.shuffle(random: Random.new(11))).reshape(*wide)
+      v = base[*([true] * (shape.size - 1)), 0...shape[-1]]
+      axis = shape.size - 1
+      rows = v.to_a.flatten.each_slice(shape[-1]).to_a
+
+      assert_equal(rows.map(&:sort).flatten, v.sort(axis: axis).to_a.flatten, "sort #{shape.inspect}")
+
+      picked = v.sort_index(axis: axis).to_a.flatten
+      flat = v.to_a.flatten
+      assert_equal(rows.map(&:sort).flatten, picked.map { |i| flat[i] }, "sort_index #{shape.inspect}")
+
+      want = rows.map { |r| t = r.sort; t.size.odd? ? t[t.size / 2] : (t[t.size / 2 - 1] + t[t.size / 2]) / 2.0 }
+      assert_equal(want, v.median(axis: axis).to_a.flatten, "median #{shape.inspect}")
+
+      copy = v.dup
+      copy.inplace.sort(axis: axis)
+      assert_equal(rows.map(&:sort).flatten, copy.to_a.flatten, "inplace sort #{shape.inspect}")
+    end
+  end
+
   test "sort orders every row, whatever the axis and the layout" do
     # The sort ran on the host, one row at a time, behind a device
     # synchronization. The expectations are sorted in Ruby rather than taken
