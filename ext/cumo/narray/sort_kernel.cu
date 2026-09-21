@@ -76,30 +76,66 @@ __global__ void float_key_kernel(const Float* in, typename float_key<Float>::typ
 // sort writes its answer back where it read it, so an in-place sort of a view
 // backed by an index array has to address that array; the other two callers
 // hand over an array they copied themselves and never do.
-__device__ static inline char* at(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer) {
-    return cumo_na_iarray_at_dim(a, indexer);
-}
+//
+// The rank is a template argument rather than a field the kernel reads, so the
+// address is a fixed number of multiplies instead of a divide by a run time
+// extent per axis per element. rank_at<-1> is the one for ranks past those
+// named here, which nothing reaches: the indexer stops at CUMO_NA_MAX_DIMENSION.
+template <int NDIM> struct rank_at {
+    __device__ static void set(cumo_na_indexer_t* ix, uint64_t i) { cumo_na_indexer_set_dim(ix, i); }
+    __device__ static char* at(cumo_na_iarray_t* a, cumo_na_indexer_t* ix) { return cumo_na_iarray_at_dim(a, ix); }
+    __device__ static char* at(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* ix) { return cumo_na_iarray_stridx_at_dim(a, ix); }
+};
 
-__device__ static inline char* at(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer) {
-    return cumo_na_iarray_stridx_at_dim(a, indexer);
-}
+#define CUMO_SORT_RANK_AT(NDIM) \
+template <> struct rank_at<NDIM> { \
+    __device__ static void set(cumo_na_indexer_t* ix, uint64_t i) { cumo_na_indexer_set_dim##NDIM(ix, i); } \
+    __device__ static char* at(cumo_na_iarray_t* a, cumo_na_indexer_t* ix) { return cumo_na_iarray_at_dim##NDIM(a, ix); } \
+    __device__ static char* at(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* ix) { return cumo_na_iarray_stridx_at_dim##NDIM(a, ix); } \
+};
+CUMO_SORT_RANK_AT(0)
+CUMO_SORT_RANK_AT(1)
+CUMO_SORT_RANK_AT(2)
+CUMO_SORT_RANK_AT(3)
+CUMO_SORT_RANK_AT(4)
+CUMO_SORT_RANK_AT(5)
+CUMO_SORT_RANK_AT(6)
+CUMO_SORT_RANK_AT(7)
+CUMO_SORT_RANK_AT(8)
+#undef CUMO_SORT_RANK_AT
+
+// LAUNCH names the kernel with the rank filled in, so the switch is written
+// once rather than at each of the four calls.
+#define CUMO_SORT_BY_RANK(NDIM_OF, LAUNCH) \
+    switch (NDIM_OF) { \
+    case 0: LAUNCH(0); break; \
+    case 1: LAUNCH(1); break; \
+    case 2: LAUNCH(2); break; \
+    case 3: LAUNCH(3); break; \
+    case 4: LAUNCH(4); break; \
+    case 5: LAUNCH(5); break; \
+    case 6: LAUNCH(6); break; \
+    case 7: LAUNCH(7); break; \
+    case 8: LAUNCH(8); break; \
+    default: LAUNCH(-1); break; \
+    }
 
 // Rows that are not laid out end to end are gathered into a buffer of their
 // own, sorted there and put back, which is two passes over the data against
 // one launch per row.
-template <typename T, typename Iarray>
+template <int NDIM, typename T, typename Iarray>
 __global__ void gather_kernel(Iarray a, cumo_na_indexer_t indexer, T* buf) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim(&indexer, i);
-        buf[i] = *(T*)at(&a, &indexer);
+        rank_at<NDIM>::set(&indexer, i);
+        buf[i] = *(T*)rank_at<NDIM>::at(&a, &indexer);
     }
 }
 
-template <typename T, typename Iarray>
+template <int NDIM, typename T, typename Iarray>
 __global__ void scatter_kernel(Iarray a, cumo_na_indexer_t indexer, const T* buf) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim(&indexer, i);
-        *(T*)at(&a, &indexer) = buf[i];
+        rank_at<NDIM>::set(&indexer, i);
+        *(T*)rank_at<NDIM>::at(&a, &indexer) = buf[i];
     }
 }
 
@@ -162,7 +198,9 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
     T* gathered = 0;
     if (!flat) {
         gathered = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
-        gather_kernel<T><<<grid_dim, block_dim>>>(*a, *indexer, gathered);
+#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim>>>(*a, *indexer, gathered)
+        CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
+#undef CUMO_SORT_L
         cumo_check_launch_holding(gathered);
         data = gathered;
     }
@@ -185,7 +223,9 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
     if (flat) {
         cudaMemcpyAsync(data, out, sizeof(T) * total, cudaMemcpyDeviceToDevice, 0);
     } else {
-        scatter_kernel<T><<<grid_dim, block_dim>>>(*a, *indexer, out);
+#define CUMO_SORT_L(N) scatter_kernel<N><<<grid_dim, block_dim>>>(*a, *indexer, out)
+        CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
+#undef CUMO_SORT_L
     }
     cumo_check_launch_holding(out, gathered);
     if (gathered) cumo_cuda_runtime_free((char*)gathered);
@@ -209,7 +249,7 @@ template <> __device__ inline cumo_bfloat sorted_midpoint<cumo_bfloat>(cumo_bflo
     return cumo_float2bfloat((cumo_bfloat2float(a) + cumo_bfloat2float(b)) / 2.0f);
 }
 
-template <typename T, bool IS_FLOAT>
+template <int NDIM, typename T, bool IS_FLOAT>
 __global__ void median_kernel(const T* sorted, int64_t row_len, int prnan, cumo_na_iarray_t out, cumo_na_indexer_t out_indexer) {
     for (uint64_t r = blockIdx.x * blockDim.x + threadIdx.x; r < out_indexer.total_size; r += blockDim.x * gridDim.x) {
         const T* row = sorted + (int64_t)r * row_len;
@@ -227,8 +267,8 @@ __global__ void median_kernel(const T* sorted, int64_t row_len, int prnan, cumo_
         } else {
             v = row[(n - 1) / 2];
         }
-        cumo_na_indexer_set_dim(&out_indexer, r);
-        *(T*)cumo_na_iarray_at_dim(&out, &out_indexer) = v;
+        rank_at<NDIM>::set(&out_indexer, r);
+        *(T*)rank_at<NDIM>::at(&out, &out_indexer) = v;
     }
 }
 
@@ -248,7 +288,9 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat, int prnan) {
     T* gathered = 0;
     if (!flat) {
         gathered = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
-        gather_kernel<T><<<grid_dim, block_dim>>>(arg->in, arg->in_indexer, gathered);
+#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim>>>(arg->in, arg->in_indexer, gathered)
+        CUMO_SORT_BY_RANK(arg->in_indexer.ndim, CUMO_SORT_L);
+#undef CUMO_SORT_L
         cumo_check_launch_holding(gathered);
         data = gathered;
     }
@@ -268,8 +310,10 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat, int prnan) {
         cumo_check_status_holding(sort_keys(data, sorted, total, n_rows, row_len), sorted, gathered);
     }
 
-    median_kernel<T, IS_FLOAT><<<cumo_get_grid_dim(n_rows), cumo_get_block_dim(n_rows)>>>(
-        sorted, row_len, prnan, arg->out, arg->out_indexer);
+#define CUMO_SORT_L(N) median_kernel<N, T, IS_FLOAT><<<cumo_get_grid_dim(n_rows), cumo_get_block_dim(n_rows)>>>( \
+        sorted, row_len, prnan, arg->out, arg->out_indexer)
+    CUMO_SORT_BY_RANK(arg->out_indexer.ndim, CUMO_SORT_L);
+#undef CUMO_SORT_L
     cumo_check_launch_holding(sorted, gathered);
 
     cumo_cuda_runtime_free((char*)sorted);
@@ -287,14 +331,14 @@ __global__ void iota_kernel(I* out, int64_t n) {
 
 // perm[i] is the position the i-th smallest element sat at, and the index
 // array holds the number to answer for that position.
-template <typename I>
+template <int NDIM, typename I>
 __global__ void sort_index_scatter_kernel(cumo_na_iarray_t idx, cumo_na_iarray_t out,
                                           cumo_na_indexer_t indexer, const I* perm) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim(&indexer, (uint64_t)perm[i]);
-        I v = *(I*)cumo_na_iarray_at_dim(&idx, &indexer);
-        cumo_na_indexer_set_dim(&indexer, i);
-        *(I*)cumo_na_iarray_at_dim(&out, &indexer) = v;
+        rank_at<NDIM>::set(&indexer, (uint64_t)perm[i]);
+        I v = *(I*)rank_at<NDIM>::at(&idx, &indexer);
+        rank_at<NDIM>::set(&indexer, i);
+        *(I*)rank_at<NDIM>::at(&out, &indexer) = v;
     }
 }
 
@@ -311,7 +355,9 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
     T* gathered = 0;
     if (!flat) {
         gathered = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
-        gather_kernel<T><<<grid_dim, block_dim>>>(*a, *indexer, gathered);
+#define CUMO_SORT_L(N) gather_kernel<N><<<grid_dim, block_dim>>>(*a, *indexer, gathered)
+        CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
+#undef CUMO_SORT_L
         cumo_check_launch_holding(gathered);
         data = gathered;
     }
@@ -338,7 +384,9 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
         cumo_cuda_runtime_free((char*)kout);
     }
 
-    sort_index_scatter_kernel<I><<<grid_dim, block_dim>>>(*idx, *out, *indexer, pout);
+#define CUMO_SORT_L(N) sort_index_scatter_kernel<N><<<grid_dim, block_dim>>>(*idx, *out, *indexer, pout)
+    CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
+#undef CUMO_SORT_L
     cumo_check_launch_holding(pin, pout, gathered);
 
     cumo_cuda_runtime_free((char*)pout);
