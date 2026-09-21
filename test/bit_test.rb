@@ -170,10 +170,6 @@ class BitTest < Test::Unit::TestCase
 
   end
 
-  # These five used to answer before the arguments were read, which got the
-  # value wrong and the type with it: every bit of no bits is one, and an axis
-  # asks for an array rather than a boolean. Answering early also meant an
-  # empty receiver was never told about an axis that does not exist.
   test "a reduction over an empty Bit answers its identity" do
     e = Cumo::Bit.new(0, 3)
 
@@ -183,19 +179,24 @@ class BitTest < Test::Unit::TestCase
     assert { e.any? == false }
     assert { e.none? == true }
     assert { Cumo::Bit[].all? == true }
-    assert { e.all?(keepdims: true).to_a == [[1]] }
-
-    # An axis asks for an array and now gets one. count answers the same class
-    # it answers for an array with elements in it.
-    assert { e.all?(axis: 0).is_a?(Cumo::Bit) }
-    assert { e.any?(axis: 0).is_a?(Cumo::Bit) }
     assert { e.count_true.is_a?(Cumo::UInt64) }
     assert { e.count_true == 0 }
     assert { e.count_false == 0 }
 
-    # An index array makes a view the reduction gathers before it reads. There
-    # is nothing to gather here, and an empty receiver is answered before the
-    # branch that would.
+    # The axes that are not reduced keep their length, so reducing the empty
+    # one leaves three answers and reducing the other leaves none. numpy reads
+    # np.ones((0, 3), bool).all(axis: 0) the same way.
+    assert { e.all?(axis: 0).to_a == [1, 1, 1] }
+    assert { e.any?(axis: 0).to_a == [0, 0, 0] }
+    assert { e.none?(axis: 0).to_a == [1, 1, 1] }
+    assert { e.count_true(axis: 0).to_a == [0, 0, 0] }
+    assert { e.count_false(axis: 0).to_a == [0, 0, 0] }
+    assert { e.all?(axis: 1).shape == [0] }
+    assert { e.all?(keepdims: true).to_a == [[1]] }
+    assert { e.all?(axis: 0, keepdims: true).to_a == [[1, 1, 1]] }
+    assert { Cumo::Bit.new(3, 0).all?(axis: 1).to_a == [1, 1, 1] }
+
+    # An index array makes a view the reduction gathers before it reads.
     v = Cumo::Bit.new(8).fill(1)[Cumo::Int32.new(0)]
     assert { v.all? == true }
     assert { v.any? == false }
@@ -210,16 +211,13 @@ class BitTest < Test::Unit::TestCase
     assert_raise(Cumo::NArray::DimensionError) { e.count_true(axis: 99) }
     assert_raise(ArgumentError) { e.all?(bogus: 1) }
 
-    # The ones with no identity to answer with still refuse the receiver
-    # itself, and say so rather than naming an argument.
+    # These have no identity to answer an empty receiver with.
     assert_raise(Cumo::NArray::ShapeError) { e.mean }
-    assert_raise(Cumo::NArray::ShapeError) { Cumo::Int32.new(0, 3).sum }
+    assert_raise(Cumo::NArray::ShapeError) { e.var }
   end
 
-  # count_true_cpu is a host loop, and ndloop hands its iterator an array with
-  # no elements rather than skipping it, so the pointer it takes is null. It
-  # keeps an answer of its own for that reason. A child runs it because the
-  # failure is a segmentation fault rather than an exception.
+  # A child, because the failure this guards against is a segmentation fault:
+  # ndloop hands a host loop an array with no elements rather than skipping it.
   test "the host loop count of an empty Bit is answered before the loop" do
     script = <<~'RUBY'
       require "cumo/narray"

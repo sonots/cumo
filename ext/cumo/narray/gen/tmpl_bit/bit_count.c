@@ -36,9 +36,8 @@ static VALUE
         CumoGetNArray(self,na);
         reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
         if (CUMO_NA_SIZE(na)==0) {
-            // There are no bits to count either way. The loop reads nothing,
-            // so the count has to be written rather than counted.
-            v = cumo_na_ndloop(&ndf, 2, self, reduce);
+            // There are no bits to count either way.
+            v = cumo_na_reduce_empty(self, reduce, cumo_cUInt64, CUMO_NDF_TEST(&ndf, CUMO_NDF_KEEP_DIM) != 0);
             rb_funcall(v, rb_intern("fill"), 1, INT2FIX(0));
         } else if (cumo_na_has_idx_p(self)) {
             // The reduction addresses its input by stride, so an index array

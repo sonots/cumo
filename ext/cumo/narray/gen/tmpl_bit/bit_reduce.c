@@ -34,9 +34,8 @@ static VALUE
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
     if (CUMO_NA_SIZE(na)==0) {
         // Every bit of no bits is one, and one of no bits is not, which is the
-        // identity this reduction starts from. The loop reads nothing, so it
-        // has to be written here rather than reduced to.
-        v = cumo_na_ndloop(&ndf, 2, self, reduce);
+        // identity this reduction starts from.
+        v = cumo_na_reduce_empty(self, reduce, cumo_cBit, CUMO_NDF_TEST(&ndf, CUMO_NDF_KEEP_DIM) != 0);
         <%=find_tmpl("fill").c_func%>(v, INT2FIX(<%=init_bit%>));
     } else if (cumo_na_has_idx_p(self)) {
         // The reduction addresses its input by stride, so an index array has to

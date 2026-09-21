@@ -2107,6 +2107,29 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
 }
 
 
+// The array a reduction over an array with no elements answers, empty of the
+// axes it keeps. ndloop cannot be asked for it: it zeroes every dimension of an
+// empty loop, so the length of the axes that survive is lost. The values are
+// the caller's to write, since only it knows what it reduces to.
+VALUE
+cumo_na_reduce_empty(VALUE self, VALUE reduce, VALUE klass, int keepdims)
+{
+    cumo_narray_t *na;
+    size_t shape[CUMO_NA_MAX_DIMENSION];
+    int i, ndim = 0;
+
+    CumoGetNArray(self,na);
+    for (i=0; i<na->ndim; i++) {
+        if (cumo_na_test_reduce(reduce,i)) {
+            if (keepdims) shape[ndim++] = 1;
+        } else {
+            shape[ndim++] = na->shape[i];
+        }
+    }
+    return cumo_na_new(klass, ndim, shape);
+}
+
+
 VALUE
 cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
                     cumo_ndfunc_t *ndf)
