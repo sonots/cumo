@@ -85,7 +85,7 @@ __global__ void cumo_bit_where_scatter_kernel(CUMO_BIT_DIGIT *a, size_t p, ssize
 char *cumo_bit_where_scratch_new(void)
 {
     char *scratch = cumo_cuda_runtime_malloc((2 + CUMO_BIT_WHERE_MAX_BLOCKS) * sizeof(uint64_t));
-    cumo_check_status_holding(cudaMemsetAsync(scratch, 0, 2 * sizeof(uint64_t), 0), scratch);
+    cumo_check_status_holding(cudaMemsetAsync(scratch, 0, 2 * sizeof(uint64_t), cumo_cuda_stream()), scratch);
     return scratch;
 }
 
@@ -101,8 +101,8 @@ void cumo_bit_where_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t
 
     if (nblocks > CUMO_BIT_WHERE_MAX_BLOCKS) nblocks = CUMO_BIT_WHERE_MAX_BLOCKS;
     cpb = (nchunks + nblocks - 1) / nblocks;
-    cumo_bit_where_partial_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,invert,nchunks,cpb,block_sums);
-    cumo_bit_where_scan_kernel<<<1, CUMO_BIT_CHUNK_BLOCK>>>(block_sums,nblocks,running);
-    cumo_bit_where_scatter_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK>>>(a,p,s,idx,n,nw,contiguous,invert,nchunks,cpb,out,elmsz,cap,count,block_sums);
+    cumo_bit_where_partial_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK, 0, cumo_cuda_stream()>>>(a,p,s,idx,n,nw,contiguous,invert,nchunks,cpb,block_sums);
+    cumo_bit_where_scan_kernel<<<1, CUMO_BIT_CHUNK_BLOCK, 0, cumo_cuda_stream()>>>(block_sums,nblocks,running);
+    cumo_bit_where_scatter_kernel<<<nblocks, CUMO_BIT_CHUNK_BLOCK, 0, cumo_cuda_stream()>>>(a,p,s,idx,n,nw,contiguous,invert,nchunks,cpb,out,elmsz,cap,count,block_sums);
     cumo_cuda_runtime_check_kernel_launch();
 }

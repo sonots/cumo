@@ -154,7 +154,7 @@
                            ? CUMO_MAX_GRID_DIM_Y : cumo_launch_tiles_y));      \
         dim3 cumo_launch_block(CUMO_TRANSPOSE_TILE, CUMO_TRANSPOSE_ROWS);      \
                                                                                \
-        kernel<<<cumo_launch_grid, cumo_launch_block>>>(                       \
+        kernel<<<cumo_launch_grid, cumo_launch_block, 0, cumo_cuda_stream()>>>(                       \
             __VA_ARGS__, cumo_launch_rows, cumo_launch_cols);                  \
     } while (0)
 
@@ -183,6 +183,9 @@ extern "C" {
 // Raises the error a kernel launch reported, if any. Defined in cuda/runtime.c
 // because raising needs ruby.h, which the .cu translation units do not include.
 void cumo_cuda_runtime_check_kernel_launch(void);
+// The stream every launch and copy goes to. It is 0 until Stream#with says
+// otherwise, and thread local, so one thread's choice is not another's.
+struct CUstream_st* cumo_cuda_stream(void);
 
 // The forms to call while scratch is held, which free what they are given
 // before they raise. Pass every buffer that is still outstanding, including the

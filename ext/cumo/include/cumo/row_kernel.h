@@ -153,7 +153,7 @@ void cumo_row_reduce_apply_out(
         // pool and leave the array's own free to come back to it.
         cumo_reduce_split<TypeIn, Stats, Impl>(arg, Impl(impl),
                                                pstats != NULL ? NULL : (char*)stats);
-        cumo_detail::row_apply_kernel<TypeIn, TypeOut, Stats, Apply><<<apply_grid, apply_block>>>(
+        cumo_detail::row_apply_kernel<TypeIn, TypeOut, Stats, Apply><<<apply_grid, apply_block, 0, cumo_cuda_stream()>>>(
                 (const TypeIn*)px, (TypeOut*)py, stats, cols, apply);
         if (pstats != NULL) {
             cumo_cuda_runtime_check_kernel_launch();
@@ -185,7 +185,7 @@ void cumo_row_reduce_apply_out(
     grid_dim = (unsigned int)(rows < max_row_blocks ? rows : max_row_blocks);
     shared_mem_size = block_dim * sizeof(Accum);
 
-    cumo_detail::row_reduce_apply_kernel<TypeIn, TypeOut, Stats, Impl, Apply><<<grid_dim, block_dim, shared_mem_size>>>(
+    cumo_detail::row_reduce_apply_kernel<TypeIn, TypeOut, Stats, Impl, Apply><<<grid_dim, block_dim, shared_mem_size, cumo_cuda_stream()>>>(
             (const TypeIn*)px, (TypeOut*)py, (Stats*)pstats, rows, cols, impl, apply);
     cumo_cuda_runtime_check_kernel_launch();
 }

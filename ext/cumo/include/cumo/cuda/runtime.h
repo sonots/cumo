@@ -13,6 +13,9 @@ extern "C" {
 
 extern VALUE cumo_cuda_eRuntimeError;
 
+cudaStream_t cumo_cuda_stream(void);
+void cumo_cuda_stream_set(cudaStream_t stream);
+
 // How many times the whole device has been seen to settle, which is what a host
 // read of managed memory needs. One settling covers every kernel and copy issued
 // before it, so code that recorded the count when it queued work can skip a wait
@@ -43,16 +46,26 @@ cumo_cuda_runtime_device_synchronize(void)
 
 // Asking costs less than half of waiting, and there is nothing to wait for
 // whenever the block stayed off the device. Neither answer advances the settle
-// count: stream 0 going quiet is not the whole device settling, and a host read
+// count: one stream going quiet is not the whole device settling, and a host read
 // of managed memory needs the latter where concurrentManagedAccess is 0.
 static inline int
 cumo_cuda_runtime_sync_if_busy(void)
 {
-    if (cudaStreamQuery(0) == cudaSuccess) {
+    if (cudaStreamQuery(cumo_cuda_stream()) == cudaSuccess) {
         return 0;
     }
-    cumo_cuda_runtime_check_status(cudaStreamSynchronize(0));
+    cumo_cuda_runtime_check_status(cudaStreamSynchronize(cumo_cuda_stream()));
     return 1;
+}
+
+// A host read of device memory has to come after the work queued on the
+// current stream, which a plain cudaMemcpy only does for the legacy one.
+static inline cudaError_t
+cumo_cuda_runtime_memcpy_to_host(void *dst, const void *src, size_t bytes)
+{
+    cudaError_t status = cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cumo_cuda_stream());
+    if (status != cudaSuccess) { return status; }
+    return cudaStreamSynchronize(cumo_cuda_stream());
 }
 
 static inline int

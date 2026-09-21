@@ -271,7 +271,7 @@ void cumo_iter_copy_bytes_stridx_kernel_launch(cumo_na_iarray_stridx_t* a1, cumo
     switch (indexer->ndim) {
 #define CUMO_ITER_COPY_BYTES_STRIDX_CASE(NDIM) \
     case NDIM: \
-        cumo_iter_copy_bytes_stridx_kernel_dim##NDIM<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz); \
+        cumo_iter_copy_bytes_stridx_kernel_dim##NDIM<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz); \
         break;
     CUMO_ITER_COPY_BYTES_STRIDX_CASE(0)
     CUMO_ITER_COPY_BYTES_STRIDX_CASE(1)
@@ -284,7 +284,7 @@ void cumo_iter_copy_bytes_stridx_kernel_launch(cumo_na_iarray_stridx_t* a1, cumo
     CUMO_ITER_COPY_BYTES_STRIDX_CASE(8)
 #undef CUMO_ITER_COPY_BYTES_STRIDX_CASE
     default:
-        cumo_iter_copy_bytes_stridx_kernel_dim<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_copy_bytes_stridx_kernel_dim<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();
@@ -355,22 +355,22 @@ void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_ia
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
     case 0:
-        cumo_iter_copy_bytes_indexer_kernel_dim0<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_copy_bytes_indexer_kernel_dim0<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     case 1:
-        cumo_iter_copy_bytes_indexer_kernel_dim1<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_copy_bytes_indexer_kernel_dim1<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     case 2:
-        cumo_iter_copy_bytes_indexer_kernel_dim2<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_copy_bytes_indexer_kernel_dim2<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     case 3:
-        cumo_iter_copy_bytes_indexer_kernel_dim3<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_copy_bytes_indexer_kernel_dim3<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     case 4:
-        cumo_iter_copy_bytes_indexer_kernel_dim4<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_copy_bytes_indexer_kernel_dim4<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     default:
-        cumo_iter_copy_bytes_indexer_kernel_dim<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_copy_bytes_indexer_kernel_dim<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();
@@ -384,19 +384,19 @@ void cumo_na_flatten_index_kernel_launch(size_t *idx, cumo_na_iarray_stridx_t* i
     block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
     case 1:
-        cumo_na_flatten_index_kernel_dim1<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        cumo_na_flatten_index_kernel_dim1<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, *iarray, *indexer);
         break;
     case 2:
-        cumo_na_flatten_index_kernel_dim2<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        cumo_na_flatten_index_kernel_dim2<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, *iarray, *indexer);
         break;
     case 3:
-        cumo_na_flatten_index_kernel_dim3<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        cumo_na_flatten_index_kernel_dim3<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, *iarray, *indexer);
         break;
     case 4:
-        cumo_na_flatten_index_kernel_dim4<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        cumo_na_flatten_index_kernel_dim4<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, *iarray, *indexer);
         break;
     default:
-        cumo_na_flatten_index_kernel_dim<<<grid_dim, block_dim>>>(idx, *iarray, *indexer);
+        cumo_na_flatten_index_kernel_dim<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, *iarray, *indexer);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();
@@ -406,7 +406,7 @@ void cumo_iter_copy_bytes_kernel_launch(char *p1, char *p2, ssize_t s1, ssize_t 
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_iter_copy_bytes_kernel<<<grid_dim, block_dim>>>(p1, p2, s1, s2, idx1, idx2, n, elmsz);
+    cumo_iter_copy_bytes_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(p1, p2, s1, s2, idx1, idx2, n, elmsz);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -416,22 +416,22 @@ void cumo_iter_swap_byte_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iar
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
     case 0:
-        cumo_iter_swap_byte_indexer_kernel_dim0<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_swap_byte_indexer_kernel_dim0<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     case 1:
-        cumo_iter_swap_byte_indexer_kernel_dim1<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_swap_byte_indexer_kernel_dim1<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     case 2:
-        cumo_iter_swap_byte_indexer_kernel_dim2<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_swap_byte_indexer_kernel_dim2<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     case 3:
-        cumo_iter_swap_byte_indexer_kernel_dim3<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_swap_byte_indexer_kernel_dim3<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     case 4:
-        cumo_iter_swap_byte_indexer_kernel_dim4<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_swap_byte_indexer_kernel_dim4<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     default:
-        cumo_iter_swap_byte_indexer_kernel_dim<<<grid_dim, block_dim>>>(*a1, *a2, *indexer, elmsz);
+        cumo_iter_swap_byte_indexer_kernel_dim<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();
@@ -441,7 +441,7 @@ void cumo_na_diagonal_index_index_kernel_launch(size_t *idx, size_t *idx0, size_
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_diagonal_index_index_kernel<<<grid_dim, block_dim>>>(idx, idx0, idx1, k0, k1, n);
+    cumo_na_diagonal_index_index_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx0, idx1, k0, k1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -449,7 +449,7 @@ void cumo_na_diagonal_index_stride_kernel_launch(size_t *idx, size_t *idx0, ssiz
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_diagonal_index_stride_kernel<<<grid_dim, block_dim>>>(idx, idx0, s1, k0, k1, n);
+    cumo_na_diagonal_index_stride_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx0, s1, k0, k1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -457,7 +457,7 @@ void cumo_na_diagonal_stride_index_kernel_launch(size_t *idx, ssize_t s0, size_t
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_diagonal_stride_index_kernel<<<grid_dim, block_dim>>>(idx, s0, idx1, k0, k1, n);
+    cumo_na_diagonal_stride_index_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, s0, idx1, k0, k1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 

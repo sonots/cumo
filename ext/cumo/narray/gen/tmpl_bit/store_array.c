@@ -96,7 +96,7 @@ static void
         // covers, so it goes straight over with no staging buffer of its own.
         if (!idx1 && s1 == 1 && p1 == 0 && i % CUMO_NB == 0) {
             cumo_cuda_runtime_check_status(
-                cudaMemcpyAsync(a1,host_z,sizeof(CUMO_BIT_DIGIT)*(i/CUMO_NB),cudaMemcpyHostToDevice,0));
+                cudaMemcpyAsync(a1,host_z,sizeof(CUMO_BIT_DIGIT)*(i/CUMO_NB),cudaMemcpyHostToDevice,cumo_cuda_stream()));
         } else {
             uint64_t iw = (i + CUMO_NB - 1) / CUMO_NB;
             // nw, not iw: every row of the walk is n long, and a row that
@@ -104,7 +104,7 @@ static void
             CUMO_BIT_DIGIT *device_z = (CUMO_BIT_DIGIT*)cumo_na_stage_pool_get(
                     (cumo_na_stage_pool_t*)(lp->opt_ptr), sizeof(CUMO_BIT_DIGIT) * (nw ? nw : 1));
             cudaError_t status =
-                cudaMemcpyAsync(device_z,host_z,sizeof(CUMO_BIT_DIGIT)*iw,cudaMemcpyHostToDevice,0);
+                cudaMemcpyAsync(device_z,host_z,sizeof(CUMO_BIT_DIGIT)*iw,cudaMemcpyHostToDevice,cumo_cuda_stream());
             if (status == cudaSuccess && i > 0) {
                 if (idx1) {
                     <%="cumo_#{c_iter}_index_kernel_launch"%>(a1,p1,idx1,device_z,i);

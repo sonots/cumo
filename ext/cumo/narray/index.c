@@ -212,7 +212,7 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
         size_t i = cumo_na_range_check(NUM2SSIZET(rb_ary_entry(ary,k)), size, orig_dim);
         ((size_t*)RSTRING_PTR(buf))[k] = i;
     }
-    status = cudaMemcpyAsync(q->idx,RSTRING_PTR(buf),sizeof(size_t)*n,cudaMemcpyHostToDevice,0);
+    status = cudaMemcpyAsync(q->idx,RSTRING_PTR(buf),sizeof(size_t)*n,cudaMemcpyHostToDevice,cumo_cuda_stream());
     // Hand the bytes back here rather than at the next collection: a subscript
     // is small but every one of them stages a buffer, and waiting for the
     // collector to catch up costs more than the buffer does.
@@ -266,7 +266,7 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
         ssize_t first;
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
         cumo_cuda_runtime_check_status(
-            cudaMemcpy(&first,nidxp,sizeof(ssize_t),cudaMemcpyDeviceToHost));
+            cumo_cuda_runtime_memcpy_to_host(&first,nidxp,sizeof(ssize_t)));
         RB_GC_GUARD(idx);
         cumo_na_index_set_step(q, orig_dim, 1,
                                cumo_na_range_check(first, size, orig_dim), 1);

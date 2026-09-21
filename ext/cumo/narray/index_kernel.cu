@@ -114,7 +114,7 @@ void cumo_na_index_range_check_kernel_launch(size_t *out, ssize_t *in, ssize_t s
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_range_check_kernel<<<grid_dim, block_dim>>>(out, in, size, n, oor, item);
+    cumo_na_index_range_check_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(out, in, size, n, oor, item);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -122,7 +122,7 @@ void cumo_na_index_aref_nadata_index_stride_kernel_launch(size_t *idx, ssize_t s
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_aref_nadata_index_stride_kernel<<<grid_dim, block_dim>>>(idx, s1, n);
+    cumo_na_index_aref_nadata_index_stride_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, s1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -130,7 +130,7 @@ void cumo_na_index_reverse_kernel_launch(size_t *idx, size_t *idx1, uint64_t n)
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_reverse_kernel<<<grid_dim, block_dim>>>(idx, idx1, n);
+    cumo_na_index_reverse_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -138,7 +138,7 @@ void cumo_na_index_aref_naview_index_index_kernel_launch(size_t *idx, size_t *id
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_aref_naview_index_index_kernel<<<grid_dim, block_dim>>>(idx, idx1, n);
+    cumo_na_index_aref_naview_index_index_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -146,7 +146,7 @@ void cumo_na_index_aref_naview_index_stride_last_kernel_launch(size_t *idx, ssiz
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_aref_naview_index_stride_last_kernel<<<grid_dim, block_dim>>>(idx, s1, last, n);
+    cumo_na_index_aref_naview_index_stride_last_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, s1, last, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -154,7 +154,7 @@ void cumo_na_index_aref_naview_index_stride_kernel_launch(size_t *idx, ssize_t s
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_aref_naview_index_stride_kernel<<<grid_dim, block_dim>>>(idx, s1, n);
+    cumo_na_index_aref_naview_index_stride_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, s1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -162,7 +162,7 @@ void cumo_na_index_aref_naview_index_index_beg_step_kernel_launch(size_t *idx, s
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_aref_naview_index_index_beg_step_kernel<<<grid_dim, block_dim>>>(idx, idx1, beg, step, n);
+    cumo_na_index_aref_naview_index_index_beg_step_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx1, beg, step, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -170,7 +170,7 @@ void cumo_na_index_at_nadata_index_stride_add_kernel_launch(size_t *idx, size_t 
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_at_nadata_index_stride_add_kernel<<<grid_dim, block_dim>>>(idx, idx1, s1, n);
+    cumo_na_index_at_nadata_index_stride_add_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx1, s1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -178,7 +178,7 @@ void cumo_na_index_at_nadata_index_beg_step_stride_kernel_launch(size_t *idx, si
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_at_nadata_index_beg_step_stride_kernel<<<grid_dim, block_dim>>>(idx, beg, step, s1, n);
+    cumo_na_index_at_nadata_index_beg_step_stride_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, beg, step, s1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -186,7 +186,7 @@ void cumo_na_index_at_nadata_index_beg_step_stride_add_kernel_launch(size_t *idx
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_at_nadata_index_beg_step_stride_add_kernel<<<grid_dim, block_dim>>>(idx, beg, step, s1, n);
+    cumo_na_index_at_nadata_index_beg_step_stride_add_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, beg, step, s1, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -194,7 +194,7 @@ void cumo_na_index_at_naview_index_index_index_add_kernel_launch(size_t *idx, si
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_at_naview_index_index_index_add_kernel<<<grid_dim, block_dim>>>(idx, idx1, idx2, n);
+    cumo_na_index_at_naview_index_index_index_add_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx1, idx2, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -202,7 +202,7 @@ void cumo_na_index_at_naview_index_index_beg_step_add_kernel_launch(size_t *idx,
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_at_naview_index_index_beg_step_add_kernel<<<grid_dim, block_dim>>>(idx, idx1, beg, step, n);
+    cumo_na_index_at_naview_index_index_beg_step_add_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx1, beg, step, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -210,7 +210,7 @@ void cumo_na_index_at_naview_index_stride_last_add_kernel_launch(size_t *idx, si
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_at_naview_index_stride_last_add_kernel<<<grid_dim, block_dim>>>(idx, idx1, s1, last, n);
+    cumo_na_index_at_naview_index_stride_last_add_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(idx, idx1, s1, last, n);
     cumo_cuda_runtime_check_kernel_launch();
 }
 

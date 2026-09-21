@@ -39,11 +39,11 @@ static void <%="cumo_#{c_iter}_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo_na_
     switch (indexer->ndim) {
     <% (0..opt_indexer_ndim).each do |idim| %>
     case <%=idim%>:
-        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer,sv,use_scalar);
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer,sv,use_scalar);
         break;
     <% end %>
     default:
-        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer,sv,use_scalar);
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer,sv,use_scalar);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();
@@ -70,11 +70,11 @@ static void <%="cumo_#{c_iter}_int32_kernel_dispatch"%>(cumo_na_iarray_t* a1, cu
     switch (indexer->ndim) {
     <% (0..opt_indexer_ndim).each do |idim| %>
     case <%=idim%>:
-        <%="cumo_#{c_iter}_int32_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer,sv,use_scalar,sv_base);
+        <%="cumo_#{c_iter}_int32_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer,sv,use_scalar,sv_base);
         break;
     <% end %>
     default:
-        <%="cumo_#{c_iter}_int32_kernel_dim"%><<<grid_dim, block_dim>>>(*a1,*a2,*a3,*indexer,sv,use_scalar,sv_base);
+        <%="cumo_#{c_iter}_int32_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer,sv,use_scalar,sv_base);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();

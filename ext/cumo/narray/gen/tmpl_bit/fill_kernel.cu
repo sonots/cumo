@@ -22,11 +22,11 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_iarray_stridx_t* a3, CUMO_B
     switch (indexer->ndim) {
     <% (0..opt_indexer_ndim).each do |idim| %>
     case <%=idim%>:
-        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim>>>(*a3,y,*indexer);
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a3,y,*indexer);
         break;
     <% end %>
     default:
-        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim>>>(*a3,y,*indexer);
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a3,y,*indexer);
         break;
     }
     cumo_cuda_runtime_check_kernel_launch();
@@ -37,6 +37,6 @@ void <%="cumo_#{c_iter}_contiguous_kernel_launch"%>(CUMO_BIT_DIGIT *a3, size_t p
     uint64_t w3 = (p3 + n + CUMO_NB - 1) / CUMO_NB;
     size_t grid_dim = cumo_get_grid_dim(w3);
     size_t block_dim = cumo_get_block_dim(w3);
-    <%="cumo_#{c_iter}_contiguous_kernel"%><<<grid_dim, block_dim>>>(a3,p3,n,w3,y);
+    <%="cumo_#{c_iter}_contiguous_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(a3,p3,n,w3,y);
     cumo_cuda_runtime_check_kernel_launch();
 }

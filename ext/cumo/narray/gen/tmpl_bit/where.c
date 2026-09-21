@@ -30,7 +30,7 @@ bit_where_take(VALUE idx, char **ptr, size_t *cap)
 static cudaError_t
 bit_where_cursors(char *scratch, uint64_t *v, int n)
 {
-    return cudaMemcpy(v, scratch, n * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    return cumo_cuda_runtime_memcpy_to_host(v, scratch, n * sizeof(uint64_t));
 }
 
 static void
@@ -95,7 +95,7 @@ bit_where_count_true(VALUE self)
         return NUM2SIZET(v);
     }
     ptr = cumo_na_get_pointer_for_read(v) + cumo_na_get_offset(v);
-    cumo_cuda_runtime_check_status(cudaMemcpy(&count, ptr, sizeof(uint64_t), cudaMemcpyDeviceToHost));
+    cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_host(&count, ptr, sizeof(uint64_t)));
     cumo_na_release_lock(v);
     return (size_t)count;
 }
