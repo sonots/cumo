@@ -37,6 +37,7 @@ get_cublas_error_msg(cublasStatus_t error) {
 void
 cumo_cuda_cublas_check_status(cublasStatus_t status)
 {
+    cumo_cuda_runtime_note_device_write();
     if (status != 0) {
         rb_raise(cumo_cuda_eCublasError, "%s (error=%d)", get_cublas_error_msg(status), status);
     }

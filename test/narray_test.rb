@@ -8212,6 +8212,37 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal((0..3).map(&:to_f) + [7.0] * 4 + (8..11).map(&:to_f), got)
     end
 
+    # A range that does not fit the staging buffer is read a row at a time,
+    # and a row that does not fit either is read where it is.
+    test "views of a large array read a row at a time" do
+      m = Cumo::DFloat.new(3000, 3000).seq
+      v = m[(0..2999).step(7), 0..99]
+      assert_equal(v.dup.to_binary.unpack("d*"), v.to_a.flatten)
+      got = []
+      v[0..1, 0..3].each { |x| got << x }
+      assert_equal([0.0, 1.0, 2.0, 3.0, 21000.0, 21001.0, 21002.0, 21003.0], got)
+      w = m[(0..2999).step(7), [5, 2, 99]]
+      assert_equal(w.dup.to_binary.unpack("d*"), w.to_a.flatten)
+      assert_equal((0...3000).map { |i| i * 3000.0 }, m[true, 0].to_a)
+      assert_equal(m[2999, 2999].to_a, [8999999.0])
+      assert { m[0..1, 0..2].inspect.include?("3001") }
+    end
+
+    test "each reads a row a pinned copy rewrote" do
+      a = Cumo::DFloat.new(2, 4).seq
+      pinned = Cumo::CUDA::PinnedMemory.new(8 * 8)
+      pinned.write(([7.0] * 8).pack("d*"))
+      got = []
+      a.each_with_index do |x, i, j|
+        if i == 0 && j == 0
+          a.set(pinned)
+          pinned.synchronize
+        end
+        got << x
+      end
+      assert_equal([0.0] + [7.0] * 7, got)
+    end
+
     test "a host read inside another host read reads the right array" do
       a = Cumo::DFloat.new(2, 3).seq
       b = Cumo::DFloat.new(2, 3).seq(100)

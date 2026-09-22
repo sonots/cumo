@@ -32,7 +32,7 @@ static void
             for (; i--;) {
                 CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
-                cumo_na_ndloop_restage_if_written(lp);
+                if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                 CUMO_SET_DATA_INDEX(p2,idx2,dtype,x);
                 c[nd]++;
@@ -41,7 +41,7 @@ static void
             for (; i--;) {
                 CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
-                cumo_na_ndloop_restage_if_written(lp);
+                if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                 CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
                 c[nd]++;
@@ -52,7 +52,7 @@ static void
             for (; i--;) {
                 CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
-                cumo_na_ndloop_restage_if_written(lp);
+                if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                 CUMO_SET_DATA_INDEX(p2,idx2,dtype,x);
                 c[nd]++;
@@ -61,7 +61,7 @@ static void
             for (; i--;) {
                 CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
-                cumo_na_ndloop_restage_if_written(lp);
+                if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                 CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
                 c[nd]++;

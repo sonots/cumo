@@ -100,9 +100,9 @@ typedef struct {
     size_t *shape;
 } cumo_ndfunc_arg_out_t;
 
-// Reads the inputs of a CUMO_NDF_HOST_READ loop again if device memory was
-// written since they were staged, for a function that yields to Ruby.
-void cumo_na_ndloop_restage_if_written(cumo_na_loop_t *lp);
+// For a CUMO_NDF_HOST_READ function that yields to Ruby: reads the element
+// it will read next again if device memory was written since it was staged.
+void cumo_na_ndloop_refresh_next(cumo_na_loop_t *lp, const void *next, size_t bytes);
 
 // spec of user function
 typedef struct {

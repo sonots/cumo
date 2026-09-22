@@ -17,14 +17,14 @@ static void
             CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             y = m_data_to_num(x);
             rb_yield(y);
-            cumo_na_ndloop_restage_if_written(lp);
+            if (i) cumo_na_ndloop_refresh_next(lp, (char*)a1 + ((p1 + *idx1) / CUMO_NB) * sizeof(CUMO_BIT_DIGIT), sizeof(CUMO_BIT_DIGIT));
         }
     } else {
         for (; i--;) {
             CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             y = m_data_to_num(x);
             rb_yield(y);
-            cumo_na_ndloop_restage_if_written(lp);
+            if (i) cumo_na_ndloop_refresh_next(lp, (char*)a1 + (p1 / CUMO_NB) * sizeof(CUMO_BIT_DIGIT), sizeof(CUMO_BIT_DIGIT));
         }
     }
 }

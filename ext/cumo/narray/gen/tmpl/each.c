@@ -16,14 +16,14 @@ static void
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             y = m_data_to_num(x);
             rb_yield(y);
-            cumo_na_ndloop_restage_if_written(lp);
+            if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
         }
     } else {
         for (; i--;) {
             CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
             y = m_data_to_num(x);
             rb_yield(y);
-            cumo_na_ndloop_restage_if_written(lp);
+            if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
         }
     }
 }

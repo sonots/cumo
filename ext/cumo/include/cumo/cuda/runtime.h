@@ -26,10 +26,9 @@ cudaStream_t cumo_cuda_stream_get(VALUE stream);
 // count that is behind costs a wait rather than correctness.
 extern uint64_t cumo_cuda_sync_epoch;
 
-// How many times device memory has been written from here: every kernel
-// launch and every copy into it counts. A host loop that yields to Ruby
-// reads from a staged copy, and a count that moved on tells it to stage
-// again before the next row.
+// How many times device memory was written from here: every kernel launch,
+// copy into it and library call counts. A host loop reads a staged copy,
+// and reads again once the count moves.
 extern uint64_t cumo_cuda_launch_epoch;
 
 static inline void
@@ -38,12 +37,12 @@ cumo_cuda_runtime_note_device_write(void)
     cumo_cuda_launch_epoch++;
 }
 
-// A pinned host buffer for reading device memory back. The host reading
-// managed memory in place faults the page over, and a small block shares
-// its page with other live blocks, so the page goes back and forth once per
-// read. A copy into pinned memory reads the block where it is instead. One
-// buffer per thread is kept for the next read; a nested or oversized request
-// gets one of its own.
+// A pinned host buffer for reading device memory back: a copy into pinned
+// memory reads a block where it is, where the host reading managed memory
+// faults its page over. Two are kept per thread, one that grows to the
+// size below and a small one for a read nested in another.
+#define CUMO_CUDA_STAGE_CACHE_MAX (64u << 20)
+
 typedef struct {
     char  *ptr;
     size_t size;

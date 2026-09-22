@@ -24,14 +24,14 @@ static void
         for (; i--;) {
             CUMO_LOAD_BIT(a1, p1+*idx1, x); idx1++;
             cumo_na_yield_with_index(m_data_to_num(x),c,a,nd,md);
-            cumo_na_ndloop_restage_if_written(lp);
+            if (i) cumo_na_ndloop_refresh_next(lp, (char*)a1 + ((p1 + *idx1) / CUMO_NB) * sizeof(CUMO_BIT_DIGIT), sizeof(CUMO_BIT_DIGIT));
             c[nd]++;
         }
     } else {
         for (; i--;) {
             CUMO_LOAD_BIT(a1, p1, x); p1+=s1;
             cumo_na_yield_with_index(m_data_to_num(x),c,a,nd,md);
-            cumo_na_ndloop_restage_if_written(lp);
+            if (i) cumo_na_ndloop_refresh_next(lp, (char*)a1 + (p1 / CUMO_NB) * sizeof(CUMO_BIT_DIGIT), sizeof(CUMO_BIT_DIGIT));
             c[nd]++;
         }
     }

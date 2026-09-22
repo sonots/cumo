@@ -22,14 +22,14 @@ static void
         for (; i--;) {
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             cumo_na_yield_with_index(m_data_to_num(x),c,a,nd,md);
-            cumo_na_ndloop_restage_if_written(lp);
+            if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
             c[nd]++;
         }
     } else {
         for (; i--;) {
             CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
             cumo_na_yield_with_index(m_data_to_num(x),c,a,nd,md);
-            cumo_na_ndloop_restage_if_written(lp);
+            if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
             c[nd]++;
         }
     }
