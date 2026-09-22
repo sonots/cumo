@@ -111,14 +111,6 @@ module Cumo::CUDA
 
     private
 
-    def save_cache(path, cubin_hash, cubin)
-      tf = Tempfile.create
-      tf.write(cubin_hash)
-      tf.write(cubin)
-      temp_path = tf.path
-      FileUtils.mv(temp_path, path)
-    end
-
     # The file is the MD5 of what follows, then the payload: the cubin, or
     # with name expressions the JSON of their mangled names, its length
     # first as eight hex digits, then the cubin. It is written next to its
