@@ -12,9 +12,21 @@ module Cumo::CUDA
     DEFAULT_CACHE_DIR = File.expand_path('~/.cumo/kernel_cache')
 
     @@empty_file_preprocess_cache ||= {}
+    @@modules ||= {}
+    @@arch_by_device ||= {}
 
     def self.valid_kernel_name?(name)
       VALID_KERNEL_NAME.match?(name)
+    end
+
+    # The next compile_with_cache reads the disk cache or compiles again.
+    # A module nobody holds any more is unloaded when Ruby collects it.
+    def self.clear_modules
+      @@modules.clear
+    end
+
+    def self.remove_module(mod)
+      @@modules.delete_if { |_, m| m.equal?(mod) }
     end
 
     # With name_expressions: answers the PTX and a Hash of each expression
@@ -50,11 +62,16 @@ module Cumo::CUDA
 
     # name_expressions: names such as "kernel<float>" that the Module then
     # answers get_function for. Their mangled names are cached with the cubin.
+    # The same source, options and device answer the same Module for the
+    # rest of the process.
     def compile_with_cache(source, options: [], arch: nil, cache_dir: nil, extra_source: nil, name_expressions: [])
       # NVRTC does not use extra_source. extra_source is used for cache key.
       cache_dir ||= get_cache_dir
       arch ||= get_arch
       name_expressions = name_expressions.uniq
+      memo_key = [source, options, arch, cache_dir, extra_source, name_expressions, Runtime.cudaGetDevice]
+      mod = @@modules[memo_key]
+      return mod if mod
 
       options += ['-ftz=true']
 
@@ -83,7 +100,7 @@ module Cumo::CUDA
         mod = Module.new
         mod.load(cubin)
         mod.lowered_names = lowered
-        return mod
+        return remember(memo_key, mod)
       end
 
       ptx = compile_using_nvrtc(source, options: options, arch: arch, name_expressions: name_expressions)
@@ -106,10 +123,25 @@ module Cumo::CUDA
       mod = Module.new
       mod.load(cubin)
       mod.lowered_names = lowered
-      return mod
+      return remember(memo_key, mod)
     end
 
     private
+
+    # The key is copied down to its strings, so a caller editing its source
+    # or options afterwards does not move the entry. Two threads that both
+    # missed keep the first module; the other is left for the collector.
+    def remember(memo_key, mod)
+      @@modules[frozen_copy(memo_key)] ||= mod
+    end
+
+    def frozen_copy(obj)
+      case obj
+      when String then obj.dup.freeze
+      when Array then obj.map { |o| frozen_copy(o) }.freeze
+      else obj
+      end
+    end
 
     # The file is the MD5 of what follows, then the payload: the cubin, or
     # with name expressions the JSON of their mangled names, its length
@@ -154,8 +186,7 @@ module Cumo::CUDA
     end
 
     def get_arch
-      cc = Device.new.compute_capability
-      "compute_#{cc}"
+      @@arch_by_device[Runtime.cudaGetDevice] ||= "compute_#{Device.new.compute_capability}"
     end
 
     def get_bool_env_variable(name, default)

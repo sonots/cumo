@@ -62,7 +62,91 @@ module Cumo::CUDA
 
       def test_valid_from_cache
         test_valid
+        Compiler.clear_modules
         test_valid
+      end
+
+      def test_same_source_answers_the_same_module
+        source = "extern \"C\" __global__ void k(float* y) { y[0] = 1.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        assert { Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR).equal?(first) }
+        assert { Compiler.new.compile_with_cache(source.dup, cache_dir: CACHE_DIR).equal?(first) }
+        assert { !Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, options: ["-lineinfo"]).equal?(first) }
+        assert { !Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, extra_source: "x").equal?(first) }
+        assert { !Compiler.new.compile_with_cache(source + "\n", cache_dir: CACHE_DIR).equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        first.get_function("k").launch([y], grid: 1, block: 1)
+        assert_equal([1.0], y.to_a)
+      end
+
+      def test_an_unloaded_module_is_not_answered_again
+        source = "extern \"C\" __global__ void k2(float* y) { y[0] = 2.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        first.unload
+        again = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        assert { !again.equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        again.get_function("k2").launch([y], grid: 1, block: 1)
+        assert_equal([2.0], y.to_a)
+        assert { Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR).equal?(again) }
+      end
+
+      def test_clear_modules_answers_a_fresh_module
+        source = "extern \"C\" __global__ void k3(float* y) { y[0] = 3.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        Compiler.clear_modules
+        again = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        assert { !again.equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        first.get_function("k3").launch([y], grid: 1, block: 1)
+        again.get_function("k3").launch([y], grid: 1, block: 1)
+        assert_equal([3.0], y.to_a)
+      end
+
+      def test_the_key_does_not_follow_a_source_edited_afterwards
+        source = +"extern \"C\" __global__ void k4(float* y) { y[0] = 4.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        source.sub!("4.0f", "5.0f")
+        second = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        assert { !second.equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        second.get_function("k4").launch([y], grid: 1, block: 1)
+        assert_equal([5.0], y.to_a)
+        first.get_function("k4").launch([y], grid: 1, block: 1)
+        assert_equal([4.0], y.to_a)
+        assert { Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR).equal?(second) }
+      end
+
+      def test_the_key_does_not_follow_an_option_edited_afterwards
+        source = "extern \"C\" __global__ void k5(float* y) { y[0] = N; }\n"
+        options = [+"-DN=6.0f"]
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, options: options)
+        options[0].sub!("6.0f", "7.0f")
+        second = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, options: options)
+        assert { !second.equal?(first) }
+        assert { Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, options: options).equal?(second) }
+        assert { Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, options: ["-DN=6.0f"]).equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        second.get_function("k5").launch([y], grid: 1, block: 1)
+        assert_equal([7.0], y.to_a)
+      end
+
+      def test_the_device_arch_and_an_explicit_one_share_a_module
+        source = "extern \"C\" __global__ void k6(float* y) { y[0] = 8.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        arch = Compiler.new.send(:get_arch)
+        assert { Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, arch: arch).equal?(first) }
+      end
+
+      def test_a_module_nobody_holds_is_unloaded_by_the_collector
+        source = "extern \"C\" __global__ void k7(float* y) { y[0] = 9.0f; }\n"
+        Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        Compiler.clear_modules
+        GC.start
+        again = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        y = Cumo::SFloat.zeros(1)
+        again.get_function("k7").launch([y], grid: 1, block: 1)
+        assert_equal([9.0], y.to_a)
       end
     end
   end

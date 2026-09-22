@@ -96,6 +96,7 @@ module Cumo::CUDA
       files = Dir.glob(File.join(dir, "*_3.cubin"))
       assert_equal(1, files.size)
       assert_operator File.size(files[0]), :>, 1000
+      Compiler.clear_modules
       again = without_nvrtc.compile_with_cache(MATRIX, cache_dir: dir, name_expressions: ["kernel<float>"])
       assert_equal(first.lowered_names, again.lowered_names)
       assert_nothing_raised { again.get_function("kernel<float>").launch([Cumo::SFloat.zeros(1, 4, 4), Cumo::SFloat.zeros(1, 4, 4), ([0.0] * 16).pack("f*"), Cumo::SFloat.zeros(1, 4, 4)], grid: 1, block: 1) }
@@ -105,10 +106,12 @@ module Cumo::CUDA
       assert_equal({}, plain.lowered_names)
       assert_raise(DriverError) { plain.get_function("kernel<float>") }
       assert_equal(1, Dir.glob(File.join(dir, "*_2.cubin")).size)
+      Compiler.clear_modules
       assert_nothing_raised { without_nvrtc.compile_with_cache(MATRIX, cache_dir: dir) }
 
       [->(f) { File.truncate(f, File.size(f) / 2) }, ->(f) { File.write(f, "") }, ->(f) { File.write(f, "x" * 40) }].each do |spoil|
         spoil.call(files[0])
+        Compiler.clear_modules
         assert_raise(::RuntimeError) { without_nvrtc.compile_with_cache(MATRIX, cache_dir: dir, name_expressions: ["kernel<float>"]) }
         fixed = Compiler.new.compile_with_cache(MATRIX, cache_dir: dir, name_expressions: ["kernel<float>"])
         assert_equal(first.lowered_names, fixed.lowered_names)
