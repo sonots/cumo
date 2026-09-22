@@ -2385,6 +2385,54 @@ class NArrayTest < Test::Unit::TestCase
       b = Cumo::DFloat.new(8, 8).seq.transpose
       b.rand
       assert { b.to_a.flatten.all? { |x| x >= 0.0 && x < 1.0 } }
+
+      c = Cumo::DFloat.new(8, 8).seq
+      c[[7, 0, 3], true].rand
+      assert { c[[7, 0, 3], true].to_a.flatten.all? { |x| x >= 0.0 && x < 1.0 } }
+      assert_equal(Cumo::DFloat.new(8, 8).seq[[1, 2, 4, 5, 6], true].to_a, c[[1, 2, 4, 5, 6], true].to_a)
+    end
+
+    # Every element draws from the subsequence at its index in the shape, so
+    # the view a shape is filled through does not change what it gets.
+    [[Cumo::DFloat, :rand], [Cumo::Int32, :rand], [Cumo::SFloat, :rand_norm]].each do |dtype, meth|
+      test "#{dtype}##{meth} draws the same values whatever the layout" do
+        args = dtype == Cumo::Int32 ? [0, 100] : []
+        Cumo::NArray.srand(11)
+        flat = dtype.new(24).send(meth, *args).to_a
+        Cumo::NArray.srand(11)
+        assert_equal(flat, dtype.new(24, 1).send(meth, *args).to_a.flatten)
+        Cumo::NArray.srand(11)
+        assert_equal(flat, dtype.new(4, 6).send(meth, *args).to_a.flatten)
+        Cumo::NArray.srand(11)
+        assert_equal(flat, dtype.zeros(6, 4).transpose.send(meth, *args).to_a.flatten)
+        Cumo::NArray.srand(11)
+        assert_equal(flat, dtype.zeros(4, 12)[true, (0...12).step(2)].send(meth, *args).to_a.flatten)
+        Cumo::NArray.srand(11)
+        assert_equal(flat, dtype.zeros(8, 6)[[1, 7, 3, 4], true].send(meth, *args).to_a.flatten)
+        Cumo::NArray.srand(11)
+        assert_equal(flat, dtype.zeros(2, 3, 4).send(meth, *args).to_a.flatten)
+      end
+    end
+
+    # A column vector used to fill one row per launch, which took seconds
+    # for a million rows; one launch fills it in the time the flat shape takes.
+    test "rand fills a column vector in one pass" do
+      n = 1 << 20
+      time = ->(a, meth) do
+        a.send(meth)
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+        5.times.map do
+          t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          a.send(meth)
+          Cumo::CUDA::Runtime.cudaDeviceSynchronize
+          Process.clock_gettime(Process::CLOCK_MONOTONIC) - t
+        end.min
+      end
+      %i[rand rand_norm].each do |meth|
+        flat = time.call(Cumo::SFloat.new(n), meth)
+        column = time.call(Cumo::SFloat.new(n, 1), meth)
+        assert_operator column, :<, flat * 20 + 0.001, meth.to_s
+      end
     end
 
     test "rand is uniform" do

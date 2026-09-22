@@ -63,25 +63,19 @@ __device__ static dtype
     //<% end %>
 }
 
-__global__ void <%="cumo_#{c_iter}_index_kernel"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift, uint64_t n)
+<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+__global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cumo_na_indexer_t indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift)
 {
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
         curandStatePhilox4_32_10_t st;
         // Keying on the element rather than the thread keeps the result the same
         // whatever grid the launch happens to pick.
         curand_init(seed, offset + i, 0, &st);
-        *(dtype*)(p1+idx1[i]) = <%="cumo_#{c_iter}_value"%>(&st, low, max, shift);
+        cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
+        *(dtype*)cumo_na_iarray_at_dim<%=idim%>(&a1, &indexer) = <%="cumo_#{c_iter}_value"%>(&st, low, max, shift);
     }
 }
-
-__global__ void <%="cumo_#{c_iter}_stride_kernel"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift, uint64_t n)
-{
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
-        curandStatePhilox4_32_10_t st;
-        curand_init(seed, offset + i, 0, &st);
-        *(dtype*)(p1+(i*s1)) = <%="cumo_#{c_iter}_value"%>(&st, low, max, shift);
-    }
-}
+<% end %>
 
 #undef cumo_rand_uniform
 
@@ -92,19 +86,20 @@ extern "C" {
 #endif
 #endif
 
-void <%="cumo_#{c_iter}_index_kernel_launch"%>(char *p1, size_t *idx1, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift, uint64_t n)
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift)
 {
-    size_t grid_dim = cumo_get_grid_dim(n);
-    size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_index_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(p1,idx1,seed,offset,low,max,shift,n);
-    cumo_cuda_runtime_check_kernel_launch();
-}
-
-void <%="cumo_#{c_iter}_stride_kernel_launch"%>(char *p1, ssize_t s1, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift, uint64_t n)
-{
-    size_t grid_dim = cumo_get_grid_dim(n);
-    size_t block_dim = cumo_get_block_dim(n);
-    <%="cumo_#{c_iter}_stride_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(p1,s1,seed,offset,low,max,shift,n);
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+    <% (0..opt_indexer_ndim).each do |idim| %>
+    case <%=idim%>:
+        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*indexer,seed,offset,low,max,shift);
+        break;
+    <% end %>
+    default:
+        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*indexer,seed,offset,low,max,shift);
+        break;
+    }
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>
