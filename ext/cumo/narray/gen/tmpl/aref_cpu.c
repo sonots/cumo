@@ -42,9 +42,10 @@ static VALUE
     if (result_nd) {
         return cumo_na_aref_main(argc, argv, self, 0, result_nd, pos);
     } else {
+        dtype x;
         ptr = cumo_na_get_pointer_for_read(self) + pos;
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        cumo_cuda_runtime_device_synchronize();
-        return m_extract(ptr);
+        cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_host(&x, ptr, sizeof(dtype)));
+        return m_extract((char*)&x);
     }
 }

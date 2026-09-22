@@ -63,6 +63,9 @@ typedef struct {
 // restates a default, and the other is given for an empty list that names
 // nothing.
 #define CUMO_NDF_AXES_NAMED          (1<<12)
+// Cumo custom. The user function reads its inputs on the host, so ndloop
+// stages them into pinned memory first and points the iterators there.
+#define CUMO_NDF_HOST_READ           (1<<13)
 
 #define CUMO_FULL_LOOP       (CUMO_NDF_HAS_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP|CUMO_NDF_INPLACE)
 #define CUMO_FULL_LOOP_NIP   (CUMO_NDF_HAS_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP)
@@ -96,6 +99,10 @@ typedef struct {
     int     dim;     // # of dimension of argument handled by user function
     size_t *shape;
 } cumo_ndfunc_arg_out_t;
+
+// Reads the inputs of a CUMO_NDF_HOST_READ loop again if device memory was
+// written since they were staged, for a function that yields to Ruby.
+void cumo_na_ndloop_restage_if_written(cumo_na_loop_t *lp);
 
 // spec of user function
 typedef struct {

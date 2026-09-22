@@ -59,7 +59,23 @@ typedef struct CUMO_NA_MD_LOOP {
     VALUE  loop_opt;
     cumo_ndfunc_t  *ndfunc;
     void (*loop_func)(cumo_ndfunc_t *, struct CUMO_NA_MD_LOOP *);
+    struct CUMO_NA_HOST_STAGE *hs; // inputs staged for a host loop, or NULL
 } cumo_na_md_loop_t;
+
+// What a host loop reads through: the pinned copy of the byte range each
+// input walks, and host copies of its index arrays. The originals are kept
+// to put back at release.
+typedef struct CUMO_NA_HOST_STAGE {
+    int      narg;
+    int      ndim;
+    char   **ptr;      // per arg: the device pointer LARG(lp,j).ptr held
+    size_t  *min;      // per arg: first byte of the range walked
+    size_t  *len;      // per arg: bytes in it, 0 for an arg not staged
+    size_t **idx;      // per (dim, arg): the device index array LITER held
+    size_t **host_idx; // per (dim, arg): its host copy
+    cumo_cuda_stage_t stage;
+    uint64_t epoch;
+} cumo_na_host_stage_t;
 
 #define LARG(lp,iarg) ((lp)->user.args[iarg])
 #define LITER(lp,idim,iarg) ((lp)->xargs[iarg].iter[idim])
@@ -378,6 +394,7 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
 
     lp->ptr = NULL;
     lp->user.n = NULL;
+    lp->hs = NULL;
 
     ndloop_find_max_dimension(lp, nf, args);
     narg = lp->nin + nf->nout;
@@ -453,6 +470,8 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
 }
 
 
+static void ndloop_unstage_host_reads(cumo_na_md_loop_t *lp);
+
 static VALUE
 ndloop_release(VALUE vlp)
 {
@@ -460,6 +479,7 @@ ndloop_release(VALUE vlp)
     VALUE v;
     cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)(vlp);
 
+    ndloop_unstage_host_reads(lp);
     for (j=0; j < lp->narg; j++) {
         v = LARG(lp,j).value;
         if (CumoIsNArray(v)) {
@@ -1802,6 +1822,152 @@ ndloop_is_empty(cumo_na_md_loop_t *lp)
 }
 
 
+// Copies every staged input again. The layout was settled when the stage
+// was set up, so only the bytes move.
+static void
+ndloop_stage_copy(cumo_na_md_loop_t *lp)
+{
+    cumo_na_host_stage_t *hs = lp->hs;
+    size_t off = 0;
+    int j;
+
+    for (j=0; j<hs->narg; j++) {
+        if (hs->len[j] == 0) continue;
+        cumo_cuda_runtime_check_status(
+            cumo_cuda_runtime_memcpy_to_pinned(hs->stage.ptr + off, hs->ptr[j] + hs->min[j], hs->len[j]));
+        LARG(lp,j).ptr = hs->stage.ptr + off - hs->min[j];
+        off += (hs->len[j] + 7) & ~(size_t)7;
+    }
+    hs->epoch = cumo_cuda_launch_epoch;
+}
+
+// Reads every input of a host loop into pinned memory once, and points the
+// iterators at the copy, so that the loop's pointer arithmetic lands there
+// unchanged. The range an input walks is found from its steps and, for an
+// index array, from the indices, which are brought over first. An input
+// ndloop buffers by row is left alone, since its rows arrive during the loop.
+static void
+ndloop_stage_host_reads(cumo_na_md_loop_t *lp)
+{
+    cumo_na_host_stage_t *hs;
+    int nd, narg, i, j;
+    size_t total = 0;
+
+    if (!CUMO_NDF_TEST(lp->ndfunc, CUMO_NDF_HOST_READ) || lp->hs) return;
+    if (ndloop_is_empty(lp)) return;
+    nd = lp->ndim + lp->user.ndim;
+    narg = lp->narg;
+
+    hs = ZALLOC(cumo_na_host_stage_t);
+    lp->hs = hs;
+    hs->narg = narg;
+    hs->ndim = nd;
+    hs->ptr = ZALLOC_N(char*, narg);
+    hs->min = ZALLOC_N(size_t, narg);
+    hs->len = ZALLOC_N(size_t, narg);
+    hs->idx = ZALLOC_N(size_t*, (size_t)nd * narg);
+    hs->host_idx = ZALLOC_N(size_t*, (size_t)nd * narg);
+
+    for (j=0; j<narg; j++) {
+        VALUE v = LARG(lp,j).value;
+        ssize_t lo, hi;
+
+        if (lp->xargs[j].flag != CUMO_NDL_READ || lp->xargs[j].bufcp) continue;
+        if (!CumoIsNArray(v) || LARG(lp,j).ptr == NULL) continue;
+
+        for (i=0; i<nd; i++) {
+            size_t *idx = LITER(lp,i,j).idx;
+            size_t n = lp->n[i];
+            size_t *h;
+            if (idx == NULL) continue;
+            h = ALLOC_N(size_t, n);
+            hs->idx[i*narg+j] = idx;
+            hs->host_idx[i*narg+j] = h;
+            LITER(lp,i,j).idx = h;
+            cumo_cuda_runtime_check_status(
+                cumo_cuda_runtime_memcpy_to_host(h, idx, n * sizeof(size_t)));
+        }
+
+        lo = hi = LITER(lp,0,j).pos;
+        for (i=0; i<nd; i++) {
+            size_t n = lp->n[i];
+            size_t *h = LITER(lp,i,j).idx;
+            if (h) {
+                // An index is an offset from the position, and one that
+                // walks backwards is negative, stored as it wraps.
+                ssize_t mn = (ssize_t)h[0], mx = (ssize_t)h[0];
+                size_t k;
+                for (k=1; k<n; k++) {
+                    if ((ssize_t)h[k] < mn) mn = (ssize_t)h[k];
+                    if ((ssize_t)h[k] > mx) mx = (ssize_t)h[k];
+                }
+                lo += mn;
+                hi += mx;
+            } else {
+                ssize_t d = LITER(lp,i,j).step * (ssize_t)(n - 1);
+                if (d < 0) lo += d; else hi += d;
+            }
+        }
+        if (rb_obj_is_kind_of(v, cumo_cBit)) {
+            // Positions are bits here, and the loop reads whole words.
+            hs->min[j] = (size_t)(lo / CUMO_NB) * sizeof(CUMO_BIT_DIGIT);
+            hs->len[j] = (size_t)(hi / CUMO_NB + 1) * sizeof(CUMO_BIT_DIGIT) - hs->min[j];
+        } else {
+            hs->min[j] = (size_t)lo;
+            hs->len[j] = (size_t)(hi - lo) + LARG(lp,j).elmsz;
+        }
+        hs->ptr[j] = LARG(lp,j).ptr;
+        total += (hs->len[j] + 7) & ~(size_t)7;
+    }
+
+    if (total > 0) {
+        cumo_cuda_runtime_stage_alloc(&hs->stage, total);
+        ndloop_stage_copy(lp);
+    }
+}
+
+// A block the loop yielded to may have written what it is reading.
+static inline void
+ndloop_restage_if_written(cumo_na_md_loop_t *lp)
+{
+    if (lp->hs && lp->hs->stage.ptr && lp->hs->epoch != cumo_cuda_launch_epoch) {
+        ndloop_stage_copy(lp);
+    }
+}
+
+// The same for a user function, after each yield. The copy lands where it
+// was, so the pointers the function holds stay good.
+void
+cumo_na_ndloop_restage_if_written(cumo_na_loop_t *user)
+{
+    cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user));
+    ndloop_restage_if_written(lp);
+}
+
+static void
+ndloop_unstage_host_reads(cumo_na_md_loop_t *lp)
+{
+    cumo_na_host_stage_t *hs = lp->hs;
+    int i, j;
+
+    if (hs == NULL) return;
+    lp->hs = NULL;
+    for (j=0; j<hs->narg; j++) {
+        if (hs->ptr[j]) LARG(lp,j).ptr = hs->ptr[j];
+        for (i=0; i<hs->ndim; i++) {
+            if (hs->idx[i*hs->narg+j]) LITER(lp,i,j).idx = hs->idx[i*hs->narg+j];
+            if (hs->host_idx[i*hs->narg+j]) xfree(hs->host_idx[i*hs->narg+j]);
+        }
+    }
+    cumo_cuda_runtime_stage_free(&hs->stage);
+    xfree(hs->ptr);
+    xfree(hs->min);
+    xfree(hs->len);
+    xfree(hs->idx);
+    xfree(hs->host_idx);
+    xfree(hs);
+}
+
 static void
 loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
@@ -1820,6 +1986,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     // reads them without one of its own.
     ndloop_sync_md_index(lp);
     ndloop_sync_user_index(lp);
+    ndloop_stage_host_reads(lp);
 
     if (nd==0 || CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP)) {
         for (j=0; j<lp->nin; j++) {
@@ -1865,6 +2032,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
                 ndloop_copy_to_buffer(lp->xargs[j].bufcp);
             }
         }
+        ndloop_restage_if_written(lp);
         (*(nf->func))(&(lp->user));
         for (j=0; j<lp->narg; j++) {
             if (lp->xargs[j].bufcp && (lp->xargs[j].flag & CUMO_NDL_WRITE)) {
@@ -2027,6 +2195,7 @@ loop_inspect(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     VALUE buf, opt;
 
     ndloop_sync_md_index(lp);
+    ndloop_stage_host_reads(lp);
 
     nd = lp->ndim;
     buf = lp->loop_opt;
@@ -2103,7 +2272,7 @@ cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
     cumo_na_md_loop_t lp;
     VALUE buf;
     cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
-    cumo_ndfunc_t nf = { (cumo_na_iter_func_t)func, CUMO_NO_LOOP, 3, 0, ain, 0 };
+    cumo_ndfunc_t nf = { (cumo_na_iter_func_t)func, CUMO_NO_LOOP|CUMO_NDF_HOST_READ, 3, 0, ain, 0 };
     //nf = cumo_ndfunc_alloc(NULL, CUMO_NO_LOOP, 1, 0, Qnil);
 
     buf = cumo_na_info_str(nary);
@@ -2404,6 +2573,7 @@ loop_narray_to_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     volatile VALUE a0;
 
     ndloop_sync_md_index(lp);
+    ndloop_stage_host_reads(lp);
 
     // alloc counter
     c = ALLOCA_N(size_t, nd+1);
@@ -2490,6 +2660,7 @@ loop_narray_with_index(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     }
 
     ndloop_sync_md_index(lp);
+    ndloop_stage_host_reads(lp);
 
     // pass total ndim to iterator
     lp->user.ndim += nd;
@@ -2512,6 +2683,7 @@ loop_narray_with_index(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
             }
         }
 
+        ndloop_restage_if_written(lp);
         (*(nf->func))(&(lp->user));
 
         for (;;) {

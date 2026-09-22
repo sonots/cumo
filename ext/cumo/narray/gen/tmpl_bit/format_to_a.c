@@ -41,11 +41,10 @@ static VALUE
     VALUE fmt=Qnil;
     cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
     cumo_ndfunc_arg_out_t aout[1] = {{rb_cArray,0}}; // dummy?
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 3,1, ain,aout};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP|CUMO_NDF_HOST_READ, 3,1, ain,aout};
 
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_device_synchronize();
 
     rb_scan_args(argc, argv, "01", &fmt);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     return cumo_na_ndloop_cast_narray_to_rarray(&ndf, self, fmt);
 }

@@ -11,6 +11,7 @@
 VALUE cumo_cuda_eRuntimeError;
 VALUE cumo_cuda_mRuntime;
 uint64_t cumo_cuda_sync_epoch = 0;
+uint64_t cumo_cuda_launch_epoch = 0;
 
 static __thread cudaStream_t current_stream = 0;
 static cumo_cuda_handle_set_t streams;
@@ -69,7 +70,83 @@ cumo_cuda_stream_set(cudaStream_t stream)
 void
 cumo_cuda_runtime_check_kernel_launch(void)
 {
+    cumo_cuda_launch_epoch++;
     check_status(cudaGetLastError());
+}
+
+static __thread struct {
+    char  *ptr;
+    size_t size;
+    bool   busy;
+} stage_cache;
+
+#define STAGE_CACHE_MAX (64u << 20)
+#define STAGE_CHUNK (8u << 20)
+
+void
+cumo_cuda_runtime_stage_alloc(cumo_cuda_stage_t *stage, size_t bytes)
+{
+    stage->ptr = NULL;
+    stage->size = 0;
+    stage->cached = false;
+    if (bytes == 0) { return; }
+    if (!stage_cache.busy) {
+        if (stage_cache.size < bytes && bytes <= STAGE_CACHE_MAX) {
+            size_t size = (bytes + 4095) & ~(size_t)4095;
+            if (stage_cache.ptr) {
+                check_status(cudaFreeHost(stage_cache.ptr));
+                stage_cache.ptr = NULL;
+                stage_cache.size = 0;
+            }
+            check_status(cudaHostAlloc((void**)&stage_cache.ptr, size, cudaHostAllocPortable));
+            stage_cache.size = size;
+        }
+        if (stage_cache.size >= bytes) {
+            stage_cache.busy = true;
+            stage->ptr = stage_cache.ptr;
+            stage->size = stage_cache.size;
+            stage->cached = true;
+            return;
+        }
+    }
+    check_status(cudaHostAlloc((void**)&stage->ptr, bytes, cudaHostAllocPortable));
+    stage->size = bytes;
+}
+
+// Called from release paths that may be unwinding, so a failure is dropped
+// rather than raised over the exception being carried.
+void
+cumo_cuda_runtime_stage_free(cumo_cuda_stage_t *stage)
+{
+    if (stage->ptr == NULL) { return; }
+    if (stage->cached) {
+        stage_cache.busy = false;
+    } else {
+        cudaFreeHost(stage->ptr);
+        cudaGetLastError();
+    }
+    stage->ptr = NULL;
+    stage->size = 0;
+}
+
+cudaError_t
+cumo_cuda_runtime_memcpy_to_host(void *dst, const void *src, size_t bytes)
+{
+    cumo_cuda_stage_t stage;
+    size_t chunk = bytes < STAGE_CHUNK ? bytes : STAGE_CHUNK;
+    size_t off;
+    cudaError_t status = cudaSuccess;
+
+    if (bytes == 0) { return cudaSuccess; }
+    cumo_cuda_runtime_stage_alloc(&stage, chunk);
+    for (off = 0; off < bytes; off += chunk) {
+        size_t n = bytes - off < chunk ? bytes - off : chunk;
+        status = cumo_cuda_runtime_memcpy_to_pinned(stage.ptr, (const char*)src + off, n);
+        if (status != cudaSuccess) { break; }
+        memcpy((char*)dst + off, stage.ptr, n);
+    }
+    cumo_cuda_runtime_stage_free(&stage);
+    return status;
 }
 
 // A pointer given twice would be freed twice, and the second free would reach
@@ -109,6 +186,7 @@ cumo_cuda_runtime_check_taken_status_holding(int status, char *p0, char *p1, cha
 void
 cumo_cuda_runtime_check_kernel_launch_holding(char *p0, char *p1, char *p2, char *p3, char *p4)
 {
+    cumo_cuda_launch_epoch++;
     cumo_cuda_runtime_check_taken_status_holding((int)cudaGetLastError(), p0, p1, p2, p3, p4);
 }
 

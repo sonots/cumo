@@ -48,10 +48,11 @@ static VALUE
     if (nd) {
         return cumo_na_aref_main(argc, argv, self, 0, nd, pos);
     } else {
+        CUMO_BIT_DIGIT word;
         ptr = cumo_na_get_pointer_for_read(self);
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-        cumo_cuda_runtime_device_synchronize();
-        CUMO_LOAD_BIT(ptr,pos,x);
+        cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_host(&word, ptr+(pos)/CUMO_NB*sizeof(CUMO_BIT_DIGIT), sizeof(CUMO_BIT_DIGIT)));
+        x = (word >> ((pos)%CUMO_NB)) & 1u;
         return m_data_to_num(x);
     }
 }

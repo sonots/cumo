@@ -1488,6 +1488,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
                     idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
                     cumo_na_index_own(na2,i,idx2);
                     cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,cumo_cuda_stream()));
+                    cumo_cuda_runtime_note_device_write();
                 }
             } else {
                 stride = CUMO_SDX_GET_STRIDE(na1->stridx[i]);
@@ -1815,7 +1816,6 @@ cumo_na_to_binary(VALUE self)
     // After the dup above, not before it: the copy is a kernel and the string
     // is built by reading its result from the host.
     CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_to_binary", "any");
-    cumo_cuda_runtime_device_synchronize();
 
     // Offset through the helper rather than by hand: the branch above leaves
     // either the receiver or the dup here, and only one of those is the array
@@ -1824,7 +1824,8 @@ cumo_na_to_binary(VALUE self)
     // Measured after the pointer, since taking one runs allocate, and by the
     // type rather than by byte_size, which asks the class.
     len = cumo_na_type_byte_size(self);
-    str = rb_usascii_str_new(ptr,len);
+    str = rb_usascii_str_new(NULL,len);
+    cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_host(RSTRING_PTR(str), ptr, len));
     // Elements narrower than a byte leave the rest of the last one holding
     // whatever lies beside them: the base's bits for a view read in place, the
     // pool's for the copy above. The string is this method's own, so the bits
@@ -1880,7 +1881,14 @@ cumo_na_marshal_dump(VALUE self)
         ptr = (VALUE*)cumo_na_get_offset_pointer_for_read(self);
         // Counted after the pointer, since taking one runs allocate.
         CumoGetNArray(self,na);
-        rb_ary_push(a, rb_ary_new4(CUMO_NA_SIZE(na), ptr));
+        {
+            VALUE buf;
+            VALUE *words = RB_ALLOCV_N(VALUE, buf, CUMO_NA_SIZE(na) > 0 ? CUMO_NA_SIZE(na) : 1);
+            cumo_cuda_runtime_check_status(
+                cumo_cuda_runtime_memcpy_to_host(words, ptr, sizeof(VALUE) * CUMO_NA_SIZE(na)));
+            rb_ary_push(a, rb_ary_new4(CUMO_NA_SIZE(na), words));
+            RB_ALLOCV_END(buf);
+        }
     } else {
         rb_ary_push(a, cumo_na_to_binary(self));
     }

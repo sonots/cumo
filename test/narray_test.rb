@@ -8105,4 +8105,163 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal(brows[2].to_a, b[2, true].to_a)
     end
   end
+
+  # Host reads go through a pinned staging copy of the range the loop walks,
+  # so every layout has to land on the same elements it did through the
+  # managed pointer.
+  sub_test_case "host reads are staged" do
+    def layouts(dtype)
+      base = dtype.new(6, 8).seq
+      {
+        "whole" => base,
+        "row slice" => base[1..4, 2..6],
+        "column step" => base[true, (1..7).step(3)],
+        "transposed" => base.transpose,
+        "reversed rows" => base[(5..0).step(-1), true],
+        "reversed both" => base[(5..0).step(-1), (7..0).step(-1)],
+        "index rows" => base[[5, 0, 3, 3], true],
+        "index both" => base[[4, 1], [7, 0, 2]],
+        "index then slice" => base[[5, 0, 3], 1..4],
+        "3-d" => dtype.new(2, 3, 4).seq,
+        "3-d index middle" => dtype.new(2, 3, 4).seq[true, [2, 0], 1..3],
+        "column" => base[true, 3],
+        "0-dim" => base[2, 5],
+        "one element" => base[2..2, 5..5],
+        "flattened reversed" => base.reverse(0).flatten,
+        "flattened transposed" => base.transpose.flatten,
+        "flattened reversed both" => base[(5..0).step(-1), (7..0).step(-1)].flatten,
+      }
+    end
+
+    def expected(view)
+      # A device copy is made by a kernel and read back as one block.
+      view.dup.to_binary.unpack("#{view.class == Cumo::DFloat ? 'd' : 'l'}*")
+    end
+
+    [Cumo::DFloat, Cumo::Int32].each do |dtype|
+      test "#{dtype} to_a, each, each_with_index, map_with_index and inspect agree over every layout" do
+        layouts(dtype).each do |label, view|
+          want = expected(view)
+          assert_equal(want, view.to_a.flatten, "#{label} to_a")
+          got = []
+          view.each { |x| got << x }
+          assert_equal(want, got, "#{label} each")
+          got = []
+          view.each_with_index { |x, *i| got << [x, i] }
+          assert_equal(want, got.map(&:first), "#{label} each_with_index values")
+          assert_equal(want, got.map { |x, i| view[*i].to_a.flatten.first }, "#{label} each_with_index positions") if view.ndim > 0
+          mapped = view.map_with_index { |x, *i| x * 2 }
+          assert_equal(want.map { |x| x * 2 }, mapped.to_a.flatten, "#{label} map_with_index")
+          assert_equal(want.map { |x| x.is_a?(Float) ? x.to_i : x }.map(&:to_s), view.inspect.split("\n", 2)[1].scan(/-?\d+/), "#{label} inspect") if view.size <= 24 && view.ndim > 0
+          if view.ndim == 0
+            assert_equal(want[0], view.extract_cpu, "#{label} extract_cpu")
+          else
+            assert_equal(want[0], view.aref_cpu(*Array.new(view.ndim, 0)), "#{label} aref_cpu")
+          end
+          assert_equal(want, view.to_binary.unpack("#{dtype == Cumo::DFloat ? 'd' : 'l'}*"), "#{label} to_binary")
+        end
+      end
+    end
+
+    test "Bit views read the words they land in" do
+      base = (Cumo::Int32.new(6, 70).seq % 3).eq(0)
+      want = base.to_a
+      assert_equal(want.map { |row| row[3..68] }, base[true, 3..68].to_a)
+      assert_equal(want.map { |row| row.each_slice(7).map(&:first) }, base[true, (0..69).step(7)].to_a)
+      assert_equal(want.transpose, base.transpose.to_a)
+      assert_equal([want[5], want[0], want[2]], base[[5, 0, 2], true].to_a)
+      assert_equal(want.map { |row| row[66..69].reverse }, base[true, (69..66).step(-1)].to_a)
+      got = []
+      base[[5, 0, 2], 60..69].each { |x| got << x }
+      assert_equal([want[5], want[0], want[2]].flat_map { |row| row[60..69] }, got)
+      assert_equal(want[4][67], base[4, 67].to_a.flatten.first)
+      assert_equal(want[4][67], base.aref_cpu(4, 67))
+      assert_equal(want[5][69], base[5, 69].extract_cpu)
+      assert_equal(want.map { |row| row[64..69] }, base[true, 64..69].to_a)
+      assert_equal(want[2][35..69], base[2, 35..69].to_a)
+    end
+
+    test "RObject reads its objects back" do
+      a = Cumo::RObject.new(2, 3).store([[1, "b", :c], [4.5, nil, { k: 6 }]])
+      assert_equal([[1, "b", :c], [4.5, nil, { k: 6 }]], a.to_a)
+      assert_equal([[{ k: 6 }, nil, 4.5], [:c, "b", 1]], a[(1..0).step(-1), (2..0).step(-1)].to_a)
+      assert_equal("b", a[0, 1].extract_cpu)
+      got = []
+      a.each { |x| got << x }
+      assert_equal([1, "b", :c, 4.5, nil, { k: 6 }], got)
+    end
+
+    # The rows a loop yields are read again once anything wrote device memory
+    # in between, so a block that changes the array sees the change from the
+    # next row on.
+    test "each reads a row the block rewrote" do
+      a = Cumo::DFloat.new(3, 4).seq
+      got = []
+      a.each_with_index do |x, i, j|
+        a[2, true] = 100 if i == 0 && j == 0
+        got << x
+      end
+      assert_equal((0..7).map(&:to_f) + [100.0] * 4, got)
+
+      b = Cumo::DFloat.new(3, 4).seq
+      got = []
+      b.each_with_index do |x, i, j|
+        b[1, true] = [7, 7, 7, 7] if i == 0 && j == 0
+        got << x
+      end
+      assert_equal((0..3).map(&:to_f) + [7.0] * 4 + (8..11).map(&:to_f), got)
+    end
+
+    test "a host read inside another host read reads the right array" do
+      a = Cumo::DFloat.new(2, 3).seq
+      b = Cumo::DFloat.new(2, 3).seq(100)
+      got = []
+      a.each { |x| got << [x, b.to_a.flatten, b[1, 2].extract_cpu] }
+      assert_equal((0..5).map { |x| [x.to_f, (100..105).map(&:to_f), 105.0] }, got)
+    end
+
+    test "to_binary and marshal read a large array back in one piece" do
+      a = Cumo::DFloat.new(1 << 21).seq
+      s = a.to_binary
+      assert_equal(a.size * 8, s.bytesize)
+      assert_equal([0.0, 1.0, (1 << 21) - 1.0], s.unpack("d*").values_at(0, 1, -1))
+      assert_equal(a.to_a, Marshal.load(Marshal.dump(a)).to_a)
+      assert_equal((1 << 21) - 1.0, a[-1].extract_cpu)
+    end
+
+    test "empty and zero-length views read as empty" do
+      assert_equal([], Cumo::DFloat.new(0).to_a)
+      assert_equal([[], []], Cumo::DFloat.new(2, 0).to_a)
+      assert_equal([], Cumo::DFloat.new(0, 4).to_a)
+      got = []
+      Cumo::DFloat.new(0).each { |x| got << x }
+      assert_equal([], got)
+      assert { Cumo::DFloat.new(2, 0).inspect.include?("(empty)") }
+    end
+
+    # Reading a small block through the managed pointer faulted its page
+    # over and back, 0.8 ms on the machine this was written on; staging it
+    # takes a copy of the block alone.
+    test "reading a fresh reduction back takes tens of microseconds" do
+      r = Cumo::DFloat.new(2000).rand
+      time = lambda do
+        3.times { Float(r.sum) }
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+        5.times.map do
+          t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          Float(r.sum)
+          Process.clock_gettime(Process::CLOCK_MONOTONIC) - t
+        end.min
+      end
+      assert_operator time.call, :<, 0.0003
+      time2 = lambda do
+        5.times.map do
+          t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          Cumo::DFloat.new(8).fill(1.0).to_a
+          Process.clock_gettime(Process::CLOCK_MONOTONIC) - t
+        end.min
+      end
+      assert_operator time2.call, :<, 0.0003
+    end
+  end
 end
