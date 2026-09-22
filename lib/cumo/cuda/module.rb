@@ -16,6 +16,7 @@ module Cumo::CUDA
 
     def unload
       return unless @ptr
+      Compiler.forget_module(self)
       Driver.cuModuleUnload(@ptr)
       @ptr = nil
     end

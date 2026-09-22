@@ -787,6 +787,8 @@ y = Cumo::SFloat.ones(1000)
 axpy.launch([y, x, [2.5].pack("f"), [1000].pack("l")], grid: 4, block: 256)
 ```
 
+`compile_with_cache` compiles once and keeps the cubin on disk, and within a process the same source and options answer the same module, so it can be called wherever the kernel is launched.
+`Module#unload` drops a module from that memory, and `Cumo::CUDA::Compiler.forget_modules` drops them all.
 An NArray argument hands over its device pointer, so it has to be contiguous.
 An Integer is passed as a `long long` and a Float as a `double`.
 Anything narrower, and a struct passed by value, goes as the packed bytes of a String: `[n].pack("l")` is an `int` and `[x].pack("f")` a `float`.

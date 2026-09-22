@@ -64,6 +64,60 @@ module Cumo::CUDA
         test_valid
         test_valid
       end
+
+      # The disk cache saves the compile; the process remembers the Module
+      # itself, so a kernel can be asked for on every launch.
+      def test_same_source_answers_the_same_module
+        source = "extern \"C\" __global__ void k(float* y) { y[0] = 1.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        assert { Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR).equal?(first) }
+        assert { Compiler.new.compile_with_cache(source.dup, cache_dir: CACHE_DIR).equal?(first) }
+        assert { !Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, options: ["-lineinfo"]).equal?(first) }
+        assert { !Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR, extra_source: "x").equal?(first) }
+        assert { !Compiler.new.compile_with_cache(source + "\n", cache_dir: CACHE_DIR).equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        first.get_function("k").launch([y], grid: 1, block: 1)
+        assert_equal([1.0], y.to_a)
+      end
+
+      def test_an_unloaded_module_is_not_answered_again
+        source = "extern \"C\" __global__ void k2(float* y) { y[0] = 2.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        first.unload
+        again = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        assert { !again.equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        again.get_function("k2").launch([y], grid: 1, block: 1)
+        assert_equal([2.0], y.to_a)
+        assert { Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR).equal?(again) }
+      end
+
+      def test_forget_modules_answers_a_fresh_module
+        source = "extern \"C\" __global__ void k3(float* y) { y[0] = 3.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        Compiler.forget_modules
+        again = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        assert { !again.equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        first.get_function("k3").launch([y], grid: 1, block: 1)
+        again.get_function("k3").launch([y], grid: 1, block: 1)
+        assert_equal([3.0], y.to_a)
+      end
+
+      # A caller that goes on editing the String it compiled from must not
+      # be answered the Module of what it edited into.
+      def test_the_key_does_not_follow_a_source_edited_afterwards
+        source = +"extern \"C\" __global__ void k4(float* y) { y[0] = 4.0f; }\n"
+        first = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        source.sub!("4.0f", "5.0f")
+        second = Compiler.new.compile_with_cache(source, cache_dir: CACHE_DIR)
+        assert { !second.equal?(first) }
+        y = Cumo::SFloat.zeros(1)
+        second.get_function("k4").launch([y], grid: 1, block: 1)
+        assert_equal([5.0], y.to_a)
+        first.get_function("k4").launch([y], grid: 1, block: 1)
+        assert_equal([4.0], y.to_a)
+      end
     end
   end
 end

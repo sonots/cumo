@@ -12,9 +12,20 @@ module Cumo::CUDA
     DEFAULT_CACHE_DIR = File.expand_path('~/.cumo/kernel_cache')
 
     @@empty_file_preprocess_cache ||= {}
+    @@modules ||= {}
 
     def self.valid_kernel_name?(name)
       VALID_KERNEL_NAME.match?(name)
+    end
+
+    # Forgets every Module compile_with_cache has answered in this process,
+    # so that the next call reads the disk cache or compiles again.
+    def self.forget_modules
+      @@modules.clear
+    end
+
+    def self.forget_module(mod)
+      @@modules.delete_if { |_, m| m.equal?(mod) }
     end
 
     # With name_expressions: answers the PTX and a Hash of each expression
@@ -50,11 +61,17 @@ module Cumo::CUDA
 
     # name_expressions: names such as "kernel<float>" that the Module then
     # answers get_function for. Their mangled names are cached with the cubin.
+    # The same source, options and device answer the same Module for the
+    # rest of the process, until it is unloaded or forgotten.
     def compile_with_cache(source, options: [], arch: nil, cache_dir: nil, extra_source: nil, name_expressions: [])
       # NVRTC does not use extra_source. extra_source is used for cache key.
       cache_dir ||= get_cache_dir
-      arch ||= get_arch
       name_expressions = name_expressions.uniq
+      memo_key = [source, options, arch, cache_dir, extra_source, name_expressions, Runtime.cudaGetDevice]
+      mod = @@modules[memo_key]
+      return mod if mod
+
+      arch ||= get_arch
 
       options += ['-ftz=true']
 
@@ -83,7 +100,7 @@ module Cumo::CUDA
         mod = Module.new
         mod.load(cubin)
         mod.lowered_names = lowered
-        return mod
+        return remember(memo_key, mod)
       end
 
       ptx = compile_using_nvrtc(source, options: options, arch: arch, name_expressions: name_expressions)
@@ -106,10 +123,17 @@ module Cumo::CUDA
       mod = Module.new
       mod.load(cubin)
       mod.lowered_names = lowered
-      return mod
+      return remember(memo_key, mod)
     end
 
     private
+
+    # The key's strings and arrays are copied, so that a caller changing
+    # its source afterwards does not change what it answered.
+    def remember(memo_key, mod)
+      @@modules[memo_key.map { |k| k.is_a?(String) || k.is_a?(Array) ? k.dup.freeze : k }] = mod
+      mod
+    end
 
     # The file is the MD5 of what follows, then the payload: the cubin, or
     # with name expressions the JSON of their mangled names, its length
