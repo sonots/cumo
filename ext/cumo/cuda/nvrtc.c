@@ -248,6 +248,46 @@ rb_nvrtcGetPTX(VALUE self, VALUE prog)
     return ptx;
 }
 
+/*
+  Names a template instantiation or other C++ entity whose mangled name the
+  program is to report after it is compiled.
+
+  @param [Integer] prog
+  @param [String] name_expression such as "kernel<float>"
+  @raise [Cumo::CUDA::NVRTCError]
+ */
+static VALUE
+rb_nvrtcAddNameExpression(VALUE self, VALUE prog, VALUE name_expression)
+{
+    nvrtcProgram _prog;
+    StringValueCStr(name_expression);
+    _prog = (nvrtcProgram)cumo_cuda_handle_get(&programs, prog, "nvrtcProgram");
+    check_status(nvrtcAddNameExpression(_prog, RSTRING_PTR(name_expression)));
+    RB_GC_GUARD(name_expression);
+    return Qnil;
+}
+
+/*
+  Returns the mangled name of a name expression given before the program
+  was compiled, which is the name cuModuleGetFunction takes.
+
+  @param [Integer] prog
+  @param [String] name_expression
+  @return [String]
+  @raise [Cumo::CUDA::NVRTCError]
+ */
+static VALUE
+rb_nvrtcGetLoweredName(VALUE self, VALUE prog, VALUE name_expression)
+{
+    nvrtcProgram _prog;
+    const char *lowered = NULL;
+    StringValueCStr(name_expression);
+    _prog = (nvrtcProgram)cumo_cuda_handle_get(&programs, prog, "nvrtcProgram");
+    check_status(nvrtcGetLoweredName(_prog, RSTRING_PTR(name_expression), &lowered));
+    RB_GC_GUARD(name_expression);
+    return rb_str_new_cstr(lowered);
+}
+
 static VALUE
 rb_nvrtcGetProgramLog(VALUE self, VALUE prog)
 {
@@ -283,5 +323,7 @@ Init_cumo_cuda_nvrtc()
     rb_define_singleton_method(mNVRTC, "nvrtcDestroyProgram", rb_nvrtcDestroyProgram, 1);
     rb_define_singleton_method(mNVRTC, "nvrtcCompileProgram", rb_nvrtcCompileProgram, 2);
     rb_define_singleton_method(mNVRTC, "nvrtcGetPTX", rb_nvrtcGetPTX, 1);
+    rb_define_singleton_method(mNVRTC, "nvrtcAddNameExpression", rb_nvrtcAddNameExpression, 2);
+    rb_define_singleton_method(mNVRTC, "nvrtcGetLoweredName", rb_nvrtcGetLoweredName, 2);
     rb_define_singleton_method(mNVRTC, "nvrtcGetProgramLog", rb_nvrtcGetProgramLog, 1);
 }

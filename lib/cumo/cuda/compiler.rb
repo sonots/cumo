@@ -4,6 +4,7 @@ require 'tmpdir'
 require 'tempfile'
 require 'fileutils'
 require 'digest/md5'
+require 'json'
 
 module Cumo::CUDA
   class Compiler
@@ -16,9 +17,12 @@ module Cumo::CUDA
       VALID_KERNEL_NAME.match?(name)
     end
 
-    def compile_using_nvrtc(source, options: [], arch: nil)
+    # With name_expressions: answers the PTX and a Hash of each expression
+    # to its mangled name; without, the PTX.
+    def compile_using_nvrtc(source, options: [], arch: nil, name_expressions: nil)
       arch ||= get_arch
       options += ["-arch=#{arch}"]
+      name_expressions = nil if name_expressions && name_expressions.empty?
 
       Dir.mktmpdir do |root_dir|
         path = File.join(root_dir, 'kern')
@@ -28,9 +32,11 @@ module Cumo::CUDA
           cu_file.write(source)
         end
 
-        prog = NVRTCProgram.new(source, name: cu_path)
+        prog = NVRTCProgram.new(source, name: cu_path, name_expressions: name_expressions || [])
         begin
           ptx = prog.compile(options: options)
+          return ptx if name_expressions.nil?
+          return [ptx, name_expressions.to_h { |expr| [expr, prog.lowered_name(expr)] }]
         rescue CompileError => e
           if get_bool_env_variable('CUMO_DUMP_CUDA_SOURCE_ON_ERROR', false)
             e.dump($stderr)
@@ -39,14 +45,16 @@ module Cumo::CUDA
         ensure
           prog.destroy
         end
-        return ptx
       end
     end
 
-    def compile_with_cache(source, options: [], arch: nil, cache_dir: nil, extra_source: nil)
+    # name_expressions: names such as "kernel<float>" that the Module then
+    # answers get_function for. Their mangled names are cached with the cubin.
+    def compile_with_cache(source, options: [], arch: nil, cache_dir: nil, extra_source: nil, name_expressions: [])
       # NVRTC does not use extra_source. extra_source is used for cache key.
       cache_dir ||= get_cache_dir
       arch ||= get_arch
+      name_expressions = name_expressions.uniq
 
       options += ['-ftz=true']
 
@@ -58,10 +66,11 @@ module Cumo::CUDA
         @@empty_file_preprocess_cache[env] = base
       end
       key_src = "#{env} #{base} #{source} #{extra_source}"
+      key_src += " #{name_expressions}" unless name_expressions.empty?
 
       key_src.encode!('utf-8')
       digest = Digest::MD5.hexdigest(key_src)
-      name = "#{digest}_2.cubin"
+      name = "#{digest}_#{name_expressions.empty? ? 2 : 3}.cubin"
 
       unless Dir.exist?(cache_dir)
         FileUtils.mkdir_p(cache_dir)
@@ -69,23 +78,23 @@ module Cumo::CUDA
 
       # TODO(sonots): thread-safe?
       path = File.join(cache_dir, name)
-      cubin = load_cache(path)
+      cubin, lowered = load_cache(path, name_expressions)
       if cubin
         mod = Module.new
         mod.load(cubin)
+        mod.lowered_names = lowered
         return mod
       end
 
-      ptx = compile_using_nvrtc(source, options: options, arch: arch)
+      ptx = compile_using_nvrtc(source, options: options, arch: arch, name_expressions: name_expressions)
+      ptx, lowered = name_expressions.empty? ? [ptx, {}] : ptx
       cubin = nil
-      cubin_hash = nil
       LinkState.new do |ls|
         ls.add_ptr_data(ptx, 'cumo.ptx')
         cubin = ls.complete()
-        cubin_hash = Digest::MD5.hexdigest(cubin)
       end
 
-      save_cache(path, cubin_hash, cubin)
+      save_cache(path, cubin, lowered)
 
       # Save .cu source file along with .cubin
       if get_bool_env_variable('CUMO_CACHE_SAVE_CUDA_SOURCE', false)
@@ -96,6 +105,7 @@ module Cumo::CUDA
 
       mod = Module.new
       mod.load(cubin)
+      mod.lowered_names = lowered
       return mod
     end
 
@@ -109,17 +119,37 @@ module Cumo::CUDA
       FileUtils.mv(temp_path, path)
     end
 
-    def load_cache(path)
-      return nil unless File.exist?(path)
-      File.open(path, 'rb') do |file|
-        data = file.read
-        return nil unless data.size >= 32
-        hash = data[0...32]
-        cubin = data[32..-1]
-        cubin_hash = Digest::MD5.hexdigest(cubin)
-        return nil unless hash == cubin_hash
-        return cubin
+    # The file is the MD5 of what follows, then the payload: the cubin, or
+    # with name expressions the JSON of their mangled names, its length
+    # first as eight hex digits, then the cubin. It is written next to its
+    # final place and renamed into it, so a reader sees all of it or none.
+    def save_cache(path, cubin, lowered)
+      payload = cubin
+      unless lowered.empty?
+        names = JSON.generate(lowered)
+        payload = format('%08x', names.bytesize) + names + cubin
       end
+      tf = Tempfile.create('cubin', File.dirname(path), binmode: true)
+      tf.write(Digest::MD5.hexdigest(payload))
+      tf.write(payload)
+      tf.close
+      FileUtils.mv(tf.path, path)
+    end
+
+    def load_cache(path, name_expressions = [])
+      return nil unless File.exist?(path)
+      data = File.binread(path)
+      return nil unless data.size >= 32
+      payload = data[32..-1]
+      return nil unless data[0...32] == Digest::MD5.hexdigest(payload)
+      return [payload, {}] if name_expressions.empty?
+      return nil unless payload.size >= 8 && payload[0, 8].match?(/\A\h{8}\z/)
+      length = payload[0, 8].to_i(16)
+      return nil unless payload.size >= 8 + length
+      lowered = JSON.parse(payload[8, length])
+      return nil unless lowered.is_a?(Hash) && lowered.keys == name_expressions && lowered.values.all?(String)
+      [payload[(8 + length)..-1], lowered]
+    rescue JSON::ParserError
       nil
     end
 

@@ -32,12 +32,15 @@ module Cumo::CUDA
       Driver.cuModuleGetGlobal(@ptr, name)
     end
 
-    # Answers the kernel of that name as a Function. The name is the one in
-    # the source, so a kernel outside extern "C" has to be asked for by its
-    # mangled name.
+    attr_accessor :lowered_names
+
+    # Answers the kernel of that name as a Function: the name in the source
+    # of a kernel inside extern "C", a name expression given at compile
+    # time such as "kernel<float>", or a mangled name.
     def get_function(name)
       raise ArgumentError, "no module is loaded" unless @ptr
-      Function.new(self, Driver.cuModuleGetFunction(@ptr, name), name)
+      lowered = (@lowered_names || {}).fetch(name, name)
+      Function.new(self, Driver.cuModuleGetFunction(@ptr, lowered), name)
     end
   end
 end
