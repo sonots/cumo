@@ -818,6 +818,26 @@ Under a stream of the caller's, a host read such as `to_a` or `each` waits for t
 The current stream is per thread, and fibers of one thread share it.
 A `Function#launch` takes `stream:` to launch on a stream other than the current one.
 
+### Pinned Host Memory
+
+A copy between the host and the device is asynchronous only when the host side is page-locked.
+`Cumo::CUDA::PinnedMemory` allocates such a buffer, and `NArray#set` and `NArray#get` copy through it on the current stream, or on `stream:`.
+
+```ruby
+pinned = Cumo::CUDA::PinnedMemory.new(a.byte_size)
+s = Cumo::CUDA::Stream.new(non_blocking: true)
+s.with { a.get(pinned) }                         # queued on s, complete when with returns
+b = Cumo::SFloat.from_binary(pinned.read, a.shape)
+
+src = Cumo::CUDA::PinnedMemory.from_binary(bytes)
+c.set(src, stream: s)                             # the host bytes reach c once s gets there
+```
+
+`set` with a String and `get` with nothing to copy into are the synchronous `store_binary` and `to_binary`.
+A pinned buffer is read and written as bytes with `read` and `write`, and the array has to be contiguous and of the buffer's size.
+A copy in flight keeps its array alive and is waited for by `read`, `write`, `free` and the next copy, so the bytes read are the copy's.
+Allocating a pinned buffer synchronizes the device, so a buffer is allocated once and reused rather than made for every transfer.
+
 ### Writing An Elementwise Kernel
 
 `Cumo::CUDA::ElementwiseKernel` takes one piece of CUDA C and applies it to every element, the way CuPy's `ElementwiseKernel` does.

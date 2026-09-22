@@ -2,8 +2,37 @@
 
 module Cumo
   class NArray
+    # Copies a host buffer into this array. A Cumo::CUDA::PinnedMemory is
+    # copied asynchronously on the current stream, or on stream:, and a
+    # String of bytes synchronously.
+    def set(src, stream: nil)
+      case src
+      when Cumo::CUDA::PinnedMemory
+        src.copy(self, :to_narray, stream)
+      when String
+        raise ArgumentError, "a String is copied synchronously, so it takes no stream:" unless stream.nil?
+        store_binary(src)
+      else
+        raise TypeError, "set takes a Cumo::CUDA::PinnedMemory or a String, got a #{src.class}"
+      end
+      self
+    end
 
-    # Return an unallocated array with the same shape and type as self.
+    # Copies this array to the host. Into a Cumo::CUDA::PinnedMemory it is
+    # asynchronous on the current stream, or on stream:, and answers the
+    # buffer; with nothing to copy into it answers the bytes as a String.
+    def get(out = nil, stream: nil)
+      case out
+      when nil
+        raise ArgumentError, "a String is copied synchronously, so it takes no stream:" unless stream.nil?
+        to_binary
+      when Cumo::CUDA::PinnedMemory
+        out.copy(self, :to_pinned, stream)
+      else
+        raise TypeError, "get takes a Cumo::CUDA::PinnedMemory or nothing, got a #{out.class}"
+      end
+    end
+
     def new_narray
       self.class.new(*shape)
     end
