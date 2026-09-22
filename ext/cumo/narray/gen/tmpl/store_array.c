@@ -150,6 +150,7 @@ static void
             // be released right away.
             cumo_cuda_runtime_check_status(
                 cudaMemcpyAsync(p1,host_z,sizeof(dtype)*i,cudaMemcpyHostToDevice,cumo_cuda_stream()));
+            cumo_cuda_runtime_note_device_write();
         } else {
             // n, not i: every row of the walk is n long, and a row that
             // converts fewer would otherwise ask for a size of its own.

@@ -59,7 +59,27 @@ typedef struct CUMO_NA_MD_LOOP {
     VALUE  loop_opt;
     cumo_ndfunc_t  *ndfunc;
     void (*loop_func)(cumo_ndfunc_t *, struct CUMO_NA_MD_LOOP *);
+    struct CUMO_NA_HOST_STAGE *hs; // inputs staged for a host loop, or NULL
 } cumo_na_md_loop_t;
+
+// What a host loop reads through: the pinned copy of the byte range each
+// input walks, and host copies of its index arrays. The originals are kept
+// to put back at release.
+typedef struct CUMO_NA_HOST_STAGE {
+    int      narg;
+    int      ndim;       // dimensions walked, the outer loop's and the user function's
+    int      rows_only;  // the whole range did not fit: rows are copied as reached
+    int      direct;     // inputs read where they are, which the device is waited for
+    char   **ptr;        // per arg: the device pointer LARG(lp,j).ptr held, NULL if not staged
+    size_t  *min;        // per arg: first byte of the range copied
+    size_t  *len;        // per arg: bytes in the range, or in a row
+    size_t  *off;        // per arg: where its copy starts in the buffer
+    size_t **idx;        // per (dim, arg): the device index array LITER held
+    size_t **host_idx;   // per (dim, arg): its host copy
+    cumo_cuda_stage_t stage;
+    uint64_t epoch;      // the launch count when the whole range was copied
+    uint64_t row_epoch;  // the launch count when the current row was copied
+} cumo_na_host_stage_t;
 
 #define LARG(lp,iarg) ((lp)->user.args[iarg])
 #define LITER(lp,idim,iarg) ((lp)->xargs[iarg].iter[idim])
@@ -378,6 +398,7 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
 
     lp->ptr = NULL;
     lp->user.n = NULL;
+    lp->hs = NULL;
 
     ndloop_find_max_dimension(lp, nf, args);
     narg = lp->nin + nf->nout;
@@ -453,6 +474,8 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
 }
 
 
+static void ndloop_unstage_host_reads(cumo_na_md_loop_t *lp);
+
 static VALUE
 ndloop_release(VALUE vlp)
 {
@@ -460,6 +483,7 @@ ndloop_release(VALUE vlp)
     VALUE v;
     cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)(vlp);
 
+    ndloop_unstage_host_reads(lp);
     for (j=0; j < lp->narg; j++) {
         v = LARG(lp,j).value;
         if (CumoIsNArray(v)) {
@@ -1802,6 +1826,249 @@ ndloop_is_empty(cumo_na_md_loop_t *lp)
 }
 
 
+// The lowest and highest position an argument's dimensions from..to reach,
+// relative to base, from their steps and, for an index dimension, its indices.
+static void
+ndloop_stage_extent(cumo_na_md_loop_t *lp, int j, int from, int to, ssize_t base, ssize_t *lo, ssize_t *hi)
+{
+    int i;
+
+    *lo = *hi = base;
+    for (i=from; i<to; i++) {
+        size_t n = lp->n[i];
+        size_t *h = LITER(lp,i,j).idx;
+        if (h) {
+            // An index is an offset from the position, and one that walks
+            // backwards is negative, stored as it wraps.
+            ssize_t mn = (ssize_t)h[0], mx = (ssize_t)h[0];
+            size_t k;
+            for (k=1; k<n; k++) {
+                if ((ssize_t)h[k] < mn) mn = (ssize_t)h[k];
+                if ((ssize_t)h[k] > mx) mx = (ssize_t)h[k];
+            }
+            *lo += mn;
+            *hi += mx;
+        } else {
+            ssize_t d = LITER(lp,i,j).step * (ssize_t)(n - 1);
+            if (d < 0) *lo += d; else *hi += d;
+        }
+    }
+}
+
+// The bytes positions lo..hi of argument j cover. Bit positions are bits,
+// and the loop reads whole words.
+static void
+ndloop_stage_bytes(cumo_na_md_loop_t *lp, int j, ssize_t lo, ssize_t hi, size_t *min, size_t *len)
+{
+    if (rb_obj_is_kind_of(LARG(lp,j).value, cumo_cBit)) {
+        *min = (size_t)(lo / CUMO_NB) * sizeof(CUMO_BIT_DIGIT);
+        *len = (size_t)(hi / CUMO_NB + 1) * sizeof(CUMO_BIT_DIGIT) - *min;
+    } else {
+        *min = (size_t)lo;
+        *len = (size_t)(hi - lo) + LARG(lp,j).elmsz;
+    }
+}
+
+static void
+ndloop_stage_dma(cumo_na_md_loop_t *lp, int j, size_t min, size_t len)
+{
+    cumo_na_host_stage_t *hs = lp->hs;
+    char *dst;
+
+    if (hs->rows_only) {
+        if (len > hs->len[j]) {
+            rb_bug("a staged row of %"SZF"u bytes outgrew its %"SZF"u", len, hs->len[j]);
+        }
+        dst = hs->stage.ptr + hs->off[j];
+        LARG(lp,j).ptr = dst - min;
+    } else {
+        dst = LARG(lp,j).ptr + min;
+    }
+    cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_pinned(dst, hs->ptr[j] + min, len));
+}
+
+// Copies the row the loop is about to hand the user function, for every
+// staged input. The row is what the user dimensions walk from the position
+// the outer loop has reached.
+static void
+ndloop_stage_row(cumo_na_md_loop_t *lp)
+{
+    cumo_na_host_stage_t *hs = lp->hs;
+    int j;
+
+    for (j=0; j<hs->narg; j++) {
+        ssize_t lo, hi;
+        size_t min, len;
+        if (hs->ptr[j] == NULL) continue;
+        ndloop_stage_extent(lp, j, lp->ndim, hs->ndim, LITER(lp,lp->ndim,j).pos, &lo, &hi);
+        ndloop_stage_bytes(lp, j, lo, hi, &min, &len);
+        ndloop_stage_dma(lp, j, min, len);
+    }
+    hs->row_epoch = cumo_cuda_launch_epoch;
+}
+
+// Reads the inputs of a host loop into pinned memory and points the
+// iterators at the copy, so that the loop's pointer arithmetic lands there
+// unchanged. Index arrays come over first, since the range an input walks
+// is read off them. The whole range is copied once when it fits the cache;
+// otherwise each row is copied as the loop reaches it, and an input whose
+// rows alone do not fit is read where it is.
+static void
+ndloop_stage_host_reads(cumo_na_md_loop_t *lp)
+{
+    cumo_na_host_stage_t *hs;
+    int nd, narg, i, j;
+    size_t total = 0, rows = 0;
+
+    if (!CUMO_NDF_TEST(lp->ndfunc, CUMO_NDF_HOST_READ) || lp->hs) return;
+    if (ndloop_is_empty(lp)) return;
+    nd = lp->ndim + lp->user.ndim;
+    narg = lp->narg;
+
+    hs = ZALLOC(cumo_na_host_stage_t);
+    lp->hs = hs;
+    hs->narg = narg;
+    hs->ndim = nd;
+    hs->ptr = ZALLOC_N(char*, narg);
+    hs->min = ZALLOC_N(size_t, narg);
+    hs->len = ZALLOC_N(size_t, narg);
+    hs->off = ZALLOC_N(size_t, narg);
+    hs->idx = ZALLOC_N(size_t*, (size_t)nd * narg);
+    hs->host_idx = ZALLOC_N(size_t*, (size_t)nd * narg);
+
+    for (j=0; j<narg; j++) {
+        VALUE v = LARG(lp,j).value;
+        ssize_t lo, hi;
+
+        if (lp->xargs[j].flag != CUMO_NDL_READ || lp->xargs[j].bufcp) continue;
+        if (!CumoIsNArray(v) || LARG(lp,j).ptr == NULL) continue;
+
+        for (i=0; i<nd; i++) {
+            size_t *idx = LITER(lp,i,j).idx;
+            size_t n = lp->n[i];
+            size_t *h;
+            if (idx == NULL) continue;
+            h = ALLOC_N(size_t, n);
+            hs->idx[i*narg+j] = idx;
+            hs->host_idx[i*narg+j] = h;
+            LITER(lp,i,j).idx = h;
+            cumo_cuda_runtime_check_status(
+                cumo_cuda_runtime_memcpy_to_host(h, idx, n * sizeof(size_t)));
+        }
+        // Its data is host memory already.
+        if (rb_obj_is_kind_of(v, cumo_cRObject)) { hs->direct++; continue; }
+
+        ndloop_stage_extent(lp, j, 0, nd, LITER(lp,0,j).pos, &lo, &hi);
+        ndloop_stage_bytes(lp, j, lo, hi, &hs->min[j], &hs->len[j]);
+        hs->ptr[j] = LARG(lp,j).ptr;
+        total += (hs->len[j] + 7) & ~(size_t)7;
+    }
+
+    if (total > CUMO_CUDA_STAGE_CACHE_MAX) {
+        hs->rows_only = 1;
+        total = 0;
+        for (j=0; j<narg; j++) {
+            ssize_t lo, hi;
+            size_t len;
+            if (hs->ptr[j] == NULL) continue;
+            ndloop_stage_extent(lp, j, lp->ndim, nd, 0, &lo, &hi);
+            if (rb_obj_is_kind_of(LARG(lp,j).value, cumo_cBit)) {
+                // Which words a row covers depends on where it starts.
+                len = ((size_t)(hi - lo) / CUMO_NB + 2) * sizeof(CUMO_BIT_DIGIT);
+            } else {
+                len = (size_t)(hi - lo) + LARG(lp,j).elmsz;
+            }
+            if (len > CUMO_CUDA_STAGE_CACHE_MAX) {
+                hs->ptr[j] = NULL;
+                hs->direct++;
+                continue;
+            }
+            hs->off[j] = total;
+            hs->len[j] = len;
+            total += (len + 7) & ~(size_t)7;
+            rows++;
+        }
+        if (hs->direct) cumo_cuda_runtime_device_synchronize();
+        if (rows == 0) return;
+        cumo_cuda_runtime_stage_alloc(&hs->stage, total);
+        return;
+    }
+    if (hs->direct) cumo_cuda_runtime_device_synchronize();
+    if (total == 0) return;
+    cumo_cuda_runtime_stage_alloc(&hs->stage, total);
+    total = 0;
+    for (j=0; j<narg; j++) {
+        if (hs->ptr[j] == NULL) continue;
+        hs->off[j] = total;
+        LARG(lp,j).ptr = hs->stage.ptr + total - hs->min[j];
+        ndloop_stage_dma(lp, j, hs->min[j], hs->len[j]);
+        total += (hs->len[j] + 7) & ~(size_t)7;
+    }
+    hs->epoch = hs->row_epoch = cumo_cuda_launch_epoch;
+}
+
+// Before each row: a row that is only copied as reached, or one that
+// device memory was written since the copy.
+static inline void
+ndloop_stage_before_row(cumo_na_md_loop_t *lp)
+{
+    cumo_na_host_stage_t *hs = lp->hs;
+    if (hs == NULL) return;
+    if (hs->direct) cumo_cuda_runtime_sync_if_busy();
+    if (hs->stage.ptr && (hs->rows_only || hs->epoch != cumo_cuda_launch_epoch)) {
+        ndloop_stage_row(lp);
+    }
+}
+
+// After a yield: the block may have written the element the user function
+// reads next, which is copied again on its own so that a block writing at
+// every element costs an element, not a row, each time.
+void
+cumo_na_ndloop_refresh_next(cumo_na_loop_t *user, const void *next, size_t bytes)
+{
+    cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user));
+    cumo_na_host_stage_t *hs = lp->hs;
+    int j;
+
+    if (hs == NULL) return;
+    if (hs->direct) cumo_cuda_runtime_sync_if_busy();
+    if (hs->stage.ptr == NULL || hs->row_epoch == cumo_cuda_launch_epoch) return;
+    for (j=0; j<hs->narg; j++) {
+        char *base = hs->stage.ptr + hs->off[j];
+        if (hs->ptr[j] == NULL) continue;
+        if ((const char*)next >= base && (const char*)next + bytes <= base + hs->len[j]) {
+            cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_pinned(
+                (void*)next, hs->ptr[j] + ((const char*)next - LARG(lp,j).ptr), bytes));
+            return;
+        }
+    }
+}
+
+static void
+ndloop_unstage_host_reads(cumo_na_md_loop_t *lp)
+{
+    cumo_na_host_stage_t *hs = lp->hs;
+    int i, j;
+
+    if (hs == NULL) return;
+    lp->hs = NULL;
+    for (j=0; j<hs->narg; j++) {
+        if (hs->ptr[j]) LARG(lp,j).ptr = hs->ptr[j];
+        for (i=0; i<hs->ndim; i++) {
+            if (hs->idx[i*hs->narg+j]) LITER(lp,i,j).idx = hs->idx[i*hs->narg+j];
+            if (hs->host_idx[i*hs->narg+j]) xfree(hs->host_idx[i*hs->narg+j]);
+        }
+    }
+    cumo_cuda_runtime_stage_free(&hs->stage);
+    xfree(hs->ptr);
+    xfree(hs->min);
+    xfree(hs->len);
+    xfree(hs->off);
+    xfree(hs->idx);
+    xfree(hs->host_idx);
+    xfree(hs);
+}
+
 static void
 loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
 {
@@ -1820,6 +2087,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     // reads them without one of its own.
     ndloop_sync_md_index(lp);
     ndloop_sync_user_index(lp);
+    ndloop_stage_host_reads(lp);
 
     if (nd==0 || CUMO_NDF_TEST(nf,CUMO_NDF_INDEXER_LOOP)) {
         for (j=0; j<lp->nin; j++) {
@@ -1828,6 +2096,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
                 ndloop_copy_to_buffer(lp->xargs[j].bufcp);
             }
         }
+        ndloop_stage_before_row(lp);
         (*(nf->func))(&(lp->user));
         for (j=0; j<lp->narg; j++) {
             if (lp->xargs[j].bufcp && (lp->xargs[j].flag & CUMO_NDL_WRITE)) {
@@ -1865,6 +2134,7 @@ loop_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
                 ndloop_copy_to_buffer(lp->xargs[j].bufcp);
             }
         }
+        ndloop_stage_before_row(lp);
         (*(nf->func))(&(lp->user));
         for (j=0; j<lp->narg; j++) {
             if (lp->xargs[j].bufcp && (lp->xargs[j].flag & CUMO_NDL_WRITE)) {
@@ -2027,6 +2297,7 @@ loop_inspect(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     VALUE buf, opt;
 
     ndloop_sync_md_index(lp);
+    ndloop_stage_host_reads(lp);
 
     nd = lp->ndim;
     buf = lp->loop_opt;
@@ -2062,6 +2333,7 @@ loop_inspect(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
                 LITER(lp,i+1,0).pos = LITER(lp,i,0).pos + LITER(lp,i,0).step*c[i];
             }
         }
+        ndloop_stage_before_row(lp);
         str = (*func)(LARG(lp,0).ptr, LITER(lp,i,0).pos, opt);
 
         len = RSTRING_LEN(str) + 2;
@@ -2103,7 +2375,7 @@ cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
     cumo_na_md_loop_t lp;
     VALUE buf;
     cumo_ndfunc_arg_in_t ain[3] = {{Qnil,0},{cumo_sym_loop_opt},{cumo_sym_option}};
-    cumo_ndfunc_t nf = { (cumo_na_iter_func_t)func, CUMO_NO_LOOP, 3, 0, ain, 0 };
+    cumo_ndfunc_t nf = { (cumo_na_iter_func_t)func, CUMO_NO_LOOP|CUMO_NDF_HOST_READ, 3, 0, ain, 0 };
     //nf = cumo_ndfunc_alloc(NULL, CUMO_NO_LOOP, 1, 0, Qnil);
 
     buf = cumo_na_info_str(nary);
@@ -2404,6 +2676,7 @@ loop_narray_to_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     volatile VALUE a0;
 
     ndloop_sync_md_index(lp);
+    ndloop_stage_host_reads(lp);
 
     // alloc counter
     c = ALLOCA_N(size_t, nd+1);
@@ -2436,6 +2709,7 @@ loop_narray_to_rarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
         if (zd == nd) {
             //lp->user.info = a[i];
             LARG(lp,1).value = a[i];
+            ndloop_stage_before_row(lp);
             (*(nf->func))(&(lp->user));
         }
 
@@ -2490,6 +2764,7 @@ loop_narray_with_index(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
     }
 
     ndloop_sync_md_index(lp);
+    ndloop_stage_host_reads(lp);
 
     // pass total ndim to iterator
     lp->user.ndim += nd;
@@ -2512,6 +2787,7 @@ loop_narray_with_index(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp)
             }
         }
 
+        ndloop_stage_before_row(lp);
         (*(nf->func))(&(lp->user));
 
         for (;;) {

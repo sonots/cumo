@@ -32,6 +32,7 @@ static void
             for (; i--;) {
                 CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
+                if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                 CUMO_SET_DATA_INDEX(p2,idx2,dtype,x);
                 c[nd]++;
@@ -40,6 +41,7 @@ static void
             for (; i--;) {
                 CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
+                if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                 CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
                 c[nd]++;
@@ -50,6 +52,7 @@ static void
             for (; i--;) {
                 CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
+                if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                 CUMO_SET_DATA_INDEX(p2,idx2,dtype,x);
                 c[nd]++;
@@ -58,6 +61,7 @@ static void
             for (; i--;) {
                 CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
+                if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                 CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
                 c[nd]++;
@@ -84,7 +88,7 @@ static VALUE
 {
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,1, ain,aout};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_HOST_READ, 1,1, ain,aout};
 
     return cumo_na_ndloop_with_index(&ndf, 1, self);
 }

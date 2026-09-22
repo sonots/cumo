@@ -208,6 +208,10 @@ x += p_dir * alpha     # and consumed there, without crossing the bus
 
 Read the value back once the loop is done, or every k iterations if it has to test something.
 
+A read costs the wait and a copy of the block it needs into pinned host memory, a few microseconds for a scalar.
+Reading managed memory from the host directly would fault its page over instead, and a small block shares a page with other live blocks that the next kernel touches, so a fresh scalar cost 0.8 ms that way on the machine above, forty times what the copy costs.
+The reads that answer values, from `Float(x)` and `to_a` to `each` and `inspect`, take the copy.
+
 ### Reshape Copies, Reshape! Does Not
 
 `reshape` answers a copy of the whole array, never a view.

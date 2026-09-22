@@ -19,6 +19,7 @@ VALUE cumo_cuda_mCUDNN;
 void
 cumo_cuda_cudnn_check_status(cudnnStatus_t status)
 {
+    cumo_cuda_runtime_note_device_write();
     if (status != CUDNN_STATUS_SUCCESS) {
         rb_raise(cumo_cuda_eCUDNNError, "%s (error=%d)", cudnnGetErrorString(status), status);
     }

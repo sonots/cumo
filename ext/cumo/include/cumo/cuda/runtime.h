@@ -26,6 +26,32 @@ cudaStream_t cumo_cuda_stream_get(VALUE stream);
 // count that is behind costs a wait rather than correctness.
 extern uint64_t cumo_cuda_sync_epoch;
 
+// How many times device memory was written from here: every kernel launch,
+// copy into it and library call counts. A host loop reads a staged copy,
+// and reads again once the count moves.
+extern uint64_t cumo_cuda_launch_epoch;
+
+static inline void
+cumo_cuda_runtime_note_device_write(void)
+{
+    cumo_cuda_launch_epoch++;
+}
+
+// A pinned host buffer for reading device memory back: a copy into pinned
+// memory reads a block where it is, where the host reading managed memory
+// faults its page over. Two are kept per thread, one that grows to the
+// size below and a small one for a read nested in another.
+#define CUMO_CUDA_STAGE_CACHE_MAX (64u << 20)
+
+typedef struct {
+    char  *ptr;
+    size_t size;
+    bool   cached;
+} cumo_cuda_stage_t;
+
+void cumo_cuda_runtime_stage_alloc(cumo_cuda_stage_t *stage, size_t bytes);
+void cumo_cuda_runtime_stage_free(cumo_cuda_stage_t *stage);
+
 // A failure stays as the runtime's last error until something reads it,
 // and the next kernel launch would read it as its own, so it is cleared
 // before it is raised.
@@ -80,9 +106,10 @@ cumo_cuda_runtime_sync_if_busy(void)
 
 // A host read of device memory has to come after the work queued on the
 // current stream, which a plain cudaMemcpy only does for the legacy one, and
-// under a stream of the caller's after every stream, as above.
+// under a stream of the caller's after every stream, as above. The
+// destination is pinned, so the copy reads the source where it is.
 static inline cudaError_t
-cumo_cuda_runtime_memcpy_to_host(void *dst, const void *src, size_t bytes)
+cumo_cuda_runtime_memcpy_to_pinned(void *dst, const void *src, size_t bytes)
 {
     cudaError_t status;
     if (cumo_cuda_stream() != 0 && !cumo_cuda_runtime_streams_idle()) {
@@ -94,6 +121,9 @@ cumo_cuda_runtime_memcpy_to_host(void *dst, const void *src, size_t bytes)
     if (status != cudaSuccess) { return status; }
     return cudaStreamSynchronize(cumo_cuda_stream());
 }
+
+// The same into pageable memory, through the staging buffer above.
+cudaError_t cumo_cuda_runtime_memcpy_to_host(void *dst, const void *src, size_t bytes);
 
 static inline int
 cumo_cuda_runtime_get_device_count()

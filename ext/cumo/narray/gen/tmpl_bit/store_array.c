@@ -97,6 +97,7 @@ static void
         if (!idx1 && s1 == 1 && p1 == 0 && i % CUMO_NB == 0) {
             cumo_cuda_runtime_check_status(
                 cudaMemcpyAsync(a1,host_z,sizeof(CUMO_BIT_DIGIT)*(i/CUMO_NB),cudaMemcpyHostToDevice,cumo_cuda_stream()));
+            cumo_cuda_runtime_note_device_write();
         } else {
             uint64_t iw = (i + CUMO_NB - 1) / CUMO_NB;
             // nw, not iw: every row of the walk is n long, and a row that

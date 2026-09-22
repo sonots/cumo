@@ -22,8 +22,6 @@ static void
     VALUE  y;
     VALUE  fmt = lp->option;
 
-    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
-    cumo_cuda_runtime_device_synchronize();
 
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a1, p1, s1, idx1);
@@ -57,8 +55,9 @@ static VALUE
 
     cumo_ndfunc_arg_in_t ain[2] = {{Qnil,0},{cumo_sym_option}};
     cumo_ndfunc_arg_out_t aout[1] = {{cumo_cRObject,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 2,1, ain,aout};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP|CUMO_NDF_HOST_READ, 2,1, ain,aout};
 
     rb_scan_args(argc, argv, "01", &fmt);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
     return cumo_na_ndloop(&ndf, 2, self, fmt);
 }

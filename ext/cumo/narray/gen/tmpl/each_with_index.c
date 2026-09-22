@@ -20,16 +20,16 @@ static void
 
     if (idx1) {
         for (; i--;) {
-            if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
             CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
             cumo_na_yield_with_index(m_data_to_num(x),c,a,nd,md);
+            if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
             c[nd]++;
         }
     } else {
         for (; i--;) {
-            if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
             CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
             cumo_na_yield_with_index(m_data_to_num(x),c,a,nd,md);
+            if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
             c[nd]++;
         }
     }
@@ -50,7 +50,8 @@ static VALUE
 <%=c_func(0)%>(VALUE self)
 {
     cumo_ndfunc_arg_in_t ain[1] = {{Qnil,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP, 1,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP_NIP|CUMO_NDF_HOST_READ, 1,0, ain,0};
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>");
 
     cumo_na_ndloop_with_index(&ndf, 1, self);
     return self;
