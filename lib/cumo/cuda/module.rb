@@ -16,18 +16,37 @@ module Cumo::CUDA
 
     def unload
       return unless @ptr
-      Compiler.forget_module(self)
+      ObjectSpace.undefine_finalizer(self)
+      Compiler.remove_module(self)
       Driver.cuModuleUnload(@ptr)
       @ptr = nil
     end
 
     def load_file(fname)
-      @ptr = Driver.cuModuleLoad(fname)
+      loaded(Driver.cuModuleLoad(fname))
     end
 
     def load(cubin)
-      @ptr = Driver.cuModuleLoadData(cubin)
+      loaded(Driver.cuModuleLoadData(cubin))
     end
+
+    # A module nobody holds any more goes back to the driver. At exit the
+    # context may be gone already, so a failure there is dropped.
+    def self.unloader(ptr)
+      proc do
+        Driver.cuModuleUnload(ptr)
+      rescue StandardError
+        nil
+      end
+    end
+
+    def loaded(ptr)
+      unload
+      @ptr = ptr
+      ObjectSpace.define_finalizer(self, self.class.unloader(ptr))
+      ptr
+    end
+    private :loaded
 
     def get_global_var(name)
       Driver.cuModuleGetGlobal(@ptr, name)
