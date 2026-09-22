@@ -950,6 +950,11 @@ Cumo::CUDA::MemoryPool.used_bytes    #=> 4194304
 
 `total_bytes` does not move with the collector and counts the free blocks the pool is keeping, so it answers how much this took rather than how much is alive.
 
+## Examples
+
+`examples/` holds ports of the examples in the CuPy repository, one Ruby file per original, with a `backend.rb` that runs the CPU side on Numo and the GPU side on Cumo under `GPU=1`.
+`examples/README.md` lists what is ported and how to run them.
+
 ## Documentation
 
 See https://github.com/ruby-numo/numo-narray#documentation, replacing Numo with Cumo.
