@@ -838,6 +838,25 @@ A pinned buffer is read and written as bytes with `read` and `write`, and the ar
 A copy in flight keeps its array alive and is waited for by `read`, `write`, `free` and the next copy, so the bytes read are the copy's.
 Allocating a pinned buffer synchronizes the device, so a buffer is allocated once and reused rather than made for every transfer.
 
+### Structs And Template Kernels
+
+An array of structs is an array whose trailing axes are the struct's fields, so a kernel that takes `const double3*` is handed a `Cumo::DFloat` of shape `[n, 3]`, and one that takes `const Matrix<float>*` an `SFloat` of shape `[n, 4, 4]`.
+`SComplex` and `DComplex` are `float2` and `double2` to a kernel; `Bit`, which packs its elements, and `RObject` cannot be handed to one.
+A struct passed by value is the packed bytes of its fields, and where the struct has padding, `pack`'s `@` places each field at the offset the device reports.
+
+```ruby
+rhs = [x, y, z].pack("d3")                           # a double3 by value
+sum_kernel.launch([lhs, rhs, out], grid: 1, block: n)
+```
+
+A template kernel has no `extern "C"` name.
+`compile_with_cache` takes `name_expressions:`, and the module then answers `get_function` for each expression by the mangled name NVRTC reports.
+
+```ruby
+mod = Cumo::CUDA::Compiler.new.compile_with_cache(source, name_expressions: ["kernel<float>", "kernel<double>"])
+mod.get_function("kernel<float>").launch([a, b, c.to_a.flatten.pack("f*"), out], grid: 1, block: n)
+```
+
 ### Writing An Elementwise Kernel
 
 `Cumo::CUDA::ElementwiseKernel` takes one piece of CUDA C and applies it to every element, the way CuPy's `ElementwiseKernel` does.
