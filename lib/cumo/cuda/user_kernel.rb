@@ -135,6 +135,24 @@ module Cumo::CUDA
       st
     end
 
+    # Merges the neighbouring dimensions every array walks with one stride
+    # and drops those of length 1; the flat index maps to the same offsets.
+    def collapse(shape, strides_list)
+      cshape = []
+      cstrides = strides_list.map { [] }
+      shape.each_with_index do |n, d|
+        next if n == 1
+        if !cshape.empty? && strides_list.each_index.all? { |k| cstrides[k][-1] == strides_list[k][d] * n }
+          cshape[-1] *= n
+          strides_list.each_index { |k| cstrides[k][-1] = strides_list[k][d] }
+        else
+          cshape << n
+          strides_list.each_index { |k| cstrides[k] << strides_list[k][d] }
+        end
+      end
+      [cshape, cstrides]
+    end
+
     def pack_scalar(value, dtype, name)
       if INT_RANGE.key?(dtype)
         raise TypeError, "#{name} is #{CTYPE[dtype]}, and #{value.inspect} is not an Integer" unless value.is_a?(Integer)

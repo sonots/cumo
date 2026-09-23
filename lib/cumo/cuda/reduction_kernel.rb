@@ -110,7 +110,10 @@ module Cumo::CUDA
       arrays = ins + outs
       layouts = ins.map { |a| a.is_a?(Cumo::NArray) ? input_layout(a, in_shape, outs, false) : nil }
       kinds = params.zip(arrays).map { |p, a| a.is_a?(Cumo::NArray) ? :array : :scalar }
-      nd = in_shape.size
+      walked = ins.each_index.select { |k| layouts[k] }
+      cshape, cstrides = collapse(order.map { |d| in_shape[d] }, walked.map { |k| order.map { |d| layouts[k][1][d] } })
+      stride_of = walked.zip(cstrides).to_h
+      nd = cshape.size
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, nd]
       fn = (@functions[key] ||= compile(source(types, kinds, nd)))
 
@@ -125,17 +128,17 @@ module Cumo::CUDA
       end
       partials = chunks > 1 ? partial_dtype.new(out_size * chunks) : nil
       args = []
-      @in_params.zip(arrays, layouts).each do |p, a, l|
+      @in_params.zip(arrays, layouts).each_with_index do |(p, a, l), k|
         if a.is_a?(Cumo::NArray)
           args << l[0]
-          args << order.map { |d| l[1][d] }.pack("q*") if nd > 0
+          args << stride_of[k].pack("q*") if nd > 0
         else
           args << pack_scalar(a, types[p.type], p.name)
         end
       end
       arrays[@in_params.size..].each { |a| args << a }
       args << (partials || [0].pack("q"))
-      args << order.map { |d| in_shape[d] }.pack("q*") if nd > 0
+      args << cshape.pack("q*") if nd > 0
       args << [out_size * red_size].pack("q")
       args << [out_size].pack("q")
       args << [block_stride].pack("l")

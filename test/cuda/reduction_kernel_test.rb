@@ -146,6 +146,21 @@ module Cumo::CUDA
       assert_equal([512.0] * 512, row.to_a)
     end
 
+    test "every subset of axes agrees with sum, whichever dimensions merge" do
+      base = Cumo::DFloat.new(3, 1, 4, 5).seq
+      [base, base.transpose(3, 1, 0, 2), base.reverse(2), base[true, true, (3..0).step(-2), true]].each do |x|
+        (0..4).each do |r|
+          (0...4).to_a.combination(r).each do |axes|
+            axis = axes.empty? ? nil : axes
+            want = axis ? x.sum(axis: axis) : x.sum
+            got = SUM.call(x, axis: axis)
+            assert { close(got, want) }
+            assert_equal(axis ? want.shape : [], got.shape, "#{x.shape.inspect} axis #{axis.inspect}")
+          end
+        end
+      end
+    end
+
     test "several outputs come back as an Array" do
       k = ReductionKernel.new("T x", "T s, T r", "x", "a + b", "s = a; r = a * 2", "0", "sum_and_double")
       s, r = k.call(Cumo::Int32.new(2, 3).seq, axis: 1)
@@ -204,17 +219,20 @@ module Cumo::CUDA
       assert { close(in_double.call(z), [Cumo::DFloat.cast(z).sum.to_f], 0.1) }
     end
 
-    test "the kernel is compiled once per set of types and dimensions" do
+    test "the kernel is compiled once per set of types and dimensions left after merging" do
       k = ReductionKernel.new("T x", "T y", "x", "a + b", "y = a", "0", "once")
       x = Cumo::SFloat.new(3, 4).seq
+      dims = -> { k.instance_variable_get(:@functions).keys.map(&:last) }
       k.call(x, axis: 0)
-      k.call(x, axis: 1)
       k.call(x)
-      assert_equal(1, k.instance_variable_get(:@functions).size)
+      k.call(Cumo::SFloat.new(3, 4, 5).seq, axis: [0, 1])
+      assert_equal([1], dims.call)
+      k.call(x, axis: 1)
+      assert_equal([1, 2], dims.call)
       k.call(Cumo::SFloat.new(3, 4, 5).seq, axis: 1)
-      assert_equal(2, k.instance_variable_get(:@functions).size)
+      assert_equal([1, 2, 3], dims.call)
       k.call(Cumo::DFloat.new(3, 4).seq, axis: 1)
-      assert_equal(3, k.instance_variable_get(:@functions).size)
+      assert_equal(4, k.instance_variable_get(:@functions).size)
     end
   end
 end

@@ -69,27 +69,24 @@ module Cumo::CUDA
       layouts = @in_params.zip(ins).map do |p, a|
         a.is_a?(Cumo::NArray) && !p.raw ? input_layout(a, shape, outs, true) : nil
       end
-      simple = @in_params.zip(ins, layouts).all? do |p, a, l|
-        !a.is_a?(Cumo::NArray) || p.raw || (a.shape == shape && l[1] == strides(a, shape))
-      end
+      walked = params.each_index.select { |k| arrays[k].is_a?(Cumo::NArray) && !params[k].raw }
+      cshape, cstrides = collapse(shape, walked.map { |k| layouts[k] ? layouts[k][1] : strides(arrays[k], shape) })
+      simple = cshape.size <= 1 && cstrides.all? { |st| st.empty? || st == [1] }
+      stride_of = walked.zip(cstrides).to_h
       kinds = params.zip(arrays).map { |p, a| !a.is_a?(Cumo::NArray) ? :scalar : p.raw ? :raw : :array }
-      key = [params.map { |p| CTYPE[types[p.type]] }, kinds, simple ? :simple : shape.size]
-      fn = (@functions[key] ||= compile(source(types, kinds, simple, shape.size)))
+      key = [params.map { |p| CTYPE[types[p.type]] }, kinds, simple ? :simple : cshape.size]
+      fn = (@functions[key] ||= compile(source(types, kinds, simple, cshape.size)))
 
       args = []
       params.zip(arrays).each_with_index do |(p, a), k|
-        l = layouts[k]
         if !a.is_a?(Cumo::NArray)
           args << pack_scalar(a, types[p.type], p.name)
-        elsif p.raw || l.nil?
-          args << a
-          args << strides(a, shape).pack("q*") unless p.raw || simple
         else
-          args << l[0]
-          args << l[1].pack("q*") unless simple
+          args << (layouts[k] ? layouts[k][0] : a)
+          args << stride_of[k].pack("q*") unless p.raw || simple
         end
       end
-      args << shape.pack("q*") unless simple
+      args << cshape.pack("q*") unless simple
       args << [n].pack("q")
       fn.launch(args, grid: [(n + BLOCK - 1) / BLOCK, MAX_GRID].min, block: BLOCK)
     end
