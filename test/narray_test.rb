@@ -8445,4 +8445,43 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([[4 + 7i, 5, 6 + 7i], [7i, 0, 7i], [7i, 0, 7i], [1 + 7i, 2, 3 + 7i]], z.to_a)
     end
   end
+  sub_test_case "a store between arrays of the same type" do
+    def check_store(klass, dst_shape, src_shape, msg)
+      wide = (klass == Cumo::Int16 ? Cumo::Int32 : Cumo::Int16)
+      base = wide.new(*src_shape).seq % 100
+      got = klass.zeros(*dst_shape)
+      want = klass.zeros(*dst_shape)
+      yield(got, klass.cast(base))
+      yield(want, base)
+      assert_equal(want.to_a, got.to_a, "#{klass} #{msg}")
+    end
+
+    test "lands every element where a store from another type does" do
+      [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::UInt16, Cumo::UInt32,
+       Cumo::UInt64, Cumo::HFloat, Cumo::BFloat, Cumo::SFloat, Cumo::DFloat, Cumo::SComplex,
+       Cumo::DComplex].each do |klass|
+        [1, 2, 3, 4, 6, 8, 16].each do |c|
+          check_store(klass, [2, 4, 4, c * 9], [2, 6, 6, c], "unfold c=#{c}") do |dst, src|
+            9.times do |t|
+              i, j = t.divmod(3)
+              dst[true, true, true, c * t...c * (t + 1)] = src[true, i...i + 4, j...j + 4, true]
+            end
+          end
+          check_store(klass, [5, c + 2], [5, c + 2], "shifted c=#{c}") { |dst, src| dst[true, 1..] = src[true, 0...c + 1] }
+          check_store(klass, [3, 4, c], [3, 4, c], "reversed c=#{c}") { |dst, src| dst[] = src.reverse(0) }
+          check_store(klass, [3, 4, c], [4, c], "broadcast c=#{c}") { |dst, src| dst[] = src }
+          check_store(klass, [7 * c], [7 * c], "flat c=#{c}") { |dst, src| dst[] = src }
+        end
+      end
+    end
+
+    test "a copy of a view reads every element where the view does" do
+      [Cumo::Int8, Cumo::Int16, Cumo::HFloat, Cumo::SFloat, Cumo::DFloat, Cumo::DComplex].each do |klass|
+        [1, 2, 3, 4, 8].each do |c|
+          v = klass.cast(Cumo::Int16.new(2, 6, 6, c).seq % 100)[true, 1...5, 2...6, true]
+          assert_equal(v.to_a, v.dup.to_a, "#{klass} c=#{c}")
+        end
+      end
+    end
+  end
 end

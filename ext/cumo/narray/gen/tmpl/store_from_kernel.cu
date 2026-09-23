@@ -76,6 +76,9 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t*
         cumo_cuda_runtime_check_kernel_launch();
         return;
     }
+<% if name == parent.parent.name %>
+    if (cumo_copy_bytes_wide(a1, a2, indexer, (ssize_t)sizeof(dtype))) { return; }
+<% end %>
 
     grid_dim = cumo_get_grid_dim(indexer->total_size);
     block_dim = cumo_get_block_dim(indexer->total_size);
