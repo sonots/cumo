@@ -6,15 +6,21 @@ typedef struct {
 } randn_opt_t;
 
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype mu, <%= acc_type.empty? ? 'rtype' : acc_type %> sigma);
+void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype mu, <%= acc_type.empty? ? 'rtype' : acc_type %> sigma);
 
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
     randn_opt_t *g = (randn_opt_t*)(lp->opt_ptr);
-    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,g->seed,g->offset,g->mu,g->sigma);
+    if (cumo_na_loop_has_index(lp)) {
+        cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
+        <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,g->seed,g->offset,g->mu,g->sigma);
+    } else {
+        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,g->seed,g->offset,g->mu,g->sigma);
+    }
     g->offset += indexer.total_size;
 }
 
@@ -55,7 +61,7 @@ static VALUE
     randn_opt_t g;
     VALUE v1=Qnil, v2=Qnil;
     cumo_ndfunc_arg_in_t ain[1] = {{CUMO_OVERWRITE,0}};
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 1,0, ain,0};
 
     n = rb_scan_args(argc, args, "02", &v1, &v2);
     if (n == 0) {

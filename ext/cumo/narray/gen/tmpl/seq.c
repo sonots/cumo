@@ -18,6 +18,7 @@ typedef struct {
 
 <% unless is_object %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, seq_data_t beg, seq_data_t step, seq_count_t c);
+void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, seq_data_t beg, seq_data_t step, seq_count_t c);
 <% end %>
 
 static void
@@ -59,10 +60,15 @@ static void
     }
     <% else %>
     {
-        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,beg,step,c);
+        if (cumo_na_loop_has_index(lp)) {
+            cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
+            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,beg,step,c);
+        } else {
+            cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,beg,step,c);
+        }
         g->count += indexer.total_size;
     }
     <% end %>
@@ -94,7 +100,7 @@ static VALUE
     <% if is_object %>
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
     <% else %>
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 1,0, ain,0};
     <% end %>
 
     g = ALLOCA_N(seq_opt_t,1);
