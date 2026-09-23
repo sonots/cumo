@@ -180,13 +180,19 @@ module Cumo::CUDA
       MemoryPool.total_bytes - before
     end
 
-    test "a view that strides reaches is not copied, and one that walks an index array is" do
+    test "a reversed or stepped view is read where it is, and a transposed or index view is copied first" do
       omit("needs the memory pool to count with") unless MemoryPool.enabled?
       base = Cumo::SFloat.new(256, 256).seq
       out = Cumo::SFloat.new(256, 256)
-      SQUARED_DIFF.call(base.transpose, 0, out)
-      assert_equal(0, pool_growth { SQUARED_DIFF.call(base.transpose, 0, out) }, "transposed")
+      SQUARED_DIFF.call(base.reverse(1), 0, out)
       assert_equal(0, pool_growth { SQUARED_DIFF.call(base.reverse(1), 0, out) }, "reversed")
+      wide = Cumo::SFloat.new(256, 512).seq
+      assert_equal(0, pool_growth { SQUARED_DIFF.call(wide[true, (0...512).step(2)], 0, out) }, "stepped")
+      assert_operator(pool_growth { SQUARED_DIFF.call(base.transpose, 0, out) }, :>=, 256 * 256 * 4, "transposed")
+      assert_equal((base.transpose * base.transpose).to_a, out.to_a)
+      stacked = Cumo::SFloat.new(3, 256, 256).seq
+      assert_operator(pool_growth { SQUARED_DIFF.call(stacked[1, true, true].transpose, 0, out) }, :>=, 256 * 256 * 4, "a layer transposed")
+      assert_equal((stacked[1, true, true].transpose * stacked[1, true, true].transpose).to_a, out.to_a)
       frozen = base.dup.freeze
       assert_equal(0, pool_growth { SQUARED_DIFF.call(frozen, 0, out) }, "frozen")
       assert_equal(0, pool_growth { SQUARED_DIFF.call(out, 0, out) }, "the output itself, element for element")
