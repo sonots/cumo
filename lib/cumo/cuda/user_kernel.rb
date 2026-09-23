@@ -149,20 +149,26 @@ module Cumo::CUDA
       a.is_a?(Cumo::NArray) && (!a.contiguous? || a.frozen?) ? a.dup : a
     end
 
-    # An input is read through its own strides, so a transposed, reversed or
-    # stepped view is read where it is. A view that walks an index array has
-    # no strides and is read from a copy, which the answer holds until the
-    # launch. The strides are those of the broadcast shape, 0 where it is
-    # broadcast.
-    def input_layout(a, shape)
-      held = nil
+    # [address, strides of the broadcast shape, the copy read instead, if any].
+    # An input that other threads write while it is read, because it shares
+    # memory with an output, is read from a copy; so is an index view.
+    def input_layout(a, shape, outs, same_place_ok)
       layout = Driver.narray_view_layout(a)
-      if layout.nil?
+      held = nil
+      if layout.nil? || outs.any? { |o| overlaps?(layout, o) && !(same_place_ok && same_place?(layout, a, o, shape)) }
         held = a.dup
         layout = Driver.narray_view_layout(held)
       end
-      address, st = layout
-      [address, [0] * (shape.size - st.size) + st, held]
+      [layout[0], [0] * (shape.size - layout[1].size) + layout[1], held]
+    end
+
+    def overlaps?(layout, out)
+      o = Driver.narray_view_layout(out)
+      layout[2] < o[3] && o[2] < layout[3]
+    end
+
+    def same_place?(layout, a, out, shape)
+      a.shape == shape && layout[0] == Driver.narray_view_layout(out)[0] && layout[1] == strides(out, shape)
     end
 
     def check_outputs(outs, out_params, shape)

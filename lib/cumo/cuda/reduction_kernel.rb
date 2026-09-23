@@ -108,7 +108,7 @@ module Cumo::CUDA
     def launch(ins, outs, types, in_shape, order, out_size, red_size)
       params = @in_params + @out_params
       arrays = ins + outs
-      layouts = ins.map { |a| a.is_a?(Cumo::NArray) ? input_layout(a, in_shape) : nil }
+      layouts = ins.map { |a| a.is_a?(Cumo::NArray) ? input_layout(a, in_shape, outs, false) : nil }
       kinds = params.zip(arrays).map { |p, a| a.is_a?(Cumo::NArray) ? :array : :scalar }
       nd = in_shape.size
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, nd]

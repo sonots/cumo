@@ -478,18 +478,15 @@ kernel_arg_is_narray(VALUE v)
 }
 
 /*
-  The device address of an NArray's first element and its strides in
-  elements, for a kernel that reads it through those strides. nil when a
-  dimension walks an index array, which no stride describes.
   @param [Cumo::NArray] narray
-  @return [Array, nil] [address, strides]
+  @return [Array, nil] [address, strides in elements, first byte, last byte + 1], nil for an index view
  */
 static VALUE
 rb_narray_view_layout(VALUE self, VALUE narray)
 {
     cumo_narray_t *na;
     VALUE strides;
-    ssize_t elmsz, s;
+    ssize_t elmsz, s, lo = 0, hi = 0;
     int k;
     char *ptr;
 
@@ -518,8 +515,14 @@ rb_narray_view_layout(VALUE self, VALUE narray)
         rb_funcall(narray, rb_intern("allocate"), 0);
     }
     ptr = cumo_na_get_offset_pointer_for_read(narray);
+    for (k = 0; k < na->ndim; k++) {
+        ssize_t d = NUM2SSIZET(RARRAY_AREF(strides, k)) * (ssize_t)(na->shape[k] - 1);
+        if (d < 0) lo += d; else hi += d;
+    }
     RB_GC_GUARD(narray);
-    return rb_assoc_new(ULL2NUM((unsigned long long)(uintptr_t)ptr), strides);
+    return rb_ary_new_from_args(4, ULL2NUM((unsigned long long)(uintptr_t)ptr), strides,
+        ULL2NUM((unsigned long long)(uintptr_t)(ptr + lo * elmsz)),
+        ULL2NUM((unsigned long long)(uintptr_t)(na->size == 0 ? ptr : ptr + (hi + 1) * elmsz)));
 }
 
 static size_t

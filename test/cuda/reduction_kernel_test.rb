@@ -135,6 +135,17 @@ module Cumo::CUDA
       assert { close(out, big.sum(axis: 1)) }
     end
 
+    test "an output that is part of the input does not change what the others read" do
+      x = Cumo::DFloat.new(2048, 2048).fill(1)
+      out = x[2047, true]
+      SUM.call(x.transpose.reverse(0), out, axis: 0)
+      assert_equal([2048.0] * 2048, out.to_a)
+      y = Cumo::DFloat.new(512, 512).fill(1)
+      row = y[0, true]
+      SUM.call(y, row, axis: 0)
+      assert_equal([512.0] * 512, row.to_a)
+    end
+
     test "several outputs come back as an Array" do
       k = ReductionKernel.new("T x", "T s, T r", "x", "a + b", "s = a; r = a * 2", "0", "sum_and_double")
       s, r = k.call(Cumo::Int32.new(2, 3).seq, axis: 1)

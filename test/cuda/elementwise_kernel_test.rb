@@ -160,9 +160,30 @@ module Cumo::CUDA
       assert_equal(0, pool_growth { SQUARED_DIFF.call(base.reverse(1), 0, out) }, "reversed")
       frozen = base.dup.freeze
       assert_equal(0, pool_growth { SQUARED_DIFF.call(frozen, 0, out) }, "frozen")
+      assert_equal(0, pool_growth { SQUARED_DIFF.call(out, 0, out) }, "the output itself, element for element")
       picked = base[Cumo::Int32.new(256).seq(255, -1), true]
       assert_operator(pool_growth { SQUARED_DIFF.call(picked, 0, out) }, :>=, 256 * 256 * 4, "index")
       assert_equal((picked * picked).to_a, out.to_a)
+    end
+
+    test "an input that shares memory with the output is read before it is written" do
+      copy = ElementwiseKernel.new("T x", "T y", "y = x", "copy_in_place")
+      a = Cumo::SFloat.new(1 << 20).seq
+      copy.call(a.reverse(0), a)
+      assert_equal(Cumo::SFloat.new(1 << 20).seq.reverse(0).to_a, a.to_a)
+      b = Cumo::SFloat.new(1024, 1024).seq
+      copy.call(b.transpose, b)
+      assert_equal(Cumo::SFloat.new(1024, 1024).seq.transpose.to_a, b.to_a)
+      c = Cumo::SFloat.new(1 << 20).seq
+      copy.call(c[0...(1 << 19)], c[(1 << 19)..])
+      assert_equal((0...(1 << 19)).map(&:to_f) * 2, c.to_a)
+      d = Cumo::SFloat.new(1 << 16).seq
+      copy.call(d[0..0], d)
+      assert_equal([0.0] * (1 << 16), d.to_a)
+      e = Cumo::SFloat.new(1 << 20).seq
+      plus = ElementwiseKernel.new("T x", "T y", "y = x + 1", "plus_one_in_place")
+      plus.call(e, e)
+      assert_equal((1..(1 << 20)).map(&:to_f), e.to_a)
     end
 
     test "kmeans' var_kernel broadcasts the (N, 1) samples against the (1, K) centers" do
