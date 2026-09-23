@@ -1,5 +1,6 @@
 <% unless type_name == 'robject' %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, dtype val);
+void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, dtype val);
 <% end %>
 
 static void
@@ -32,10 +33,17 @@ static void
     }
     <% else %>
     {
-        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,y);
+        if (cumo_na_loop_has_index(lp)) {
+            cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
+
+            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,y);
+        } else {
+            cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+
+            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,y);
+        }
     }
     <% end %>
 }
@@ -53,7 +61,7 @@ static VALUE
     <% if type_name == 'robject' %>
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP, 2, 0, ain, 0 };
     <% else %>
-    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2, 0, ain, 0 };
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2, 0, ain, 0 };
     <% end %>
 
     cumo_na_ndloop(&ndf, 2, self, val);
