@@ -69,7 +69,7 @@ module Cumo::CUDA
 
       out_size = out_shape.inject(1, :*)
       red_size = axes.map { |d| in_shape[d] }.inject(1, :*)
-      launch(ins, outs, types, in_shape, axes + kept, out_size, red_size) if out_size > 0
+      launch(ins, outs, types, in_shape, axes + kept, kept, out_size, red_size) if out_size > 0
       @out_params.size == 1 ? outs[0] : outs
     end
 
@@ -105,7 +105,7 @@ module Cumo::CUDA
       axes.sort
     end
 
-    def launch(ins, outs, types, in_shape, order, out_size, red_size)
+    def launch(ins, outs, types, in_shape, order, kept, out_size, red_size)
       params = @in_params + @out_params
       arrays = ins + outs
       layouts = ins.map { |a| a.is_a?(Cumo::NArray) ? input_layout(a, in_shape, outs, false) : nil }
@@ -117,8 +117,9 @@ module Cumo::CUDA
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, nd]
       fn = (@functions[key] ||= compile(source(types, kinds, nd)))
 
-      per_output = [next_pow2(red_size), BLOCK].min
-      block_stride = BLOCK / per_output
+      contiguous = walked.map { |k| contiguous_outputs(layouts[k][1], in_shape, kept) }.max
+      block_stride = block_stride_for(red_size, contiguous)
+      per_output = BLOCK / block_stride
       blocks = (out_size + block_stride - 1) / block_stride
       chunks = 1
       partial_dtype = reduce_dtype(types)
@@ -156,6 +157,24 @@ module Cumo::CUDA
       return types[@out_params[0].type] if @reduce_type.nil?
       return types[@reduce_type] if @reduce_type.size == 1 && types.key?(@reduce_type)
       DTYPE_OF_CTYPE[@reduce_type]
+    end
+
+    # Outputs that lie end to end in the input, from the last kept axis.
+    def contiguous_outputs(st, in_shape, kept)
+      run = 1
+      kept.reverse_each do |d|
+        next if in_shape[d] == 1
+        break unless st[d] == run
+        run *= in_shape[d]
+      end
+      run
+    end
+
+    # Outputs per block: a warp reads up to 32 neighbouring outputs at one
+    # reduced index, so their reads share a transaction.
+    def block_stride_for(red_size, contiguous)
+      by_layout = 1 << ([contiguous, 32].min.bit_length - 1)
+      [BLOCK / [next_pow2(red_size), BLOCK].min, by_layout].max
     end
 
     def next_pow2(n)
