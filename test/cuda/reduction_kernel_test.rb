@@ -165,7 +165,7 @@ module Cumo::CUDA
       [1, 2, 3, 8, 31, 32, 33, 100].each do |cols|
         [1, 7, 1000, 70_000].each do |rows|
           x = Cumo::DFloat.new(rows, cols).seq(1, 0.5)
-          assert { close(SUM.call(x, axis: 0), x.sum(axis: 0), 1e-6 * rows * rows) }
+          assert_equal(x.sum(axis: 0).to_a, SUM.call(x, axis: 0).to_a, "#{rows} x #{cols}")
         end
       end
       spec = ->(red, contiguous) { SUM.send(:block_stride_for, red, contiguous) }

@@ -117,7 +117,7 @@ module Cumo::CUDA
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, nd]
       fn = (@functions[key] ||= compile(source(types, kinds, nd)))
 
-      contiguous = walked.map { |k| contiguous_outputs(layouts[k][1], in_shape, kept) }.max || 1
+      contiguous = walked.map { |k| contiguous_outputs(layouts[k][1], in_shape, kept) }.max
       block_stride = block_stride_for(red_size, contiguous)
       per_output = BLOCK / block_stride
       blocks = (out_size + block_stride - 1) / block_stride
@@ -159,8 +159,7 @@ module Cumo::CUDA
       DTYPE_OF_CTYPE[@reduce_type]
     end
 
-    # How many outputs lie end to end in the input, counted from the last
-    # kept axis.
+    # Outputs that lie end to end in the input, from the last kept axis.
     def contiguous_outputs(st, in_shape, kept)
       run = 1
       kept.reverse_each do |d|
@@ -171,14 +170,11 @@ module Cumo::CUDA
       run
     end
 
-    # Outputs per block. A warp reads its outputs at one reduced index, so
-    # up to 32 outputs that lie end to end go to one block and their reads
-    # are one transaction.
+    # Outputs per block: a warp reads up to 32 neighbouring outputs at one
+    # reduced index, so their reads share a transaction.
     def block_stride_for(red_size, contiguous)
-      by_reduction = BLOCK / [next_pow2(red_size), BLOCK].min
-      by_layout = 1
-      by_layout *= 2 while by_layout * 2 <= [contiguous, 32].min
-      [by_reduction, by_layout].max
+      by_layout = 1 << ([contiguous, 32].min.bit_length - 1)
+      [BLOCK / [next_pow2(red_size), BLOCK].min, by_layout].max
     end
 
     def next_pow2(n)
