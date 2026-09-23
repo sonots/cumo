@@ -142,6 +142,22 @@ module Cumo::CUDA
       assert_equal(((rows - col) * (rows - col)).to_a, GENERIC.call(rows, col).to_a)
     end
 
+    test "arrays that walk several dimensions as one give the same answer" do
+      x = Cumo::DFloat.new(4, 5, 6).seq
+      y = Cumo::DFloat.new(5, 6).seq(1)
+      assert_equal(((x - y) * (x - y)).to_a, GENERIC.call(x, y).to_a)
+      assert_equal(((x - y[true, 0..0]) * (x - y[true, 0..0])).to_a, GENERIC.call(x, y[true, 0..0]).to_a)
+      z = Cumo::DFloat.new(3, 1, 4).seq
+      assert_equal(((z - 2) * (z - 2)).to_a, GENERIC.call(z, Cumo::DFloat.new(1, 1, 4).fill(2)).to_a)
+      one = Cumo::DFloat.new(1, 1).seq(3)
+      assert_equal([[9.0]], GENERIC.call(one, Cumo::DFloat.zeros(1, 1)).to_a)
+      r = x.reverse(0)
+      assert_equal(((r - y) * (r - y)).to_a, GENERIC.call(r, y).to_a)
+      t = x.transpose(0, 2, 1)
+      u = Cumo::DFloat.new(4, 6, 5).seq(7)
+      assert_equal(((t - u) * (t - u)).to_a, GENERIC.call(t, u).to_a)
+    end
+
     def pool_growth
       GC.start
       MemoryPool.free_all_blocks
