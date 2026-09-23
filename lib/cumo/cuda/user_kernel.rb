@@ -143,11 +143,32 @@ module Cumo::CUDA
       [value].pack(PACK[dtype])
     end
 
-    # Every NArray reaches the kernel through a pointer it may write, so a
-    # frozen input is read from a copy, and so is a view the kernel cannot
-    # address.
+    # A raw argument is indexed by the operation itself, so it has to be
+    # contiguous, and it goes through a pointer the kernel may write.
     def readable(a)
       a.is_a?(Cumo::NArray) && (!a.contiguous? || a.frozen?) ? a.dup : a
+    end
+
+    # [address, strides of the broadcast shape, the copy read instead, if any].
+    # An input that other threads write while it is read, because it shares
+    # memory with an output, is read from a copy; so is an index view.
+    def input_layout(a, shape, outs, same_place_ok)
+      layout = Driver.narray_view_layout(a)
+      held = nil
+      if layout.nil? || outs.any? { |o| overlaps?(layout, o) && !(same_place_ok && same_place?(layout, a, o, shape)) }
+        held = a.dup
+        layout = Driver.narray_view_layout(held)
+      end
+      [layout[0], [0] * (shape.size - layout[1].size) + layout[1], held]
+    end
+
+    def overlaps?(layout, out)
+      o = Driver.narray_view_layout(out)
+      layout[2] < o[3] && o[2] < layout[3]
+    end
+
+    def same_place?(layout, a, out, shape)
+      a.shape == shape && layout[0] == Driver.narray_view_layout(out)[0] && layout[1] == strides(out, shape)
     end
 
     def check_outputs(outs, out_params, shape)

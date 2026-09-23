@@ -115,6 +115,37 @@ module Cumo::CUDA
       assert_equal([], SUM.call(Cumo::DFloat.new.store(3.0)).shape)
     end
 
+    test "a transposed or reversed input is read through its strides and not copied" do
+      x = Cumo::DFloat.new(64, 48).seq
+      [x.transpose, x.reverse(0), x[(63..0).step(-3), (0...48).step(2)], x.transpose.reverse(1)].each do |v|
+        [0, 1, nil].each do |axis|
+          assert { close(SUM.call(v, axis: axis), axis ? v.sum(axis: axis) : [v.sum.to_f]) }
+        end
+      end
+      omit("needs the memory pool to count with") unless MemoryPool.enabled?
+      big = Cumo::SFloat.new(512, 512).seq
+      out = Cumo::SFloat.new(512)
+      SUM.call(big.transpose, out, axis: 0)
+      GC.start
+      MemoryPool.free_all_blocks
+      before = MemoryPool.total_bytes
+      SUM.call(big.transpose, out, axis: 0)
+      Runtime.cudaDeviceSynchronize
+      assert_equal(0, MemoryPool.total_bytes - before)
+      assert { close(out, big.sum(axis: 1)) }
+    end
+
+    test "an output that is part of the input does not change what the others read" do
+      x = Cumo::DFloat.new(2048, 2048).fill(1)
+      out = x[2047, true]
+      SUM.call(x.transpose.reverse(0), out, axis: 0)
+      assert_equal([2048.0] * 2048, out.to_a)
+      y = Cumo::DFloat.new(512, 512).fill(1)
+      row = y[0, true]
+      SUM.call(y, row, axis: 0)
+      assert_equal([512.0] * 512, row.to_a)
+    end
+
     test "several outputs come back as an Array" do
       k = ReductionKernel.new("T x", "T s, T r", "x", "a + b", "s = a; r = a * 2", "0", "sum_and_double")
       s, r = k.call(Cumo::Int32.new(2, 3).seq, axis: 1)

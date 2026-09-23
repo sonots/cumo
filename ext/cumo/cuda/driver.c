@@ -458,16 +458,71 @@ typedef union {
 } kernel_arg_t;
 
 static int
-kernel_arg_is_narray(VALUE v)
+kernel_arg_is_typed_narray(VALUE v)
 {
     if (!rb_obj_is_kind_of(v, cumo_cNArray)) return 0;
     if (rb_obj_is_kind_of(v, cumo_cBit) || rb_obj_is_kind_of(v, cumo_cRObject)) {
         rb_raise(rb_eTypeError, "a %s cannot be handed to a kernel", rb_obj_classname(v));
     }
+    return 1;
+}
+
+static int
+kernel_arg_is_narray(VALUE v)
+{
+    if (!kernel_arg_is_typed_narray(v)) return 0;
     if (cumo_na_check_contiguous(v) != Qtrue) {
         rb_raise(rb_eArgError, "a kernel takes a contiguous NArray, and this one is a view with a stride or an index");
     }
     return 1;
+}
+
+/*
+  @param [Cumo::NArray] narray
+  @return [Array, nil] [address, strides in elements, first byte, last byte + 1], nil for an index view
+ */
+static VALUE
+rb_narray_view_layout(VALUE self, VALUE narray)
+{
+    cumo_narray_t *na;
+    VALUE strides;
+    ssize_t elmsz, s, lo = 0, hi = 0;
+    int k;
+    char *ptr;
+
+    if (!kernel_arg_is_typed_narray(narray)) {
+        rb_raise(rb_eTypeError, "a %s has no layout to hand to a kernel", rb_obj_classname(narray));
+    }
+    CumoGetNArray(narray, na);
+    elmsz = (ssize_t)cumo_na_element_stride(narray);
+    strides = rb_ary_new_capa(na->ndim);
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        for (k = 0; k < na->ndim; k++) {
+            cumo_stridx_t sdx = CUMO_NA_VIEW_STRIDX(na)[k];
+            if (CUMO_SDX_IS_INDEX(sdx)) return Qnil;
+            s = CUMO_SDX_GET_STRIDE(sdx);
+            if (s % elmsz != 0) return Qnil;
+            rb_ary_push(strides, SSIZET2NUM(na->shape[k] == 1 ? 0 : s / elmsz));
+        }
+    } else {
+        s = 1;
+        for (k = na->ndim; k--;) {
+            rb_ary_store(strides, k, SSIZET2NUM(na->shape[k] == 1 ? 0 : s));
+            s *= (ssize_t)na->shape[k];
+        }
+    }
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_DATA_T && CUMO_NA_DATA_PTR(na) == NULL && na->size > 0) {
+        rb_funcall(narray, rb_intern("allocate"), 0);
+    }
+    ptr = cumo_na_get_offset_pointer_for_read(narray);
+    for (k = 0; k < na->ndim; k++) {
+        ssize_t d = NUM2SSIZET(RARRAY_AREF(strides, k)) * (ssize_t)(na->shape[k] - 1);
+        if (d < 0) lo += d; else hi += d;
+    }
+    RB_GC_GUARD(narray);
+    return rb_ary_new_from_args(4, ULL2NUM((unsigned long long)(uintptr_t)ptr), strides,
+        ULL2NUM((unsigned long long)(uintptr_t)(ptr + lo * elmsz)),
+        ULL2NUM((unsigned long long)(uintptr_t)(na->size == 0 ? ptr : ptr + (hi + 1) * elmsz)));
 }
 
 static size_t
@@ -592,6 +647,7 @@ Init_cumo_cuda_driver()
     rb_define_singleton_method(mDriver, "cuModuleLoadData", rb_cuModuleLoadData, 1);
     rb_define_singleton_method(mDriver, "cuModuleUnload", rb_cuModuleUnload, 1);
     rb_define_singleton_method(mDriver, "cuLaunchKernel", rb_cuLaunchKernel, 10);
+    rb_define_singleton_method(mDriver, "narray_view_layout", rb_narray_view_layout, 1);
 
     rb_define_singleton_method(mDriver, "cuDeviceGet", rb_cuDeviceGet, 1);
     rb_define_singleton_method(mDriver, "cuCtxCreate", rb_cuCtxCreate, 2);

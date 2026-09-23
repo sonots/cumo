@@ -65,19 +65,28 @@ module Cumo::CUDA
 
     def launch(ins, outs, types, shape, n)
       params = @in_params + @out_params
-      arrays = ins.map { |a| readable(a) } + outs
-      simple = params.zip(arrays).all? { |p, a| !a.is_a?(Cumo::NArray) || p.raw || a.shape == shape }
+      arrays = @in_params.zip(ins).map { |p, a| p.raw ? readable(a) : a } + outs
+      layouts = @in_params.zip(ins).map do |p, a|
+        a.is_a?(Cumo::NArray) && !p.raw ? input_layout(a, shape, outs, true) : nil
+      end
+      simple = @in_params.zip(ins, layouts).all? do |p, a, l|
+        !a.is_a?(Cumo::NArray) || p.raw || (a.shape == shape && l[1] == strides(a, shape))
+      end
       kinds = params.zip(arrays).map { |p, a| !a.is_a?(Cumo::NArray) ? :scalar : p.raw ? :raw : :array }
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, simple ? :simple : shape.size]
       fn = (@functions[key] ||= compile(source(types, kinds, simple, shape.size)))
 
       args = []
-      params.zip(arrays).each do |p, a|
-        if a.is_a?(Cumo::NArray)
+      params.zip(arrays).each_with_index do |(p, a), k|
+        l = layouts[k]
+        if !a.is_a?(Cumo::NArray)
+          args << pack_scalar(a, types[p.type], p.name)
+        elsif p.raw || l.nil?
           args << a
           args << strides(a, shape).pack("q*") unless p.raw || simple
         else
-          args << pack_scalar(a, types[p.type], p.name)
+          args << l[0]
+          args << l[1].pack("q*") unless simple
         end
       end
       args << shape.pack("q*") unless simple
