@@ -8295,4 +8295,59 @@ class NArrayTest < Test::Unit::TestCase
       assert_operator time2.call, :<, 0.0003
     end
   end
+
+  sub_test_case "a scalar stored into an array" do
+    # The value reaches the kernel as an argument, so storing it reserves
+    # nothing, where it used to be made into a 0-dimensional array first.
+    test "reserves nothing from the pool" do
+      omit("needs the memory pool to count with") unless Cumo::CUDA::MemoryPool.enabled?
+      grew = lambda do |work|
+        GC.start
+        Cumo::CUDA::MemoryPool.free_all_blocks
+        before = Cumo::CUDA::MemoryPool.total_bytes
+        work.call
+        Cumo::CUDA::Runtime.cudaDeviceSynchronize
+        Cumo::CUDA::MemoryPool.total_bytes - before
+      end
+      [Cumo::SFloat, Cumo::DFloat, Cumo::Int32, Cumo::UInt8, Cumo::DComplex, Cumo::HFloat, Cumo::Bit].each do |dtype|
+        a = dtype.zeros(6, 5)
+        assert_equal(0, grew.call(-> { a[1..3, true] = 1 }), "#{dtype} a[range, true] = 1")
+        assert_equal(0, grew.call(-> { a[] = 1 }), "#{dtype} a[] = 1")
+        assert_equal(0, grew.call(-> { a.store(1) }), "#{dtype} store(1)")
+      end
+    end
+
+    test "lands where the view reaches, converted as a store converts it" do
+      {
+        Cumo::SFloat => [2.5, 2.5], Cumo::Int32 => [3.7, 3], Cumo::UInt8 => [-1, 255],
+        Cumo::DComplex => [Complex(1, 2), Complex(1, 2)], Cumo::HFloat => [70000.0, Float::INFINITY],
+        Cumo::RObject => [4, 4],
+      }.each do |dtype, (value, stored)|
+        a = dtype.zeros(5, 4)
+        a[(4..0).step(-2), 1..2] = value
+        want = Array.new(5) { |i| Array.new(4) { |j| i.even? && (1..2).cover?(j) ? stored : 0 } }
+        assert_equal(want, a.to_a, dtype.to_s)
+        b = dtype.zeros(5, 4)
+        b[[3, 0], [2, 1]] = value
+        assert_equal([[0, stored, stored, 0], [0] * 4, [0] * 4, [0, stored, stored, 0], [0] * 4], b.to_a, "#{dtype} index")
+      end
+    end
+
+    # fill takes only 0 and 1 for a Bit; a store reads any other number as
+    # a bit, which the scalar path keeps.
+    test "a Bit reads any number as a bit" do
+      [[2, 1], [0.5, 1], [-1, 1], [0, 0], [0.0, 0]].each do |value, bit|
+        a = Cumo::Bit.new(6).fill(1 - bit)
+        a[1..3] = value
+        assert_equal([1 - bit, bit, bit, bit, 1 - bit, 1 - bit], a.to_a, value.inspect)
+      end
+      assert_raise(Cumo::NArray::CastError) { Cumo::Bit.new(3)[] = true }
+    end
+
+    test "is refused on a frozen array and for a value that is not a number" do
+      assert_raise(RuntimeError) { Cumo::SFloat.new(2).freeze[] = 1 }
+      assert_raise(Cumo::NArray::CastError) { Cumo::SFloat.new(2)[] = nil }
+      assert_raise(Cumo::NArray::CastError) { Cumo::SFloat.new(0)[] = "x" }
+    end
+  end
 end
