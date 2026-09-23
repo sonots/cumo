@@ -1130,6 +1130,11 @@ On, a `[4096, 4096]` `SFloat` `gemm` goes from 17.8 to 28.4 TFLOP/s on an RTX 50
 Its answer is then about 3e-04 from a double precision reference, where it was 4e-07.
 The double types are not affected either way.
 
+What the flag buys depends on where the time goes.
+It pays where matrix products and convolutions take the time, as in training or in a batch through a convolutional network.
+It buys nothing where reading the operands takes the time, as in decoding one token at a time, where each step reads every weight once and the GEMM waits on memory rather than on arithmetic.
+Over a training run the rounding adds up, so a loss that meets a tolerance at single precision can miss it on some steps; compare a few steps with the flag off before relying on it.
+
 `Cumo.allow_tf32?` reads back the value in force.
 
 ## Contributing
