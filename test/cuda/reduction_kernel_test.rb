@@ -161,6 +161,22 @@ module Cumo::CUDA
       end
     end
 
+    test "outputs that lie end to end share a block, whatever the widths and lengths" do
+      [1, 2, 3, 8, 31, 32, 33, 100].each do |cols|
+        [1, 7, 1000, 70_000].each do |rows|
+          x = Cumo::DFloat.new(rows, cols).seq(1, 0.5)
+          assert { close(SUM.call(x, axis: 0), x.sum(axis: 0), 1e-6 * rows * rows) }
+        end
+      end
+      spec = ->(red, contiguous) { SUM.send(:block_stride_for, red, contiguous) }
+      assert_equal(32, spec.call(4000, 4000))
+      assert_equal(8, spec.call(1 << 20, 8))
+      assert_equal(1, spec.call(4000, 1))
+      assert_equal(64, spec.call(8, 1))
+      assert_equal(64, spec.call(8, 4000))
+      assert_equal(16, spec.call(4000, 31))
+    end
+
     test "several outputs come back as an Array" do
       k = ReductionKernel.new("T x", "T s, T r", "x", "a + b", "s = a; r = a * 2", "0", "sum_and_double")
       s, r = k.call(Cumo::Int32.new(2, 3).seq, axis: 1)
