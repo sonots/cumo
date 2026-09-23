@@ -187,6 +187,7 @@ module Cumo::CUDA
       assert_raise(TypeError) { f.launch([y, x, [1000].pack("l")], grid: 4, block: 256, stream: s.ptr) }
       s.with do
         y.fill(0)
+        s.synchronize
         f.launch([y, x, [1000].pack("l")], grid: 4, block: 256, stream: Stream.null)
         Stream.null.synchronize
       end
