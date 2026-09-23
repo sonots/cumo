@@ -31,9 +31,6 @@ struct cumo_thrust_pool_allocator
     void deallocate(char *p, size_t) { cumo_cuda_runtime_free(p); }
 };
 
-// par waits for the stream to drain before it returns. The pool already
-// reuses a block freed with work in flight in stream order, so the scratch
-// needs no wait either.
 #if THRUST_VERSION >= 101600
 #define CUMO_THRUST_PAR thrust::cuda::par_nosync
 #else

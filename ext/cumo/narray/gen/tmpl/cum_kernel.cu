@@ -113,8 +113,8 @@ static void
 }
 <% end %>
 
-// Reusing the macro keeps the operator identical to the host loop, including
-// how it carries a NaN. What does change is the association: a parallel scan
+// Reusing the macro keeps the operator identical to numo's, including how it
+// carries a NaN. What does change is the association: a parallel scan
 // does not add strictly left to right, so a float result can differ in the
 // last ulp, the same way sum already does.
 struct <%="cumo_thrust_#{name}#{j}"%>

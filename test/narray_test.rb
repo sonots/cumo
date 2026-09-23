@@ -4223,7 +4223,23 @@ class NArrayTest < Test::Unit::TestCase
                  b.cumprod(axis: 1).to_a)
   end
 
-  test "cumsum and cumprod carry a nan the same way on either path" do
+  test "a short cumsum and cumprod do not synchronize" do
+    script = <<~'RUBY'
+      require "cumo/narray"
+      $stderr.sync = true
+      x = Cumo::SFloat.new(64).seq(1)
+      x.cumsum
+      x.cumprod
+      Cumo::DFloat.new(64).seq.cumsum(nan: true)
+      Cumo::Int32.new(64).seq.cumsum
+      print "done"
+    RUBY
+    out = run_child(script, env: { "RUBYOPT" => nil, "CUMO_SHOW_WARNING" => "1" })
+    assert_equal("done", out.lines.last)
+    assert_not_include(out, "synchronizes with CPU")
+  end
+
+  test "cumsum and cumprod carry a nan" do
     [64, 20_000].each do |n|
       [0, 1, n / 2, n - 1].each do |at|
         adds = Array.new(n) { |i| (i % 3) + 1.0 }
