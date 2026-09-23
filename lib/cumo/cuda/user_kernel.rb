@@ -124,12 +124,8 @@ module Cumo::CUDA
     # Element strides of a contiguous array read as the broadcast shape, 0
     # where it is broadcast.
     def strides(a, shape)
-      shape_strides(a.shape, shape)
-    end
-
-    def shape_strides(own, shape)
       nd = shape.size
-      s = [1] * (nd - own.size) + own
+      s = [1] * (nd - a.shape.size) + a.shape
       st = Array.new(nd)
       acc = 1
       (nd - 1).downto(0) do |d|
@@ -139,26 +135,20 @@ module Cumo::CUDA
       st
     end
 
-    # Merges neighbouring dimensions that every array walks as one, and drops
-    # the dimensions of length 1, so the kernel divides once per dimension
-    # that is left. A dimension never merges across split, which a reduction
-    # puts between its reduced and its kept dimensions.
-    def collapse(shape, strides_list, split = nil)
+    # Merges the neighbouring dimensions every array walks with one stride
+    # and drops those of length 1; the flat index maps to the same offsets.
+    def collapse(shape, strides_list)
       cshape = []
       cstrides = strides_list.map { [] }
-      last = nil
       shape.each_with_index do |n, d|
         next if n == 1
-        mergeable = last && (split.nil? || (last < split) == (d < split)) &&
-                    strides_list.each_index.all? { |k| cstrides[k][-1] == strides_list[k][d] * n }
-        if mergeable
+        if !cshape.empty? && strides_list.each_index.all? { |k| cstrides[k][-1] == strides_list[k][d] * n }
           cshape[-1] *= n
           strides_list.each_index { |k| cstrides[k][-1] = strides_list[k][d] }
         else
           cshape << n
           strides_list.each_index { |k| cstrides[k] << strides_list[k][d] }
         end
-        last = d
       end
       [cshape, cstrides]
     end

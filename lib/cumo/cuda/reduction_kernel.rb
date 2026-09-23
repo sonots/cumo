@@ -69,7 +69,7 @@ module Cumo::CUDA
 
       out_size = out_shape.inject(1, :*)
       red_size = axes.map { |d| in_shape[d] }.inject(1, :*)
-      launch(ins, outs, types, in_shape, axes + kept, axes.size, out_size, red_size) if out_size > 0
+      launch(ins, outs, types, in_shape, axes + kept, out_size, red_size) if out_size > 0
       @out_params.size == 1 ? outs[0] : outs
     end
 
@@ -105,13 +105,13 @@ module Cumo::CUDA
       axes.sort
     end
 
-    def launch(ins, outs, types, in_shape, order, nred, out_size, red_size)
+    def launch(ins, outs, types, in_shape, order, out_size, red_size)
       params = @in_params + @out_params
       arrays = ins + outs
       layouts = ins.map { |a| a.is_a?(Cumo::NArray) ? input_layout(a, in_shape, outs, false) : nil }
       kinds = params.zip(arrays).map { |p, a| a.is_a?(Cumo::NArray) ? :array : :scalar }
       walked = ins.each_index.select { |k| layouts[k] }
-      cshape, cstrides = collapse(order.map { |d| in_shape[d] }, walked.map { |k| order.map { |d| layouts[k][1][d] } }, nred)
+      cshape, cstrides = collapse(order.map { |d| in_shape[d] }, walked.map { |k| order.map { |d| layouts[k][1][d] } })
       stride_of = walked.zip(cstrides).to_h
       nd = cshape.size
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, nd]

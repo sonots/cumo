@@ -158,6 +158,19 @@ module Cumo::CUDA
       assert_equal(((t - u) * (t - u)).to_a, GENERIC.call(t, u).to_a)
     end
 
+    test "arrays laid out end to end run the simple kernel, and a broadcast keeps only the dimensions it needs" do
+      k = ElementwiseKernel.new("T x, T y", "T z", "z = x + y", "collapse_probe")
+      kinds = -> { k.instance_variable_get(:@functions).keys.map(&:last) }
+      k.call(Cumo::SFloat.new(4, 5, 6).seq, Cumo::SFloat.new(4, 5, 6).seq)
+      k.call(Cumo::SFloat.new(4, 1, 6).seq, Cumo::SFloat.new(4, 1, 6).seq)
+      k.call(Cumo::SFloat.new(1, 1).seq, Cumo::SFloat.new(1, 1).seq)
+      assert_equal([:simple], kinds.call)
+      k.call(Cumo::SFloat.new(4, 5, 6).seq, Cumo::SFloat.new(5, 6).seq)
+      assert_equal([:simple, 2], kinds.call)
+      k.call(Cumo::SFloat.new(4, 5, 6).seq, Cumo::SFloat.new(4, 1, 6).seq)
+      assert_equal([:simple, 2, 3], kinds.call)
+    end
+
     def pool_growth
       GC.start
       MemoryPool.free_all_blocks

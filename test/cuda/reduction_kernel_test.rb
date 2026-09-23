@@ -222,15 +222,15 @@ module Cumo::CUDA
     test "the kernel is compiled once per set of types and dimensions left after merging" do
       k = ReductionKernel.new("T x", "T y", "x", "a + b", "y = a", "0", "once")
       x = Cumo::SFloat.new(3, 4).seq
+      dims = -> { k.instance_variable_get(:@functions).keys.map(&:last) }
       k.call(x, axis: 0)
-      k.call(x, axis: 1)
-      assert_equal(1, k.instance_variable_get(:@functions).size)
       k.call(x)
-      assert_equal(2, k.instance_variable_get(:@functions).size)
-      k.call(Cumo::SFloat.new(3, 4, 5).seq, axis: 0)
-      assert_equal(2, k.instance_variable_get(:@functions).size)
+      k.call(Cumo::SFloat.new(3, 4, 5).seq, axis: [0, 1])
+      assert_equal([1], dims.call)
+      k.call(x, axis: 1)
+      assert_equal([1, 2], dims.call)
       k.call(Cumo::SFloat.new(3, 4, 5).seq, axis: 1)
-      assert_equal(3, k.instance_variable_get(:@functions).size)
+      assert_equal([1, 2, 3], dims.call)
       k.call(Cumo::DFloat.new(3, 4).seq, axis: 1)
       assert_equal(4, k.instance_variable_get(:@functions).size)
     end

@@ -71,11 +71,7 @@ module Cumo::CUDA
       end
       walked = params.each_index.select { |k| arrays[k].is_a?(Cumo::NArray) && !params[k].raw }
       cshape, cstrides = collapse(shape, walked.map { |k| layouts[k] ? layouts[k][1] : strides(arrays[k], shape) })
-      if cshape.empty?
-        cshape = [1]
-        cstrides = cstrides.map { [0] }
-      end
-      simple = cstrides.all? { |st| st == shape_strides(cshape, cshape) }
+      simple = cshape.size <= 1 && cstrides.all? { |st| st.empty? || st == [1] }
       stride_of = walked.zip(cstrides).to_h
       kinds = params.zip(arrays).map { |p, a| !a.is_a?(Cumo::NArray) ? :scalar : p.raw ? :raw : :array }
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, simple ? :simple : cshape.size]
