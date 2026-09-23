@@ -80,6 +80,7 @@ typedef struct {
 
 <% unless is_object %>
 void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift);
+void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift);
 <% end %>
 
 static void
@@ -121,14 +122,19 @@ static void
     }
     <% else %>
     {
-        cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
         int shift_arg = 0;
         <% if is_int %>
         shift_arg = shift;
         <% end %>
 
-        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,g->seed,g->offset,low,max,shift_arg);
+        if (cumo_na_loop_has_index(lp)) {
+            cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
+            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,g->seed,g->offset,low,max,shift_arg);
+        } else {
+            cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
+            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,g->seed,g->offset,low,max,shift_arg);
+        }
         g->offset += indexer.total_size;
     }
     <% end %>
@@ -170,7 +176,7 @@ static VALUE
     <% if is_object %>
     cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP, 1,0, ain,0};
     <% else %>
-    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP, 1,0, ain,0};
+    cumo_ndfunc_t ndf = {<%=c_iter%>, CUMO_FULL_LOOP|CUMO_NDF_INDEXER_LOOP, 1,0, ain,0};
     <% end %>
 
     <% if is_int && !is_object %>

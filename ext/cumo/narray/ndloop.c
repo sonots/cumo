@@ -906,7 +906,8 @@ cumo_ndfunc_contract_loop(cumo_na_md_loop_t *lp)
         for (j=0; j<lp->narg; j++) {
             if (!(LITER(lp,i,j).idx == NULL &&
                   LITER(lp,i-1,j).idx == NULL &&
-                  LITER(lp,i-1,j).step == LITER(lp,i,j).step*(ssize_t)(lp->n[i]))) {
+                  (lp->n[i] == 1 || lp->n[i-1] == 1 ||
+                   LITER(lp,i-1,j).step == LITER(lp,i,j).step*(ssize_t)(lp->n[i])))) {
                 success = 0;
                 break;
             }
@@ -914,6 +915,11 @@ cumo_ndfunc_contract_loop(cumo_na_md_loop_t *lp)
         if (success) {
             //printf("contract i=%d-th and %d-th, lp->n[%d]=%"SZF"d, lp->n[%d]=%"SZF"d\n",
             //       i-1,i, i,lp->n[i], i-1,lp->n[i-1]);
+            if (lp->n[i] == 1) {
+                for (j=0; j<lp->narg; j++) {
+                    LITER(lp,i,j).step = LITER(lp,i-1,j).step;
+                }
+            }
             // contract (i-1)-th and i-th dimension
             lp->n[i] *= lp->n[i-1];
             // shift dimensions
