@@ -4176,9 +4176,6 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
-  # A scan shorter than CUMO_CUM_MIN_KERNEL_SIZE runs on the host and a longer
-  # one on the device, and the lengths below cross that boundary. Only the
-  # nan-aware test reached the host side before, and only at one length.
   test "cumsum and cumprod over short arrays and views" do
     [1, 2, 3, 7, 8, 32, 255, 256, 257, 1023, 1024, 8191, 8192, 8193].each do |n|
       adds = Array.new(n) { |i| (i % 3) + 1 }
@@ -4227,7 +4224,6 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   test "cumsum and cumprod carry a nan the same way on either path" do
-    # one size below the threshold that keeps the host loop and one above it
     [64, 20_000].each do |n|
       [0, 1, n / 2, n - 1].each do |at|
         adds = Array.new(n) { |i| (i % 3) + 1.0 }

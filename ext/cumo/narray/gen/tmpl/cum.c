@@ -39,10 +39,6 @@ static ssize_t
 static void
 <%=c_iter%><%=j%>(cumo_na_loop_t *const lp)
 {
-    size_t   i;
-    char    *p1, *p2;
-    ssize_t  s1, s2;
-    dtype    x, y;
   <% unless type_name == 'robject' %>
     // Every row goes in one call, so a scan down a short axis costs no more
     // launches than a scan down a long one. The rows the scan must not run
@@ -51,7 +47,7 @@ static void
     cumo_na_iarray_stridx_t a_out = cumo_na_make_iarray_stridx(&lp->args[1]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
     uint64_t row_len = 1;
-    int k, single_run;
+    int k;
     ssize_t step_in, step_out;
 
     for (k = indexer.ndim - lp->reduce_dim; k < indexer.ndim; ++k) {
@@ -63,64 +59,21 @@ static void
     step_in = <%=c_iter%>_walk_step(&a_in, &indexer);
     step_out = <%=c_iter%>_walk_step(&a_out, &indexer);
 
-    // A single short row is the one shape the host still wins: the scan costs
-    // less there than the launch it would take, and the wait it needs is paid
-    // once. Every other shape amortizes the launch over its rows.
-    //
-    // The loop below walks with one stride, so the elements have to lie on one.
-    // Holding the whole array in a single row is not enough for that: the axes
-    // before the last may still be there with an extent of one apiece, and a
-    // transposed or indexed view puts its elements somewhere else entirely.
-    single_run = (row_len < CUMO_CUM_MIN_KERNEL_SIZE) &&
-                 (row_len == indexer.total_size) && indexer.ndim > 0 &&
-                 CUMO_SDX_IS_STRIDE(a_in.stridx[indexer.ndim - 1]) &&
-                 CUMO_SDX_IS_STRIDE(a_out.stridx[indexer.ndim - 1]);
-    for (k = 0; single_run && k < indexer.ndim - 1; ++k) {
-        if (indexer.shape[k] != 1) { single_run = 0; }
-    }
-    if (single_run) {
-        i = (size_t)row_len;
-        p1 = a_in.ptr;
-        p2 = a_out.ptr;
-        s1 = CUMO_SDX_GET_STRIDE(a_in.stridx[indexer.ndim - 1]);
-        s2 = CUMO_SDX_GET_STRIDE(a_out.stridx[indexer.ndim - 1]);
-    } else {
-        cumo_cuda_runtime_check_status(<%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
-                &a_in, &a_out, &indexer, row_len, step_in, step_out));
-        return;
-    }
+    cumo_cuda_runtime_check_status(<%="cumo_#{type_name}_#{name}#{j}_batched_kernel_launch"%>(
+            &a_in, &a_out, &indexer, row_len, step_in, step_out));
   <% else %>
+    size_t   i;
+    char    *p1, *p2;
+    ssize_t  s1, s2;
+    dtype    x, y;
+
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR(lp, 0, p1, s1);
     CUMO_INIT_PTR(lp, 1, p2, s2);
-  <% end %>
 
     CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%><%=j%>", "<%=type_name%>");
     cumo_cuda_runtime_device_synchronize();
 
-<% if !acc_type.empty? && name == 'cumsum' %>
-    // The scan this stands in for carries the accumulator type, and a running
-    // sum in the element type stops moving once the partial outgrows it, so this
-    // path carries it too.
-    {
-        <%=acc_type%> acc, fy;
-
-        CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
-        acc = <%=to_acc%>(x);
-        CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
-        for (i--; i--;) {
-            CUMO_GET_DATA_STRIDE(p1,s1,dtype,y);
-            fy = <%=to_acc%>(y);
-  <% if j == '_nan' %>
-            if (acc != acc) { acc = fy; } else if (fy == fy) { acc += fy; }
-  <% else %>
-            acc += fy;
-  <% end %>
-            x = <%=from_acc%>(acc);
-            CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
-        }
-    }
-<% else %>
     CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
     CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
     for (i--; i--;) {
@@ -128,7 +81,7 @@ static void
         m_<%=name%><%=j%>(x,y);
         CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
     }
-<% end %>
+  <% end %>
 }
 <% end %>
 

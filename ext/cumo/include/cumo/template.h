@@ -69,10 +69,6 @@
 // the bits on the host costs less. Measured on an RTX 5070 Ti.
 #define CUMO_BIT_WHERE_MIN_KERNEL_SIZE 8192
 
-// A cumulative reduction along a short axis runs its scan once per row, and a
-// parallel scan needs scratch and several launches to start up.
-#define CUMO_CUM_MIN_KERNEL_SIZE 8192
-
 #define CUMO_GET_DATA( ptr, type, val )                 \
     {                                              \
         val = *(type*)(ptr);                       \
