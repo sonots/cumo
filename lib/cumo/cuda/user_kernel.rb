@@ -169,15 +169,24 @@ module Cumo::CUDA
 
     # [address, strides of the broadcast shape, the copy read instead, if any].
     # An input that other threads write while it is read, because it shares
-    # memory with an output, is read from a copy; so is an index view.
-    def input_layout(a, shape, outs, same_place_ok)
+    # memory with an output, is read from a copy; so is an index view, and,
+    # for an elementwise kernel, a transposed view, which the copy reorders
+    # in tiles where the kernel would read it a row apart per thread.
+    def input_layout(a, shape, outs, elementwise)
       layout = Driver.narray_view_layout(a)
       held = nil
-      if layout.nil? || outs.any? { |o| overlaps?(layout, o) && !(same_place_ok && same_place?(layout, a, o, shape)) }
+      if layout.nil? || (elementwise && transposed?(a, layout[1])) ||
+         outs.any? { |o| overlaps?(layout, o) && !(elementwise && same_place?(layout, a, o, shape)) }
         held = a.dup
         layout = Driver.narray_view_layout(held)
       end
       [layout[0], [0] * (shape.size - layout[1].size) + layout[1], held]
+    end
+
+    def transposed?(a, st)
+      inner = a.shape.rindex { |n| n > 1 }
+      return false if inner.nil? || st[inner].abs * a.class::ELEMENT_BYTE_SIZE < 32
+      a.shape.each_index.any? { |d| d != inner && a.shape[d] > 1 && st[d].abs == 1 }
     end
 
     def overlaps?(layout, out)
