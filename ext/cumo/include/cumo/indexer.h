@@ -567,6 +567,11 @@ cumo_na_iarray_stridx_at_dim1(cumo_na_iarray_stridx_t* iarray, cumo_na_indexer_t
     }
 }
 
+#if defined(__cplusplus)
+extern "C"
+#endif
+int cumo_copy_bytes_wide(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_indexer_t* indexer, ssize_t elmsz);
+
 #endif // #ifdef __CUDACC__
 
 #endif // CUMO_INDEXER_H

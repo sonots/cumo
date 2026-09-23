@@ -8446,7 +8446,6 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
   sub_test_case "a store between arrays of the same type" do
-    # The other type's store goes one element at a time, so it is the reference.
     def check_store(klass, dst_shape, src_shape, msg)
       wide = (klass == Cumo::Int16 ? Cumo::Int32 : Cumo::Int16)
       base = wide.new(*src_shape).seq % 100
@@ -8458,8 +8457,9 @@ class NArrayTest < Test::Unit::TestCase
     end
 
     test "lands every element where a store from another type does" do
-      [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64, Cumo::HFloat, Cumo::SFloat,
-       Cumo::DFloat, Cumo::SComplex, Cumo::DComplex].each do |klass|
+      [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::UInt16, Cumo::UInt32,
+       Cumo::UInt64, Cumo::HFloat, Cumo::BFloat, Cumo::SFloat, Cumo::DFloat, Cumo::SComplex,
+       Cumo::DComplex].each do |klass|
         [1, 2, 3, 4, 6, 8, 16].each do |c|
           check_store(klass, [2, 4, 4, c * 9], [2, 6, 6, c], "unfold c=#{c}") do |dst, src|
             9.times do |t|
@@ -8471,6 +8471,15 @@ class NArrayTest < Test::Unit::TestCase
           check_store(klass, [3, 4, c], [3, 4, c], "reversed c=#{c}") { |dst, src| dst[] = src.reverse(0) }
           check_store(klass, [3, 4, c], [4, c], "broadcast c=#{c}") { |dst, src| dst[] = src }
           check_store(klass, [7 * c], [7 * c], "flat c=#{c}") { |dst, src| dst[] = src }
+        end
+      end
+    end
+
+    test "a copy of a view reads every element where the view does" do
+      [Cumo::Int8, Cumo::Int16, Cumo::HFloat, Cumo::SFloat, Cumo::DFloat, Cumo::DComplex].each do |klass|
+        [1, 2, 3, 4, 8].each do |c|
+          v = klass.cast(Cumo::Int16.new(2, 6, 6, c).seq % 100)[true, 1...5, 2...6, true]
+          assert_equal(v.to_a, v.dup.to_a, "#{klass} c=#{c}")
         end
       end
     end

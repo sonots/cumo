@@ -326,6 +326,106 @@ cumo_iter_copy_bytes_is_transpose(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cu
         a1->step[1] == elmsz * (ssize_t)indexer->shape[0];
 }
 
+#if defined(__cplusplus)
+#if 0
+{ /* satisfy cc-mode */
+#endif
+}  /* extern "C" { */
+#endif
+
+#define CUMO_COPY_WIDE_KERNEL(NDIM) \
+template<typename V> \
+__global__ void cumo_copy_wide_kernel_dim##NDIM(cumo_na_iarray_t dst, cumo_na_iarray_t src, cumo_na_indexer_t indexer) { \
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) { \
+        cumo_na_indexer_set_dim##NDIM(&indexer, i); \
+        *(V*)cumo_na_iarray_at_dim##NDIM(&dst, &indexer) = *(V*)cumo_na_iarray_at_dim##NDIM(&src, &indexer); \
+    } \
+}
+
+CUMO_COPY_WIDE_KERNEL(1)
+CUMO_COPY_WIDE_KERNEL(2)
+CUMO_COPY_WIDE_KERNEL(3)
+CUMO_COPY_WIDE_KERNEL(4)
+CUMO_COPY_WIDE_KERNEL(5)
+CUMO_COPY_WIDE_KERNEL(6)
+CUMO_COPY_WIDE_KERNEL(7)
+CUMO_COPY_WIDE_KERNEL(8)
+CUMO_COPY_WIDE_KERNEL()
+
+#undef CUMO_COPY_WIDE_KERNEL
+
+template<typename V>
+static void
+cumo_copy_wide_launch(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_indexer_t* indexer)
+{
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    switch (indexer->ndim) {
+#define CUMO_COPY_WIDE_CASE(NDIM) \
+    case NDIM: \
+        cumo_copy_wide_kernel_dim##NDIM<V><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*dst, *src, *indexer); \
+        break;
+    CUMO_COPY_WIDE_CASE(1)
+    CUMO_COPY_WIDE_CASE(2)
+    CUMO_COPY_WIDE_CASE(3)
+    CUMO_COPY_WIDE_CASE(4)
+    CUMO_COPY_WIDE_CASE(5)
+    CUMO_COPY_WIDE_CASE(6)
+    CUMO_COPY_WIDE_CASE(7)
+    CUMO_COPY_WIDE_CASE(8)
+#undef CUMO_COPY_WIDE_CASE
+    default:
+        cumo_copy_wide_kernel_dim<V><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*dst, *src, *indexer);
+        break;
+    }
+}
+
+#if defined(__cplusplus)
+extern "C" {
+#if 0
+} /* satisfy cc-mode */
+#endif
+#endif
+
+// Launches nothing and answers 0 unless the last dimension is contiguous and aligned on both sides.
+int
+cumo_copy_bytes_wide(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_indexer_t* indexer, ssize_t elmsz)
+{
+    int last = indexer->ndim - 1, k;
+    ssize_t w;
+    size_t bytes;
+    cumo_na_iarray_t d, s;
+    cumo_na_indexer_t ix;
+
+    if (indexer->ndim == 0 || indexer->total_size == 0) { return 0; }
+    if (dst->step[last] != elmsz || src->step[last] != elmsz) { return 0; }
+    bytes = indexer->shape[last] * (size_t)elmsz;
+    for (w = 16; w > elmsz; w /= 2) {
+        if (bytes % w != 0 || (uintptr_t)dst->ptr % w != 0 || (uintptr_t)src->ptr % w != 0) { continue; }
+        for (k = 0; k < last; ++k) {
+            if (indexer->shape[k] > 1 && (dst->step[k] % w != 0 || src->step[k] % w != 0)) { break; }
+        }
+        if (k == last) { break; }
+    }
+    if (w <= elmsz) { return 0; }
+
+    d = *dst;
+    s = *src;
+    ix = *indexer;
+    d.step[last] = s.step[last] = w;
+    ix.shape[last] = bytes / w;
+    ix.total_size = indexer->total_size / indexer->shape[last] * ix.shape[last];
+    if (ix.shape[last] == 1 && ix.ndim > 1) { --ix.ndim; }
+    switch (w) {
+    case 16: cumo_copy_wide_launch<uint4>(&d, &s, &ix); break;
+    case 8: cumo_copy_wide_launch<uint2>(&d, &s, &ix); break;
+    case 4: cumo_copy_wide_launch<uint32_t>(&d, &s, &ix); break;
+    default: cumo_copy_wide_launch<uint16_t>(&d, &s, &ix); break;
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+    return 1;
+}
+
 void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz)
 {
     if (cumo_iter_copy_bytes_is_transpose(a1, a2, indexer, elmsz)) {
@@ -351,6 +451,7 @@ void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_ia
         cumo_cuda_runtime_check_kernel_launch();
         return;
     }
+    if (cumo_copy_bytes_wide(a2, a1, indexer, elmsz)) { return; }
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
