@@ -882,6 +882,7 @@ squared_diff.call(x, 5)   # => the same against a scalar
 A type is one of `float64`, `float32`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16` and `uint8`, or a single letter that stands for whichever dtype the argument has.
 Outputs decide a letter before inputs do, and a letter that only a Ruby number reaches becomes `int64` or `float64`.
 Array arguments are broadcast against each other, and an output may be given after the inputs, or is allocated.
+An input is read through its own strides, so a transposed, reversed or stepped view goes to the kernel as it is, and only a view built on an index array is copied first.
 An argument marked `raw T y` is handed over as a pointer for the operation to index itself, with `i` the element index and `_ind.size()` the element count, and when every argument is raw or a number, `size:` says how many elements there are.
 Inputs are `const`, so an operation that writes one does not compile, and a number handed to an integer type has to be an Integer that fits.
 `preamble:` is placed before the kernel, after the typedefs of the letters, so a device function can be written in terms of `T`.

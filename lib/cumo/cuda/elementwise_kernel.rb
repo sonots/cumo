@@ -65,19 +65,27 @@ module Cumo::CUDA
 
     def launch(ins, outs, types, shape, n)
       params = @in_params + @out_params
-      arrays = ins.map { |a| readable(a) } + outs
-      simple = params.zip(arrays).all? { |p, a| !a.is_a?(Cumo::NArray) || p.raw || a.shape == shape }
+      arrays = @in_params.zip(ins).map { |p, a| p.raw ? readable(a) : a } + outs
+      layouts = params.zip(arrays).each_with_index.map do |(p, a), k|
+        next nil unless a.is_a?(Cumo::NArray) && !p.raw
+        k < @in_params.size ? input_layout(a, shape) : [a, strides(a, shape)]
+      end
+      simple = params.zip(arrays, layouts).all? do |p, a, l|
+        !a.is_a?(Cumo::NArray) || p.raw || (a.shape == shape && l[1] == strides(a, shape))
+      end
       kinds = params.zip(arrays).map { |p, a| !a.is_a?(Cumo::NArray) ? :scalar : p.raw ? :raw : :array }
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, simple ? :simple : shape.size]
       fn = (@functions[key] ||= compile(source(types, kinds, simple, shape.size)))
 
       args = []
-      params.zip(arrays).each do |p, a|
-        if a.is_a?(Cumo::NArray)
-          args << a
-          args << strides(a, shape).pack("q*") unless p.raw || simple
-        else
+      params.zip(arrays, layouts).each do |p, a, l|
+        if !a.is_a?(Cumo::NArray)
           args << pack_scalar(a, types[p.type], p.name)
+        elsif p.raw
+          args << a
+        else
+          args << l[0]
+          args << l[1].pack("q*") unless simple
         end
       end
       args << shape.pack("q*") unless simple

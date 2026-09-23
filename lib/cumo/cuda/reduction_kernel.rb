@@ -107,7 +107,8 @@ module Cumo::CUDA
 
     def launch(ins, outs, types, in_shape, order, out_size, red_size)
       params = @in_params + @out_params
-      arrays = ins.map { |a| readable(a) } + outs
+      arrays = ins + outs
+      layouts = ins.map { |a| a.is_a?(Cumo::NArray) ? input_layout(a, in_shape) : nil }
       kinds = params.zip(arrays).map { |p, a| a.is_a?(Cumo::NArray) ? :array : :scalar }
       nd = in_shape.size
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, nd]
@@ -124,11 +125,10 @@ module Cumo::CUDA
       end
       partials = chunks > 1 ? partial_dtype.new(out_size * chunks) : nil
       args = []
-      @in_params.zip(arrays).each do |p, a|
+      @in_params.zip(arrays, layouts).each do |p, a, l|
         if a.is_a?(Cumo::NArray)
-          args << a
-          st = strides(a, in_shape)
-          args << order.map { |d| st[d] }.pack("q*") if nd > 0
+          args << l[0]
+          args << order.map { |d| l[1][d] }.pack("q*") if nd > 0
         else
           args << pack_scalar(a, types[p.type], p.name)
         end
