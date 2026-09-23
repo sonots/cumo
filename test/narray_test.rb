@@ -8373,7 +8373,7 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   sub_test_case "a length-one axis and an index view" do
-    test "a length-one axis merges with its neighbours without moving the pointer" do
+    test "a length-one axis reads and writes the right elements" do
       assert_equal((0...5).map { |i| [i.to_f] }, Cumo::SFloat.new(5, 1).seq.to_a)
       assert_equal([(0...5).map(&:to_f)], Cumo::SFloat.new(1, 5).seq.to_a)
       a = Cumo::DFloat.new(3, 1, 4).seq
@@ -8389,7 +8389,7 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([[[[1], [2], [3]]], [[[4], [5], [6]]]], (c + 1).to_a)
     end
 
-    test "rand, rand_norm and seq write an index view where it is" do
+    test "rand, rand_norm, seq, real= and imag= write an index view where it is" do
       omit("needs the memory pool to count with") unless Cumo::CUDA::MemoryPool.enabled?
       grew = lambda do |work|
         GC.start
@@ -8410,6 +8410,27 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal((0...256).map(&:to_f), a[5, true].to_a)
       assert_equal((256...512).map(&:to_f), a[0, true].to_a)
       assert_equal((512...768).map(&:to_f), a[3, true].to_a)
+      Cumo::SFloat.srand(7)
+      x = Cumo::SFloat.new(4, 8).rand
+      Cumo::SFloat.srand(7)
+      y = Cumo::SFloat.zeros(8, 8)
+      y[[6, 4, 2, 0], true].rand
+      assert_equal(x.to_a, y[[6, 4, 2, 0], true].to_a)
+      Cumo::SFloat.srand(7)
+      x = Cumo::SFloat.new(8, 4).rand_norm
+      Cumo::SFloat.srand(7)
+      y = Cumo::SFloat.zeros(8, 8)
+      y[true, [1, 3, 5, 7]].rand_norm
+      assert_equal(x.to_a, y[true, [1, 3, 5, 7]].to_a)
+      z = Cumo::DComplex.zeros(512, 256)
+      zrows = z[Cumo::Int32.new(128).seq(511, -4), true]
+      part = Cumo::DFloat.new(128, 256).seq
+      assert_equal(0, grew.call(-> { zrows.real = part }), "real= rows")
+      assert_equal(0, grew.call(-> { zrows.imag = part }), "imag= rows")
+      z = Cumo::DComplex.zeros(4, 3)
+      z[[3, 0], true].real = Cumo::DFloat[[1, 2, 3], [4, 5, 6]]
+      z[true, [2, 0]].imag = 7.0
+      assert_equal([[4 + 7i, 5, 6 + 7i], [7i, 0, 7i], [7i, 0, 7i], [1 + 7i, 2, 3 + 7i]], z.to_a)
     end
   end
 end

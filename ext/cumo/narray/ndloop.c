@@ -915,8 +915,6 @@ cumo_ndfunc_contract_loop(cumo_na_md_loop_t *lp)
         if (success) {
             //printf("contract i=%d-th and %d-th, lp->n[%d]=%"SZF"d, lp->n[%d]=%"SZF"d\n",
             //       i-1,i, i,lp->n[i], i-1,lp->n[i-1]);
-            // A dimension of length 1 never moves the pointer, so its step
-            // is left unset; the merged one walks with the other's.
             if (lp->n[i] == 1) {
                 for (j=0; j<lp->narg; j++) {
                     LITER(lp,i,j).step = LITER(lp,i-1,j).step;
