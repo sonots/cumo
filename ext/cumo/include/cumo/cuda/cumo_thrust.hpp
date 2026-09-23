@@ -15,6 +15,7 @@
 #include <thrust/system/cuda/execution_policy.h>
 #include <thrust/system_error.h>
 #include <thrust/transform_reduce.h>
+#include <thrust/version.h>
 
 // Scratch for an algorithm that needs it, taken from the same pool as array
 // data so that a loop calling one per row reuses a free-list entry instead of
@@ -29,6 +30,12 @@ struct cumo_thrust_pool_allocator
     char *allocate(std::ptrdiff_t n) { return cumo_cuda_runtime_malloc((size_t)n); }
     void deallocate(char *p, size_t) { cumo_cuda_runtime_free(p); }
 };
+
+#if THRUST_VERSION >= 101600
+#define CUMO_THRUST_PAR thrust::cuda::par_nosync
+#else
+#define CUMO_THRUST_PAR thrust::cuda::par
+#endif
 
 // this example illustrates how to make strided access to a range of values
 // examples:

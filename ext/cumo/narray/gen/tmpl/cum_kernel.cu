@@ -113,8 +113,8 @@ static void
 }
 <% end %>
 
-// Reusing the macro keeps the operator identical to the host loop, including
-// how it carries a NaN. What does change is the association: a parallel scan
+// Reusing the macro keeps the operator identical to numo's, including how it
+// carries a NaN. What does change is the association: a parallel scan
 // does not add strictly left to right, so a float result can differ in the
 // last ulp, the same way sum already does.
 struct <%="cumo_thrust_#{name}#{j}"%>
@@ -138,13 +138,13 @@ static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan_by_key"%>(Iterator1 fi
     auto keys = thrust::make_transform_iterator(thrust::make_counting_iterator<uint64_t>(0), row);
     try {
 <% if widen %>
-        thrust::inclusive_scan_by_key(thrust::cuda::par(alloc).on(cumo_cuda_stream()),
+        thrust::inclusive_scan_by_key(CUMO_THRUST_PAR(alloc).on(cumo_cuda_stream()),
             keys, keys + (last - first),
             thrust::make_transform_iterator(first, <%="cumo_thrust_#{name}_widen"%>()),
             thrust::make_transform_output_iterator(result, <%="cumo_thrust_#{name}_narrow"%>()),
             thrust::equal_to<uint64_t>(), <%="cumo_thrust_#{name}#{j}"%>());
 <% else %>
-        thrust::inclusive_scan_by_key(thrust::cuda::par(alloc).on(cumo_cuda_stream()),
+        thrust::inclusive_scan_by_key(CUMO_THRUST_PAR(alloc).on(cumo_cuda_stream()),
             keys, keys + (last - first), first, result,
             thrust::equal_to<uint64_t>(), <%="cumo_thrust_#{name}#{j}"%>());
 <% end %>
@@ -164,13 +164,13 @@ static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan"%>(Iterator1 first, It
     cumo_thrust_pool_allocator alloc;
     try {
 <% if widen %>
-        thrust::inclusive_scan(thrust::cuda::par(alloc).on(cumo_cuda_stream()),
+        thrust::inclusive_scan(CUMO_THRUST_PAR(alloc).on(cumo_cuda_stream()),
             thrust::make_transform_iterator(first, <%="cumo_thrust_#{name}_widen"%>()),
             thrust::make_transform_iterator(last, <%="cumo_thrust_#{name}_widen"%>()),
             thrust::make_transform_output_iterator(result, <%="cumo_thrust_#{name}_narrow"%>()),
             <%="cumo_thrust_#{name}#{j}"%>());
 <% else %>
-        thrust::inclusive_scan(thrust::cuda::par(alloc).on(cumo_cuda_stream()), first, last, result, <%="cumo_thrust_#{name}#{j}"%>());
+        thrust::inclusive_scan(CUMO_THRUST_PAR(alloc).on(cumo_cuda_stream()), first, last, result, <%="cumo_thrust_#{name}#{j}"%>());
 <% end %>
     } catch (const thrust::system_error& e) {
         return (cudaError_t)e.code().value();
