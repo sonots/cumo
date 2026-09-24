@@ -45,16 +45,7 @@ static void <%="cumo_#{c_iter}_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo_na_
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*a4,*indexer,invalid,sv_min,sv_max,use_scalar);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*a4,*indexer,invalid,sv_min,sv_max,use_scalar);
-        break;
-    }
+    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*a4,*indexer,invalid,sv_min,sv_max,use_scalar") %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -76,16 +67,7 @@ static void <%="cumo_#{c_iter}_min_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{c_iter}_min_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer,sv,use_scalar);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{c_iter}_min_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer,sv,use_scalar);
-        break;
-    }
+    <%= indexer_switch("cumo_#{c_iter}_min_kernel", "*a1,*a2,*a3,*indexer,sv,use_scalar") %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -107,16 +89,7 @@ static void <%="cumo_#{c_iter}_max_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{c_iter}_max_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer,sv,use_scalar);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{c_iter}_max_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer,sv,use_scalar);
-        break;
-    }
+    <%= indexer_switch("cumo_#{c_iter}_max_kernel", "*a1,*a2,*a3,*indexer,sv,use_scalar") %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 

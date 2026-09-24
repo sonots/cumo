@@ -84,32 +84,14 @@ static void
 <%="cumo_#{type_name}_#{name}_gather_launch"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, dtype* buf,
         size_t grid_dim, size_t block_dim)
 {
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{type_name}_#{name}_gather_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, buf);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{type_name}_#{name}_gather_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, buf);
-        break;
-    }
+    <%= indexer_switch("cumo_#{type_name}_#{name}_gather_kernel", "*a, *indexer, buf") %>
 }
 
 static void
 <%="cumo_#{type_name}_#{name}_scatter_launch"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, const dtype* buf,
         size_t grid_dim, size_t block_dim)
 {
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{type_name}_#{name}_scatter_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, buf);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{type_name}_#{name}_scatter_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, buf);
-        break;
-    }
+    <%= indexer_switch("cumo_#{type_name}_#{name}_scatter_kernel", "*a, *indexer, buf") %>
 }
 <% end %>
 

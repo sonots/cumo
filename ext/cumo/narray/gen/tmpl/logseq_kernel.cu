@@ -18,16 +18,7 @@ void <%="cumo_#{c_iter}_#{pfx}kernel_launch"%>(<%=atype%>* a1, cumo_na_indexer_t
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{c_iter}_#{pfx}kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*indexer,beg,step,base,c);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{c_iter}_#{pfx}kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*indexer,beg,step,base,c);
-        break;
-    }
+    <%= indexer_switch("cumo_#{c_iter}_#{pfx}kernel", "*a1,*indexer,beg,step,base,c") %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

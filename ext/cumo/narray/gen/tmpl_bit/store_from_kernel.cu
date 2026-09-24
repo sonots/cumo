@@ -28,16 +28,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_bit_iarray_stridx_t* a1, cumo_n
     size_t grid_dim = cumo_get_grid_dim(end);
     // the ballot needs whole warps, so a short loop cannot shrink the block
     size_t block_dim = out ? CUMO_MAX_BLOCK_DIM : cumo_get_block_dim(end);
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*indexer,end,out);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*indexer,end,out);
-        break;
-    }
+    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*indexer,end,out") %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>
