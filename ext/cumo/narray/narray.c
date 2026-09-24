@@ -1061,9 +1061,6 @@ na_base_data(VALUE v, cumo_narray_t *na)
     return (na->type == CUMO_NARRAY_VIEW_T) ? CUMO_NA_VIEW_DATA(na) : v;
 }
 
-// The span of memory an array's elements occupy, in the unit its offset and
-// strides use. Answers 0 for a view on an index array, whose span has no cheap
-// bound.
 static int
 na_span(VALUE v, cumo_narray_t *na, ssize_t *lo, ssize_t *hi)
 {
@@ -1088,27 +1085,38 @@ na_span(VALUE v, cumo_narray_t *na, ssize_t *lo, ssize_t *hi)
 }
 
 static int
+na_stride(VALUE v, cumo_narray_t *na, int k, ssize_t *stride)
+{
+    int i;
+
+    if (na->type == CUMO_NARRAY_VIEW_T) {
+        cumo_stridx_t sdx = CUMO_NA_VIEW_STRIDX(na)[k];
+        if (CUMO_SDX_IS_INDEX(sdx)) { return 0; }
+        *stride = CUMO_SDX_GET_STRIDE(sdx);
+        return 1;
+    }
+    *stride = (ssize_t)cumo_na_element_stride(v);
+    for (i = k + 1; i < na->ndim; i++) {
+        *stride *= (ssize_t)na->shape[i];
+    }
+    return 1;
+}
+
+static int
 na_same_place(VALUE a, cumo_narray_t *na, VALUE b, cumo_narray_t *nb)
 {
+    ssize_t sa, sb;
     int k;
 
     if (na->ndim != nb->ndim || cumo_na_get_offset(a) != cumo_na_get_offset(b)) { return 0; }
     for (k = 0; k < na->ndim; k++) {
         if (na->shape[k] != nb->shape[k]) { return 0; }
-    }
-    if (na->type != CUMO_NARRAY_VIEW_T && nb->type != CUMO_NARRAY_VIEW_T) { return 1; }
-    if (na->type != CUMO_NARRAY_VIEW_T || nb->type != CUMO_NARRAY_VIEW_T) { return 0; }
-    for (k = 0; k < na->ndim; k++) {
-        cumo_stridx_t sa = CUMO_NA_VIEW_STRIDX(na)[k], sb = CUMO_NA_VIEW_STRIDX(nb)[k];
-        if (CUMO_SDX_IS_INDEX(sa) || CUMO_SDX_IS_INDEX(sb) ||
-            CUMO_SDX_GET_STRIDE(sa) != CUMO_SDX_GET_STRIDE(sb)) { return 0; }
+        if (na->shape[k] == 1) { continue; }
+        if (!na_stride(a, na, k, &sa) || !na_stride(b, nb, k, &sb) || sa != sb) { return 0; }
     }
     return 1;
 }
 
-// Whether a store from src into dst reads memory the same store writes, other
-// than each element reading itself. A kernel reads and writes in no set order,
-// so such a source has to be copied first.
 int
 cumo_na_store_overlaps(VALUE dst, VALUE src)
 {

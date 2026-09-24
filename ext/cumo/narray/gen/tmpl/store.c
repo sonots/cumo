@@ -14,7 +14,10 @@ static VALUE
     VALUE r, klass;
 
     if (cumo_na_store_overlaps(self, obj)) {
-        obj = rb_funcall(obj, rb_intern("dup"), 0);
+        obj = cumo_na_copy(obj);
+        if (cumo_na_store_overlaps(self, obj)) {
+            rb_raise(rb_eRuntimeError, "copy did not answer an array apart from the destination");
+        }
     }
     klass = rb_obj_class(obj);
 
