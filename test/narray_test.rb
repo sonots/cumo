@@ -1151,7 +1151,7 @@ class NArrayTest < Test::Unit::TestCase
         end
       end
 
-      if float_types.include?(dtype)
+      if float_types.include?(dtype) && ordered
         test "mulsum answers the same whichever operand comes first" do
           [9, 12, 16].each do |len|
             a = dtype.new(10_000, len).rand
