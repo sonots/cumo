@@ -8484,4 +8484,40 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
   end
+  sub_test_case "a store whose source overlaps its destination" do
+    # A kernel reads and writes in no set order, so the source is read as it
+    # was before the store, the way numpy does it.
+    def expect_store(a)
+      want = a.dup
+      yield(want, a.dup)
+      yield(a, a)
+      wrong = a.is_a?(Cumo::Bit) ? (a ^ want) : a.ne(want)
+      assert_equal(0, wrong.count_true.to_i)
+    end
+
+    test "reads the source as it was before the store" do
+      n = 10_000_000
+      [Cumo::SFloat, Cumo::Int8].each do |klass|
+        seq = klass.cast(Cumo::Int32.new(n).seq % 97)
+        expect_store(seq.dup) { |dst, src| dst[0...n - 1024] = src[1024..] }
+        expect_store(seq.dup) { |dst, src| dst[1024..] = src[0...n - 1024] }
+        expect_store(seq.dup) { |dst, src| dst[Cumo::Int32.new(n - 3).seq(3)] = src[0...n - 3] }
+        grid = seq.reshape(n / 1000, 1000)
+        expect_store(grid.dup) { |dst, src| dst[1.., true] = src[0...-1, true] }
+        expect_store(grid.dup) { |dst, src| dst[true, 1..] = src[true, 0...-1] }
+      end
+      expect_store((Cumo::Int32.new(n).seq % 3).eq(0)) { |dst, src| dst[0...n - 5] = src[5..] }
+    end
+
+    test "leaves a store from itself and from another array alone" do
+      a = Cumo::SFloat.new(4, 8).seq
+      a[] = a
+      assert_equal((0...32).map(&:to_f), a.flatten.to_a)
+      a[true, 0...4] = a[true, 0...4]
+      assert_equal((0...32).map(&:to_f), a.flatten.to_a)
+      b = Cumo::SFloat.new(4, 8).seq(100)
+      a[true, 0...4] = b[true, 4...8]
+      assert_equal([104.0, 105.0, 106.0, 107.0, 4.0, 5.0, 6.0, 7.0], a[0, true].to_a)
+    end
+  end
 end

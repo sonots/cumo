@@ -13,6 +13,9 @@ static VALUE
 {
     VALUE r, klass;
 
+    if (cumo_na_store_overlaps(self, obj)) {
+        obj = rb_funcall(obj, rb_intern("dup"), 0);
+    }
     klass = rb_obj_class(obj);
 
     <% definitions.each do |x| %>
