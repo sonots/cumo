@@ -1139,6 +1139,27 @@ class NArrayTest < Test::Unit::TestCase
           assert { v.max(axis: 1) == v.copy.transpose.copy.max(axis: 0) } if ordered
         end
       end
+
+      test "a short column slice of a wider array" do
+        wide = dtype.cast(Cumo::Int32.new(1030, 64).seq % 3)
+        [2, 3, 5, 9, 12, 16].each do |len|
+          v = wide[true, 0...len]
+          rows = v.to_a
+          assert { v.sum(axis: 1).to_a == rows.map(&:sum) }
+          assert { v.mulsum(v, axis: 1).to_a == rows.map { |r| r.sum { |e| e * e } } }
+          assert { v.max(axis: 1).to_a == rows.map(&:max) } if ordered
+        end
+      end
+
+      if float_types.include?(dtype) && ordered
+        test "mulsum answers the same whichever operand comes first" do
+          [9, 12, 16].each do |len|
+            a = dtype.new(10_000, len).rand
+            b = dtype.new(10_000, 1).rand
+            assert { a.mulsum(b, axis: 1) == b.mulsum(a, axis: 1) }
+          end
+        end
+      end
     end
 
     # ndloop walks an elementwise function in the order the written operand

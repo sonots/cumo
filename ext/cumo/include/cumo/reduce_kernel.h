@@ -261,17 +261,32 @@ static inline void set_reduce_addr_out2(cumo_reduce_addr_t* ad, const cumo_na_re
 // element per thread and then spends the time in the tree, at 92 GB/s, where
 // a group of 16 reading 16 each gets 520.
 static constexpr int64_t min_reduce_per_thread = 16;
+static constexpr int64_t sector_bytes = 32;
 
-static inline void reduce_block_split(const cumo_reduce_addr_t& ad, int64_t reduce_total_size, int64_t* out_block_size, int64_t* reduce_block_size) {
+static inline void reduce_block_split(const cumo_reduce_addr_t& ad, int64_t reduce_total_size, int64_t* out_block_size, int64_t* reduce_block_size, bool steps_in_bytes) {
     int64_t n = std::max(int64_t{1}, reduce_total_size);
     int64_t rbs;
     if (ad.out_inner) {
         rbs = std::min(max_block_size / warp_size, round_up_to_power_of_2((n + min_reduce_per_thread - 1) / min_reduce_per_thread));
     } else {
         rbs = std::min(max_block_size, round_up_to_power_of_2((n + min_reduce_per_thread - 1) / min_reduce_per_thread));
+        if (rbs == 1 && n > 1 && steps_in_bytes && ad.in_reduce_flat &&
+            n * step_magnitude(ad.in_reduce_step) > sector_bytes) {
+            rbs = 2;
+        }
     }
     *reduce_block_size = rbs;
     *out_block_size = max_block_size / rbs;
+}
+
+static inline void zip_block_split(const cumo_reduce_addr_t& ad, const cumo_reduce_addr_t& ad2, int64_t reduce_total_size, int64_t* out_block_size, int64_t* reduce_block_size) {
+    int64_t out_block_size2, reduce_block_size2;
+    reduce_block_split(ad, reduce_total_size, out_block_size, reduce_block_size, true);
+    reduce_block_split(ad2, reduce_total_size, &out_block_size2, &reduce_block_size2, true);
+    if (reduce_block_size2 > *reduce_block_size) {
+        *out_block_size = out_block_size2;
+        *reduce_block_size = reduce_block_size2;
+    }
 }
 
 // Offset of the i-th element over dims [begin, end), in whatever unit the
@@ -829,7 +844,7 @@ TypeReduce* reduce_partial_pass(cumo_na_reduction_arg_t arg, cumo_reduce_addr_t 
     TypeReduce* partial = reinterpret_cast<TypeReduce*>(cumo_cuda_runtime_malloc(sizeof(TypeReduce) * partial_total_size));
 
     int64_t out_block_size, reduce_block_size;
-    reduce_block_split(ad, chunk, &out_block_size, &reduce_block_size);
+    reduce_block_split(ad, chunk, &out_block_size, &reduce_block_size, true);
     int64_t out_block_num = (partial_total_size + out_block_size - 1) / out_block_size;
     int64_t grid_size = std::min(max_grid_size, out_block_num);
     int64_t shared_mem_size = sizeof(TypeReduce) * max_block_size;
@@ -863,7 +878,7 @@ TypeReduce* reduce_zip_partial_pass(cumo_na_reduction_arg_t arg, cumo_na_iarray_
     TypeReduce* partial = reinterpret_cast<TypeReduce*>(cumo_cuda_runtime_malloc(sizeof(TypeReduce) * partial_total_size));
 
     int64_t out_block_size, reduce_block_size;
-    reduce_block_split(ad, chunk, &out_block_size, &reduce_block_size);
+    zip_block_split(ad, ad2, chunk, &out_block_size, &reduce_block_size);
     int64_t out_block_num = (partial_total_size + out_block_size - 1) / out_block_size;
     int64_t grid_size = std::min(max_grid_size, out_block_num);
     int64_t shared_mem_size = sizeof(TypeReduce) * max_block_size;
@@ -901,7 +916,7 @@ void cumo_reduce(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* held0 
     cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
 
     int64_t out_block_size, reduce_block_size;
-    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size, true);
     int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
 
     int64_t block_size = cumo_detail::max_block_size;
@@ -933,7 +948,7 @@ void cumo_reduce_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* 
     cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
 
     int64_t out_block_size, reduce_block_size;
-    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size, true);
     int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
 
     int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
@@ -963,7 +978,7 @@ void cumo_reduce_zip(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, Reductio
     cumo_detail::make_zip_reduce_addrs(arg, arg2, reduce_total_size, &ad, &ad2);
 
     int64_t out_block_size, reduce_block_size;
-    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    cumo_detail::zip_block_split(ad, ad2, reduce_total_size, &out_block_size, &reduce_block_size);
     int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
 
     int64_t block_size = cumo_detail::max_block_size;
@@ -997,7 +1012,7 @@ void cumo_reduce_zip_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t in2, Re
     cumo_detail::make_zip_reduce_addrs(arg, arg2, reduce_total_size, &ad, &ad2);
 
     int64_t out_block_size, reduce_block_size;
-    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    cumo_detail::zip_block_split(ad, ad2, reduce_total_size, &out_block_size, &reduce_block_size);
     int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
 
     int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
@@ -1026,7 +1041,7 @@ void cumo_reduce_pair(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, Reduct
     cumo_detail::set_reduce_addr_out2(&ad, arg, out2);
 
     int64_t out_block_size, reduce_block_size;
-    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size, true);
     int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
 
     int64_t block_size = cumo_detail::max_block_size;
@@ -1054,7 +1069,7 @@ void cumo_reduce_pair_split(cumo_na_reduction_arg_t arg, cumo_na_iarray_t out2, 
     cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
 
     int64_t out_block_size, reduce_block_size;
-    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size, true);
     int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
 
     int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
@@ -1081,7 +1096,7 @@ void cumo_reduce_arg(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, char* he
     cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
 
     int64_t out_block_size, reduce_block_size;
-    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size, true);
     int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
 
     int64_t block_size = cumo_detail::max_block_size;
@@ -1111,7 +1126,7 @@ void cumo_reduce_arg_split(cumo_na_reduction_arg_t arg, ReductionImpl&& impl, ch
     cumo_detail::cumo_reduce_addr_t ad = cumo_detail::make_reduce_addr(arg, reduce_total_size);
 
     int64_t out_block_size, reduce_block_size;
-    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size);
+    cumo_detail::reduce_block_split(ad, reduce_total_size, &out_block_size, &reduce_block_size, true);
     int64_t out_block_num = (arg.out_indexer.total_size + out_block_size - 1) / out_block_size;
 
     int64_t n_split = cumo_detail::reduce_split_count(reduce_total_size, out_block_num);
