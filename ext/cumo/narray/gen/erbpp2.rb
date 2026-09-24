@@ -113,13 +113,10 @@ class ErbPP
   def upcast_def
   end
 
-  def indexer_switch(kernel, args, indent = "    ")
-    launch = "<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(#{args});"
-    s = +"switch (indexer->ndim) {\n"
-    (0..opt_indexer_ndim).each do |d|
-      s << "#{indent}case #{d}:\n#{indent}    #{kernel}_dim#{d}#{launch}\n#{indent}    break;\n"
-    end
-    s << "#{indent}default:\n#{indent}    #{kernel}_dim#{launch}\n#{indent}    break;\n#{indent}}"
+  def indexer_switch(kernel, args)
+    launch = "<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(#{args}); break;"
+    cases = (0..opt_indexer_ndim).map { |d| "case #{d}: #{kernel}_dim#{d}#{launch}" }
+    "switch (indexer->ndim) { #{cases.join(' ')} default: #{kernel}_dim#{launch} }"
   end
 
   def find_tmpl(name)
