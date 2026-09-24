@@ -3,11 +3,12 @@ typedef struct {
     seq_data_t step;
     seq_data_t base;
     seq_count_t count;
+    int exp_base;
 } logseq_opt_t;
 
 <% unless is_object %>
-void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, seq_data_t beg, seq_data_t step, seq_data_t base, seq_count_t c);
-void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, seq_data_t beg, seq_data_t step, seq_data_t base, seq_count_t c);
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, seq_data_t beg, seq_data_t step, seq_data_t base, seq_count_t c, int exp_base);
+void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, seq_data_t beg, seq_data_t step, seq_data_t base, seq_count_t c, int exp_base);
 <% end %>
 
 static void
@@ -54,10 +55,10 @@ static void
 
         if (cumo_na_loop_has_index(lp)) {
             cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
-            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,beg,step,base,c);
+            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,beg,step,base,c,g->exp_base);
         } else {
             cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
-            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,beg,step,base,c);
+            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,beg,step,base,c,g->exp_base);
         }
         g->count += indexer.total_size;
     }
@@ -68,7 +69,7 @@ static void
   Set logarithmic sequence of numbers to self. The sequence is obtained from
      `base**(beg+i*step)`
   where i is 1-dimensional index.
-  Applicable classes: DFloat, SFloat, DComplex, SCopmplex.
+  Applicable classes: DFloat, SFloat, HFloat, BFloat, DComplex, SComplex, RObject.
 
   @overload logseq(beg,step,[base])
   @param [Numeric] beg  The beginning of sequence.
@@ -107,6 +108,11 @@ static VALUE
     } else {
         g->base = m_num_to_data(vbase);
     }
+    <% if is_complex || is_object || !is_double_precision %>
+    g->exp_base = 0;
+    <% else %>
+    g->exp_base = g->base == 10 ? 10 : g->base == 2 ? 2 : 0;
+    <% end %>
     cumo_na_ndloop3(&ndf, g, 1, self);
     return self;
 }
