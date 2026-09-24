@@ -8468,20 +8468,19 @@ class NArrayTest < Test::Unit::TestCase
 
     test "logseq writes a strided, index or transposed view where it is" do
       [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat, Cumo::BFloat].each do |dtype|
+        seq = dtype.new(12).logseq(0.5, 0.3, 2).to_a
+
         a = dtype.zeros(4, 5)
-        a[true, 1..3].logseq(0, 1, 2)
-        want = Array.new(4) { |r| [0.0] + (0...3).map { |c| 2.0**(r * 3 + c) } + [0.0] }
-        assert_equal(want, a.to_a, "#{dtype} columns")
+        a[true, 1..3].logseq(0.5, 0.3, 2)
+        assert_equal(seq.each_slice(3).map { |r| [0.0] + r + [0.0] }, a.to_a, "#{dtype} columns")
 
         a = dtype.zeros(4, 3)
-        a[[3, 0], true].logseq(0, 1, 2)
-        want = [[8.0, 16.0, 32.0], [0.0] * 3, [0.0] * 3, [1.0, 2.0, 4.0]]
-        assert_equal(want, a.to_a, "#{dtype} rows")
+        a[[3, 0], true].logseq(0.5, 0.3, 2)
+        assert_equal([seq[3, 3], [0.0] * 3, [0.0] * 3, seq[0, 3]], a.to_a, "#{dtype} rows")
 
         a = dtype.zeros(3, 4)
-        a.transpose.logseq(0, 1, 2)
-        want = Array.new(3) { |r| (0...4).map { |c| 2.0**(c * 3 + r) } }
-        assert_equal(want, a.to_a, "#{dtype} transposed")
+        a.transpose.logseq(0.5, 0.3, 2)
+        assert_equal(seq.each_slice(3).to_a.transpose, a.to_a, "#{dtype} transposed")
       end
     end
   end
