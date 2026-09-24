@@ -8465,6 +8465,43 @@ class NArrayTest < Test::Unit::TestCase
       z[true, [2, 0]].imag = 7.0
       assert_equal([[4 + 7i, 5, 6 + 7i], [7i, 0, 7i], [7i, 0, 7i], [1 + 7i, 2, 3 + 7i]], z.to_a)
     end
+
+    test "logseq writes a strided, index or transposed view where it is" do
+      tolerance = {
+        Cumo::DFloat => 1e-12, Cumo::DComplex => 1e-12, Cumo::SFloat => 1e-5, Cumo::SComplex => 1e-5,
+        Cumo::HFloat => 1e-2, Cumo::BFloat => 1e-2
+      }
+      tolerance.each do |dtype, tol|
+        near = lambda do |want, view, msg|
+          want.zip(view.to_a.flatten).each { |w, g| assert((w - g).abs <= w.abs * tol, "#{dtype} #{msg}: #{w} #{g}") }
+        end
+        seq = ->(n, step) { (0...n).map { |i| 2.0**(0.5 + step * i) } }
+
+        a = dtype.zeros(4, 5)
+        a[true, 1..3].logseq(0.5, 0.3, 2)
+        near.call(seq.call(12, 0.3), a[true, 1..3], "columns")
+        assert_equal([0.0] * 8, (a[true, 0].to_a + a[true, 4].to_a).map { |x| x.abs }, "#{dtype} columns outside")
+
+        a = dtype.zeros(4, 3)
+        a[[3, 0], true].logseq(0.5, 0.3, 2)
+        near.call(seq.call(6, 0.3), a[[3, 0], true], "rows")
+        assert_equal([0.0] * 6, a[1..2, true].to_a.flatten.map { |x| x.abs }, "#{dtype} rows outside")
+
+        a = dtype.zeros(5, 6)
+        a[[4, 0, 2], [5, 1, 3]].logseq(0.5, 0.3, 2)
+        near.call(seq.call(9, 0.3), a[[4, 0, 2], [5, 1, 3]], "two index axes")
+        assert_equal(21, a.eq(0).count_true.to_i, "#{dtype} two index axes outside")
+
+        a = dtype.zeros(3, 4)
+        a.transpose.logseq(0.5, 0.3, 2)
+        near.call(seq.call(12, 0.3), a.transpose, "transposed")
+
+        a = dtype.zeros(*([2] * 9), 3)
+        t = a.transpose
+        t.logseq(0.5, 0.001, 2)
+        near.call(seq.call(1536, 0.001), t, "transposed past the specialised dims")
+      end
+    end
   end
   sub_test_case "a store between arrays of the same type" do
     def check_store(klass, dst_shape, src_shape, msg)
