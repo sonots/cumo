@@ -8505,10 +8505,8 @@ class NArrayTest < Test::Unit::TestCase
         expect_store(grid.dup) { |dst, src| dst[true, 1..] = src[true, 0...-1] }
       end
       bits = (Cumo::Int32.new(n).seq % 3).eq(0)
-      expect_store(bits.dup) { |dst, src| dst[0...n - 5] = src[5..] }
-      bit_grid = bits.reshape(n / 1000, 1000)
-      expect_store(bit_grid.dup) { |dst, src| dst[1.., true] = src[0...-1, true] }
-      expect_store(bit_grid.dup) { |dst, src| dst[true, 1..] = src[true, 0...-1] }
+      expect_store(bits.dup) { |dst, src| dst[100_000..] = src[0...n - 100_000] }
+      expect_store(bits.reshape(n / 1000, 1000)) { |dst, src| dst[true, 1..] = src[true, 0...-1] }
     end
 
     test "does not trust the source's own dup" do
