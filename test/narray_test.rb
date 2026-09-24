@@ -8465,6 +8465,25 @@ class NArrayTest < Test::Unit::TestCase
       z[true, [2, 0]].imag = 7.0
       assert_equal([[4 + 7i, 5, 6 + 7i], [7i, 0, 7i], [7i, 0, 7i], [1 + 7i, 2, 3 + 7i]], z.to_a)
     end
+
+    test "logseq writes a strided, index or transposed view where it is" do
+      [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat, Cumo::BFloat].each do |dtype|
+        a = dtype.zeros(4, 5)
+        a[true, 1..3].logseq(0, 1, 2)
+        want = Array.new(4) { |r| [0.0] + (0...3).map { |c| 2.0**(r * 3 + c) } + [0.0] }
+        assert_equal(want, a.to_a, "#{dtype} columns")
+
+        a = dtype.zeros(4, 3)
+        a[[3, 0], true].logseq(0, 1, 2)
+        want = [[8.0, 16.0, 32.0], [0.0] * 3, [0.0] * 3, [1.0, 2.0, 4.0]]
+        assert_equal(want, a.to_a, "#{dtype} rows")
+
+        a = dtype.zeros(3, 4)
+        a.transpose.logseq(0, 1, 2)
+        want = Array.new(3) { |r| (0...4).map { |c| 2.0**(c * 3 + r) } }
+        assert_equal(want, a.to_a, "#{dtype} transposed")
+      end
+    end
   end
   sub_test_case "a store between arrays of the same type" do
     def check_store(klass, dst_shape, src_shape, msg)
