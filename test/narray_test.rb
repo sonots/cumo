@@ -8466,6 +8466,20 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([[4 + 7i, 5, 6 + 7i], [7i, 0, 7i], [7i, 0, 7i], [1 + 7i, 2, 3 + 7i]], z.to_a)
     end
 
+    test "a DFloat logseq answers exp10 and exp2 of the sequence for a base of 10 and 2" do
+      x = Cumo::DFloat.new(1000).seq(0.5, 0.013)
+      [nil, 10, 10.0, Cumo::DFloat[10.0]].each do |base|
+        got = base ? Cumo::DFloat.new(1000).logseq(0.5, 0.013, base) : Cumo::DFloat.new(1000).logseq(0.5, 0.013)
+        assert_equal(Cumo::DFloat::Math.exp10(x).to_a, got.to_a, "base #{base.inspect}")
+      end
+      [2, 2.0].each do |base|
+        assert_equal(Cumo::DFloat::Math.exp2(x).to_a, Cumo::DFloat.new(1000).logseq(0.5, 0.013, base).to_a, "base #{base}")
+      end
+      x.to_a.zip(Cumo::DFloat.new(1000).logseq(0.5, 0.013).to_a).each do |e, got|
+        assert_in_delta(10.0**e, got, 10.0**e * 1e-15)
+      end
+    end
+
     test "logseq writes a strided, index or transposed view where it is" do
       tolerance = {
         Cumo::DFloat => 1e-12, Cumo::DComplex => 1e-12, Cumo::SFloat => 1e-5, Cumo::SComplex => 1e-5,
