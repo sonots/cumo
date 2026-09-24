@@ -30,16 +30,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* x, cumo_na_iarray_t* 
     if (ncoef > 0) {
         cudaMemcpyAsync(d_coef, coef, sizeof(cumo_na_iarray_t) * ncoef, cudaMemcpyHostToDevice, cumo_cuda_stream());
     }
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{c_iter}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*x, d_coef, ncoef, *z, *indexer);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{c_iter}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*x, d_coef, ncoef, *z, *indexer);
-        break;
-    }
+    <%= indexer_switch("cumo_#{c_iter}_kernel", "*x, d_coef, ncoef, *z, *indexer") %>
     cumo_check_launch_holding(d_coef);
     cumo_cuda_runtime_free((char*)d_coef);
 }

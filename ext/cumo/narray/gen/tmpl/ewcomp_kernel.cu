@@ -18,16 +18,7 @@ void cumo_<%=type_name%>_<%=name%><%=nan%>_kernel_launch(cumo_na_iarray_t* a1, c
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    switch (indexer->ndim) {
-    <% (0..opt_indexer_ndim).each do |idim| %>
-    case <%=idim%>:
-        <%="cumo_#{type_name}_#{name}#{nan}_kernel_dim#{idim}"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer);
-        break;
-    <% end %>
-    default:
-        <%="cumo_#{type_name}_#{name}#{nan}_kernel_dim"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1,*a2,*a3,*indexer);
-        break;
-    }
+    <%= indexer_switch("cumo_#{type_name}_#{name}#{nan}_kernel", "*a1,*a2,*a3,*indexer") %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 
