@@ -273,7 +273,7 @@ static inline bit_reduce_plan make_bit_reduce_plan(const TArg& arg) {
     p.wa = make_bit_word_addr(arg, p.ad, p.reduce_total_size);
     p.unit_total_size = p.wa.unit_total;
 
-    cumo_detail::reduce_block_split(p.ad, p.unit_total_size, &p.out_block_size, &p.reduce_block_size);
+    cumo_detail::reduce_block_split(p.ad, p.unit_total_size, &p.out_block_size, &p.reduce_block_size, false);
     p.out_block_num = (p.out_total_size + p.out_block_size - 1) / p.out_block_size;
 
     p.n_split = reduce_split_count(p.unit_total_size, p.out_block_num, p.wa.words != 0);
@@ -283,7 +283,7 @@ static inline bit_reduce_plan make_bit_reduce_plan(const TArg& arg) {
     p.partial_block_num = 0;
     if (p.n_split > 1) {
         p.chunk = (p.unit_total_size + p.n_split - 1) / p.n_split;
-        cumo_detail::reduce_block_split(p.ad, p.chunk, &p.split_out_block_size, &p.split_reduce_block_size);
+        cumo_detail::reduce_block_split(p.ad, p.chunk, &p.split_out_block_size, &p.split_reduce_block_size, false);
         p.partial_block_num = (p.out_total_size * p.n_split + p.split_out_block_size - 1) / p.split_out_block_size;
         // Splitting buys nothing when the narrower block it leaves takes the
         // block count back down to where it started.

@@ -261,14 +261,19 @@ static inline void set_reduce_addr_out2(cumo_reduce_addr_t* ad, const cumo_na_re
 // element per thread and then spends the time in the tree, at 92 GB/s, where
 // a group of 16 reading 16 each gets 520.
 static constexpr int64_t min_reduce_per_thread = 16;
+static constexpr int64_t sector_bytes = 32;
 
-static inline void reduce_block_split(const cumo_reduce_addr_t& ad, int64_t reduce_total_size, int64_t* out_block_size, int64_t* reduce_block_size) {
+static inline void reduce_block_split(const cumo_reduce_addr_t& ad, int64_t reduce_total_size, int64_t* out_block_size, int64_t* reduce_block_size, bool steps_in_bytes = true) {
     int64_t n = std::max(int64_t{1}, reduce_total_size);
     int64_t rbs;
     if (ad.out_inner) {
         rbs = std::min(max_block_size / warp_size, round_up_to_power_of_2((n + min_reduce_per_thread - 1) / min_reduce_per_thread));
     } else {
         rbs = std::min(max_block_size, round_up_to_power_of_2((n + min_reduce_per_thread - 1) / min_reduce_per_thread));
+        if (rbs == 1 && n > 1 && steps_in_bytes && ad.in_reduce_flat &&
+            n * step_magnitude(ad.in_reduce_step) > sector_bytes) {
+            rbs = 2;
+        }
     }
     *reduce_block_size = rbs;
     *out_block_size = max_block_size / rbs;
