@@ -1055,6 +1055,83 @@ cumo_na_index_arg_to_internal_order(int argc, VALUE *argv, VALUE self)
     }
 }
 
+static VALUE
+na_base_data(VALUE v, cumo_narray_t *na)
+{
+    return (na->type == CUMO_NARRAY_VIEW_T) ? CUMO_NA_VIEW_DATA(na) : v;
+}
+
+static int
+na_span(VALUE v, cumo_narray_t *na, ssize_t *lo, ssize_t *hi)
+{
+    ssize_t elmsz = (ssize_t)cumo_na_element_stride(v);
+    ssize_t off = (ssize_t)cumo_na_get_offset(v), d;
+    int k;
+
+    *lo = *hi = off;
+    if (na->size == 0) { return 1; }
+    if (na->type != CUMO_NARRAY_VIEW_T) {
+        *hi = off + (ssize_t)na->size * elmsz;
+        return 1;
+    }
+    for (k = 0; k < na->ndim; k++) {
+        cumo_stridx_t sdx = CUMO_NA_VIEW_STRIDX(na)[k];
+        if (CUMO_SDX_IS_INDEX(sdx)) { return 0; }
+        d = CUMO_SDX_GET_STRIDE(sdx) * (ssize_t)(na->shape[k] - 1);
+        if (d < 0) { *lo += d; } else { *hi += d; }
+    }
+    *hi += elmsz;
+    return 1;
+}
+
+static int
+na_stride(VALUE v, cumo_narray_t *na, int k, ssize_t *stride)
+{
+    int i;
+
+    if (na->type == CUMO_NARRAY_VIEW_T) {
+        cumo_stridx_t sdx = CUMO_NA_VIEW_STRIDX(na)[k];
+        if (CUMO_SDX_IS_INDEX(sdx)) { return 0; }
+        *stride = CUMO_SDX_GET_STRIDE(sdx);
+        return 1;
+    }
+    *stride = (ssize_t)cumo_na_element_stride(v);
+    for (i = k + 1; i < na->ndim; i++) {
+        *stride *= (ssize_t)na->shape[i];
+    }
+    return 1;
+}
+
+static int
+na_same_place(VALUE a, cumo_narray_t *na, VALUE b, cumo_narray_t *nb)
+{
+    ssize_t sa, sb;
+    int k;
+
+    if (na->ndim != nb->ndim || cumo_na_get_offset(a) != cumo_na_get_offset(b)) { return 0; }
+    for (k = 0; k < na->ndim; k++) {
+        if (na->shape[k] != nb->shape[k]) { return 0; }
+        if (na->shape[k] == 1) { continue; }
+        if (!na_stride(a, na, k, &sa) || !na_stride(b, nb, k, &sb) || sa != sb) { return 0; }
+    }
+    return 1;
+}
+
+int
+cumo_na_store_overlaps(VALUE dst, VALUE src)
+{
+    cumo_narray_t *nd, *ns;
+    ssize_t dlo, dhi, slo, shi;
+
+    if (dst == src || !CumoIsNArray(src)) { return 0; }
+    CumoGetNArray(dst, nd);
+    CumoGetNArray(src, ns);
+    if (na_base_data(dst, nd) != na_base_data(src, ns)) { return 0; }
+    if (na_same_place(dst, nd, src, ns)) { return 0; }
+    if (!na_span(dst, nd, &dlo, &dhi) || !na_span(src, ns, &slo, &shi)) { return 1; }
+    return dlo < shi && slo < dhi;
+}
+
 void
 cumo_na_copy_flags(VALUE src, VALUE dst)
 {

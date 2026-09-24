@@ -13,6 +13,12 @@ static VALUE
 {
     VALUE r, klass;
 
+    if (cumo_na_store_overlaps(self, obj)) {
+        obj = cumo_na_copy(obj);
+        if (cumo_na_store_overlaps(self, obj)) {
+            rb_raise(rb_eRuntimeError, "copy did not answer an array apart from the destination");
+        }
+    }
     klass = rb_obj_class(obj);
 
     <% definitions.each do |x| %>

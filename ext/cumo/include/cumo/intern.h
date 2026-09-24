@@ -31,6 +31,7 @@ char* cumo_na_get_offset_pointer_for_write(VALUE);
 char* cumo_na_get_offset_pointer_for_read(VALUE);
 char* cumo_na_get_offset_pointer_for_read_write(VALUE);
 
+int cumo_na_store_overlaps(VALUE dst, VALUE src);
 void cumo_na_copy_flags(VALUE src, VALUE dst);
 
 int cumo_na_last_dim_with_elements(const cumo_narray_t *na, int start_dim);
