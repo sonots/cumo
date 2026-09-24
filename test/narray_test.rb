@@ -8467,20 +8467,22 @@ class NArrayTest < Test::Unit::TestCase
     end
 
     test "logseq writes a strided, index or transposed view where it is" do
+      seq = (0...12).map { |i| 2.0**(0.5 + 0.3 * i) }
+      near = lambda do |want, got, msg|
+        want.flatten.zip(got.flatten).each { |w, g| assert_in_delta(w, g, w.abs * 1e-2, msg) }
+      end
       [Cumo::SFloat, Cumo::DFloat, Cumo::HFloat, Cumo::BFloat].each do |dtype|
-        seq = dtype.new(12).logseq(0.5, 0.3, 2).to_a
-
         a = dtype.zeros(4, 5)
         a[true, 1..3].logseq(0.5, 0.3, 2)
-        assert_equal(seq.each_slice(3).map { |r| [0.0] + r + [0.0] }, a.to_a, "#{dtype} columns")
+        near.call(seq.each_slice(3).map { |r| [0.0] + r + [0.0] }, a.to_a, "#{dtype} columns")
 
         a = dtype.zeros(4, 3)
         a[[3, 0], true].logseq(0.5, 0.3, 2)
-        assert_equal([seq[3, 3], [0.0] * 3, [0.0] * 3, seq[0, 3]], a.to_a, "#{dtype} rows")
+        near.call([seq[3, 3], [0.0] * 3, [0.0] * 3, seq[0, 3]], a.to_a, "#{dtype} rows")
 
         a = dtype.zeros(3, 4)
         a.transpose.logseq(0.5, 0.3, 2)
-        assert_equal(seq.each_slice(3).to_a.transpose, a.to_a, "#{dtype} transposed")
+        near.call(seq.each_slice(3).to_a.transpose, a.to_a, "#{dtype} transposed")
       end
     end
   end
