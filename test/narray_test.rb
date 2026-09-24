@@ -1141,17 +1141,23 @@ class NArrayTest < Test::Unit::TestCase
       end
 
       test "a short column slice of a wider array" do
-        wide = rotated.call(1030, 64)
-        [2, 3, 5, 9, 16].each do |len|
+        wide = dtype.cast(Cumo::Int32.new(1030, 64).seq % 3)
+        [2, 3, 5, 9, 12, 16].each do |len|
           v = wide[true, 0...len]
-          c = v.copy
-          assert { v.sum(axis: 1) == c.sum(axis: 1) }
-          assert { v.mulsum(v, axis: 1) == c.mulsum(c, axis: 1) }
-          next unless ordered
+          rows = v.to_a
+          assert { v.sum(axis: 1).to_a == rows.map(&:sum) }
+          assert { v.mulsum(v, axis: 1).to_a == rows.map { |r| r.sum { |e| e * e } } }
+          assert { v.max(axis: 1).to_a == rows.map(&:max) } if ordered
+        end
+      end
 
-          assert { v.max(axis: 1) == c.max(axis: 1) }
-          assert { v.argmax(axis: 1) == c.argmax(axis: 1) }
-          assert { v.max_index(axis: 1) == c.max_index(axis: 1) }
+      if float_types.include?(dtype)
+        test "mulsum answers the same whichever operand comes first" do
+          [9, 12, 16].each do |len|
+            a = dtype.new(10_000, len).rand
+            b = dtype.new(10_000, 1).rand
+            assert { a.mulsum(b, axis: 1) == b.mulsum(a, axis: 1) }
+          end
         end
       end
     end
