@@ -113,12 +113,6 @@ class ErbPP
   def upcast_def
   end
 
-  def indexer_switch(kernel, args)
-    launch = "<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(#{args}); break;"
-    cases = (0..opt_indexer_ndim).map { |d| "case #{d}: #{kernel}_dim#{d}#{launch}" }
-    "switch (indexer->ndim) { #{cases.join(' ')} default: #{kernel}_dim#{launch} }"
-  end
-
   def find_tmpl(name)
     @parent.children.find { |x| x.name == name }
   end

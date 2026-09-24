@@ -35,6 +35,14 @@ erb_dir = ["tmpl"]
 erb_dir.unshift("tmpl_bit") if (type_name == "bit")
 erb_dir.map! { |d| File.join(thisdir, d) }
 
+class ErbPP
+  def indexer_switch(kernel, args)
+    launch = "<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(#{args}); break;"
+    cases = (0..opt_indexer_ndim).map { |d| "case #{d}: #{kernel}_dim#{d}#{launch}" }
+    "switch (indexer->ndim) { #{cases.join(' ')} default: #{kernel}_dim#{launch} }"
+  end
+end
+
 code = DefLib.new do
   set line_number: $line_number
   set erb_dir: erb_dir
