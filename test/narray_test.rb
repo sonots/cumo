@@ -1139,6 +1139,21 @@ class NArrayTest < Test::Unit::TestCase
           assert { v.max(axis: 1) == v.copy.transpose.copy.max(axis: 0) } if ordered
         end
       end
+
+      test "a short column slice of a wider array" do
+        wide = rotated.call(1030, 64)
+        [2, 3, 5, 9, 16].each do |len|
+          v = wide[true, 0...len]
+          c = v.copy
+          assert { v.sum(axis: 1) == c.sum(axis: 1) }
+          assert { v.mulsum(v, axis: 1) == c.mulsum(c, axis: 1) }
+          next unless ordered
+
+          assert { v.max(axis: 1) == c.max(axis: 1) }
+          assert { v.argmax(axis: 1) == c.argmax(axis: 1) }
+          assert { v.max_index(axis: 1) == c.max_index(axis: 1) }
+        end
+      end
     end
 
     # ndloop walks an elementwise function in the order the written operand
