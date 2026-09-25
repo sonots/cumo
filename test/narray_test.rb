@@ -3960,6 +3960,23 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([1, 0], a[true, ((1 << 31) + 1)..(1 << 31)].shape)
   end
 
+  test "a copy of a reversed view keeps every element for each element size" do
+    even = ->(a) { a.values_at(*(0...a.size).step(2)) }
+    [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::DFloat, Cumo::DComplex].each do |t|
+      x3 = t.new(4, 6, 5).seq
+      x4 = t.new(4, 4, 4, 5).seq
+      if t == Cumo::DComplex
+        x3 += x3 * Complex(0, 1)
+        x4 += x4 * Complex(0, 1)
+      end
+      v3 = x3[(0..).step(2), (0..).step(2), true].reverse(2)
+      v4 = x4[(0..).step(2), (0..).step(2), (0..).step(2), true].reverse(3)
+      assert_equal(even.(x3.to_a).map { |a| even.(a).map(&:reverse) }, v3.copy.to_a, t.name)
+      assert_equal(even.(x4.to_a).map { |a| even.(a).map { |b| even.(b).map(&:reverse) } }, v4.copy.to_a, t.name)
+      assert_equal([x3.to_a[1][2][3]], x3[1, 2, 3].copy.to_a, t.name)
+    end
+  end
+
   test "a view of a few elements whose far end sits at or past 2**31 bytes" do
     omit_unless_room(5)
     s = (1 << 31) - 4
@@ -3972,6 +3989,8 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([[2, 2, 2, 2, 1]] * 2, b.to_a)
     a[true, 0...5].reverse(0).store(Cumo::Int32[[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
     assert_equal([[6, 7, 8, 9, 10], [1, 2, 3, 4, 5]], a[true, 0...5].to_a)
+    assert_equal([[6, 7, 8, 9, 10], [1, 2, 3, 4, 5]], a[true, 0...5].copy.to_a)
+    assert_equal([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]], a[true, 0...5].reverse(0).copy.to_a)
     assert_equal(55, a.sum.to_i)
   end
 
