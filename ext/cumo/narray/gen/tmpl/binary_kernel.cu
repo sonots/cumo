@@ -11,7 +11,7 @@
 //<% end %>
 
 //<% has_scalar = %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
-<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+<% indexer_dims(true).each do |idim| %>
 //<% if has_scalar %>
 // A Ruby numeric operand rides in as sv rather than as a 0-dimensional array,
 // which would cost a whole kernel launch of its own to fill. It reaches the
@@ -111,7 +111,7 @@ static void <%="cumo_#{c_iter}_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo_na_
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*indexer,divzero,sv,use_scalar") %>
+    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*indexer,divzero,sv,use_scalar", narrow: %w[a1 a2 a3]) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -142,7 +142,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t*
     }
     grid_dim = cumo_get_grid_dim(indexer->total_size);
     block_dim = cumo_get_block_dim(indexer->total_size);
-    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*indexer,divzero") %>
+    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*indexer,divzero", narrow: %w[a1 a2 a3]) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 //<% end %>

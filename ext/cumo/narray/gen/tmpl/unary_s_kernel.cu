@@ -1,5 +1,5 @@
 <% unless type_name == 'robject' %>
-<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+<% indexer_dims(true).each do |idim| %>
 __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
@@ -15,7 +15,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t*
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*indexer") %>
+    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*indexer", narrow: %w[a1 a2]) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

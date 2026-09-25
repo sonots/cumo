@@ -1,5 +1,5 @@
 <% unless type_name == 'robject' %>
-<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+<% indexer_dims(true).each do |idim| %>
 // A Ruby numeric operand rides in as sv rather than as a 0-dimensional array,
 // which would cost a whole kernel launch of its own to fill. It reaches the
 // left side through coerce, so use_scalar says which side it is on. It is the
@@ -38,7 +38,7 @@ static void <%="cumo_#{c_iter}_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo_na_
     size_t grid_dim = cumo_get_grid_dim(end);
     // the ballot needs whole warps, so a short loop cannot shrink the block
     size_t block_dim = out ? CUMO_MAX_BLOCK_DIM : cumo_get_block_dim(end);
-    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*indexer,sv,use_scalar,end,out") %>
+    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*indexer,sv,use_scalar,end,out", narrow: %w[a1 a2]) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 

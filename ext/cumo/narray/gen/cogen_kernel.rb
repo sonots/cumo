@@ -36,10 +36,23 @@ erb_dir.unshift("tmpl_bit") if (type_name == "bit")
 erb_dir.map! { |d| File.join(thisdir, d) }
 
 class ErbPP
-  def indexer_switch(kernel, args)
+  def indexer_dims(narrow = false)
+    dims = (0..opt_indexer_ndim).to_a << ""
+    dims += opt_indexer_narrow_dims.map { |d| "#{d}n" } if narrow
+    dims
+  end
+
+  def indexer_switch(kernel, args, narrow: nil)
     launch = "<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(#{args}); break;"
-    cases = (0..opt_indexer_ndim).map { |d| "case #{d}: #{kernel}_dim#{d}#{launch}" }
-    "switch (indexer->ndim) { #{cases.join(' ')} default: #{kernel}_dim#{launch} }"
+    cases = (0..opt_indexer_ndim).map do |d|
+      if narrow && opt_indexer_narrow_dims.include?(d)
+        "case #{d}: if (cumo_na_indexer_is_narrow(indexer, narrow_, #{narrow.size})) { #{kernel}_dim#{d}n#{launch} } #{kernel}_dim#{d}#{launch}"
+      else
+        "case #{d}: #{kernel}_dim#{d}#{launch}"
+      end
+    end
+    switch = "switch (indexer->ndim) { #{cases.join(' ')} default: #{kernel}_dim#{launch} }"
+    narrow ? "{ const cumo_na_iarray_t* const narrow_[] = {#{narrow.join(', ')}}; #{switch} }" : switch
   end
 end
 
@@ -53,7 +66,9 @@ code = DefLib.new do
   set type_name: type_name
   set lib_name: "cumo_" + type_name
 
-  set opt_indexer_ndim: File.read(File.expand_path("../../../include/cumo/indexer.h", __FILE__)).match(/CUMO_NA_INDEXER_OPTIMIZED_NDIM (\d+)/)[1].to_i
+  indexer_h = File.read(File.expand_path("../../../include/cumo/indexer.h", __FILE__))
+  set opt_indexer_ndim: indexer_h.match(/CUMO_NA_INDEXER_OPTIMIZED_NDIM (\d+)/)[1].to_i
+  set opt_indexer_narrow_dims: indexer_h.scan(/^CUMO_NA_IARRAY_AT_NARROW\((\d+)\)/).flatten.map(&:to_i).sort
 
   def_class do
     extend NArrayMethod

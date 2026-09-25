@@ -3960,6 +3960,21 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([1, 0], a[true, ((1 << 31) + 1)..(1 << 31)].shape)
   end
 
+  test "a view of a few elements whose far end sits at or past 2**31 bytes" do
+    omit_unless_room(5)
+    s = (1 << 31) - 4
+    a = Cumo::UInt8.new(2, s).fill(0)
+    a[true, 0...4].inplace + 1
+    a[true, 0...5].inplace + 1
+    assert_equal([[2, 2, 2, 2, 1]] * 2, a[true, 0...5].to_a)
+    b = Cumo::UInt8.zeros(2, 5)
+    b.inplace + a[true, 0...5]
+    assert_equal([[2, 2, 2, 2, 1]] * 2, b.to_a)
+    a[true, 0...5].reverse(0).store(Cumo::Int32[[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
+    assert_equal([[6, 7, 8, 9, 10], [1, 2, 3, 4, 5]], a[true, 0...5].to_a)
+    assert_equal(55, a.sum.to_i)
+  end
+
   # cumsum and cumprod had no tests at all before the scan was moved to the device
   def running(values)
     acc = nil
