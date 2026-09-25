@@ -19,7 +19,7 @@ CU_TMPL = <%=Dir.glob("#{__dir__}/narray/gen/tmpl*/*.cu").join(" ")%>
 C_COGEN = <%= __dir__ %>/narray/gen/cogen.rb
 CU_COGEN = <%= __dir__ %>/narray/gen/cogen_kernel.rb
 C_DEPENDS = $(C_TMPL) <%= __dir__ %>/narray/gen/*.rb
-CU_DEPENDS = $(CU_TMPL) <%= __dir__ %>/narray/gen/*.rb
+CU_DEPENDS = $(CU_TMPL) <%= __dir__ %>/narray/gen/*.rb <%= __dir__ %>/include/cumo/indexer.h
 
 <%
 list_type_c = []

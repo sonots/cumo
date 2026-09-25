@@ -5,7 +5,6 @@
 #include "cumo/narray.h"
 #include "cumo/ndloop.h"
 #else
-#include <stdarg.h>
 #include "cumo/narray_kernel.h"
 #endif
 
@@ -303,7 +302,6 @@ cumo_na_make_bit_pred_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
 #endif  // #ifndef __CUDACC__
 
 #define CUMO_NA_INDEXER_OPTIMIZED_NDIM 8
-#define CUMO_NA_INDEXER_NARROW_NDIM 4
 
 #ifdef __CUDACC__
 
@@ -314,16 +312,21 @@ cumo_na_make_bit_pred_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
 // dimension takes what is left without dividing, since i is always below
 // total_size. On an RTX 5070 Ti a [1024,3072] + [3072] runs at 321 GB/s in
 // 64 bits and 609 with this.
+#define CUMO_NA_INDEXER_DECOMPOSE32(indexer, i, ndim) \
+    do { \
+        uint32_t i32_ = (uint32_t)(i); \
+        for (int j_ = (ndim); --j_ >= 1;) { \
+            uint32_t n_ = (uint32_t)(indexer)->shape[j_]; \
+            (indexer)->index[j_] = i32_ % n_; \
+            i32_ /= n_; \
+        } \
+        if ((ndim) > 0) (indexer)->index[0] = i32_; \
+    } while (0)
+
 #define CUMO_NA_INDEXER_DECOMPOSE(indexer, i, ndim) \
     do { \
         if ((indexer)->total_size <= 0xffffffffu) { \
-            uint32_t i32_ = (uint32_t)(i); \
-            for (int j_ = (ndim); --j_ >= 1;) { \
-                uint32_t n_ = (uint32_t)(indexer)->shape[j_]; \
-                (indexer)->index[j_] = i32_ % n_; \
-                i32_ /= n_; \
-            } \
-            if ((ndim) > 0) (indexer)->index[0] = i32_; \
+            CUMO_NA_INDEXER_DECOMPOSE32(indexer, i, ndim); \
         } else { \
             uint64_t i64_ = (i); \
             for (int j_ = (ndim); --j_ >= 1;) { \
@@ -365,21 +368,11 @@ cumo_na_indexer_set_dim1(cumo_na_indexer_t* indexer, uint64_t i) {
     indexer->raw_index = i;
 }
 
-// The _dimNn functions are for a launch that cumo_na_indexer_is_narrow has
-// cleared, which lets them do all the arithmetic in 32 bits. They are separate
-// kernels rather than a branch: a uniform branch in the element loop still
-// changes what nvcc makes of the rest of it, and cost clip 18%.
 #define CUMO_NA_INDEXER_SET_NARROW(NDIM) \
 __host__ __device__ \
 static inline void \
 cumo_na_indexer_set_dim##NDIM##n(cumo_na_indexer_t* indexer, uint64_t i) { \
-    uint32_t i32 = (uint32_t)i; \
-    for (int j = NDIM; --j >= 1;) { \
-        uint32_t n = (uint32_t)indexer->shape[j]; \
-        indexer->index[j] = i32 % n; \
-        i32 /= n; \
-    } \
-    indexer->index[0] = i32; \
+    CUMO_NA_INDEXER_DECOMPOSE32(indexer, i, NDIM); \
 }
 
 CUMO_NA_INDEXER_SET_NARROW(4)
@@ -438,30 +431,25 @@ CUMO_NA_IARRAY_AT_NARROW(4)
 CUMO_NA_IARRAY_AT_NARROW(3)
 CUMO_NA_IARRAY_AT_NARROW(2)
 
-// True when a launch over indexer may take the _dimNn functions for the n
-// operands that follow: every flat index fits 32 bits, and every offset each
-// operand reaches fits an int32_t.
 static inline int
-cumo_na_indexer_is_narrow(const cumo_na_indexer_t* indexer, int n, ...)
+cumo_na_indexer_is_narrow(const cumo_na_indexer_t* indexer, const cumo_na_iarray_t* const* iarrays, int n)
 {
-    va_list ap;
-    int narrow = indexer->total_size <= 0xffffffffu;
-    va_start(ap, n);
+    if (indexer->total_size > 0xffffffffu) return 0;
     for (int k = 0; k < n; ++k) {
-        const cumo_na_iarray_t* iarray = va_arg(ap, const cumo_na_iarray_t*);
-        size_t span = 0;
-        for (int idim = 0; narrow && idim < indexer->ndim; ++idim) {
-            ssize_t s = iarray->step[idim];
-            size_t step = s < 0 ? -(size_t)s : (size_t)s;
+        size_t hi = 0, lo = 0;
+        for (int idim = 0; idim < indexer->ndim; ++idim) {
+            ssize_t s = iarrays[k]->step[idim];
             size_t len = indexer->shape[idim];
+            size_t* side = s < 0 ? &lo : &hi;
+            size_t step = s < 0 ? -(size_t)s : (size_t)s;
+            size_t room = s < 0 ? (size_t)INT32_MAX + 1 : (size_t)INT32_MAX;
             if (len > 1) {
-                if (step > (INT32_MAX - span) / (len - 1)) { narrow = 0; }
-                else { span += step * (len - 1); }
+                if (step > (room - *side) / (len - 1)) return 0;
+                *side += step * (len - 1);
             }
         }
     }
-    va_end(ap);
-    return narrow;
+    return 1;
 }
 
 __host__ __device__
@@ -501,11 +489,16 @@ cumo_na_bit_iarray_at_dim1(cumo_na_bit_iarray_t* iarray, cumo_na_indexer_t* inde
     return iarray->pos + iarray->step[0] * indexer->raw_index;
 }
 
-// A Bit operand counts in bits, so it keeps the wide arithmetic even in a
-// narrow launch.
-#define cumo_na_bit_iarray_at_dim4n cumo_na_bit_iarray_at_dim4
-#define cumo_na_bit_iarray_at_dim3n cumo_na_bit_iarray_at_dim3
-#define cumo_na_bit_iarray_at_dim2n cumo_na_bit_iarray_at_dim2
+#define CUMO_NA_BIT_IARRAY_AT_NARROW(NDIM) \
+__host__ __device__ \
+static inline size_t \
+cumo_na_bit_iarray_at_dim##NDIM##n(cumo_na_bit_iarray_t* iarray, cumo_na_indexer_t* indexer) { \
+    return cumo_na_bit_iarray_at_dim##NDIM(iarray, indexer); \
+}
+
+CUMO_NA_BIT_IARRAY_AT_NARROW(4)
+CUMO_NA_BIT_IARRAY_AT_NARROW(3)
+CUMO_NA_BIT_IARRAY_AT_NARROW(2)
 
 __host__ __device__
 static inline size_t

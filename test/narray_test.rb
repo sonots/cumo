@@ -3967,6 +3967,9 @@ class NArrayTest < Test::Unit::TestCase
     a[true, 0...4].inplace + 1
     a[true, 0...5].inplace + 1
     assert_equal([[2, 2, 2, 2, 1]] * 2, a[true, 0...5].to_a)
+    b = Cumo::UInt8.zeros(2, 5)
+    b.inplace + a[true, 0...5]
+    assert_equal([[2, 2, 2, 2, 1]] * 2, b.to_a)
     a[true, 0...5].reverse(0).store(Cumo::Int32[[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
     assert_equal([[6, 7, 8, 9, 10], [1, 2, 3, 4, 5]], a[true, 0...5].to_a)
     assert_equal(55, a.sum.to_i)
