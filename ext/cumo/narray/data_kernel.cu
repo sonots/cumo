@@ -351,6 +351,9 @@ CUMO_COPY_WIDE_KERNEL(6)
 CUMO_COPY_WIDE_KERNEL(7)
 CUMO_COPY_WIDE_KERNEL(8)
 CUMO_COPY_WIDE_KERNEL()
+CUMO_COPY_WIDE_KERNEL(2n)
+CUMO_COPY_WIDE_KERNEL(3n)
+CUMO_COPY_WIDE_KERNEL(4n)
 
 #undef CUMO_COPY_WIDE_KERNEL
 
@@ -360,20 +363,30 @@ cumo_copy_wide_launch(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_inde
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    const cumo_na_iarray_t* const narrow_[] = {dst, src};
     switch (indexer->ndim) {
 #define CUMO_COPY_WIDE_CASE(NDIM) \
     case NDIM: \
         cumo_copy_wide_kernel_dim##NDIM<V><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*dst, *src, *indexer); \
         break;
+#define CUMO_COPY_WIDE_NARROW_CASE(NDIM) \
+    case NDIM: \
+        if (cumo_na_indexer_is_narrow(indexer, narrow_, 2)) { \
+            cumo_copy_wide_kernel_dim##NDIM##n<V><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*dst, *src, *indexer); \
+            break; \
+        } \
+        cumo_copy_wide_kernel_dim##NDIM<V><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*dst, *src, *indexer); \
+        break;
     CUMO_COPY_WIDE_CASE(1)
-    CUMO_COPY_WIDE_CASE(2)
-    CUMO_COPY_WIDE_CASE(3)
-    CUMO_COPY_WIDE_CASE(4)
+    CUMO_COPY_WIDE_NARROW_CASE(2)
+    CUMO_COPY_WIDE_NARROW_CASE(3)
+    CUMO_COPY_WIDE_NARROW_CASE(4)
     CUMO_COPY_WIDE_CASE(5)
     CUMO_COPY_WIDE_CASE(6)
     CUMO_COPY_WIDE_CASE(7)
     CUMO_COPY_WIDE_CASE(8)
 #undef CUMO_COPY_WIDE_CASE
+#undef CUMO_COPY_WIDE_NARROW_CASE
     default:
         cumo_copy_wide_kernel_dim<V><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*dst, *src, *indexer);
         break;
@@ -426,6 +439,25 @@ cumo_copy_bytes_wide(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_index
     return 1;
 }
 
+static int
+cumo_copy_bytes_typed(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_indexer_t* indexer, ssize_t elmsz)
+{
+    if (elmsz != 1 && elmsz != 2 && elmsz != 4 && elmsz != 8 && elmsz != 16) { return 0; }
+    if ((uintptr_t)dst->ptr % elmsz != 0 || (uintptr_t)src->ptr % elmsz != 0) { return 0; }
+    for (int k = 0; k < indexer->ndim; ++k) {
+        if (indexer->shape[k] > 1 && (dst->step[k] % elmsz != 0 || src->step[k] % elmsz != 0)) { return 0; }
+    }
+    switch (elmsz) {
+    case 16: cumo_copy_wide_launch<uint4>(dst, src, indexer); break;
+    case 8: cumo_copy_wide_launch<uint2>(dst, src, indexer); break;
+    case 4: cumo_copy_wide_launch<uint32_t>(dst, src, indexer); break;
+    case 2: cumo_copy_wide_launch<uint16_t>(dst, src, indexer); break;
+    default: cumo_copy_wide_launch<uint8_t>(dst, src, indexer); break;
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+    return 1;
+}
+
 void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz)
 {
     if (cumo_iter_copy_bytes_is_transpose(a1, a2, indexer, elmsz)) {
@@ -452,6 +484,7 @@ void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_ia
         return;
     }
     if (cumo_copy_bytes_wide(a2, a1, indexer, elmsz)) { return; }
+    if (cumo_copy_bytes_typed(a2, a1, indexer, elmsz)) { return; }
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
     switch (indexer->ndim) {
