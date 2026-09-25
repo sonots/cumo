@@ -1493,6 +1493,8 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
  *  Return reversed view along specified dimeinsion
  */
 void cumo_na_index_reverse_kernel_launch(size_t *idx, size_t *idx1, uint64_t n);
+static VALUE cumo_na_parse_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
+                      cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan, int empty_ok);
 
 static VALUE
 cumo_na_reverse(int argc, VALUE *argv, VALUE self)
@@ -1507,10 +1509,8 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
     cumo_narray_view_t *na1 = NULL, *na2;
     VALUE view;
     VALUE reduce;
-    cumo_ndfunc_t ndf = {0};
 
-    ndf.flag = CUMO_NDF_EMPTY_IDENTITY;
-    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, 0, 0, 1);
 
     CumoGetNArray(self,na);
     nd = na->ndim;
@@ -1530,7 +1530,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
         offset = 0;
         for (i=nd; i--;) {
             if (cumo_na_test_reduce(reduce,i)) {
-                if (na->shape[i] > 0) offset += (na->shape[i]-1)*stride;
+                if (na->size > 0) offset += (na->shape[i]-1)*stride;
                 sign = -1;
             } else {
                 sign = 1;
@@ -1572,7 +1572,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
             } else {
                 stride = CUMO_SDX_GET_STRIDE(na1->stridx[i]);
                 if (cumo_na_test_reduce(reduce,i)) {
-                    if (n > 0) offset += (n-1)*stride;
+                    if (na->size > 0) offset += (n-1)*stride;
                     CUMO_SDX_SET_STRIDE(na2->stridx[i],-stride);
                 } else {
                     na2->stridx[i] = na1->stridx[i];
@@ -2246,7 +2246,7 @@ cumo_na_reduce_empty(VALUE self, VALUE reduce, VALUE klass, int keepdims)
 
 VALUE
 cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
-                    cumo_ndfunc_t *ndf)
+                    cumo_ndfunc_t *ndf, int empty_ok)
 {
     int  max_arg;
     VALUE reduce;
@@ -2271,8 +2271,7 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
         }
     }
 
-    reduce = cumo_na_get_reduce_flag_from_narray(naryc, naryv, &max_arg,
-                 ndf && CUMO_NDF_TEST(ndf, CUMO_NDF_EMPTY_IDENTITY));
+    reduce = cumo_na_get_reduce_flag_from_narray(naryc, naryv, &max_arg, empty_ok);
 
     if (NIL_P(axes)) return reduce;
 
@@ -2287,9 +2286,9 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
 }
 
 
-VALUE
-cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
-                      cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan)
+static VALUE
+cumo_na_parse_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
+                      cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan, int empty_ok)
 {
     long narg;
     VALUE axes;
@@ -2308,7 +2307,15 @@ cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
         }
     }
 
-    return cumo_na_reduce_options((narg)?axes:Qnil, opts, naryc, naryv, ndf);
+    return cumo_na_reduce_options((narg)?axes:Qnil, opts, naryc, naryv, ndf, empty_ok);
+}
+
+VALUE
+cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
+                      cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan)
+{
+    return cumo_na_parse_reduce_dimension(argc, argv, naryc, naryv, ndf, iter_nan,
+                 ndf && CUMO_NDF_TEST(ndf, CUMO_NDF_EMPTY_IDENTITY));
 }
 
 // The axes a view marks with :sum, :reduce or :+ live on the narray, and
