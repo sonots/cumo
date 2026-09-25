@@ -180,56 +180,6 @@ __global__ void cumo_na_flatten_index_kernel_dim(size_t *idx, cumo_na_iarray_str
 // outer dimensions itself. It synchronizes once per outer step when an operand
 // carries an index array, which for a gathered view costs far more than the
 // copy: 6250 rows took 37.6 ms that way and 0.2 ms through here.
-__global__ void cumo_iter_copy_bytes_indexer_kernel_dim0(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
-{
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim0(&indexer, i);
-        char* p1 = cumo_na_iarray_at_dim0(&a1, &indexer);
-        char* p2 = cumo_na_iarray_at_dim0(&a2, &indexer);
-        memcpy(p2, p1, elmsz);
-    }
-}
-
-__global__ void cumo_iter_copy_bytes_indexer_kernel_dim1(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
-{
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim1(&indexer, i);
-        char* p1 = cumo_na_iarray_at_dim1(&a1, &indexer);
-        char* p2 = cumo_na_iarray_at_dim1(&a2, &indexer);
-        memcpy(p2, p1, elmsz);
-    }
-}
-
-__global__ void cumo_iter_copy_bytes_indexer_kernel_dim2(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
-{
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim2(&indexer, i);
-        char* p1 = cumo_na_iarray_at_dim2(&a1, &indexer);
-        char* p2 = cumo_na_iarray_at_dim2(&a2, &indexer);
-        memcpy(p2, p1, elmsz);
-    }
-}
-
-__global__ void cumo_iter_copy_bytes_indexer_kernel_dim3(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
-{
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim3(&indexer, i);
-        char* p1 = cumo_na_iarray_at_dim3(&a1, &indexer);
-        char* p2 = cumo_na_iarray_at_dim3(&a2, &indexer);
-        memcpy(p2, p1, elmsz);
-    }
-}
-
-__global__ void cumo_iter_copy_bytes_indexer_kernel_dim4(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
-{
-    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
-        cumo_na_indexer_set_dim4(&indexer, i);
-        char* p1 = cumo_na_iarray_at_dim4(&a1, &indexer);
-        char* p2 = cumo_na_iarray_at_dim4(&a2, &indexer);
-        memcpy(p2, p1, elmsz);
-    }
-}
-
 __global__ void cumo_iter_copy_bytes_indexer_kernel_dim(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
@@ -312,13 +262,29 @@ CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(4, uint32_t)
 CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(8, uint64_t)
 CUMO_ITER_COPY_BYTES_TRANSPOSE_KERNEL(16, cumo_copy_bytes_elm16)
 
+static int
+cumo_copy_elmsz_is_typed(ssize_t elmsz)
+{
+    return elmsz == 1 || elmsz == 2 || elmsz == 4 || elmsz == 8 || elmsz == 16;
+}
+
+static int
+cumo_copy_is_aligned(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_indexer_t* indexer, ssize_t w, int ndim)
+{
+    if ((uintptr_t)dst->ptr % w != 0 || (uintptr_t)src->ptr % w != 0) { return 0; }
+    for (int k = 0; k < ndim; ++k) {
+        if (indexer->shape[k] > 1 && (dst->step[k] % w != 0 || src->step[k] % w != 0)) { return 0; }
+    }
+    return 1;
+}
+
 // True when the source runs along its columns and the destination along its
 // rows. a1 is the source here and a2 the destination, the other way round from
 // the typed store.
 static int
 cumo_iter_copy_bytes_is_transpose(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_indexer_t* indexer, ssize_t elmsz)
 {
-    return (elmsz == 1 || elmsz == 2 || elmsz == 4 || elmsz == 8 || elmsz == 16) &&
+    return cumo_copy_elmsz_is_typed(elmsz) &&
         CUMO_TRANSPOSE_TILE_FITS(indexer) &&
         a2->step[1] == elmsz &&
         a2->step[0] == elmsz * (ssize_t)indexer->shape[1] &&
@@ -342,6 +308,7 @@ __global__ void cumo_copy_wide_kernel_dim##NDIM(cumo_na_iarray_t dst, cumo_na_ia
     } \
 }
 
+CUMO_COPY_WIDE_KERNEL(0)
 CUMO_COPY_WIDE_KERNEL(1)
 CUMO_COPY_WIDE_KERNEL(2)
 CUMO_COPY_WIDE_KERNEL(3)
@@ -377,6 +344,7 @@ cumo_copy_wide_launch(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_inde
         } \
         cumo_copy_wide_kernel_dim##NDIM<V><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*dst, *src, *indexer); \
         break;
+    CUMO_COPY_WIDE_CASE(0)
     CUMO_COPY_WIDE_CASE(1)
     CUMO_COPY_WIDE_NARROW_CASE(2)
     CUMO_COPY_WIDE_NARROW_CASE(3)
@@ -404,7 +372,7 @@ extern "C" {
 int
 cumo_copy_bytes_wide(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_indexer_t* indexer, ssize_t elmsz)
 {
-    int last = indexer->ndim - 1, k;
+    int last = indexer->ndim - 1;
     ssize_t w;
     size_t bytes;
     cumo_na_iarray_t d, s;
@@ -414,11 +382,7 @@ cumo_copy_bytes_wide(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_index
     if (dst->step[last] != elmsz || src->step[last] != elmsz) { return 0; }
     bytes = indexer->shape[last] * (size_t)elmsz;
     for (w = 16; w > elmsz; w /= 2) {
-        if (bytes % w != 0 || (uintptr_t)dst->ptr % w != 0 || (uintptr_t)src->ptr % w != 0) { continue; }
-        for (k = 0; k < last; ++k) {
-            if (indexer->shape[k] > 1 && (dst->step[k] % w != 0 || src->step[k] % w != 0)) { break; }
-        }
-        if (k == last) { break; }
+        if (bytes % w == 0 && cumo_copy_is_aligned(dst, src, indexer, w, last)) { break; }
     }
     if (w <= elmsz) { return 0; }
 
@@ -442,11 +406,8 @@ cumo_copy_bytes_wide(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_index
 static int
 cumo_copy_bytes_typed(cumo_na_iarray_t* dst, cumo_na_iarray_t* src, cumo_na_indexer_t* indexer, ssize_t elmsz)
 {
-    if (elmsz != 1 && elmsz != 2 && elmsz != 4 && elmsz != 8 && elmsz != 16) { return 0; }
-    if ((uintptr_t)dst->ptr % elmsz != 0 || (uintptr_t)src->ptr % elmsz != 0) { return 0; }
-    for (int k = 0; k < indexer->ndim; ++k) {
-        if (indexer->shape[k] > 1 && (dst->step[k] % elmsz != 0 || src->step[k] % elmsz != 0)) { return 0; }
-    }
+    if (!cumo_copy_elmsz_is_typed(elmsz) || !cumo_copy_is_aligned(dst, src, indexer, elmsz, indexer->ndim)) { return 0; }
+    if (indexer->total_size == 0) { return 1; }
     switch (elmsz) {
     case 16: cumo_copy_wide_launch<uint4>(dst, src, indexer); break;
     case 8: cumo_copy_wide_launch<uint2>(dst, src, indexer); break;
@@ -487,26 +448,7 @@ void cumo_iter_copy_bytes_indexer_kernel_launch(cumo_na_iarray_t* a1, cumo_na_ia
     if (cumo_copy_bytes_typed(a2, a1, indexer, elmsz)) { return; }
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    switch (indexer->ndim) {
-    case 0:
-        cumo_iter_copy_bytes_indexer_kernel_dim0<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
-        break;
-    case 1:
-        cumo_iter_copy_bytes_indexer_kernel_dim1<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
-        break;
-    case 2:
-        cumo_iter_copy_bytes_indexer_kernel_dim2<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
-        break;
-    case 3:
-        cumo_iter_copy_bytes_indexer_kernel_dim3<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
-        break;
-    case 4:
-        cumo_iter_copy_bytes_indexer_kernel_dim4<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
-        break;
-    default:
-        cumo_iter_copy_bytes_indexer_kernel_dim<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
-        break;
-    }
+    cumo_iter_copy_bytes_indexer_kernel_dim<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a1, *a2, *indexer, elmsz);
     cumo_cuda_runtime_check_kernel_launch();
 }
 
