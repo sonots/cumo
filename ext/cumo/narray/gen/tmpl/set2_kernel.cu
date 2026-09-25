@@ -1,6 +1,6 @@
 <% layouts = [["", "cumo_na_iarray_t", "cumo_na_iarray_at_dim"], ["stridx_", "cumo_na_iarray_stridx_t", "cumo_na_iarray_stridx_at_dim"]] %>
 <% layouts.each do |pfx, atype, at| %>
-<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+<% indexer_dims(pfx.empty?).each do |idim| %>
 __global__ void <%="cumo_#{c_iter}_#{pfx}kernel_dim#{idim}"%>(<%=atype%> a1, <%=atype%> a2, cumo_na_indexer_t indexer)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
@@ -16,7 +16,7 @@ void <%="cumo_#{c_iter}_#{pfx}kernel_launch"%>(<%=atype%>* a1, <%=atype%>* a2, c
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    <%= indexer_switch("cumo_#{c_iter}_#{pfx}kernel", "*a1,*a2,*indexer") %>
+    <%= indexer_switch("cumo_#{c_iter}_#{pfx}kernel", "*a1,*a2,*indexer", narrow: (%w[a1 a2] if pfx.empty?)) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>

@@ -1,5 +1,5 @@
 <% unless type_name == 'robject' %>
-<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+<% indexer_dims(true).each do |idim| %>
 // A Ruby numeric bound rides in as sv rather than as a 0-dimensional array,
 // which would cost a whole kernel launch of its own to fill. use_scalar is the
 // same for every thread, so the branches cost nothing, and it also says the
@@ -45,7 +45,7 @@ static void <%="cumo_#{c_iter}_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo_na_
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*a4,*indexer,invalid,sv_min,sv_max,use_scalar") %>
+    <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*a3,*a4,*indexer,invalid,sv_min,sv_max,use_scalar", narrow: %w[a1 a2 a3 a4]) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -67,7 +67,7 @@ static void <%="cumo_#{c_iter}_min_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    <%= indexer_switch("cumo_#{c_iter}_min_kernel", "*a1,*a2,*a3,*indexer,sv,use_scalar") %>
+    <%= indexer_switch("cumo_#{c_iter}_min_kernel", "*a1,*a2,*a3,*indexer,sv,use_scalar", narrow: %w[a1 a2 a3]) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 
@@ -89,7 +89,7 @@ static void <%="cumo_#{c_iter}_max_kernel_dispatch"%>(cumo_na_iarray_t* a1, cumo
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    <%= indexer_switch("cumo_#{c_iter}_max_kernel", "*a1,*a2,*a3,*indexer,sv,use_scalar") %>
+    <%= indexer_switch("cumo_#{c_iter}_max_kernel", "*a1,*a2,*a3,*indexer,sv,use_scalar", narrow: %w[a1 a2 a3]) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 
