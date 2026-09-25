@@ -1507,8 +1507,10 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
     cumo_narray_view_t *na1 = NULL, *na2;
     VALUE view;
     VALUE reduce;
+    cumo_ndfunc_t ndf = {0};
 
-    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, 0, 0);
+    ndf.flag = CUMO_NDF_EMPTY_IDENTITY;
+    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
 
     CumoGetNArray(self,na);
     nd = na->ndim;
@@ -1528,7 +1530,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
         offset = 0;
         for (i=nd; i--;) {
             if (cumo_na_test_reduce(reduce,i)) {
-                offset += (na->shape[i]-1)*stride;
+                if (na->shape[i] > 0) offset += (na->shape[i]-1)*stride;
                 sign = -1;
             } else {
                 sign = 1;
@@ -1570,7 +1572,7 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
             } else {
                 stride = CUMO_SDX_GET_STRIDE(na1->stridx[i]);
                 if (cumo_na_test_reduce(reduce,i)) {
-                    offset += (n-1)*stride;
+                    if (n > 0) offset += (n-1)*stride;
                     CUMO_SDX_SET_STRIDE(na2->stridx[i],-stride);
                 } else {
                     na2->stridx[i] = na1->stridx[i];
