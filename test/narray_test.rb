@@ -4144,6 +4144,17 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([3, 0], w.reverse.copy.shape)
   end
 
+  test "reverse takes axis: and no other keyword" do
+    a = Cumo::DFloat.new(2, 3).seq
+    assert_equal([[2, 1, 0], [5, 4, 3]], a.reverse(axis: 1).to_a)
+    assert_equal([[5, 4, 3], [2, 1, 0]], a.reverse(axis: [0, 1]).to_a)
+    assert_raise(ArgumentError) { a.reverse(0, axis: 1) }
+    %i[keepdims nan].each do |kw|
+      assert_raise(ArgumentError, kw.to_s) { a.reverse(1, kw => true) }
+      assert_raise(ArgumentError, kw.to_s) { a.reverse(kw => false) }
+    end
+  end
+
   test "an empty array can be sorted and scanned along any axis" do
     [Cumo::DFloat, Cumo::Int32].each do |dtype|
       [[0], [0, 3], [3, 0], [2, 0, 3]].each do |shape|

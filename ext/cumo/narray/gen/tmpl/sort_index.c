@@ -72,7 +72,7 @@ static VALUE
         idx = cumo_na_new(cumo_cInt32, na->ndim, na->shape);
     }
     ndf.func = <%=c_iter%>_kernel;
-    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 3);
     rb_funcall(idx, rb_intern("seq"), 0);
 
     ndf.flag |= CUMO_NDF_INDEXER_LOOP;
