@@ -185,21 +185,11 @@ The 0-dimensional return is what lets an iterative loop stay on the GPU.
 Reading a scalar back to the host waits for everything queued behind it, so every read caps how far ahead the GPU is allowed to run.
 What a read costs is not a fixed price either: it is however much work happens to be queued when it is taken.
 
-`bench/cg_bench.rb` prices this with a conjugate gradient solve, 200 iterations over a 512x512 grid on an RTX 5070 Ti Laptop:
-
-```
-scalars        convergence test    us/iter    readbacks/iter
-Ruby Floats    every iteration       136.7        2.02
-Ruby Floats    never                 134.4        2.02
-0-dim NArray   every iteration       142.6        1.02
-0-dim NArray   every 20th             65.6        0.06
-0-dim NArray   never                  60.3        0.02
-```
-
+`bench/cg_bench.rb` measures this with a conjugate gradient solve over a 512x512 grid, with the scalars kept either way and the convergence test taken every iteration, every twentieth or never.
 Written with Ruby Floats the loop reads back twice an iteration whatever the convergence test does, since `alpha` needs `pap` and `beta` needs `rs_new` as Floats.
-Thinning the test cannot get under that floor, and keeping the scalars as 0-dimensional NArrays buys nothing on its own.
-The two only pay together, and together they are worth 2.1x.
-The relative residual is identical in every row.
+Thinning the test cannot get under that floor, and keeping the scalars as 0-dimensional NArrays buys nothing on its own, since the test still reads back every iteration.
+The two only pay together, and together they let the loop run well ahead of the host.
+The relative residual is identical either way.
 
 ```ruby
 alpha = rs_old / pap   # a 0-dimensional NArray, divided on the device
@@ -208,8 +198,8 @@ x += p_dir * alpha     # and consumed there, without crossing the bus
 
 Read the value back once the loop is done, or every k iterations if it has to test something.
 
-A read costs the wait and a copy of the block it needs into pinned host memory, a few microseconds for a scalar.
-Reading managed memory from the host directly would fault its page over instead, and a small block shares a page with other live blocks that the next kernel touches, so a fresh scalar cost 0.8 ms that way on the machine above, forty times what the copy costs.
+A read costs the wait and a copy of the block it needs into pinned host memory.
+Reading managed memory from the host directly would fault its page over instead, and a small block shares a page with other live blocks that the next kernel touches, so a fresh scalar costs far more that way than the copy does.
 The reads that answer values, from `Float(x)` and `to_a` to `each` and `inspect`, take the copy.
 
 ### Reshape Copies, Reshape! Does Not
@@ -226,18 +216,7 @@ a.reshape(2, 12)[0, 0] = 99.0  # a copy, so a does not
 This is what Numo does too, and numpy is where the expectation comes from: there `reshape` answers a view whenever the strides allow one.
 On a GPU the difference is an allocation and a copy kernel, paid every call.
 `reshape!` changes the receiver in place and costs neither.
-RTX 5070 Ti Laptop, `Cumo::SFloat`, 200 calls a measurement:
-
-```
-shape        reshape     reshape!    the copy allocates
-1x768        5.1 us      0.04 us          3 KB
-1024x768    39.1 us      0.18 us          3 MB
-4096x768    58.1 us      0.22 us         12 MB
-8192x768   142.7 us      0.43 us         24 MB
-```
-
-`reshape!` is host-side bookkeeping, so it stays under a microsecond whatever the array weighs.
-The `reshape` column is the copy, and it grows with the bytes.
+It is host-side bookkeeping, so its cost does not depend on what the array weighs, where the copy `reshape` makes grows with the bytes.
 
 The catch is that `reshape!` changes the array everything else is holding.
 It fits a temporary the calling expression owns, and not an argument, an ivar, or anything a cache still points at:
@@ -262,28 +241,17 @@ a + 2.0                     #=> Cumo::SFloat
 ```
 
 Numo promotes the same way, and on a CPU it costs nothing: Numo's single-precision math computes in double and narrows the result anyway.
-On a GeForce card, whose double-precision rate is a sixty-fourth of its single-precision one, it costs a great deal.
-512x2048 elements in place on an RTX 5070 Ti Laptop:
-
-```
-                SFloat     DFloat
-a * 2.0         11.8 us    12.8 us
-sqrt            11.0 us    43.0 us
-sin             11.5 us    97.5 us
-atan            11.1 us   122.9 us
-atan2           12.5 us   192.4 us
-```
-
-Only the transcendentals pay for the promotion; a double multiply runs at the speed of a single one.
+On a GeForce card, whose double-precision rate is a small fraction of its single-precision one, it costs a great deal.
+Only the transcendentals pay for the promotion, and the more work the function does the more they pay: a double multiply runs at about the speed of a single one, while `sqrt`, `sin`, `atan` and `atan2` in double take several times as long as in single.
 The methods a Float can reach as a second argument are `atan2`, `hypot` and `ldexp`.
-`ldexp` pays a different way, since scaling by a power of two is cheap in either precision: `Cumo::NMath.ldexp(a, 2.0)` takes 268.0 us against 12.6 us for `Cumo::NMath.ldexp(a, 2)`, and the difference there is the doubled arrays it has to allocate rather than the arithmetic.
+`ldexp` pays a different way, since scaling by a power of two is cheap in either precision: `Cumo::NMath.ldexp(a, 2.0)` is still far slower than `Cumo::NMath.ldexp(a, 2)`, and the difference there is the doubled arrays it has to allocate rather than the arithmetic.
 
 Pass a 0-dimensional array instead of a Float and the call stays single precision.
 That is what `[]` hands back, so a scalar taken out of an array is already in the right form:
 
 ```ruby
 two = Cumo::SFloat[2.0][0]     # a 0-dimensional Cumo::SFloat
-Cumo::NMath.atan2(a, two)      #=> Cumo::SFloat, 14.9 us against 219.3 us
+Cumo::NMath.atan2(a, two)      #=> Cumo::SFloat
 ```
 
 Naming the module directly works too, under both libraries:
@@ -300,22 +268,9 @@ The 0-dimensional form has no effect under Numo, where `[]` returns a Ruby Float
 That saves the copy and the memory it needs.
 What it costs is the kernel cuBLAS then picks, which for most shapes is slower than the one it picks for an operand already laid out its way.
 
-RTX 5070 Ti Laptop, `Cumo::SFloat`, `q[M,K].dot(k[N,K].transpose)`, medians of nine rounds:
-
-```
-M     K     N       M*K      as it is   copied first   the copy
-1     64    1500         64      5.6 us       11.4 us      2.8 us
-512   64    512      32,768      8.5         11.2         2.9
-1500  64    1500     96,000     33.0         29.3         3.0
-512   256   512     131,072     21.8         20.7         2.8
-4096  64    4096    262,144    229.1        179.3         4.2
-512   768   512     393,216     54.0         39.2         3.3
-256   3072  768     786,432    131.1        103.0        12.5
-```
-
 The copy weighs `N * K`, and the faster kernel it buys is worth `M * N * K`, so `M` is what decides.
-A matrix-vector product, where `M` is one, is the clearest case against copying: it takes twice as long that way.
-Past an `M * K` of roughly fifty thousand on this card the copy starts paying for itself, and past a few hundred thousand it is worth a fifth of the time.
+A matrix-vector product, where `M` is one, is the clearest case against copying.
+As `M * K` grows the copy starts paying for itself; where it starts depends on the card, so measure the shape that matters before choosing.
 
 Where a profile says one of these multiplications matters, hand it an operand that is already contiguous:
 
@@ -324,13 +279,13 @@ kt = k.transpose.dup    # or build k transposed in the first place
 q.dot(kt)
 ```
 
-The table above is two-dimensional, where cuBLAS is given one matrix.
-A batched multiplication takes another path through the same flag, and these numbers do not cover it.
+All of this is about the two-dimensional case, where cuBLAS is given one matrix.
+A batched multiplication takes another path through the same flag.
 
 ### Fused Operations
 
 `layer_norm`, `rms_norm` and `softmax` normalize along the last axis in one kernel each, and `quantize_symmetric` takes it to 8-bit integers in one more.
-Written out of the operators they take nine launches, six, five and six, and a launch costs about two microseconds whatever it is handed, so a short row pays for the launches rather than for its bytes.
+Written out of the operators they take nine launches, six, five and six, and a launch has a fixed cost whatever it is handed, so a short row pays for the launches rather than for its bytes.
 
 ```ruby
 y = x.layer_norm(gamma, beta, eps: 1e-5)   # (x - mean) / sqrt(var + eps) * gamma + beta
@@ -351,47 +306,8 @@ numpy, torch            -2    -2     0     0     2     2
 
 `rint` is the other rule, at the cost of writing the quantization out: `(x / scale[false, :new]).rint.clip(-127, 127)` answers what numpy answers. A tie needs `x` to be an exact odd multiple of half the scale, so whether one ever comes up is a property of the data rather than of the arithmetic. Over a million random single-precision elements the two spellings disagreed four times, and every disagreement was a tie.
 
-On an RTX 5070 Ti Laptop, against the same arithmetic spelled with operators, in microseconds:
-
-```
-layer_norm              SFloat            DFloat            HFloat
-shape              fused  written    fused  written    fused  written
-1 x 768              3.9     30.1      9.7     30.3      3.9     29.8
-256 x 768            6.6     22.5     22.0     35.4      7.8     22.4
-4096 x 768          32.7    177.4    300.7    610.5     28.2    142.9
-1 x 1000000         19.0     59.4    125.4    175.4     22.3     68.5
-
-softmax                 SFloat            DFloat            HFloat
-shape              fused  written    fused  written    fused  written
-1 x 768              4.3     19.8      7.4     26.5      6.3     34.4
-256 x 768            8.8     13.9     23.4     35.1      6.8     18.5
-4096 x 768          49.2    122.7    318.3    549.0     28.2    109.8
-1 x 1000000         27.8     44.0    108.6    148.5     32.1     53.8
-
-rms_norm                SFloat            DFloat            HFloat
-shape              fused  written    fused  written    fused  written
-1 x 768              2.9     14.2      5.8     14.1      3.1     15.1
-256 x 768            4.6     16.7      6.9     20.2      5.2     15.5
-4096 x 768          38.5    122.5    130.8    367.0     19.2     80.8
-1 x 1000000         12.5     35.8     23.7    102.2     12.0     33.2
-```
-
-```
-quantize_symmetric      SFloat            DFloat            HFloat
-shape              fused  written    fused  written    fused  written
-1 x 768              3.7     20.2      6.0     15.7      2.3     11.9
-256 x 768            4.7     15.0     20.2     21.3      4.7     13.0
-4096 x 768          24.4    105.4    289.5    333.3     23.8     80.3
-1 x 1000000         18.8     40.8     97.1     81.6     15.7     37.5
-```
-
-The tables were taken in separate sessions, so read each row against the row beside it and not across the tables.
-
-`quantize_symmetric` in `Cumo::DFloat` is worth less than the others and loses outright on a million elements, whatever shape they are in. The division it does per element is what costs: on this card one row of a million takes 44.0 us to divide in double against 10.8 in single, where the reduction over the same row takes 25.3 and 15.4. Six kernels give that division a kernel of its own to fill the device with, and one kernel leaves it behind the reduction.
-
-All three pay off in every precision, by the most where the row is short enough that the launches were all it was doing, and by the least in double, where the reduction itself costs more than the launches ever did.
-The memory clock on this card steps between 9001 and 11001 MHz under a benchmark this short, and the absolute figures move with it.
-The ratios hold across the steps.
+Against the same arithmetic spelled with operators they are faster, by the most where the row is short enough that the launches were all it was doing, and by the least in double, where the arithmetic itself costs more than the launches ever did.
+The exception is `quantize_symmetric` in `Cumo::DFloat`, which can lose on a long row. The division it does per element is what costs, since double is slow on a card with a low double-precision rate: six kernels give that division a kernel of its own to fill the device with, and one kernel leaves it behind the reduction.
 
 All three normalize along the last axis only.
 Other axes are reachable through `transpose`.
@@ -447,17 +363,7 @@ It is also called Swish.
 Cumo::NMath.silu(x)   # x / (1 + exp(-x)), in one kernel rather than five
 ```
 
-Written out of the operators it costs five launches, and one kernel runs 1.1x to 4.3x faster on an RTX 5070 Ti Laptop, in microseconds:
-
-```
-silu                    SFloat            DFloat            HFloat
-elements           fused  written    fused  written    fused  written
-768                  3.6     13.4      3.6      9.5      3.4     14.3
-786432               7.0     25.9     90.5    102.4      5.2     19.2
-16777216           353.2   1312.9   1984.7   3258.8    199.6    851.8
-```
-
-The three rows are three regimes rather than one curve: 768 elements pay for the launches, 786432 fit in L2 and move faster than this card reads from memory, and 16777216 are what it costs from DRAM.
+Written out of the operators it costs five launches, and one kernel is faster in every precision, by the most on an array small enough that the launches were all it was doing.
 
 It follows `torch.nn.functional.silu`, answering within one unit in the last place of the true value at the nine double points measured, as torch does.
 At the edges it matches torch exactly: `-Float::INFINITY` answers `NaN`, since that is what infinity times zero is, and a large negative `x` answers a signed zero.
@@ -474,15 +380,7 @@ Half reaches it at -21, because the round back to half gets there first.
 Cumo::NMath.sigmoid(x)   # in one kernel rather than four
 ```
 
-Written out of the operators it costs four launches, and one kernel runs 1.2x to 4.8x faster on an RTX 5070 Ti Laptop, in microseconds:
-
-```
-sigmoid                 SFloat            DFloat            HFloat
-elements           fused  written    fused  written    fused  written
-768                  2.9      9.0      2.5      8.8      2.0      9.6
-786432               5.6     23.0     94.6    111.3      7.3     23.6
-16777216           343.5   1234.7   1978.5   2941.1    210.5    798.1
-```
+Written out of the operators it costs four launches, and one kernel is faster in every precision, by the most on an array small enough that the launches were all it was doing.
 
 The kernel keeps the exponent's argument negative, which the plain quotient does not: writing `1 / (1 + exp(-x))` out asks `exp` for a value it cannot hold once `x` is negative enough, and the quotient then answers a zero where the curve is still a number the type carries.
 
@@ -513,17 +411,8 @@ A non-negative `x` takes the plain quotient unchanged, bit for bit, so only the 
 Cumo::NMath.softplus(x)   # log(1 + exp(x)), in one kernel rather than three
 ```
 
-Written out of the operators it costs three launches, and one kernel runs 1.0x to 3.1x faster on an RTX 5070 Ti Laptop, in microseconds:
-
-```
-softplus                SFloat            DFloat            HFloat
-elements           fused  written    fused  written    fused  written
-768                  2.0      6.1      2.3      6.2      2.1      6.0
-786432               5.9     18.3    166.6    171.8      5.7     15.0
-16777216           344.2    939.5   3503.7   3938.2    206.2    591.2
-```
-
-Double barely moves at the two larger sizes, the arithmetic rather than the launches being what it pays for there.
+Written out of the operators it costs three launches, and one kernel is faster, by the most on an array small enough that the launches were all it was doing.
+Double gains little on a large array, the arithmetic rather than the launches being what it pays for there.
 
 Writing it out also gives out earlier than the kernel does, because the intermediate is an array of the receiver's type:
 
@@ -603,54 +492,22 @@ a.gemm(b, alpha: 0.001)    #=> 102.375, the true 102400 scaled down
 
 #### What half is faster at
 
-`gemm` reaches the tensor cores. Square matrices on an RTX 5070 Ti Laptop, median of three runs each:
-
-```
-              HFloat              SFloat              DFloat
-1024x1024     0.043 ms  49.7 TF   0.161 ms  13.3 TF   5.370 ms  0.40 TF
-2048x2048     0.362 ms  47.4 TF   1.360 ms  12.6 TF   43.46 ms  0.40 TF
-4096x4096     3.335 ms  41.2 TF   10.40 ms  13.2 TF   328.1 ms  0.42 TF
-```
+`gemm` reaches the tensor cores, which single and double precision do not, so a large matrix product runs several times faster in half than in single.
 
 An odd number of columns costs half far more than it costs the others, because a row then starts on a two-byte boundary and the vectorized path is gone.
-It is the column count of either operand that matters, not the row count.
-1024x1024 times 1024x1024, with one dimension made odd at a time:
-
-```
-             all even   M odd      K odd      N odd
-HFloat        51.8 TF   49.2 TF    23.3 TF    23.3 TF
-SFloat        11.9 TF      -       11.6 TF    10.8 TF
-```
-
-The run-to-run spread on these is a few per cent and reaches fifteen at the top end, so the M column says the row count does not matter rather than that it costs 5 per cent.
+It is the column count of either operand that matters, not the row count: making `K` or `N` odd loses a large share of the speed, where making `M` odd does not.
 
 The penalty is on the arithmetic, so it does not reach a matrix-vector product, which is bound by how fast the matrix can be read whatever its shape.
-A 1x768 by 768x50257 gemv takes 0.211 ms with that odd 50257 and 0.205 ms with 50256, a difference inside the noise; the same 768x50257 matrix against 256 rows takes 0.833 ms and 0.481 ms, which is not.
+A 1x768 by 768x50257 gemv runs as fast with that odd 50257 as with 50256, while the same matrix against 256 rows does not.
 Pad the inner dimensions of a real matrix product; leave a gemv alone.
 
 `conv` is a different story, and worth reading before reaching for half in a network.
 cuDNN chooses its algorithm from the ones that fit in a scratch buffer, and the half algorithms that use the tensor cores ask for a lot of it.
-The default ceiling reaches them; the 8MB one Cumo used to ship does not.
-N=32, C=K=64, 56x56, 3x3:
-
-```
-                                         HFloat     BFloat     SFloat
-CUMO_CUDNN_MAX_WORKSPACE_SIZE=8388608    1.27 ms    1.26 ms    1.19 ms
-unset (128MB)                            0.54 ms    0.60 ms    1.19 ms
-CUMO_CUDNN_MAX_WORKSPACE_SIZE=268435456  0.52 ms    0.59 ms    0.59 ms
-```
-
-This shape's single-precision algorithm wants more than the default, which is the other half of the reason to look at the ceiling for a network that spends its time in `conv`.
+The default ceiling reaches them; the 8MB one Cumo used to ship does not, and under it a half convolution such as N=32, C=K=64, 56x56, 3x3 runs no faster than single.
+The single-precision algorithm for that shape wants more than the default, which is the other half of the reason to look at the ceiling for a network that spends its time in `conv`.
 
 Tensor cores also want the channel counts to be multiples of eight, which the first layer of a network never satisfies.
-That layer is still faster in half, but for the other reason:
-
-```
-C=3, K=64, 56x56, 3x3     0.085 ms   0.170 ms
-C=K=64, 56x56, 1x1        0.037 ms   0.120 ms
-```
-
-Neither of those reaches a tensor core; they move half the bytes.
+That layer can still be faster in half, but for the other reason: it moves half the bytes rather than reaching a tensor core.
 
 #### Batch normalization takes single-precision parameters
 
@@ -713,23 +570,8 @@ What replaces it is the mantissa: a bfloat16 resolves about three decimal digits
 
 #### What bfloat16 is faster at
 
-`gemm` reaches the tensor cores and lands on the same throughput as half. Square matrices on an RTX 5070 Ti Laptop, median of five runs each, one process per case:
-
-```
-              BFloat              HFloat              SFloat
-1024x1024     0.044 ms  48.9 TF   0.044 ms  48.5 TF   0.144 ms  14.9 TF
-2048x2048     0.298 ms  57.6 TF   0.303 ms  56.7 TF   1.404 ms  12.2 TF
-4096x4096     2.839 ms  48.4 TF   2.898 ms  47.4 TF   9.540 ms  14.4 TF
-```
-
+`gemm` reaches the tensor cores and runs at the same speed as half.
 The odd-column penalty is the same as half's and for the same reason, a row starting on a two-byte boundary.
-1024x1024 times 1024x1024, with one dimension made odd at a time:
-
-```
-             all even   M odd      K odd      N odd
-BFloat        48.9 TF   48.7 TF    23.5 TF    23.0 TF
-HFloat        48.5 TF      -       24.0 TF    23.1 TF
-```
 
 So the choice between the two sixteen-bit types is about range and resolution, not speed.
 Take bfloat16 where the magnitudes came from somewhere else and binary16 where three more mantissa bits are worth having.
@@ -739,7 +581,7 @@ Take bfloat16 where the magnitudes came from somewhere else and binary16 where t
 cuBLAS supports `CUDA_R_16BF`, which is what `gemm` and `dot` reach, from compute capability 8.0.
 Storing, casting and elementwise arithmetic have no such floor, because every operation is computed in single precision and rounded back, and they build and run wherever cumo does.
 A `dot` on a pre-Ampere card is the one to expect trouble from.
-**This is not measured here**: the only GPU these numbers came from is a Blackwell one, and the requirement is read from cuBLAS's documentation rather than reproduced.
+**This is not measured here**: the requirement is read from cuBLAS's documentation rather than reproduced on a card older than Ampere.
 
 cuDNN reaches bfloat16 as `CUDNN_DATA_BFLOAT16`, and its own bfloat16 kernels want Ampere for the same reason cuBLAS does.
 A convolution is given `CUDNN_DATA_FLOAT` to accumulate in, so it passes 256 the way a reduction does.
@@ -1086,14 +928,8 @@ export CUMO_SHOW_WARNING_ONCE=OFF
 cuDNN picks a convolution algorithm by benchmarking the ones that fit in a scratch buffer, and the ceiling on that buffer is 128MB.
 The search reserves the whole ceiling whatever the convolution's size and hands it back to the pool afterwards, so the ceiling costs a peak rather than a residency.
 
-Some shapes want more than the default. The twenty convolutions of a ResNet-18 forward pass at batch 16, and the single-precision case from [Half Precision](#half-precision):
-
-```
-                                         ResNet-18    N=32, C=K=64, 56x56, 3x3
-CUMO_CUDNN_MAX_WORKSPACE_SIZE=8388608      9.80 ms                     1.19 ms
-unset (128MB)                              5.23 ms                     1.19 ms
-CUMO_CUDNN_MAX_WORKSPACE_SIZE=268435456    5.24 ms                     0.59 ms
-```
+The old 8MB ceiling kept the twenty convolutions of a ResNet-18 forward pass at batch 16 off their faster algorithms, which the default reaches.
+Some shapes want more than the default, such as the single-precision case from [Half Precision](#half-precision), which reaches its faster algorithm only above it.
 
 To raise it:
 
@@ -1118,18 +954,11 @@ To trade the accuracy for the speed:
 export CUMO_ALLOW_TF32=1
 ```
 
-Measured over the convolutions of a ResNet-18 forward pass at batch 16, with the ceiling raised to 256MB, each layer against a double precision reference:
-
-```
-                              pass      worst layer
-tensor cores off (default)   5.24 ms      1.4e-05
-tensor cores on              4.31 ms      2.4e-04
-```
+Over the convolutions of a ResNet-18 forward pass at batch 16, with the ceiling raised to 256MB, the pass gets faster and the worst layer moves from 1.4e-05 to 2.4e-04 against a double precision reference.
 
 The same flag puts `SFloat` and `SComplex` `gemm` on the tensor cores as TF32, and `dot` where it goes through `gemm`.
 Off, the answer is the one cuBLAS gives at single precision, bit for bit.
-On, a `[4096, 4096]` `SFloat` `gemm` goes from 17.8 to 28.4 TFLOP/s on an RTX 5070 Ti Laptop, 1.60 times over six interleaved rounds.
-Its answer is then about 3e-04 from a double precision reference, where it was 4e-07.
+On, a large `SFloat` `gemm` runs faster, and its answer is then about 3e-04 from a double precision reference, where it was 4e-07.
 The double types are not affected either way.
 
 What the flag buys depends on where the time goes.
