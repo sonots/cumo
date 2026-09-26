@@ -129,9 +129,8 @@ __global__ void cumo_na_diagonal_stride_index_kernel(size_t *idx, ssize_t s0, si
 
 // flatten builds an index array whenever the dimensions it collapses do not
 // come out as one stride. Filling it on the host meant a size_t store per
-// element into memory the device owns, which faults a page at a time: a
-// 512x2048 column slice took 2.4 ms, and the copy that follows faults every
-// page back. The offsets are the same mixed-radix walk the host loop did.
+// element into memory the device owns, which faults a page at a time, and the
+// copy that follows faults every page back. The offsets are the same mixed-radix walk the host loop did.
 #define CUMO_NA_FLATTEN_INDEX_KERNEL(NDIM) \
 __global__ void cumo_na_flatten_index_kernel_dim##NDIM(size_t *idx, cumo_na_iarray_stridx_t iarray, cumo_na_indexer_t indexer) \
 { \
@@ -178,8 +177,8 @@ __global__ void cumo_na_flatten_index_kernel_dim(size_t *idx, cumo_na_iarray_str
 
 // Copying a whole view in one launch, so that ndloop does not have to walk the
 // outer dimensions itself. It synchronizes once per outer step when an operand
-// carries an index array, which for a gathered view costs far more than the
-// copy: 6250 rows took 37.6 ms that way and 0.2 ms through here.
+// carries an index array, which for a gathered view of many rows costs far
+// more than the copy itself.
 __global__ void cumo_iter_copy_bytes_indexer_kernel_dim(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_indexer_t indexer, ssize_t elmsz)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {

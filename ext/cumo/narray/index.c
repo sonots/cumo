@@ -108,8 +108,8 @@ cumo_na_range_check(ssize_t pos, ssize_t size, int dim)
 // A view's index arrays are written once, by the kernels that build the view,
 // and never again, so a host read of one entry has to wait for those and for
 // nothing else. A device synchronize is the only way to ask, and it waits for
-// everything queued: a scalar read of a[idx, true] cost 70us behind twenty
-// kernels, against 0.2us for the same read on a view built from a range.
+// everything queued, so a scalar read of a[idx, true] waits behind every kernel
+// in flight where the same read on a view built from a range waits for none.
 //
 // What it does give is that one of them settles every view built before it. So
 // count them in cumo_cuda_sync_epoch, have a view remember the count its fills

@@ -8429,8 +8429,7 @@ class NArrayTest < Test::Unit::TestCase
     end
 
     # Reading a small block through the managed pointer faulted its page
-    # over and back, 0.8 ms on the machine this was written on; staging it
-    # takes a copy of the block alone.
+    # over and back; staging it takes a copy of the block alone.
     test "reading a fresh reduction back takes tens of microseconds" do
       r = Cumo::DFloat.new(2000).rand
       time = lambda do

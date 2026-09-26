@@ -56,8 +56,7 @@ static inline ssize_t step_magnitude(ssize_t step) { return step < 0 ? -step : s
 // the reduction does: those write into the indexer, and the indexer carries
 // shape[] and index[] for CUMO_NA_MAX_DIMENSION, so the copy the kernel writes
 // into cannot stay in registers and every element pays a local memory round
-// trip. Measured on an RTX 5070 Ti, a 2048x2048 sum along the last axis takes
-// 1.89 ms that way and 0.02 ms with the offsets below.
+// trip.
 //
 // split is the first reduce dimension. It is -1 when the reduce axis does not
 // end up on a dimension boundary, which leaves the whole flat index to
@@ -258,8 +257,8 @@ static inline void set_reduce_addr_out2(cumo_reduce_addr_t* ad, const cumo_na_re
 // contiguous group of reduce_block_size, and the group is sized so that every
 // thread has min_reduce_per_thread elements to read rather than one: a
 // 4096x256 sum along the last axis with a 256-thread group per row reads one
-// element per thread and then spends the time in the tree, at 92 GB/s, where
-// a group of 16 reading 16 each gets 520.
+// element per thread and then spends its time in the tree, where a group of 16
+// reading 16 each runs several times faster.
 static constexpr int64_t min_reduce_per_thread = 16;
 static constexpr int64_t sector_bytes = 32;
 

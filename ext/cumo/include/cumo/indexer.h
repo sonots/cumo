@@ -310,8 +310,7 @@ cumo_na_make_bit_pred_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
 // non-contiguous or broadcast operand pays one per dimension per element, so
 // when the whole array fits 32 bits the split runs in 32 bits. The outermost
 // dimension takes what is left without dividing, since i is always below
-// total_size. On an RTX 5070 Ti a [1024,3072] + [3072] runs at 321 GB/s in
-// 64 bits and 609 with this.
+// total_size.
 #define CUMO_NA_INDEXER_DECOMPOSE32(indexer, i, ndim) \
     do { \
         uint32_t i32_ = (uint32_t)(i); \
