@@ -134,7 +134,6 @@ extern "C" {
 
 void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint64_t cols)
 {
-    static const uint64_t max_row_blocks = 65536;
     int64_t want;
     unsigned int block_dim, grid_dim;
 
@@ -145,8 +144,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
     // split machinery instead. The passes stay the three above, run as separate
     // launches: taking the maximum and the sum in one would cost a second
     // exponential an element, which is what a DFloat row cannot afford.
-    if (rows < (uint64_t)cumo_detail::min_grid_size &&
-            cols > (uint64_t)(cumo_detail::max_block_size * cumo_detail::min_reduce_per_thread)) {
+    if (cumo_detail::row_wants_split(rows, cols)) {
         cumo_na_reduction_arg_t arg;
         <%=acc%>* stats = (<%=acc%>*)cumo_cuda_runtime_malloc(rows * sizeof(<%=acc%>));
         dim3 apply_grid((unsigned int)cumo_get_grid_dim(cols), (unsigned int)rows);
@@ -195,7 +193,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
     if (want < cumo_detail::warp_size) want = cumo_detail::warp_size;
     if (want > cumo_detail::max_block_size) want = cumo_detail::max_block_size;
     block_dim = (unsigned int)want;
-    grid_dim = (unsigned int)(rows < max_row_blocks ? rows : max_row_blocks);
+    grid_dim = (unsigned int)(rows < cumo_detail::max_row_blocks ? rows : cumo_detail::max_row_blocks);
 
     {
         uint64_t vpt = (cols + block_dim - 1) / block_dim;

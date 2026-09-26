@@ -33,9 +33,9 @@ struct <%="cumo_#{c_iter}_apply"%> {
     }
 };
 
-// The row read once, sixteen bytes at a time, and held in registers, so the
-// variance can be taken about the mean in a second pass over them instead of
-// updating it element by element, which costs a division each.
+// Holding the row lets the variance be taken about the mean in a second pass,
+// where updating both element by element costs a division each. Dividing each
+// term before summing costs precision, so it is kept for a sum that overflows.
 template <int VPT>
 __global__ void __launch_bounds__(cumo_detail::max_block_size) <%="cumo_#{c_iter}_held_kernel"%>(
         const dtype* x, dtype* y, const dtype* g, const dtype* b,
@@ -63,7 +63,22 @@ __global__ void __launch_bounds__(cumo_detail::max_block_size) <%="cumo_#{c_iter
                 for (int k = 0; k < width; k++) s += <%=to_acc%>(v[j].v[k]);
             }
         }
-        mean = cumo_detail::block_allreduce(s, sh, cumo_detail::row_add_op(), <%=acc%>(0)) / <%=acc%>(cols);
+        mean = cumo_detail::block_allreduce(s, sh, cumo_detail::row_add_op(), <%=acc%>(0));
+        if (isinf(mean)) {
+            <%=acc%> rcols = <%=acc%>(1) / <%=acc%>(cols);
+            s = 0;
+#pragma unroll
+            for (int j = 0; j < VPT; j++) {
+                uint32_t i = threadIdx.x + j * blockDim.x;
+                if (i < nvec) {
+#pragma unroll
+                    for (int k = 0; k < width; k++) s += <%=to_acc%>(v[j].v[k]) * rcols;
+                }
+            }
+            mean = cumo_detail::block_allreduce(s, sh, cumo_detail::row_add_op(), <%=acc%>(0));
+        } else {
+            mean /= <%=acc%>(cols);
+        }
 
 #pragma unroll
         for (int j = 0; j < VPT; j++) {
@@ -113,13 +128,14 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(
     int vpt = cumo_row_held_shape<dtype>(rows, cols, ptrs, 4, &block_dim);
 
     if (vpt > 0) {
-        unsigned int grid_dim = (unsigned int)(rows < 65536 ? rows : 65536);
+        unsigned int grid_dim = (unsigned int)(rows < cumo_detail::max_row_blocks ? rows : cumo_detail::max_row_blocks);
 #define CUMO_LAYER_NORM_HELD(n)                                                                   \
         case n:                                                                                   \
             <%="cumo_#{c_iter}_held_kernel"%><n><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>( \
                     (const dtype*)px, (dtype*)py, (const dtype*)pg, (const dtype*)pb,              \
                     (uint32_t)rows, (uint32_t)cols, (<%=acc%>)eps);                                \
-            break;
+            cumo_cuda_runtime_check_kernel_launch();                                              \
+            return;
         switch (vpt) {
         CUMO_LAYER_NORM_HELD(1)
         CUMO_LAYER_NORM_HELD(2)
@@ -127,8 +143,6 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(
         CUMO_LAYER_NORM_HELD(8)
         }
 #undef CUMO_LAYER_NORM_HELD
-        cumo_cuda_runtime_check_kernel_launch();
-        return;
     }
 
     impl.eps = (<%=acc%>)eps;

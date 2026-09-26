@@ -36,7 +36,6 @@ struct <%="cumo_#{c_iter}_apply"%> {
     }
 };
 
-// The row read once, sixteen bytes at a time, and held in registers.
 template <int VPT>
 __global__ void __launch_bounds__(cumo_detail::max_block_size) <%="cumo_#{c_iter}_held_kernel"%>(
         const dtype* x, dtype* y, const dtype* g, uint32_t rows, uint32_t cols, <%=acc%> eps)
@@ -101,13 +100,14 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(
     int vpt = cumo_row_held_shape<dtype>(rows, cols, ptrs, 3, &block_dim);
 
     if (vpt > 0) {
-        unsigned int grid_dim = (unsigned int)(rows < 65536 ? rows : 65536);
+        unsigned int grid_dim = (unsigned int)(rows < cumo_detail::max_row_blocks ? rows : cumo_detail::max_row_blocks);
 #define CUMO_RMS_NORM_HELD(n)                                                                     \
         case n:                                                                                   \
             <%="cumo_#{c_iter}_held_kernel"%><n><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>( \
                     (const dtype*)px, (dtype*)py, (const dtype*)pg,                                \
                     (uint32_t)rows, (uint32_t)cols, (<%=acc%>)eps);                                \
-            break;
+            cumo_cuda_runtime_check_kernel_launch();                                              \
+            return;
         switch (vpt) {
         CUMO_RMS_NORM_HELD(1)
         CUMO_RMS_NORM_HELD(2)
@@ -115,8 +115,6 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(
         CUMO_RMS_NORM_HELD(8)
         }
 #undef CUMO_RMS_NORM_HELD
-        cumo_cuda_runtime_check_kernel_launch();
-        return;
     }
 
     impl.n = (<%=acc%>)cols;

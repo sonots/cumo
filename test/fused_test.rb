@@ -118,6 +118,13 @@ class FusedTest < CumoTestBase
       refute_equal(x.layer_norm(gamma, beta).to_a, x.layer_norm(gamma, beta, eps: 1.0).to_a)
     end
 
+    test "layer_norm answers beta for a flat row near the top of the range #{dtype}" do
+      big = { Cumo::DFloat => 1e306, Cumo::HFloat => 6e4 }.fetch(dtype, 1e36)
+      beta = dtype.new(512).seq * 0.001
+      y = dtype.new(4, 512).fill(big).layer_norm(dtype.ones(512), beta)
+      assert_equal(Cumo::DFloat.cast(beta.tile(4, 1)).to_a, Cumo::DFloat.cast(y).to_a)
+    end
+
     test "layer_norm reads a row that does not start on sixteen bytes #{dtype}" do
       flat = dtype.new(65).rand_norm
       assert_layer_norm(flat[1..-1], dtype.new(64).rand_norm, dtype.new(64).rand_norm)

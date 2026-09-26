@@ -83,7 +83,6 @@ __global__ void row_apply_kernel(
     }
 }
 
-// Sixteen bytes of T, which one instruction loads or stores.
 template <typename T>
 struct __align__(16) row_vec {
     T v[16 / sizeof(T)];
@@ -115,12 +114,24 @@ __device__ T block_allreduce(T v, T* sh, Op op, T identity)
     return v;
 }
 
+// A block that takes several rows amortizes its own launch, so the grid is
+// held below the row count on purpose. This is a tuning number and not the
+// ceiling for this axis, which is CUMO_MAX_GRID_DIM: a million rows of 8 take
+// 1286.0us at a block per row and 1177.5 here, and two million of 4 take
+// 2357.5 against 2094.4.
+static const uint64_t max_row_blocks = 65536;
+
+// A row too long for one block to walk leaves the rest of the device idle
+// unless there are other rows to fill it.
+static inline bool row_wants_split(uint64_t rows, uint64_t cols)
+{
+    return rows < (uint64_t)min_grid_size && cols > (uint64_t)(max_block_size * min_reduce_per_thread);
+}
+
 }  // namespace cumo_detail
 
-// How a row of cols elements of T is taken sixteen bytes at a time and held in
-// registers: answers the vectors each thread holds, 1, 2, 4 or 8, and sets
-// block_dim, or answers 0 where the row cannot be. Every pointer in ptrs has to
-// be sixteen-byte aligned. A few long rows are left to the split machinery.
+// Answers the vectors of sixteen bytes each thread holds, 1, 2, 4 or 8, and
+// sets block_dim, or answers 0 where the row cannot be held in registers.
 template <typename T>
 static inline int cumo_row_held_shape(
         uint64_t rows, uint64_t cols, const void* const* ptrs, int n_ptrs, unsigned int* block_dim)
@@ -131,16 +142,11 @@ static inline int cumo_row_held_shape(
     int i;
 
     if (rows == 0 || rows > INT32_MAX || cols % width != 0) return 0;
-    if (rows < (uint64_t)cumo_detail::min_grid_size &&
-            cols > (uint64_t)(cumo_detail::max_block_size * cumo_detail::min_reduce_per_thread)) {
-        return 0;
-    }
+    if (cumo_detail::row_wants_split(rows, cols)) return 0;
     for (i = 0; i < n_ptrs; i++) {
         if ((uintptr_t)ptrs[i] % 16 != 0) return 0;
     }
     nvec = cols / width;
-    // Four vectors a thread once there are rows enough to fill the device; a
-    // few rows want every thread they can get.
     want = cumo_detail::round_up_to_power_of_2(
             (int64_t)(rows < (uint64_t)cumo_detail::min_grid_size ? nvec : (nvec + 3) / 4));
     if (want < cumo_detail::warp_size) want = cumo_detail::warp_size;
@@ -165,12 +171,6 @@ void cumo_row_reduce_apply_out(
 {
     typedef decltype(impl.Identity(0)) Accum;
     typedef decltype(impl.MapOut(impl.Identity(0))) Stats;
-    // A block that takes several rows amortizes its own launch, so the grid is
-    // held below the row count on purpose. This is a tuning number and not the
-    // ceiling for this axis, which is CUMO_MAX_GRID_DIM: a million rows of 8
-    // take 1286.0us at a block per row and 1177.5 here, and two million of 4
-    // take 2357.5 against 2094.4.
-    static const uint64_t max_row_blocks = 65536;
     int64_t want;
     unsigned int block_dim, grid_dim;
     size_t shared_mem_size;
@@ -185,8 +185,7 @@ void cumo_row_reduce_apply_out(
     // layer norm otherwise costs. Past that the reduction goes through the split
     // machinery, which walks the row with the whole device, and a second kernel
     // applies what it found.
-    if (rows < (uint64_t)cumo_detail::min_grid_size &&
-            cols > (uint64_t)(cumo_detail::max_block_size * cumo_detail::min_reduce_per_thread)) {
+    if (cumo_detail::row_wants_split(rows, cols)) {
         cumo_na_reduction_arg_t arg;
         // The reduction writes the row totals wherever it is pointed, so a
         // caller that wants them back is handed the buffer rather than a copy.
@@ -248,7 +247,7 @@ void cumo_row_reduce_apply_out(
     if (want < cumo_detail::warp_size) want = cumo_detail::warp_size;
     if (want > cumo_detail::max_block_size) want = cumo_detail::max_block_size;
     block_dim = (unsigned int)want;
-    grid_dim = (unsigned int)(rows < max_row_blocks ? rows : max_row_blocks);
+    grid_dim = (unsigned int)(rows < cumo_detail::max_row_blocks ? rows : cumo_detail::max_row_blocks);
     shared_mem_size = block_dim * sizeof(Accum);
 
     cumo_detail::row_reduce_apply_kernel<TypeIn, TypeOut, Stats, Impl, Apply><<<grid_dim, block_dim, shared_mem_size, cumo_cuda_stream()>>>(
