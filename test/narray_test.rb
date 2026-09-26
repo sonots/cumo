@@ -4156,12 +4156,27 @@ class NArrayTest < Test::Unit::TestCase
           end
         end
         assert_equal(shape, a.inplace.sort.shape, "#{label} inplace sort")
-        assert_raise(Cumo::NArray::DimensionError, label) { a.sort(axis: shape.size) }
+        assert_equal(Cumo::Int32, a.sort_index.class, "#{label} sort_index")
+        %i[sort sort_index cumsum cumprod].each do |m|
+          assert_raise(Cumo::NArray::DimensionError, "#{label} #{m}") { a.send(m, axis: shape.size) }
+        end
+      end
+    end
+    idx_view = Cumo::DFloat.new(3, 4).seq[[2, 0, 1], true][true, 2...2]
+    [idx_view, Cumo::DFloat.new(0, 3).reverse(1)].each do |v|
+      [nil, 0, 1].each do |axis|
+        kw = axis.nil? ? {} : {axis: axis}
+        %i[sort sort_index cumsum cumprod].each do |m|
+          assert_equal(v.shape, v.send(m, **kw).shape, "#{v.shape} view #{m} #{kw}")
+        end
       end
     end
     assert_equal([0, 3], Cumo::DFloat.new(0, 3).sort(nan: true).shape)
     assert_equal([0, 3], Cumo::DFloat.new(0, 3).cumsum(nan: true).shape)
     assert_equal([0, 3], Cumo::RObject.new(0, 3).cumsum(axis: 1).shape)
+    assert_raise(Cumo::NArray::DimensionError) { Cumo::RObject.new(0, 3).cumsum(axis: 2) }
+    e = assert_raise(Cumo::NArray::ShapeError) { Cumo::DFloat.zeros(3, 0).percentile(50) }
+    assert_equal("cannot reduce empty NArray", e.message)
   end
 
   test "reversing an empty array leaves the view at its base" do

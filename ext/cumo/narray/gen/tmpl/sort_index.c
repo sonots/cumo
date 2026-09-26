@@ -56,7 +56,7 @@ static VALUE
     VALUE idx, reduce;
     cumo_ndfunc_arg_in_t ain[3] = {{cT,0},{0,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
-    cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM|CUMO_NDF_EMPTY_OK, 3,1, ain,aout};
+    cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM, 3,1, ain,aout};
 
     CumoGetNArray(self,na);
     if (na->ndim==0) {
@@ -72,7 +72,7 @@ static VALUE
         idx = cumo_na_new(cumo_cInt32, na->ndim, na->shape);
     }
     ndf.func = <%=c_iter%>_kernel;
-    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1);
     rb_funcall(idx, rb_intern("seq"), 0);
 
     ndf.flag |= CUMO_NDF_INDEXER_LOOP;

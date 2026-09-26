@@ -54,11 +54,11 @@ static VALUE
     VALUE reduce;
     int inplace;
     cumo_ndfunc_arg_in_t ain[2] = {{CUMO_OVERWRITE,0},{cumo_sym_reduce,0}};
-    cumo_ndfunc_t ndf = {0, CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_EMPTY_OK, 2,0, ain,0};
+    cumo_ndfunc_t ndf = {0, CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE, 2,0, ain,0};
 
     ndf.func = <%=c_iter%>_kernel;
     inplace = CUMO_TEST_INPLACE(self);
-    reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1);
     if (!inplace) {
         self = cumo_na_copy(self);
     }

@@ -66,7 +66,6 @@ typedef struct {
 // Cumo custom. The user function reads its inputs on the host, so ndloop
 // stages them into pinned memory first and points the iterators there.
 #define CUMO_NDF_HOST_READ           (1<<13)
-#define CUMO_NDF_EMPTY_OK            (1<<14)
 
 #define CUMO_FULL_LOOP       (CUMO_NDF_HAS_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP|CUMO_NDF_INPLACE)
 #define CUMO_FULL_LOOP_NIP   (CUMO_NDF_HAS_LOOP|CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEX_LOOP)
