@@ -2315,7 +2315,7 @@ cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
                       cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan)
 {
     return cumo_na_parse_reduce_dimension(argc, argv, naryc, naryv, ndf, iter_nan,
-                 ndf && CUMO_NDF_TEST(ndf, CUMO_NDF_EMPTY_IDENTITY));
+                 ndf && CUMO_NDF_TEST(ndf, CUMO_NDF_EMPTY_IDENTITY|CUMO_NDF_EMPTY_OK));
 }
 
 // The axes a view marks with :sum, :reduce or :+ live on the narray, and

@@ -56,7 +56,7 @@ static VALUE
     VALUE idx, reduce;
     cumo_ndfunc_arg_in_t ain[3] = {{cT,0},{0,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
-    cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM, 3,1, ain,aout};
+    cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM|CUMO_NDF_EMPTY_OK, 3,1, ain,aout};
 
     CumoGetNArray(self,na);
     if (na->ndim==0) {

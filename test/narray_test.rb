@@ -4144,6 +4144,26 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([3, 0], w.reverse.copy.shape)
   end
 
+  test "an empty array can be sorted and scanned along any axis" do
+    [Cumo::DFloat, Cumo::Int32].each do |dtype|
+      [[0], [0, 3], [3, 0], [2, 0, 3]].each do |shape|
+        a = dtype.new(*shape)
+        label = "#{dtype} #{shape.inspect}"
+        [nil, *(0...shape.size)].each do |axis|
+          kw = axis.nil? ? {} : {axis: axis}
+          %i[sort sort_index cumsum cumprod].each do |m|
+            assert_equal(shape, a.send(m, **kw).shape, "#{label} #{m} #{kw}")
+          end
+        end
+        assert_equal(shape, a.inplace.sort.shape, "#{label} inplace sort")
+        assert_raise(Cumo::NArray::DimensionError, label) { a.sort(axis: shape.size) }
+      end
+    end
+    assert_equal([0, 3], Cumo::DFloat.new(0, 3).sort(nan: true).shape)
+    assert_equal([0, 3], Cumo::DFloat.new(0, 3).cumsum(nan: true).shape)
+    assert_equal([0, 3], Cumo::RObject.new(0, 3).cumsum(axis: 1).shape)
+  end
+
   test "reversing an empty array leaves the view at its base" do
     out = run_child(<<~RUBY)
       require "cumo/narray"

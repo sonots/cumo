@@ -98,12 +98,12 @@ static VALUE
     VALUE reduce;
     cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cumo_sym_reduce,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
-    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM,
+    cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM|CUMO_NDF_EMPTY_OK,
                      2, 1, ain, aout };
   <% unless type_name == 'robject' %>
     // The whole array reaches the iterator at once, which is what lets the scan
     // take every row in one call.
-    ndf.flag = CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM;
+    ndf.flag = CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM|CUMO_NDF_EMPTY_OK;
   <% end %>
 
   <% if is_float %>
