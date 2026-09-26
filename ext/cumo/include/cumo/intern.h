@@ -64,7 +64,7 @@ VALUE cumo_na_get_reduce(VALUE v);
 void cumo_na_set_reduce(VALUE v, VALUE reduce);
 
 VALUE cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
-                          cumo_ndfunc_t *ndf);
+                          cumo_ndfunc_t *ndf, int empty_ok);
 
 // ndloop
 VALUE cumo_na_ndloop(cumo_ndfunc_t *nf, int argc, ...);

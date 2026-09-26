@@ -4124,6 +4124,35 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "an empty array can be reversed along any axis" do
+    [Cumo::Int32, Cumo::DFloat, Cumo::Bit].each do |dtype|
+      [[0], [0, 3], [3, 0], [2, 0, 3]].each do |shape|
+        a = dtype.new(*shape)
+        label = "#{dtype} #{shape.inspect}"
+        [[], *(0...shape.size).map { |i| [i] }].each do |axes|
+          r = a.reverse(*axes)
+          assert_equal(shape, r.shape, "#{label} reverse(#{axes.join(',')})")
+          assert_equal(shape, r.reverse(*axes).shape, "#{label} reverse twice")
+          assert_equal(shape, r.copy.shape, "#{label} reverse copy")
+        end
+        assert_raise(Cumo::NArray::DimensionError, label) { a.reverse(shape.size) }
+      end
+    end
+    w = Cumo::DFloat.new(3, 4).seq[[2, 0, 1], true][true, 2...2]
+    assert_equal([3, 0], w.reverse(0).shape)
+    assert_equal([3, 0], w.reverse(1).shape)
+    assert_equal([3, 0], w.reverse.copy.shape)
+  end
+
+  test "reversing an empty array leaves the view at its base" do
+    out = run_child(<<~RUBY)
+      require "cumo/narray"
+      [Cumo::DFloat.new(0, 3).reverse(1), Cumo::DFloat.new(3, 0).reverse(0),
+       Cumo::DFloat.new(0, 3).reverse(0).reverse(1)].each(&:debug_info)
+    RUBY
+    assert_equal([0, 0, 0], out.scan(/offset = (\d+)/).flatten.map(&:to_i))
+  end
+
   # The zeroing also kept every host loop off an empty buffer. What reads one
   # now is a segmentation fault, so a child takes these; to_a nests the way
   # numpy's tolist does.
