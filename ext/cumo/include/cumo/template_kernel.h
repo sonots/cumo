@@ -215,4 +215,18 @@ void cumo_cuda_runtime_free(char *ptr);
 #endif
 
 
+#ifdef __CUDACC__
+// A kernel parameter that is read through a runtime index, the way the steps
+// of an operand are, is copied to local memory by the compiler unless it is
+// declared __grid_constant__, and the copy is paid by every thread: the second
+// operand of a zip reduction cost a 104-byte stack frame that made mulsum along
+// a middle axis markedly slower than a sum of the same bytes. The qualifier needs
+// CUDA 11.7 and sm_70; below those the parameter is merely const.
+#if (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700) || (defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ < 11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ < 7)))
+#define CUMO_GRID_CONSTANT const
+#else
+#define CUMO_GRID_CONSTANT const __grid_constant__
+#endif
+#endif
+
 #endif /* ifndef CUMO_TEMPLATE_KERNEL_H */

@@ -935,6 +935,52 @@ class NArrayExtraTest < CumoTestBase
     end
   end
 
+  # Contiguous parts of one class are written with one launch, and anything
+  # else part by part. Both have to agree with the same join done on Ruby
+  # arrays.
+  def test_concatenate_matches_ruby_arrays
+    join = lambda do |arys, axis|
+      next arys.flatten(1) if axis == 0
+
+      arys.first.each_index.map { |i| join.call(arys.map { |a| a[i] }, axis - 1) }
+    end
+    seq = lambda do |dtype, shape, from|
+      n = shape.reduce(1, :*)
+      n.zero? ? dtype.zeros(*shape) : dtype.cast(Array.new(n) { |i| (i + from) % 97 }).reshape(*shape)
+    end
+    TYPES.each do |dtype|
+      [[[[5, 4]] * 6, 1],
+       [[[2, 1, 4], [2, 3, 4], [2, 0, 4], [2, 2, 4]], 1],
+       [[[3, 5], [3, 1], [3, 7]], 1],
+       [[[1, 4], [3, 4], [2, 4]], 0]].each do |shapes, axis|
+        parts = shapes.each_with_index.map { |s, i| seq.call(dtype, s, 10 * i) }
+        expected = dtype.cast(join.call(parts.map(&:to_a), axis))
+        assert_equal(expected, dtype.concatenate(parts, axis: axis))
+        assert_equal(expected, parts.first.concatenate(*parts[1..], axis: axis))
+      end
+
+      parts = [seq.call(dtype, [2, 3], 0), seq.call(dtype, [4, 3], 7), seq.call(dtype, [3], 30)]
+      assert_equal(dtype.cast(join.call(parts.map(&:to_a).map { |a| a.first.is_a?(Array) ? a : [a] }, 0)), dtype.concatenate(parts, axis: 0))
+
+      parts = [seq.call(dtype, [2, 3, 4], 0), seq.call(dtype, [2, 3, 1], 50)]
+      assert_equal(dtype.cast(join.call(parts.map(&:to_a), 2)), dtype.concatenate(parts, axis: 2))
+
+      rows = seq.call(dtype, [4, 3], 0)[1..-1, true]
+      parts = [rows, seq.call(dtype, [3, 5], 40)]
+      assert_equal(dtype.cast(join.call(parts.map(&:to_a), 1)), dtype.hstack(parts))
+      parts = [rows, seq.call(dtype, [3, 5], 40), seq.call(dtype, [5, 3], 60).transpose]
+      assert_equal(dtype.cast(join.call(parts.map(&:to_a), 1)), dtype.hstack(parts))
+
+      parts = Array.new(65) { |i| seq.call(dtype, [2, 1], i) }
+      assert_equal(dtype.cast(join.call(parts.map(&:to_a), 1)), dtype.hstack(parts))
+
+      parts = [seq.call(dtype, [1000], 0), *Array.new(20) { |i| seq.call(dtype, [4], i) }]
+      assert_equal(dtype.cast(parts.flat_map(&:to_a)), dtype.concatenate(parts))
+
+      assert_equal(dtype[1, 2, 3], dtype.concatenate([dtype[1, 2], dtype.cast(3)]))
+    end
+  end
+
   def test_vstack
     TYPES.each do |dtype|
       a = dtype[1, 2]

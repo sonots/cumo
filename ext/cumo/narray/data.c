@@ -898,6 +898,89 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
 
 //----------------------------------------------------------------------
 
+int cumo_na_concat_kernel_launch(char* dst, char** srcs, size_t* row_bytes, int n, size_t rows);
+
+static int
+cumo_na_concat_plain_p(VALUE a)
+{
+    return !CUMO_TEST_COLUMN_MAJOR(a) && !CUMO_TEST_BYTE_SWAPPED(a) && cumo_na_check_contiguous(a) == Qtrue;
+}
+
+/*
+ * Writes parts into self side by side along axis with one launch, and answers
+ * true. Answers false, having written nothing, unless self and every part are
+ * contiguous arrays of one class that fit together; concatenate then writes the
+ * parts one at a time.
+ *
+ * Taking a pointer can run allocate, which is Ruby, so every pointer is taken
+ * before anything is measured, and taken again afterwards to see that none of
+ * them moved.
+ */
+static VALUE
+cumo_na_concat_parts(VALUE self, VALUE parts, VALUE vaxis)
+{
+    char *srcs[CUMO_CONCAT_MAX_PARTS];
+    size_t row_bytes[CUMO_CONCAT_MAX_PARTS];
+    char *dst;
+    VALUE klass = rb_obj_class(self);
+    VALUE a;
+    cumo_narray_t *na, *nb;
+    long n, k;
+    int axis, nd, d, pd, used = 0;
+    size_t rows = 1, inner = 1, len, s, sum = 0, elmsz;
+
+    Check_Type(parts, T_ARRAY);
+    axis = NUM2INT(vaxis);
+    n = RARRAY_LEN(parts);
+    if (n > CUMO_CONCAT_MAX_PARTS) { return Qfalse; }
+    if (RTEST(rb_obj_is_kind_of(self, cumo_cBit)) || RTEST(rb_obj_is_kind_of(self, cumo_cRObject))) { return Qfalse; }
+    for (k = 0; k < n; ++k) {
+        if (rb_obj_class(RARRAY_AREF(parts, k)) != klass) { return Qfalse; }
+    }
+
+    dst = cumo_na_get_offset_pointer_for_write(self);
+    for (k = 0; k < n; ++k) {
+        srcs[k] = cumo_na_get_offset_pointer_for_read(RARRAY_AREF(parts, k));
+    }
+
+    if (RARRAY_LEN(parts) != n || rb_obj_class(self) != klass || !cumo_na_concat_plain_p(self)) { return Qfalse; }
+    CumoGetNArray(self, na);
+    nd = na->ndim;
+    if (axis < 0 || axis >= nd) { return Qfalse; }
+    for (d = 0; d < axis; ++d) { rows *= na->shape[d]; }
+    for (d = axis + 1; d < nd; ++d) { inner *= na->shape[d]; }
+    elmsz = cumo_na_element_stride(self);
+
+    for (k = 0; k < n; ++k) {
+        a = RARRAY_AREF(parts, k);
+        if (rb_obj_class(a) != klass || !cumo_na_concat_plain_p(a)) { return Qfalse; }
+        CumoGetNArray(a, nb);
+        if (nb->ndim > nd) { return Qfalse; }
+        pd = nd - nb->ndim;
+        len = 1;
+        for (d = 0; d < nd; ++d) {
+            s = (d < pd) ? 1 : nb->shape[d - pd];
+            if (d == axis) {
+                len = s;
+            } else if (s != na->shape[d]) {
+                return Qfalse;
+            }
+        }
+        sum += len;
+        if (len > 0 && rows > 0 && inner > 0) {
+            if (cumo_na_get_offset_pointer_for_read(a) != srcs[k]) { return Qfalse; }
+            srcs[used] = srcs[k];
+            row_bytes[used] = len * inner * elmsz;
+            ++used;
+        }
+    }
+    if (sum != na->shape[axis] || cumo_na_get_offset_pointer_for_write(self) != dst) { return Qfalse; }
+    if (used == 0) { return Qtrue; }
+    return cumo_na_concat_kernel_launch(dst, srcs, row_bytes, used, rows) ? Qtrue : Qfalse;
+}
+
+//----------------------------------------------------------------------
+
 
 
 void
@@ -906,6 +989,7 @@ Init_cumo_na_data(void)
     rb_define_method(cNArray, "copy", cumo_na_copy, 0); // deprecated
 
     rb_define_method(cNArray, "flatten", cumo_na_flatten, 0);
+    rb_define_private_method(cNArray, "concatenate_parts", cumo_na_concat_parts, 2);
     rb_define_method(cNArray, "swapaxes", cumo_na_swapaxes, 2);
     rb_define_method(cNArray, "transpose", cumo_na_transpose, -1);
 

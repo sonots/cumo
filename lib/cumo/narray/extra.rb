@@ -537,7 +537,8 @@ module Cumo
         end
       end
       new_shape.insert(axis, sum_size)
-      result = klass.zeros(*new_shape)
+      result = klass.new(*new_shape).allocate
+      return result if result.send(:concatenate_parts, arrays, axis)
       lst = 0
       refs = [true] * nd
       arrays.each do |a|
@@ -723,7 +724,8 @@ module Cumo
         a
       end
       self_shape.insert(axis, sum_size)
-      result = self.class.zeros(*self_shape)
+      result = self.class.new(*self_shape).allocate
+      return result if result.send(:concatenate_parts, [self, *arrays], axis)
       lst = shape[axis]
       refs = [true] * ndim
       if lst > 0

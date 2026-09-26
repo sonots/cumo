@@ -303,6 +303,9 @@ cumo_na_make_bit_pred_reduction_arg(cumo_na_loop_t* lp_user, int out_arg)
 
 #define CUMO_NA_INDEXER_OPTIMIZED_NDIM 8
 
+// The most parts concatenate writes with one launch.
+#define CUMO_CONCAT_MAX_PARTS 64
+
 #ifdef __CUDACC__
 
 // Splits the flat index i into the per-dimension indices. A 64-bit division
