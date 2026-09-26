@@ -8754,32 +8754,41 @@ class NArrayTest < Test::Unit::TestCase
         out << [:shifted, copied.(a[true, 0...256], a[true, 1..256])]
         600.times do
           shape = [[6, 8], [5, 7, 4], [16], [3, 4, 5, 2]].sample(random: rng)
-          base = Cumo::Int32.new(*shape).seq
+          klass = [Cumo::Int8, Cumo::SFloat, Cumo::DComplex].sample(random: rng)
+          index = Cumo::Int32.new(*shape).seq
+          data = klass.cast(index)
+          data = data * Complex(1, 1) if klass == Cumo::DComplex
           lens = shape.map { |n| 1 + rng.rand(n) }
-          dst = base[*shape.each_with_index.map { |n, k| axis.(rng, n, lens[k]) }]
-          src = base[*shape.each_with_index.map { |n, k| axis.(rng, n, lens[k]) }]
-          if shape.size > 1 && lens.uniq.size == 1 && rng.rand < 0.3
-            src = src.transpose(*(0...shape.size).to_a.shuffle(random: rng))
-          end
-          d = dst.to_a.flatten
-          s = src.to_a.flatten
+          at_d = shape.each_with_index.map { |n, k| axis.(rng, n, lens[k]) }
+          at_s = shape.each_with_index.map { |n, k| axis.(rng, n, lens[k]) }
+          turn = shape.size > 1 && lens.uniq.size == 1 && rng.rand < 0.3
+          perm = (0...shape.size).to_a.shuffle(random: rng)
+          flip = ->(v) { turn ? v.transpose(*perm) : v }
+          d = index[*at_d].to_a.flatten
+          s = flip.(index[*at_s]).to_a.flatten
           next if d == s
+          dst = data[*at_d]
+          src = flip.(data[*at_s])
           want = src.to_a
-          meet = !(d & s).empty?
           got = copied.(dst, src)
-          out << [meet ? :meet : :apart, got, dst.to_a == want]
+          out << [(d & s).empty? ? :apart : :meet, got, dst.to_a == want]
         end
-        print [Marshal.dump(out)].pack("m0")
+        print "\n", [Marshal.dump(out)].pack("m0")
       RUBY
-      lib = File.expand_path("../lib", __dir__)
-      raw = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read)
+      raw = run_child(script)
       omit("memory pool is disabled") if raw == "no-pool"
-      out = Marshal.load(raw.unpack1("m0"))
+      out = Marshal.load(raw.lines.last.unpack1("m0"))
       assert_equal([[:halves, false], [:even_odd, false], [:shifted, true]], out.shift(3))
       assert_equal([], out.reject { |_, _, right| right })
       assert_equal([], out.select { |kind, got, _| got != (kind == :meet) })
       assert_operator(out.count { |kind, _, _| kind == :meet }, :>, 100)
       assert_operator(out.count { |kind, _, _| kind == :apart }, :>, 100)
+    end
+
+    test "stores the even bits of a row from its odd bits" do
+      bits = (Cumo::Int32.new(64, 96).seq % 3).eq(0)
+      expect_store(bits.dup) { |dst, src| dst[true, (0..).step(2)] = src[true, (1..).step(2)] }
+      expect_store(bits.dup) { |dst, src| dst[true, 0...48] = src[true, 48..] }
     end
 
     test "leaves a store from itself and from another array alone" do

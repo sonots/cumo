@@ -1121,8 +1121,6 @@ typedef struct {
     ssize_t c, lo, hi;
 } na_term_t;
 
-// Each dimension moves the element's byte address by c*x for x in [lo, hi].
-// Dimensions of the same stride, from either operand, share one term.
 static int
 na_add_terms(VALUE v, cumo_narray_t *na, int sign, na_term_t *t, int *nt)
 {
@@ -1166,9 +1164,20 @@ na_floor_div(ssize_t a, ssize_t b)
     return a / b - (a % b != 0 && a < 0);
 }
 
-// Whether some x_i in [lo_i, hi_i] puts the sum of c_i*x_i within [lo, hi].
-// rmin and rmax bound what the terms from each one on can still add. Running
-// out of budget answers yes, which only costs a copy.
+static ssize_t
+na_gcd(ssize_t a, ssize_t b)
+{
+    ssize_t r;
+
+    while (b) {
+        r = a % b;
+        a = b;
+        b = r;
+    }
+    return a;
+}
+
+// Running out of budget answers yes, which only costs a copy.
 static int
 na_terms_reach(const na_term_t *t, int nt, const ssize_t *rmin, const ssize_t *rmax,
                ssize_t lo, ssize_t hi, long *budget)
@@ -1190,9 +1199,8 @@ na_terms_reach(const na_term_t *t, int nt, const ssize_t *rmin, const ssize_t *r
     return 0;
 }
 
-// Whether an element of src shares a byte with an element of dst. The byte
-// ranges only bound that: two blocks of columns, or the even and the odd
-// columns, interleave without sharing one.
+// Two blocks of columns, or the even and the odd columns, meet in byte range
+// without sharing an element.
 static int
 na_elements_meet(VALUE dst, cumo_narray_t *nd, VALUE src, cumo_narray_t *ns)
 {
@@ -1201,17 +1209,22 @@ na_elements_meet(VALUE dst, cumo_narray_t *nd, VALUE src, cumo_narray_t *ns)
     ssize_t diff = (ssize_t)cumo_na_get_offset(src) - (ssize_t)cumo_na_get_offset(dst);
     ssize_t ed = (ssize_t)cumo_na_element_stride(dst);
     ssize_t es = (ssize_t)cumo_na_element_stride(src);
+    ssize_t lo = 1 - es - diff, hi = ed - 1 - diff, g = 0;
     long budget = 4096;
     int nt = 0, i;
 
     if (!na_add_terms(dst, nd, -1, t, &nt) || !na_add_terms(src, ns, 1, t, &nt)) { return 1; }
+    for (i = 0; i < nt; i++) {
+        g = na_gcd(t[i].c, g);
+    }
+    if (g > 0 && na_floor_div(hi, g) * g < lo) { return 0; }
     qsort(t, nt, sizeof(na_term_t), na_term_cmp);
     rmin[nt] = rmax[nt] = 0;
     for (i = nt; i--;) {
         rmin[i] = rmin[i + 1] + t[i].c * t[i].lo;
         rmax[i] = rmax[i + 1] + t[i].c * t[i].hi;
     }
-    return na_terms_reach(t, nt, rmin, rmax, 1 - es - diff, ed - 1 - diff, &budget);
+    return na_terms_reach(t, nt, rmin, rmax, lo, hi, &budget);
 }
 
 int
@@ -1227,7 +1240,7 @@ cumo_na_store_overlaps(VALUE dst, VALUE src)
     if (na_same_place(dst, nd, src, ns)) { return 0; }
     if (!na_span(dst, nd, &dlo, &dhi) || !na_span(src, ns, &slo, &shi)) { return 1; }
     if (!(dlo < shi && slo < dhi)) { return 0; }
-    if (RTEST(rb_obj_is_kind_of(dst, cumo_cBit)) || RTEST(rb_obj_is_kind_of(src, cumo_cBit))) { return 1; }
+    if (RTEST(rb_obj_is_kind_of(dst, cumo_cBit))) { return 1; }
     return na_elements_meet(dst, nd, src, ns);
 }
 
