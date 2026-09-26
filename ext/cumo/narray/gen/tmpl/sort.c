@@ -58,7 +58,7 @@ static VALUE
 
     ndf.func = <%=c_iter%>_kernel;
     inplace = CUMO_TEST_INPLACE(self);
-    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, <%= is_float ? 2 : 1 %>);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 2);
     if (!inplace) {
         self = cumo_na_copy(self);
     }

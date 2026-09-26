@@ -58,6 +58,7 @@ static VALUE
     cumo_ndfunc_arg_out_t aout[1] = {{0,0,0}};
     cumo_ndfunc_t ndf = {0, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM, 3,1, ain,aout};
 
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 2);
     CumoGetNArray(self,na);
     if (na->ndim==0) {
         return INT2FIX(0);
@@ -72,7 +73,6 @@ static VALUE
         idx = cumo_na_new(cumo_cInt32, na->ndim, na->shape);
     }
     ndf.func = <%=c_iter%>_kernel;
-    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, <%= is_float ? 2 : 1 %>);
     rb_funcall(idx, rb_intern("seq"), 0);
 
     ndf.flag |= CUMO_NDF_INDEXER_LOOP;
