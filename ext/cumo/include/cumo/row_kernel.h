@@ -83,7 +83,73 @@ __global__ void row_apply_kernel(
     }
 }
 
+// Sixteen bytes of T, which one instruction loads or stores.
+template <typename T>
+struct __align__(16) row_vec {
+    T v[16 / sizeof(T)];
+};
+
+struct row_max_op {
+    template <typename T>
+    __device__ T operator()(T a, T b) const { return fmax(a, b); }
+};
+
+struct row_add_op {
+    template <typename T>
+    __device__ T operator()(T a, T b) const { return a + b; }
+};
+
+// blockDim.x must be a whole number of warps.
+template <typename T, typename Op>
+__device__ T block_allreduce(T v, T* sh, Op op, T identity)
+{
+    unsigned int lane = threadIdx.x & 31, warp = threadIdx.x >> 5, warps = blockDim.x >> 5;
+
+    for (int o = 16; o > 0; o >>= 1) v = op(v, __shfl_xor_sync(0xffffffffu, v, o));
+    if (warps == 1) return v;
+    if (lane == 0) sh[warp] = v;
+    __syncthreads();
+    v = lane < warps ? sh[lane] : identity;
+    for (int o = 16; o > 0; o >>= 1) v = op(v, __shfl_xor_sync(0xffffffffu, v, o));
+    __syncthreads();
+    return v;
+}
+
 }  // namespace cumo_detail
+
+// How a row of cols elements of T is taken sixteen bytes at a time and held in
+// registers: answers the vectors each thread holds, 1, 2, 4 or 8, and sets
+// block_dim, or answers 0 where the row cannot be. Every pointer in ptrs has to
+// be sixteen-byte aligned. A few long rows are left to the split machinery.
+template <typename T>
+static inline int cumo_row_held_shape(
+        uint64_t rows, uint64_t cols, const void* const* ptrs, int n_ptrs, unsigned int* block_dim)
+{
+    const uint64_t width = 16 / sizeof(T);
+    uint64_t nvec, per;
+    int64_t want;
+    int i;
+
+    if (rows == 0 || rows > INT32_MAX || cols % width != 0) return 0;
+    if (rows < (uint64_t)cumo_detail::min_grid_size &&
+            cols > (uint64_t)(cumo_detail::max_block_size * cumo_detail::min_reduce_per_thread)) {
+        return 0;
+    }
+    for (i = 0; i < n_ptrs; i++) {
+        if ((uintptr_t)ptrs[i] % 16 != 0) return 0;
+    }
+    nvec = cols / width;
+    // Four vectors a thread once there are rows enough to fill the device; a
+    // few rows want every thread they can get.
+    want = cumo_detail::round_up_to_power_of_2(
+            (int64_t)(rows < (uint64_t)cumo_detail::min_grid_size ? nvec : (nvec + 3) / 4));
+    if (want < cumo_detail::warp_size) want = cumo_detail::warp_size;
+    if (want > cumo_detail::max_block_size) want = cumo_detail::max_block_size;
+    per = (nvec + want - 1) / want;
+    if (per > 8) return 0;
+    *block_dim = (unsigned int)want;
+    return per <= 1 ? 1 : per <= 2 ? 2 : per <= 4 ? 4 : 8;
+}
 
 // Reduces each row of a contiguous rows x cols array with impl and writes the
 // row back through apply. Both arrays are laid out the same way and neither may
