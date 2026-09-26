@@ -59,6 +59,7 @@ module Cumo::CUDA
     end
 
     test "a 16-bit float reduces in float or in itself" do
+      omit("half arithmetic starts at compute capability 5.3") if Device.new.compute_capability.to_i < 53
       [[Cumo::HFloat, "float16", 749.0], [Cumo::BFloat, "bfloat16", 748.0]].each do |dtype, name, rounded|
         x = dtype.cast(Array.new(1000) { |i| (i % 7) * 0.25 })
         in_float = ReductionKernel.new("T x", "T y", "x", "a + b", "y = a", "0", "sum_in_float_#{name}", reduce_type: "float32")

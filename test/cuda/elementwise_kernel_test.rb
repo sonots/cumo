@@ -79,6 +79,7 @@ module Cumo::CUDA
     end
 
     test "the 16-bit floats take named types and letters" do
+      omit("half arithmetic starts at compute capability 5.3") if Device.new.compute_capability.to_i < 53
       [[Cumo::HFloat, "float16"], [Cumo::BFloat, "bfloat16"]].each do |dtype, name|
         x = dtype.cast([1.5, -2.0, 3.25, 0.5])
         y = dtype.cast([2.0, 4.0, -1.0, 8.0])
