@@ -1352,6 +1352,7 @@ module Cumo
         axis = 0
         x = x.flatten
       end
+      raise ShapeError, "cannot reduce empty NArray" if x.size == 0
 
       sorted = x.sort(axis: axis)
       x = q / 100.0 * (sorted.shape[axis] - 1)

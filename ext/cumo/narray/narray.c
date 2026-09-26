@@ -1493,8 +1493,6 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
  *  Return reversed view along specified dimeinsion
  */
 void cumo_na_index_reverse_kernel_launch(size_t *idx, size_t *idx1, uint64_t n);
-static VALUE cumo_na_parse_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
-                      cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan, int empty_ok);
 
 static VALUE
 cumo_na_reverse(int argc, VALUE *argv, VALUE self)
@@ -2085,10 +2083,10 @@ cumo_na_test_reduce(VALUE reduce, int dim)
 }
 
 
-// empty_ok says the caller has an identity to answer an array with no elements
-// with, so the check that would refuse it is left out. The axes are still read
-// afterwards, which is what tells an empty receiver about an axis that does not
-// exist.
+// empty_ok says the caller can answer an array with no elements, either from
+// an identity or because its answer keeps the receiver's shape, so the check
+// that would refuse it is left out. The axes are still read afterwards, which
+// is what tells an empty receiver about an axis that does not exist.
 static VALUE
 cumo_na_get_reduce_flag_from_narray(int naryc, VALUE *naryv, int *max_arg, int empty_ok)
 {
@@ -2286,7 +2284,7 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
 }
 
 
-static VALUE
+VALUE
 cumo_na_parse_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
                       cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan, int empty_ok)
 {
