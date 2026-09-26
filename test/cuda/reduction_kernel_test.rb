@@ -70,6 +70,16 @@ module Cumo::CUDA
       end
     end
 
+    # A long reduction folds its chunks in a second kernel, which has to know
+    # the 16-bit type even when only an input has it.
+    test "a 16-bit input reduces into float over a length that takes two passes" do
+      k = ReductionKernel.new("T x", "float32 y", "x", "a + b", "y = a", "0", "two_pass_sum")
+      [Cumo::HFloat, Cumo::BFloat].each do |dtype|
+        assert_equal([1 << 20], k.call(dtype.ones(1 << 20)).to_a, dtype.to_s)
+        assert_equal([1 << 18] * 4, k.call(dtype.ones(1 << 18, 4), axis: 0).to_a, dtype.to_s)
+      end
+    end
+
     test "reduce_type decides what the values are accumulated in" do
       x = Cumo::UInt8.new(300).fill(1)
       assert_equal([44], SUM.call(x).to_a)

@@ -172,10 +172,10 @@ module Cumo::CUDA
     # Rounds x to the nearest 16-bit float, ties to even, straight from the
     # double as Cumo::HFloat and Cumo::BFloat round a Ruby number.
     def half_bits(x, exp_bits, man_bits)
-      sign = x < 0 || (x.zero? && 1.0 / x < 0) ? 1 << 15 : 0
+      sign = [x].pack("G").getbyte(0) >= 0x80 ? 1 << 15 : 0
       bias = (1 << (exp_bits - 1)) - 1
       inf = ((1 << exp_bits) - 1) << man_bits
-      return inf | (1 << (man_bits - 1)) if x.nan?
+      return sign | inf | (1 << (man_bits - 1)) if x.nan?
 
       a = x.abs
       return sign | inf if a.infinite?

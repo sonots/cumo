@@ -721,7 +721,7 @@ squared_diff.call(x, y)   # => the (2, 5) array of squared differences
 squared_diff.call(x, 5)   # => the same against a scalar
 ```
 
-A type is one of `float64`, `float32`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16` and `uint8`, or a single letter that stands for whichever dtype the argument has.
+A type is one of `float64`, `float32`, `float16`, `bfloat16`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16` and `uint8`, or a single letter that stands for whichever dtype the argument has.
 Outputs decide a letter before inputs do, and a letter that only a Ruby number reaches becomes `int64` or `float64`.
 Array arguments are broadcast against each other, and an output may be given after the inputs, or is allocated.
 An input is read through its own strides, so a reversed or stepped view goes to the kernel as it is.
@@ -729,7 +729,10 @@ A transposed view is copied first, since the copy reorders it in tiles where the
 An argument marked `raw T y` is handed over as a pointer for the operation to index itself, with `i` the element index and `_ind.size()` the element count, and when every argument is raw or a number, `size:` says how many elements there are.
 Inputs are `const`, so an operation that writes one does not compile, and a number handed to an integer type has to be an Integer that fits.
 `preamble:` is placed before the kernel, after the typedefs of the letters, so a device function can be written in terms of `T`.
-`Cumo::Bit`, `Cumo::HFloat`, `Cumo::BFloat`, `Cumo::SComplex`, `Cumo::DComplex` and `Cumo::RObject` cannot be handed to one of these kernels yet.
+`float16` and `bfloat16` are CUDA's `__half` and `__nv_bfloat16`, compiled with the toolkit's `cuda_fp16.h` and `cuda_bf16.h`, which are found through `CUDA_PATH` or the `nvcc` on `PATH`.
+They convert to and from every arithmetic type, so an operation that mixes one with another type or a literal does not compile until one side is cast: `y = x * T(2)`, `y = x > T(0) ? x : T(0)` or `y = (float)x * 2`.
+A number handed to one is rounded to it the way `Cumo::HFloat[x]` and `Cumo::BFloat[x]` round it.
+`Cumo::Bit`, `Cumo::SComplex`, `Cumo::DComplex` and `Cumo::RObject` cannot be handed to one of these kernels yet.
 
 ### Writing A Reduction Kernel
 

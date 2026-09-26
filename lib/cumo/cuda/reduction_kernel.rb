@@ -278,7 +278,7 @@ module Cumo::CUDA
       decl << "long long _out_size"
       decl << "int _chunks"
       <<~CUDA
-        #{headers(@out_params.map { |p| CTYPE[types[p.type]] } + [reduce_type])}
+        #{headers((@in_params + @out_params).map { |p| CTYPE[types[p.type]] } + [reduce_type])}
         #{placeholders.map { |t| "typedef #{CTYPE[types[t]]} #{t};" }.join("\n")}
         #{@preamble}
         typedef #{reduce_type} _type_reduce;

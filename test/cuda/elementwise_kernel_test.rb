@@ -97,7 +97,7 @@ module Cumo::CUDA
     test "a number handed to a 16-bit float is rounded the way Cumo rounds it" do
       values = [0.1, 1.0 / 3, -0.0, 1 + 2.0**-11, 1 + 3 * 2.0**-11, 1 + 2.0**-8, 1 + 3 * 2.0**-8,
                 2.0**-24, 2.0**-25, 3 * 2.0**-25, 2.0**-133, 3 * 2.0**-134, 65519.0, 65520.0, 3.4e38, 3.5e38,
-                -Float::INFINITY, Float::NAN, 7, -300]
+                -Float::INFINITY, Float::NAN, -Float::NAN, 7, -300]
       [[Cumo::HFloat, "float16"], [Cumo::BFloat, "bfloat16"]].each do |dtype, name|
         echo = ElementwiseKernel.new("#{name} c", "#{name} y", "y = c", "echo_#{name}")
         got = values.map { |v| echo.call(v, size: 1).to_binary }

@@ -18,7 +18,9 @@ module Cumo::CUDA
   #
   # float16 and bfloat16 are CUDA's __half and __nv_bfloat16, so a kernel
   # that uses them is compiled with the toolkit's headers, found through
-  # CUDA_PATH or the nvcc on PATH.
+  # CUDA_PATH or the nvcc on PATH. They convert to and from every arithmetic
+  # type, so mixing one with another type or a literal is ambiguous and needs
+  # a cast: x * T(2), or (float)x * 2.
   class ElementwiseKernel
     include UserKernel
 
