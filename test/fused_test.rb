@@ -170,9 +170,12 @@ class FusedTest < CumoTestBase
     end
 
     # 8192 columns is the last shape one block walks and 8193 the first the split
-    # machinery takes, so the pair is the only place the two paths meet.
+    # machinery takes, so the pair is the only place the two paths meet. From 256
+    # rows on, 8192 is the last row held in registers and 8193 the first that is
+    # walked three times.
     [[4], [3, 5], [2, 3, 7], [1, 1], [6, 1], [4, 32], [2, 512],
-     [1, 8192], [1, 8193], [2, 9_000], [255, 9_000], [256, 9_000], [70_000, 8]].each do |shape|
+     [1, 8192], [1, 8193], [2, 9_000], [255, 9_000], [256, 9_000], [70_000, 8],
+     [256, 8192], [256, 8193]].each do |shape|
       test "softmax #{shape.inspect} #{dtype}" do
         assert_softmax(dtype.new(*shape).rand_norm)
       end

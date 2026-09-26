@@ -79,6 +79,84 @@ __global__ void <%="cumo_#{c_iter}_kernel"%>(
     }
 }
 
+struct <%="cumo_#{c_iter}_fmax_op"%> {
+    __device__ <%=acc%> operator()(<%=acc%> a, <%=acc%> b) const { return fmax(a, b); }
+};
+
+struct <%="cumo_#{c_iter}_add_op"%> {
+    __device__ <%=acc%> operator()(<%=acc%> a, <%=acc%> b) const { return a + b; }
+};
+
+// Warp shuffles first, then one value a warp through shared memory. blockDim.x
+// is a whole number of warps here.
+template <typename Op>
+__device__ <%=acc%> <%="cumo_#{c_iter}_block_reduce"%>(<%=acc%> v, <%=acc%>* sh, Op op, <%=acc%> identity)
+{
+    unsigned int lane = threadIdx.x & 31, warp = threadIdx.x >> 5, warps = blockDim.x >> 5;
+
+    for (int o = 16; o > 0; o >>= 1) v = op(v, __shfl_xor_sync(0xffffffffu, v, o));
+    if (warps == 1) return v;
+    if (lane == 0) sh[warp] = v;
+    __syncthreads();
+    v = lane < warps ? sh[lane] : identity;
+    for (int o = 16; o > 0; o >>= 1) v = op(v, __shfl_xor_sync(0xffffffffu, v, o));
+    // Nobody may read sh again until every warp has taken its value from it.
+    __syncthreads();
+    return v;
+}
+
+// The same row held in registers, VPT elements a thread, so that it is read once
+// and written once where the kernel above reads it twice, writes it twice and
+// reads it back. Indices are 32-bit and the maximum is an fmax rather than a
+// branch: either one alone costs this kernel a third of its speed. The launcher
+// keeps rows under 2^31 so that the row step cannot wrap. fmax drops a NaN as
+// max_impl does, and the row goes NaN anyway through its exponential.
+template <int VPT>
+__global__ void __launch_bounds__(cumo_detail::max_block_size) <%="cumo_#{c_iter}_reg_kernel"%>(
+        const dtype* x, dtype* y, uint32_t rows, uint32_t cols)
+{
+    __shared__ <%=acc%> sh[32];
+    <%="cumo_#{c_iter}_fmax_op"%> max_op;
+    <%="cumo_#{c_iter}_add_op"%> sum_op;
+
+    for (uint32_t row = blockIdx.x; row < rows; row += gridDim.x) {
+        const dtype* xr = x + (size_t)row * cols;
+        dtype* yr = y + (size_t)row * cols;
+        <%=acc%> v[VPT];
+        <%=acc%> m = -INFINITY;
+        <%=acc%> s = 0;
+        <%=acc%> rden;
+
+#pragma unroll
+        for (int j = 0; j < VPT; j++) {
+            uint32_t i = threadIdx.x + j * blockDim.x;
+            if (i < cols) {
+                v[j] = <%=to_acc%>(xr[i]);
+                m = fmax(m, v[j]);
+            }
+        }
+        m = <%="cumo_#{c_iter}_block_reduce"%>(m, sh, max_op, <%=acc%>(-INFINITY));
+
+#pragma unroll
+        for (int j = 0; j < VPT; j++) {
+            uint32_t i = threadIdx.x + j * blockDim.x;
+            if (i < cols) {
+                v[j] = exp(v[j] - m);
+                s += v[j];
+            }
+        }
+        rden = <%=acc%>(1) / <%="cumo_#{c_iter}_block_reduce"%>(s, sh, sum_op, <%=acc%>(0));
+
+#pragma unroll
+        for (int j = 0; j < VPT; j++) {
+            uint32_t i = threadIdx.x + j * blockDim.x;
+            if (i < cols) {
+                yr[i] = <%=from_acc%>(v[j] * rden);
+            }
+        }
+    }
+}
+
 #if defined(__cplusplus)
 extern "C" {
 #if 0
@@ -150,6 +228,29 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
     if (want > cumo_detail::max_block_size) want = cumo_detail::max_block_size;
     block_dim = (unsigned int)want;
     grid_dim = (unsigned int)(rows < max_row_blocks ? rows : max_row_blocks);
+
+    {
+        uint64_t vpt = (cols + block_dim - 1) / block_dim;
+        cudaStream_t stream = cumo_cuda_stream();
+
+        // Sixteen a thread is where holding the row stops paying: 300 rows of
+        // 16384 at thirty-two came out either side of the kernel above.
+#define CUMO_SOFTMAX_REG_LAUNCH(n)                                                              \
+        if (vpt <= (n)) {                                                                       \
+            <%="cumo_#{c_iter}_reg_kernel"%><n><<<grid_dim, block_dim, 0, stream>>>(             \
+                    (const dtype*)px, (dtype*)py, (uint32_t)rows, (uint32_t)cols);              \
+            cumo_cuda_runtime_check_kernel_launch();                                            \
+            return;                                                                             \
+        }
+        if (rows <= INT32_MAX) {
+            CUMO_SOFTMAX_REG_LAUNCH(1)
+            CUMO_SOFTMAX_REG_LAUNCH(2)
+            CUMO_SOFTMAX_REG_LAUNCH(4)
+            CUMO_SOFTMAX_REG_LAUNCH(8)
+            CUMO_SOFTMAX_REG_LAUNCH(16)
+        }
+#undef CUMO_SOFTMAX_REG_LAUNCH
+    }
 
     <%="cumo_#{c_iter}_kernel"%><<<grid_dim, block_dim, block_dim * sizeof(<%=acc%>), cumo_cuda_stream()>>>(
             (const dtype*)px, (dtype*)py, rows, cols);
