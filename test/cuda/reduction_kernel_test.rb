@@ -58,6 +58,18 @@ module Cumo::CUDA
       assert_raise(TypeError) { SUM.call(Cumo::SFloat.new(3).seq, Cumo::DFloat.new(3).seq) }
     end
 
+    test "a 16-bit float reduces in float or in itself" do
+      [[Cumo::HFloat, "float16", 749.0], [Cumo::BFloat, "bfloat16", 748.0]].each do |dtype, name, rounded|
+        x = dtype.cast(Array.new(1000) { |i| (i % 7) * 0.25 })
+        in_float = ReductionKernel.new("T x", "T y", "x", "a + b", "y = a", "0", "sum_in_float_#{name}", reduce_type: "float32")
+        assert_equal([rounded], in_float.call(x).to_a, name)
+        itself = ReductionKernel.new("#{name} x", "#{name} y", "x", "a + b", "y = a", "0", "sum_in_#{name}")
+        assert_equal([10.5], itself.call(dtype.cast([1, 2, 3, 4.5])).to_a, name)
+        into = ReductionKernel.new("float32 x", "float32 y", "x", "a + b", "y = a", "0", "sum_into_#{name}", reduce_type: name)
+        assert_equal([10.5], into.call(Cumo::SFloat[1, 2, 3, 4.5]).to_a, name)
+      end
+    end
+
     test "reduce_type decides what the values are accumulated in" do
       x = Cumo::UInt8.new(300).fill(1)
       assert_equal([44], SUM.call(x).to_a)
@@ -195,7 +207,6 @@ module Cumo::CUDA
       assert_raise(ArgumentError) { SUM.call(x, Cumo::DFloat.new(2, 3).transpose, axis: 1) }
       assert_raise(ArgumentError) { SUM.call(2.0) }
       assert_raise(TypeError) { SUM.call(Cumo::Bit.new(3)) }
-      assert_raise(TypeError) { SUM.call(Cumo::HFloat.new(3)) }
       assert_raise(ArgumentError) { ReductionKernel.new("raw T x", "T y", "x[i]", "a + b", "y = a", "0", "k") }
       assert_raise(ArgumentError) { ReductionKernel.new("T x", "T a", "x", "a + b", "a = a", "0", "k") }
       assert_raise(ArgumentError) { ReductionKernel.new("T b", "T y", "b", "a + b", "y = a", "0", "k") }

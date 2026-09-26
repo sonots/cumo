@@ -215,6 +215,7 @@ module Cumo::CUDA
         { long long _r = _j; for (int _d = #{nd} - 1; _d >= 0; _d--) { _idx[_d] = _r % _shape.v[_d]; _r /= _shape.v[_d]; } }
       CUDA
       <<~CUDA
+        #{headers(params.map { |p| CTYPE[types[p.type]] } + [reduce_type])}
         #{placeholders.map { |t| "typedef #{CTYPE[types[t]]} #{t};" }.join("\n")}
         #{nd > 0 ? "struct _Dims { long long v[#{nd}]; };" : ""}
         #{@preamble}
@@ -260,9 +261,7 @@ module Cumo::CUDA
     end
 
     def compile_final(types)
-      mod = Compiler.new.compile_with_cache(final_source(types))
-      (@modules ||= []) << mod
-      mod.get_function("#{@name}_final")
+      compile(final_source(types), "#{@name}_final")
     end
 
     # The second pass folds the chunks of every output and applies the post
@@ -279,6 +278,7 @@ module Cumo::CUDA
       decl << "long long _out_size"
       decl << "int _chunks"
       <<~CUDA
+        #{headers(@out_params.map { |p| CTYPE[types[p.type]] } + [reduce_type])}
         #{placeholders.map { |t| "typedef #{CTYPE[types[t]]} #{t};" }.join("\n")}
         #{@preamble}
         typedef #{reduce_type} _type_reduce;

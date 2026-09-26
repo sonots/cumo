@@ -10,6 +10,8 @@ module Cumo::CUDA
     TYPES = {
       "float64" => [Cumo::DFloat, "double", "d"],
       "float32" => [Cumo::SFloat, "float", "f"],
+      "float16" => [Cumo::HFloat, "__half", nil],
+      "bfloat16" => [Cumo::BFloat, "__nv_bfloat16", nil],
       "int64" => [Cumo::Int64, "long long", "q"],
       "int32" => [Cumo::Int32, "int", "l"],
       "int16" => [Cumo::Int16, "short", "s"],
@@ -27,6 +29,11 @@ module Cumo::CUDA
       Cumo::UInt64 => (0...2**64), Cumo::UInt32 => (0...2**32),
       Cumo::UInt16 => (0...2**16), Cumo::UInt8 => (0...2**8),
     }.freeze
+
+    # The 16-bit types come from a header, and a scalar of one is packed here,
+    # as the widths of its exponent and fraction.
+    HEADERS = { "__half" => "cuda_fp16.h", "__nv_bfloat16" => "cuda_bf16.h" }.freeze
+    HALF_BITS = { Cumo::HFloat => [5, 10], Cumo::BFloat => [8, 7] }.freeze
 
     RESERVED = /\A(i|n)\z|\A_/
 
@@ -154,11 +161,39 @@ module Cumo::CUDA
     end
 
     def pack_scalar(value, dtype, name)
+      return [half_bits(value.to_f, *HALF_BITS[dtype])].pack("S") if HALF_BITS.key?(dtype)
       if INT_RANGE.key?(dtype)
         raise TypeError, "#{name} is #{CTYPE[dtype]}, and #{value.inspect} is not an Integer" unless value.is_a?(Integer)
         raise RangeError, "#{name} is #{CTYPE[dtype]}, and #{value} does not fit" unless INT_RANGE[dtype].cover?(value)
       end
       [value].pack(PACK[dtype])
+    end
+
+    # Rounds x to the nearest 16-bit float, ties to even, straight from the
+    # double as Cumo::HFloat and Cumo::BFloat round a Ruby number.
+    def half_bits(x, exp_bits, man_bits)
+      sign = x < 0 || (x.zero? && 1.0 / x < 0) ? 1 << 15 : 0
+      bias = (1 << (exp_bits - 1)) - 1
+      inf = ((1 << exp_bits) - 1) << man_bits
+      return inf | (1 << (man_bits - 1)) if x.nan?
+
+      a = x.abs
+      return sign | inf if a.infinite?
+      return sign | (a / 2.0**(1 - bias - man_bits)).round(half: :even) if a < 2.0**(1 - bias)
+
+      e = Math.frexp(a)[1] - 1
+      m = ((a / 2.0**e - 1) * (1 << man_bits)).round(half: :even)
+      if m == 1 << man_bits
+        m = 0
+        e += 1
+      end
+      return sign | inf if e > bias
+      sign | ((e + bias) << man_bits) | m
+    end
+
+    # The #include lines the C types of a kernel need.
+    def headers(ctypes)
+      ctypes.filter_map { |t| HEADERS[t] }.uniq.map { |h| "#include <#{h}>" }.join("\n")
     end
 
     # A raw argument is indexed by the operation itself, so it has to be
@@ -208,10 +243,11 @@ module Cumo::CUDA
       end
     end
 
-    def compile(source)
-      mod = Compiler.new.compile_with_cache(source)
+    def compile(source, name = @name)
+      options = HEADERS.values.any? { |h| source.include?("#include <#{h}>") } ? ["-I#{Compiler.cuda_include_dir}"] : []
+      mod = Compiler.new.compile_with_cache(source, options: options)
       (@modules ||= []) << mod
-      mod.get_function(@name)
+      mod.get_function(name)
     end
   end
 end

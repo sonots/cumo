@@ -78,6 +78,33 @@ module Cumo::CUDA
       assert_equal([3.0, 4.0], plus.call(Cumo::SFloat[1, 2], 2).to_a)
     end
 
+    test "the 16-bit floats take named types and letters" do
+      [[Cumo::HFloat, "float16"], [Cumo::BFloat, "bfloat16"]].each do |dtype, name|
+        x = dtype.cast([1.5, -2.0, 3.25, 0.5])
+        y = dtype.cast([2.0, 4.0, -1.0, 8.0])
+        named = ElementwiseKernel.new("#{name} x, #{name} y", "#{name} z", "z = x * y + x", "fma_#{name}")
+        z = named.call(x, y)
+        assert_equal(dtype, z.class, name)
+        assert_equal((x * y + x).to_a, z.to_a, name)
+        assert_equal(((x - y) * (x - y)).to_a, GENERIC.call(x, y).to_a, name)
+        assert_raise(TypeError) { named.call(Cumo::SFloat[1], Cumo::SFloat[1]) }
+      end
+    end
+
+    # A scalar is packed on the host, so it has to round the way Cumo does
+    # when it casts a Ruby number: ties to even, into the subnormals, and past
+    # the largest finite value to infinity.
+    test "a number handed to a 16-bit float is rounded the way Cumo rounds it" do
+      values = [0.1, 1.0 / 3, -0.0, 1 + 2.0**-11, 1 + 3 * 2.0**-11, 1 + 2.0**-8, 1 + 3 * 2.0**-8,
+                2.0**-24, 2.0**-25, 3 * 2.0**-25, 2.0**-133, 3 * 2.0**-134, 65519.0, 65520.0, 3.4e38, 3.5e38,
+                -Float::INFINITY, Float::NAN, 7, -300]
+      [[Cumo::HFloat, "float16"], [Cumo::BFloat, "bfloat16"]].each do |dtype, name|
+        echo = ElementwiseKernel.new("#{name} c", "#{name} y", "y = c", "echo_#{name}")
+        got = values.map { |v| echo.call(v, size: 1).to_binary }
+        assert_equal(dtype.cast(values).to_binary.unpack("S*"), got.join.unpack("S*"), name)
+      end
+    end
+
     test "a subclass of a dtype is read as that dtype" do
       sub = Class.new(Cumo::SFloat)
       assert_equal([0, 1, 4], SQUARED_DIFF.call(sub.new(3).seq, 0).to_a)
@@ -253,7 +280,6 @@ module Cumo::CUDA
     test "what cannot be a kernel argument is refused" do
       x = Cumo::SFloat.new(3).seq
       assert_raise(TypeError) { GENERIC.call(Cumo::Bit.new(3), Cumo::Bit.new(3)) }
-      assert_raise(TypeError) { GENERIC.call(Cumo::HFloat.new(3), Cumo::HFloat.new(3)) }
       assert_raise(TypeError) { GENERIC.call(Cumo::SComplex.new(3), Cumo::SComplex.new(3)) }
       assert_raise(TypeError) { GENERIC.call(Cumo::RObject.new(3), Cumo::RObject.new(3)) }
       assert_raise(TypeError) { GENERIC.call(x, "3") }
