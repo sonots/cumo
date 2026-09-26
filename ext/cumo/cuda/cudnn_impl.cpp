@@ -654,9 +654,8 @@ cumo_cuda_cudnn_GetBatchNormMode(size_t ndim, int* axis) {
     if ((ndim == 3 && axis[0] == 0 && axis[1] == 2 && axis[2] == 3) ||
         (ndim == 4 && axis[0] == 0 && axis[1] == 2 && axis[2] == 3 && axis[3] == 4)) {  // (1, channels, (1, )1, 1)
         // CUDNN_BATCHNORM_SPATIAL_PERSISTENT is not worth taking. The overflow
-        // check it asks for is affordable -- cudnnQueryRuntimeError costs 0.1us
-        // either way -- but the mode is 1.3 to 1.8x faster only where the
-        // spatial extent is large, and 1.6x slower on 32x256x14x14 backward.
+        // check it asks for is cheap, but the mode is faster only where the
+        // spatial extent is large, and slower on 32x256x14x14 backward.
         // Worse, on 32x64x56x56 it raises CUDNN_STATUS_RUNTIME_FP_OVERFLOW for x
         // in [-2, 2] with gamma 1 and beta 0, answering bit for bit what SPATIAL
         // does; honouring that means running SPATIAL again on top. The mode, and

@@ -66,7 +66,7 @@
     }
 
 // A where compaction takes three launches, so below this many elements walking
-// the bits on the host costs less. Measured on an RTX 5070 Ti.
+// the bits on the host costs less. This is a tuning value, not a hard limit.
 #define CUMO_BIT_WHERE_MIN_KERNEL_SIZE 8192
 
 #define CUMO_GET_DATA( ptr, type, val )                 \

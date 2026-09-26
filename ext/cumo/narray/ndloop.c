@@ -958,8 +958,8 @@ cumo_ndfunc_contract_loop(cumo_na_md_loop_t *lp)
 // step is innermost, which is the one consecutive threads of an indexer kernel
 // take. A view that transposes a contiguous array otherwise hands the kernel
 // an inner axis whose step is a whole row, and every warp touches a line per
-// element: a + b on two transposed [4096,1024] views ran at 74 GB/s where the
-// contiguous add ran at 1500. Only for functions that declared the order of
+// element, which makes a + b on two transposed views many times slower than
+// the contiguous add. Only for functions that declared the order of
 // their elements does not matter, and never through an index array.
 static void
 cumo_ndfunc_reorder_loop(cumo_na_md_loop_t *lp)

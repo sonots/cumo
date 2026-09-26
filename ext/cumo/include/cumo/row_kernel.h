@@ -114,9 +114,9 @@ void cumo_row_reduce_apply_out(
     }
 
     // A row gets one block, so a row too long for one block to walk leaves the
-    // rest of the device idle unless there are other rows to fill it: one row of
-    // a million takes 695.8us that way, against 69.6 for the nine kernels a
-    // layer norm otherwise costs. Past that the reduction goes through the split
+    // rest of the device idle unless there are other rows to fill it, and one
+    // such row is slower than the nine kernels a layer norm otherwise costs.
+    // Past that the reduction goes through the split
     // machinery, which walks the row with the whole device, and a second kernel
     // applies what it found.
     if (rows < (uint64_t)cumo_detail::min_grid_size &&
@@ -166,10 +166,9 @@ void cumo_row_reduce_apply_out(
 
     // How many threads to spend on a row depends on how many rows there are to
     // go around. Past enough rows to fill the device, giving each thread a run
-    // of the row rather than an element or two keeps the tree short: 4096 rows
-    // of 768 take 84.7us at a thread per element and 31.4 at sixteen. A single
+    // of the row rather than an element or two keeps the tree short. A single
     // row has no other block to overlap with and wants every thread it can use,
-    // where the same sixteen cost 5.6us against 2.8.
+    // where the same run a thread is slower.
     if (rows < (uint64_t)cumo_detail::min_grid_size) {
         want = cumo_detail::round_up_to_power_of_2((int64_t)cols);
     } else {
