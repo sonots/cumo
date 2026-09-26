@@ -58,12 +58,10 @@ static VALUE
 
     ndf.func = <%=c_iter%>_kernel;
     inplace = CUMO_TEST_INPLACE(self);
-    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 3);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 2);
     if (!inplace) {
         self = cumo_na_copy(self);
     }
-    // or rather than assign: cumo_na_reduce_dimension may have set
-    // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
     ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
     cumo_na_ndloop(&ndf, 2, self, reduce);
     return self;
