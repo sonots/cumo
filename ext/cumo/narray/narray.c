@@ -1117,6 +1117,116 @@ na_same_place(VALUE a, cumo_narray_t *na, VALUE b, cumo_narray_t *nb)
     return 1;
 }
 
+typedef struct {
+    ssize_t c, lo, hi;
+} na_term_t;
+
+static int
+na_add_terms(VALUE v, cumo_narray_t *na, int sign, na_term_t *t, int *nt)
+{
+    ssize_t s, lo, hi;
+    int k, i;
+
+    for (k = 0; k < na->ndim; k++) {
+        if (na->shape[k] <= 1) { continue; }
+        if (!na_stride(v, na, k, &s)) { return 0; }
+        s *= sign;
+        lo = 0;
+        hi = (ssize_t)na->shape[k] - 1;
+        if (s < 0) {
+            s = -s;
+            lo = -hi;
+            hi = 0;
+        }
+        if (s == 0) { continue; }
+        for (i = 0; i < *nt && t[i].c != s; i++);
+        if (i == *nt) {
+            t[i].c = s;
+            t[i].lo = t[i].hi = 0;
+            (*nt)++;
+        }
+        t[i].lo += lo;
+        t[i].hi += hi;
+    }
+    return 1;
+}
+
+static int
+na_term_cmp(const void *a, const void *b)
+{
+    ssize_t ca = ((const na_term_t *)a)->c, cb = ((const na_term_t *)b)->c;
+    return (ca < cb) - (ca > cb);
+}
+
+static ssize_t
+na_floor_div(ssize_t a, ssize_t b)
+{
+    return a / b - (a % b != 0 && a < 0);
+}
+
+static ssize_t
+na_gcd(ssize_t a, ssize_t b)
+{
+    ssize_t r;
+
+    while (b) {
+        r = a % b;
+        a = b;
+        b = r;
+    }
+    return a;
+}
+
+// Running out of budget answers yes, which only costs a copy.
+static int
+na_terms_reach(const na_term_t *t, int nt, const ssize_t *rmin, const ssize_t *rmax,
+               ssize_t lo, ssize_t hi, long *budget)
+{
+    ssize_t x, x0, x1;
+
+    if (--*budget < 0) { return 1; }
+    if (nt == 0) { return lo <= 0 && 0 <= hi; }
+    x0 = -na_floor_div(rmax[1] - lo, t->c);
+    x1 = na_floor_div(hi - rmin[1], t->c);
+    if (x0 < t->lo) { x0 = t->lo; }
+    if (x1 > t->hi) { x1 = t->hi; }
+    for (x = x0; x <= x1; x++) {
+        if (na_terms_reach(t + 1, nt - 1, rmin + 1, rmax + 1,
+                           lo - t->c * x, hi - t->c * x, budget)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Two blocks of columns, or the even and the odd columns, meet in byte range
+// without sharing an element.
+static int
+na_elements_meet(VALUE dst, cumo_narray_t *nd, VALUE src, cumo_narray_t *ns)
+{
+    na_term_t t[2 * CUMO_NA_MAX_DIMENSION];
+    ssize_t rmin[2 * CUMO_NA_MAX_DIMENSION + 1], rmax[2 * CUMO_NA_MAX_DIMENSION + 1];
+    ssize_t diff = (ssize_t)cumo_na_get_offset(src) - (ssize_t)cumo_na_get_offset(dst);
+    ssize_t ed = (ssize_t)cumo_na_element_stride(dst);
+    ssize_t es = (ssize_t)cumo_na_element_stride(src);
+    ssize_t lo = 1 - es - diff, hi = ed - 1 - diff, g = 0;
+    long budget = 4096;
+    int nt = 0, i;
+
+    if (!na_add_terms(dst, nd, -1, t, &nt) || !na_add_terms(src, ns, 1, t, &nt)) { return 1; }
+    for (i = 0; i < nt; i++) {
+        g = na_gcd(t[i].c, g);
+    }
+    if (g > 0 && na_floor_div(hi, g) * g < lo) { return 0; }
+    qsort(t, nt, sizeof(na_term_t), na_term_cmp);
+    rmin[nt] = rmax[nt] = 0;
+    for (i = nt; i--;) {
+        rmin[i] = rmin[i + 1] + t[i].c * t[i].lo;
+        rmax[i] = rmax[i + 1] + t[i].c * t[i].hi;
+    }
+    return na_terms_reach(t, nt, rmin, rmax, lo, hi, &budget);
+}
+
 int
 cumo_na_store_overlaps(VALUE dst, VALUE src)
 {
@@ -1129,7 +1239,9 @@ cumo_na_store_overlaps(VALUE dst, VALUE src)
     if (na_base_data(dst, nd) != na_base_data(src, ns)) { return 0; }
     if (na_same_place(dst, nd, src, ns)) { return 0; }
     if (!na_span(dst, nd, &dlo, &dhi) || !na_span(src, ns, &slo, &shi)) { return 1; }
-    return dlo < shi && slo < dhi;
+    if (!(dlo < shi && slo < dhi)) { return 0; }
+    if (RTEST(rb_obj_is_kind_of(dst, cumo_cBit))) { return 1; }
+    return na_elements_meet(dst, nd, src, ns);
 }
 
 void

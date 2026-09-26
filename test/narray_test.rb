@@ -8718,6 +8718,79 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal(0, a.ne(want).count_true.to_i)
     end
 
+    test "copies the source only when it shares an element with the destination" do
+      # Measured in a child, or blocks another test left in the pool serve the
+      # copy and total_bytes does not move.
+      script = <<~'RUBY'
+        require "cumo/narray"
+        pool = Cumo::CUDA::MemoryPool
+        unless pool.enabled?
+          print "no-pool"
+          exit
+        end
+        copied = lambda do |dst, src|
+          Cumo::CUDA::Runtime.cudaDeviceSynchronize
+          GC.start
+          pool.free_all_blocks
+          GC.disable
+          before = pool.total_bytes
+          dst[] = src
+          Cumo::CUDA::Runtime.cudaDeviceSynchronize
+          grew = pool.total_bytes > before
+          GC.enable
+          grew
+        end
+        axis = lambda do |rng, n, len|
+          step = [1, 2, 3, -1, -2].select { |st| (len - 1) * st.abs < n }.sample(random: rng)
+          start = rng.rand(n - (len - 1) * step.abs)
+          stop = start + (len - 1) * step.abs
+          step > 0 ? (start..stop).step(step) : (stop..start).step(step)
+        end
+        rng = Random.new(1)
+        out = []
+        a = Cumo::SFloat.new(512, 512).seq
+        out << [:halves, copied.(a[true, 0...256], a[true, 256..])]
+        out << [:even_odd, copied.(a[true, (0..).step(2)], a[true, (1..).step(2)])]
+        out << [:shifted, copied.(a[true, 0...256], a[true, 1..256])]
+        600.times do
+          shape = [[6, 8], [5, 7, 4], [16], [3, 4, 5, 2]].sample(random: rng)
+          klass = [Cumo::Int8, Cumo::SFloat, Cumo::DComplex].sample(random: rng)
+          index = Cumo::Int32.new(*shape).seq
+          data = klass.cast(index)
+          data = data * Complex(1, 1) if klass == Cumo::DComplex
+          lens = shape.map { |n| 1 + rng.rand(n) }
+          at_d = shape.each_with_index.map { |n, k| axis.(rng, n, lens[k]) }
+          at_s = shape.each_with_index.map { |n, k| axis.(rng, n, lens[k]) }
+          turn = shape.size > 1 && lens.uniq.size == 1 && rng.rand < 0.3
+          perm = (0...shape.size).to_a.shuffle(random: rng)
+          flip = ->(v) { turn ? v.transpose(*perm) : v }
+          d = index[*at_d].to_a.flatten
+          s = flip.(index[*at_s]).to_a.flatten
+          next if d == s
+          dst = data[*at_d]
+          src = flip.(data[*at_s])
+          want = src.to_a
+          got = copied.(dst, src)
+          out << [(d & s).empty? ? :apart : :meet, got, dst.to_a == want]
+        end
+        print "\n", [Marshal.dump(out)].pack("m0")
+      RUBY
+      raw = run_child(script)
+      omit("memory pool is disabled") if raw == "no-pool"
+      out = Marshal.load(raw.lines.last.unpack1("m0"))
+      assert_equal([[:halves, false], [:even_odd, false], [:shifted, true]], out.shift(3))
+      assert_equal([], out.reject { |_, _, right| right })
+      assert_equal([], out.select { |kind, got, _| got != (kind == :meet) })
+      assert_operator(out.count { |kind, _, _| kind == :meet }, :>, 100)
+      assert_operator(out.count { |kind, _, _| kind == :apart }, :>, 100)
+    end
+
+    test "stores the even bits of a row from its odd bits" do
+      bits = (Cumo::Int32.new(64, 96).seq % 3).eq(0)
+      expect_store(bits.dup) { |dst, src| dst[true, (0..).step(2)] = src[true, (1..).step(2)] }
+      expect_store(bits.dup) { |dst, src| dst[true, 0...48] = src[true, 48..] }
+    end
+
     test "leaves a store from itself and from another array alone" do
       a = Cumo::SFloat.new(4, 8).seq
       a[] = a
