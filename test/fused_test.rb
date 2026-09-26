@@ -100,7 +100,8 @@ class FusedTest < CumoTestBase
     # A row shorter than a warp, one that spans a block, and one long enough
     # that a thread walks it many times all take different paths through the
     # reduction, and the trailing axis is the only one that is reduced.
-    [[4], [3, 5], [2, 3, 7], [1, 1], [6, 1], [4, 32], [2, 512], [2, 20_000]].each do |shape|
+    [[4], [3, 5], [2, 3, 7], [1, 1], [6, 1], [4, 32], [2, 512], [2, 20_000],
+     [1, 4096], [70_000, 520], [256, 9_001]].each do |shape|
       test "layer_norm #{shape.inspect} #{dtype}" do
         x = dtype.new(*shape).rand_norm
         gamma = dtype.new(shape.last).rand_norm
@@ -115,6 +116,18 @@ class FusedTest < CumoTestBase
       beta = dtype.new(8).rand_norm
       assert_layer_norm(x, gamma, beta, eps: 1.0)
       refute_equal(x.layer_norm(gamma, beta).to_a, x.layer_norm(gamma, beta, eps: 1.0).to_a)
+    end
+
+    test "layer_norm answers beta for a flat row near the top of the range #{dtype}" do
+      big = { Cumo::DFloat => 1e306, Cumo::HFloat => 6e4 }.fetch(dtype, 1e36)
+      beta = dtype.new(512).seq * 0.001
+      y = dtype.new(4, 512).fill(big).layer_norm(dtype.ones(512), beta)
+      assert_equal(Cumo::DFloat.cast(beta.tile(4, 1)).to_a, Cumo::DFloat.cast(y).to_a)
+    end
+
+    test "layer_norm reads a row that does not start on sixteen bytes #{dtype}" do
+      flat = dtype.new(65).rand_norm
+      assert_layer_norm(flat[1..-1], dtype.new(64).rand_norm, dtype.new(64).rand_norm)
     end
 
     test "layer_norm reads a non-contiguous view #{dtype}" do
@@ -273,7 +286,8 @@ class FusedTest < CumoTestBase
     # spans a block, one the split machinery has to take, and more rows than
     # the grid holds.
     [[4], [3, 5], [2, 3, 7], [1, 1], [6, 1], [4, 32], [2, 512], [2, 20_000],
-     [1, 8192], [1, 8193], [2, 9_000], [255, 9_000], [256, 9_000], [70_000, 8]].each do |shape|
+     [1, 8192], [1, 8193], [2, 9_000], [255, 9_000], [256, 9_000], [70_000, 8],
+     [1, 4096], [70_000, 520], [256, 9_001]].each do |shape|
       test "rms_norm #{shape.inspect} #{dtype}" do
         x = dtype.new(*shape).rand_norm
         gamma = dtype.new(shape.last).rand_norm
@@ -286,6 +300,11 @@ class FusedTest < CumoTestBase
       gamma = dtype.new(8).rand_norm
       assert_rms_norm(x, gamma, eps: 1.0)
       refute_equal(x.rms_norm(gamma).to_a, x.rms_norm(gamma, eps: 1.0).to_a)
+    end
+
+    test "rms_norm reads a row that does not start on sixteen bytes #{dtype}" do
+      flat = dtype.new(65).rand_norm
+      assert_rms_norm(flat[1..-1], dtype.new(64).rand_norm)
     end
 
     test "rms_norm reads a non-contiguous view #{dtype}" do

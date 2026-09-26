@@ -79,38 +79,13 @@ __global__ void <%="cumo_#{c_iter}_kernel"%>(
     }
 }
 
-struct <%="cumo_#{c_iter}_fmax_op"%> {
-    __device__ <%=acc%> operator()(<%=acc%> a, <%=acc%> b) const { return fmax(a, b); }
-};
-
-struct <%="cumo_#{c_iter}_add_op"%> {
-    __device__ <%=acc%> operator()(<%=acc%> a, <%=acc%> b) const { return a + b; }
-};
-
-template <typename Op>
-__device__ <%=acc%> <%="cumo_#{c_iter}_block_reduce"%>(<%=acc%> v, <%=acc%>* sh, Op op, <%=acc%> identity)
-{
-    unsigned int lane = threadIdx.x & 31, warp = threadIdx.x >> 5, warps = blockDim.x >> 5;
-
-    for (int o = 16; o > 0; o >>= 1) v = op(v, __shfl_xor_sync(0xffffffffu, v, o));
-    if (warps == 1) return v;
-    if (lane == 0) sh[warp] = v;
-    __syncthreads();
-    v = lane < warps ? sh[lane] : identity;
-    for (int o = 16; o > 0; o >>= 1) v = op(v, __shfl_xor_sync(0xffffffffu, v, o));
-    __syncthreads();
-    return v;
-}
-
-// 64-bit indices or a branch for the maximum each cost this kernel a third of
-// its speed.
+// 64-bit indices or a branch for the maximum each make this kernel markedly
+// slower.
 template <int VPT>
 __global__ void __launch_bounds__(cumo_detail::max_block_size) <%="cumo_#{c_iter}_reg_kernel"%>(
         const dtype* x, dtype* y, uint32_t rows, uint32_t cols)
 {
     __shared__ <%=acc%> sh[32];
-    <%="cumo_#{c_iter}_fmax_op"%> max_op;
-    <%="cumo_#{c_iter}_add_op"%> sum_op;
 
     for (uint32_t row = blockIdx.x; row < rows; row += gridDim.x) {
         const dtype* xr = x + (size_t)row * cols;
@@ -128,7 +103,7 @@ __global__ void __launch_bounds__(cumo_detail::max_block_size) <%="cumo_#{c_iter
                 m = fmax(m, v[j]);
             }
         }
-        m = <%="cumo_#{c_iter}_block_reduce"%>(m, sh, max_op, <%=acc%>(-INFINITY));
+        m = cumo_detail::block_allreduce(m, sh, cumo_detail::row_max_op(), <%=acc%>(-INFINITY));
 
 #pragma unroll
         for (int j = 0; j < VPT; j++) {
@@ -138,7 +113,7 @@ __global__ void __launch_bounds__(cumo_detail::max_block_size) <%="cumo_#{c_iter
                 s += v[j];
             }
         }
-        rden = <%=acc%>(1) / <%="cumo_#{c_iter}_block_reduce"%>(s, sh, sum_op, <%=acc%>(0));
+        rden = <%=acc%>(1) / cumo_detail::block_allreduce(s, sh, cumo_detail::row_add_op(), <%=acc%>(0));
 
 #pragma unroll
         for (int j = 0; j < VPT; j++) {
@@ -159,7 +134,6 @@ extern "C" {
 
 void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint64_t cols)
 {
-    static const uint64_t max_row_blocks = 65536;
     int64_t want;
     unsigned int block_dim, grid_dim;
 
@@ -170,8 +144,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
     // split machinery instead. The passes stay the three above, run as separate
     // launches: taking the maximum and the sum in one would cost a second
     // exponential an element, which is what a DFloat row cannot afford.
-    if (rows < (uint64_t)cumo_detail::min_grid_size &&
-            cols > (uint64_t)(cumo_detail::max_block_size * cumo_detail::min_reduce_per_thread)) {
+    if (cumo_detail::row_wants_split(rows, cols)) {
         cumo_na_reduction_arg_t arg;
         <%=acc%>* stats = (<%=acc%>*)cumo_cuda_runtime_malloc(rows * sizeof(<%=acc%>));
         dim3 apply_grid((unsigned int)cumo_get_grid_dim(cols), (unsigned int)rows);
@@ -220,7 +193,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
     if (want < cumo_detail::warp_size) want = cumo_detail::warp_size;
     if (want > cumo_detail::max_block_size) want = cumo_detail::max_block_size;
     block_dim = (unsigned int)want;
-    grid_dim = (unsigned int)(rows < max_row_blocks ? rows : max_row_blocks);
+    grid_dim = (unsigned int)(rows < cumo_detail::max_row_blocks ? rows : cumo_detail::max_row_blocks);
 
     {
         uint64_t vpt = (cols + block_dim - 1) / block_dim;
