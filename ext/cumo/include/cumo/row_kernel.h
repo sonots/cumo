@@ -116,9 +116,7 @@ __device__ T block_allreduce(T v, T* sh, Op op, T identity)
 
 // A block that takes several rows amortizes its own launch, so the grid is
 // held below the row count on purpose. This is a tuning number and not the
-// ceiling for this axis, which is CUMO_MAX_GRID_DIM: a million rows of 8 take
-// 1286.0us at a block per row and 1177.5 here, and two million of 4 take
-// 2357.5 against 2094.4.
+// ceiling for this axis, which is CUMO_MAX_GRID_DIM.
 static const uint64_t max_row_blocks = 65536;
 
 // A row too long for one block to walk leaves the rest of the device idle

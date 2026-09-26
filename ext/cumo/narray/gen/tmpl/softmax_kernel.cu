@@ -79,8 +79,8 @@ __global__ void <%="cumo_#{c_iter}_kernel"%>(
     }
 }
 
-// 64-bit indices or a branch for the maximum each cost this kernel a third of
-// its speed.
+// 64-bit indices or a branch for the maximum each make this kernel markedly
+// slower.
 template <int VPT>
 __global__ void __launch_bounds__(cumo_detail::max_block_size) <%="cumo_#{c_iter}_reg_kernel"%>(
         const dtype* x, dtype* y, uint32_t rows, uint32_t cols)
