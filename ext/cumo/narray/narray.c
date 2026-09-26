@@ -1489,6 +1489,7 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
 /*
  *  call-seq:
  *     narray.reverse([dim0,dim1,..]) => narray
+ *     narray.reverse(axis: [dim0,dim1,..]) => narray
  *
  *  Return reversed view along specified dimeinsion
  */
@@ -1507,15 +1508,8 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
     cumo_narray_view_t *na1 = NULL, *na2;
     VALUE view;
     VALUE reduce;
-    VALUE axes;
-    VALUE kw_hash = Qnil;
-    ID kw_table[1] = {cumo_id_axis};
-    VALUE opts[1] = {Qundef};
-    long narg;
 
-    narg = rb_scan_args(argc, argv, "*:", &axes, &kw_hash);
-    rb_get_kwargs(kw_hash, kw_table, 0, 1, opts);
-    reduce = cumo_na_reduce_options((narg)?axes:Qnil, opts, 1, &self, 0, 1);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, 0, 0, 1, 1);
 
     CumoGetNArray(self,na);
     nd = na->ndim;
@@ -2270,8 +2264,8 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
     }
     if (ndf) {
         // option: keepdims
-        if (opts[1] != Qundef) {
-            if (RTEST(opts[1]))
+        if (opts[2] != Qundef) {
+            if (RTEST(opts[2]))
                 ndf->flag |= CUMO_NDF_KEEP_DIM;
         }
     }
@@ -2291,23 +2285,26 @@ cumo_na_reduce_options(VALUE axes, VALUE *opts, int naryc, VALUE *naryv,
 }
 
 
+// nkw is how many of axis:, nan: and keepdims:, in that order, the caller
+// takes. Any keyword past them raises as an unknown keyword.
 VALUE
 cumo_na_parse_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
-                      cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan, int empty_ok)
+                      cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan, int empty_ok,
+                      int nkw)
 {
     long narg;
     VALUE axes;
     VALUE kw_hash = Qnil;
-    ID kw_table[3] = {cumo_id_axis,cumo_id_keepdims,cumo_id_nan};
+    ID kw_table[3] = {cumo_id_axis,cumo_id_nan,cumo_id_keepdims};
     VALUE opts[3] = {Qundef,Qundef,Qundef};
 
     narg = rb_scan_args(argc, argv, "*:", &axes, &kw_hash);
-    rb_get_kwargs(kw_hash, kw_table, 0, 3, opts);
+    rb_get_kwargs(kw_hash, kw_table, 0, nkw, opts);
 
     if (ndf) {
         // option: nan
-        if (iter_nan && opts[2] != Qundef) {
-            if (RTEST(opts[2]))
+        if (iter_nan && opts[1] != Qundef) {
+            if (RTEST(opts[1]))
                 ndf->func = iter_nan; // replace to nan-aware iterator function
         }
     }
@@ -2320,7 +2317,7 @@ cumo_na_reduce_dimension(int argc, VALUE *argv, int naryc, VALUE *naryv,
                       cumo_ndfunc_t *ndf, cumo_na_iter_func_t iter_nan)
 {
     return cumo_na_parse_reduce_dimension(argc, argv, naryc, naryv, ndf, iter_nan,
-                 ndf && CUMO_NDF_TEST(ndf, CUMO_NDF_EMPTY_IDENTITY));
+                 ndf && CUMO_NDF_TEST(ndf, CUMO_NDF_EMPTY_IDENTITY), 3);
 }
 
 // The axes a view marks with :sum, :reduce or :+ live on the narray, and
