@@ -208,9 +208,15 @@ rb_memory_pool_n_free_blocks(VALUE self)
 }
 
 /*
-  Get the total number of bytes used.
+  Get the total number of bytes handed out and not taken back.
 
-  @return [Integer] The total number of bytes used.
+  A block counts until Ruby's garbage collector frees the array that holds it,
+  so an array whose last reference is gone still counts until the collector
+  reaches it. Read this after GC.start for the arrays that are alive. Python
+  frees an array when its last reference goes, so CuPy's used_bytes and
+  PyTorch's memory_allocated drop at once where this waits for the collector.
+
+  @return [Integer] The total number of bytes handed out and not taken back.
  */
 static VALUE
 rb_memory_pool_used_bytes(VALUE self)
@@ -231,6 +237,10 @@ rb_memory_pool_free_bytes(VALUE self)
 
 /*
   Get the total number of bytes acquired in the pool.
+
+  It counts the free blocks the pool keeps as well as the ones handed out, and
+  does not move with the garbage collector, so it answers how much the program
+  took rather than how much is alive.
 
   @return [Integer] The total number of bytes acquired in the pool.
  */

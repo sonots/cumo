@@ -788,7 +788,8 @@ Cumo::CUDA::MemoryPool.total_bytes   # what the pool has taken from the card
 Cumo::CUDA::MemoryPool.used_bytes    # what it has handed out and not taken back
 ```
 
-`used_bytes` still counts blocks whose last reference is gone but which Ruby's garbage collector has not reached, so read it after `GC.start` when you mean the arrays that are alive:
+`used_bytes` still counts blocks whose last reference is gone but which Ruby's garbage collector has not reached, so read it after `GC.start` when you mean the arrays that are alive.
+Python frees an array when its last reference goes, so CuPy's `used_bytes()` and PyTorch's `memory_allocated()` drop at once where this waits for the collector:
 
 ```ruby
 a = Cumo::SFloat.new(1024, 1024).seq
