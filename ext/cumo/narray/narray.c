@@ -1507,8 +1507,15 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
     cumo_narray_view_t *na1 = NULL, *na2;
     VALUE view;
     VALUE reduce;
+    VALUE axes;
+    VALUE kw_hash = Qnil;
+    ID kw_table[1] = {cumo_id_axis};
+    VALUE opts[1] = {Qundef};
+    long narg;
 
-    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, 0, 0, 1);
+    narg = rb_scan_args(argc, argv, "*:", &axes, &kw_hash);
+    rb_get_kwargs(kw_hash, kw_table, 0, 1, opts);
+    reduce = cumo_na_reduce_options((narg)?axes:Qnil, opts, 1, &self, 0, 1);
 
     CumoGetNArray(self,na);
     nd = na->ndim;
