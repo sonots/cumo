@@ -4155,6 +4155,26 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "sort, sort_index, cumsum and cumprod take no keepdims:" do
+    [Cumo::DFloat, Cumo::Int32].each do |dtype|
+      a = dtype[[3, 1, 2], [6, 5, 4]]
+      %i[sort sort_index cumsum cumprod].each do |m|
+        label = "#{dtype} #{m}"
+        assert_raise(ArgumentError, label) { a.send(m, keepdims: true) }
+        assert_raise(ArgumentError, label) { a.send(m, axis: 1, keepdims: false) }
+        assert_equal(a.send(m, axis: 1).to_a, a.send(m, axis: [1]).to_a, label)
+      end
+      %i[cumsum cumprod].each do |m|
+        assert_equal(a.send(m, axis: 1).to_a, a.send(m, axis: 1, nan: true).to_a, "#{dtype} #{m} nan:")
+      end
+    end
+    %i[sort sort_index].each do |m|
+      a = Cumo::DFloat[3, 1, 2]
+      assert_equal(a.send(m).to_a, a.send(m, nan: true).to_a, "DFloat #{m} nan:")
+      assert_raise(ArgumentError, "Int32 #{m} nan:") { Cumo::Int32[3, 1, 2].send(m, nan: true) }
+    end
+  end
+
   test "an empty array can be sorted and scanned along any axis" do
     [Cumo::DFloat, Cumo::Int32].each do |dtype|
       [[0], [0, 3], [3, 0], [2, 0, 3]].each do |shape|

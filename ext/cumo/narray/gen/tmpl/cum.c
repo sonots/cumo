@@ -107,13 +107,11 @@ static VALUE
   <% end %>
 
   <% if is_float %>
-    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan, 1, 3);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan, 1, 2);
   <% else %>
-    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 3);
+    reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 2);
   <% end %>
   <% unless type_name == 'robject' %>
-    // or rather than assign: cumo_na_reduce_dimension may have set
-    // CUMO_NDF_KEEP_DIM by then, and assigning would drop it
     ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
   <% end %>
     return cumo_na_ndloop(&ndf, 2, self, reduce);
