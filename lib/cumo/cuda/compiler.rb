@@ -29,6 +29,18 @@ module Cumo::CUDA
       @@modules.delete_if { |_, m| m.equal?(mod) }
     end
 
+    # NVRTC searches no directory for a header, so a kernel that includes one
+    # of the toolkit's, such as cuda_fp16.h, is compiled with this on the
+    # include path. CUDA_PATH decides it, then the nvcc on PATH, then the
+    # usual places.
+    def self.cuda_include_dir
+      nvcc = ENV["PATH"].to_s.split(File::PATH_SEPARATOR).map { |d| File.join(d, "nvcc") }.find { |f| File.executable?(f) }
+      roots = [ENV["CUDA_PATH"], nvcc && File.dirname(File.dirname(File.realpath(nvcc))), "/usr/local/cuda", "/opt/cuda"]
+      dir = roots.compact.map { |r| File.join(r, "include") }.find { |d| File.file?(File.join(d, "cuda_fp16.h")) }
+      raise "cannot find the CUDA headers; set CUDA_PATH to the CUDA toolkit" unless dir
+      dir
+    end
+
     # With name_expressions: answers the PTX and a Hash of each expression
     # to its mangled name; without, the PTX.
     def compile_using_nvrtc(source, options: [], arch: nil, name_expressions: nil)

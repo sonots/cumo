@@ -83,6 +83,15 @@ module Cumo::CUDA
       identity.to_s
     end
 
+    # A 16-bit float takes the identity through a float: below compute
+    # capability 8.0, CUDA 11's __nv_bfloat16 has no constructor that an
+    # integer picks without ambiguity. Any other type takes it as it is, which
+    # keeps an integer identity past what a float holds exact.
+    def identity_of(reduce_type, types)
+      ctype = types.key?(reduce_type) ? CTYPE[types[reduce_type]] : reduce_type
+      HEADERS.key?(ctype) ? "_type_reduce((float)(#{@identity}))" : "_type_reduce(#{@identity})"
+    end
+
     # A letter of the parameters, a C type of the table or a Cumo type name.
     def check_reduce_type(t)
       return nil if t.nil?
@@ -215,6 +224,7 @@ module Cumo::CUDA
         { long long _r = _j; for (int _d = #{nd} - 1; _d >= 0; _d--) { _idx[_d] = _r % _shape.v[_d]; _r /= _shape.v[_d]; } }
       CUDA
       <<~CUDA
+        #{headers(params.map { |p| CTYPE[types[p.type]] } + [reduce_type])}
         #{placeholders.map { |t| "typedef #{CTYPE[types[t]]} #{t};" }.join("\n")}
         #{nd > 0 ? "struct _Dims { long long v[#{nd}]; };" : ""}
         #{@preamble}
@@ -226,7 +236,7 @@ module Cumo::CUDA
           const long long _j_offset = (long long)(_tid / _block_stride + blockIdx.y * (#{BLOCK} / _block_stride)) * _out_size;
           const long long _j_stride = (long long)(#{BLOCK} / _block_stride) * gridDim.y * _out_size;
           for (long long _i_base = (long long)blockIdx.x * _block_stride; _i_base < _out_size; _i_base += (long long)gridDim.x * _block_stride) {
-            _type_reduce _s = _type_reduce(#{@identity});
+            _type_reduce _s = #{identity_of(reduce_type, types)};
             const long long _i = _i_base + (_tid % _block_stride);
             #pragma unroll 1
             for (long long _j = _i + _j_offset; _j < _in_size; _j += _j_stride) {
@@ -260,9 +270,7 @@ module Cumo::CUDA
     end
 
     def compile_final(types)
-      mod = Compiler.new.compile_with_cache(final_source(types))
-      (@modules ||= []) << mod
-      mod.get_function("#{@name}_final")
+      compile(final_source(types), "#{@name}_final")
     end
 
     # The second pass folds the chunks of every output and applies the post
@@ -279,13 +287,14 @@ module Cumo::CUDA
       decl << "long long _out_size"
       decl << "int _chunks"
       <<~CUDA
+        #{headers((@in_params + @out_params).map { |p| CTYPE[types[p.type]] } + [reduce_type])}
         #{placeholders.map { |t| "typedef #{CTYPE[types[t]]} #{t};" }.join("\n")}
         #{@preamble}
         typedef #{reduce_type} _type_reduce;
         #define REDUCE(a, b) (#{@reduce_expr})
         extern "C" __global__ void #{@name}_final(#{decl.join(', ')}) {
           for (long long _i = blockIdx.x * blockDim.x + threadIdx.x; _i < _out_size; _i += gridDim.x * blockDim.x) {
-            _type_reduce _s = _type_reduce(#{@identity});
+            _type_reduce _s = #{identity_of(reduce_type, types)};
             for (int _c = 0; _c < _chunks; _c++) {
               _type_reduce _b = _partials[_i * _chunks + _c];
               _s = REDUCE(_s, _b);

@@ -15,6 +15,12 @@ module Cumo::CUDA
   # Ruby number goes as a scalar, and an argument marked raw is handed over
   # as a pointer for the operation to index itself, with i the element
   # index and _ind.size() the element count.
+  #
+  # float16 and bfloat16 are CUDA's __half and __nv_bfloat16, so a kernel
+  # that uses them is compiled with the toolkit's headers, found through
+  # CUDA_PATH or the nvcc on PATH. They convert to and from every arithmetic
+  # type, so mixing one with another type or a literal is ambiguous and needs
+  # a cast: x * T(2), or (float)x * 2.
   class ElementwiseKernel
     include UserKernel
 
@@ -118,6 +124,7 @@ module Cumo::CUDA
         { long long _r = i; for (int _d = #{ndim} - 1; _d >= 0; _d--) { _idx[_d] = _r % _shape.v[_d]; _r /= _shape.v[_d]; } }
       CUDA
       <<~CUDA
+        #{headers(params.map { |p| CTYPE[types[p.type]] })}
         #{placeholders.map { |t| "typedef #{CTYPE[types[t]]} #{t};" }.join("\n")}
         struct _Ind { long long n; __device__ long long size() const { return n; } };
         #{simple ? "" : "struct _Dims { long long v[#{ndim}]; };"}
