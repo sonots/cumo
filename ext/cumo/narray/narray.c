@@ -1530,6 +1530,14 @@ cumo_na_make_view(VALUE self)
 
 //----------------------------------------------------------------------
 
+// The second of the two allocations below runs here, so that shape can be freed
+// when it raises instead of being left with nothing pointing to it.
+static VALUE
+cumo_na_expand_dims_alloc_stridx(VALUE n)
+{
+    return (VALUE)ZALLOC_N(cumo_stridx_t, (size_t)n);
+}
+
 /*
  *  call-seq:
  *     narray.expand_dims(dim) => narray view
@@ -1542,7 +1550,7 @@ cumo_na_make_view(VALUE self)
 static VALUE
 cumo_na_expand_dims(VALUE self, VALUE vdim)
 {
-    int  i, j, nd, dim;
+    int  i, j, nd, dim, state;
     size_t *shape, *na2_shape;
     cumo_stridx_t *stridx, *na2_stridx;
     cumo_narray_t *na;
@@ -1569,7 +1577,11 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
     CumoGetNArrayView(view, na2);
 
     shape = ALLOC_N(size_t,nd+1);
-    stridx = ZALLOC_N(cumo_stridx_t,nd+1);
+    stridx = (cumo_stridx_t*)rb_protect(cumo_na_expand_dims_alloc_stridx, (VALUE)(nd+1), &state);
+    if (state) {
+        xfree(shape);
+        rb_jump_tag(state);
+    }
     na2_shape = na2->base.shape;
     na2_stridx = na2->stridx;
 
