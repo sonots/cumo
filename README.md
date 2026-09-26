@@ -731,6 +731,7 @@ Inputs are `const`, so an operation that writes one does not compile, and a numb
 `preamble:` is placed before the kernel, after the typedefs of the letters, so a device function can be written in terms of `T`.
 `float16` and `bfloat16` are CUDA's `__half` and `__nv_bfloat16`, compiled with the toolkit's `cuda_fp16.h` and `cuda_bf16.h`, which are found through `CUDA_PATH` or the `nvcc` on `PATH`.
 They convert to and from every arithmetic type, so an operation that mixes one with another type or a literal does not compile until one side is cast: `y = x * T(2)`, `y = x > T(0) ? x : T(0)` or `y = (float)x * 2`.
+With CUDA 11, arithmetic on `float16` does not compile for a GPU below compute capability 5.3, which has none.
 A number handed to one is rounded to it the way `Cumo::HFloat[x]` and `Cumo::BFloat[x]` round it.
 `Cumo::Bit`, `Cumo::SComplex`, `Cumo::DComplex` and `Cumo::RObject` cannot be handed to one of these kernels yet.
 
