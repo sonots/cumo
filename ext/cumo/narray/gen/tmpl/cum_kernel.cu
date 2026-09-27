@@ -80,10 +80,52 @@ __global__ void <%="cumo_#{type_name}_#{name}_scatter_kernel_dim#{idim}"%>(cumo_
 }
 <% end %>
 
+// An operand laid out column by column, which a transposed view is and so is
+// a contiguous array scanned down axis 0, has each thread a row apart from the
+// next when it is walked in the order of the rows, so none of their accesses
+// combine. A tile reads or writes it along its columns instead, and the buffer
+// along its rows.
+__global__ void <%="cumo_#{type_name}_#{name}_gather_transpose_kernel"%>(const char *src, dtype* buf, uint64_t rows, uint64_t cols)
+{
+    CUMO_TRANSPOSE_TILE_DECL(dtype, tile);
+
+    CUMO_TRANSPOSE_TILE_LOOP(tile, rows, cols,
+        *(const dtype*)(src + cumo_tile_src * sizeof(dtype)),
+        buf[cumo_tile_dst] = cumo_tile_val;
+    );
+}
+
+// The same walk the other way round: the buffer is the rows-by-cols array read
+// along its columns, and the operand the cols-by-rows one written along its
+// rows, so the launch swaps the two extents.
+__global__ void <%="cumo_#{type_name}_#{name}_scatter_transpose_kernel"%>(const dtype* buf, char *dst, uint64_t rows, uint64_t cols)
+{
+    CUMO_TRANSPOSE_TILE_DECL(dtype, tile);
+
+    CUMO_TRANSPOSE_TILE_LOOP(tile, rows, cols,
+        buf[cumo_tile_src],
+        *(dtype*)(dst + cumo_tile_dst * sizeof(dtype)) = cumo_tile_val;
+    );
+}
+
+static int
+<%="cumo_#{type_name}_#{name}_is_transpose"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer)
+{
+    return CUMO_TRANSPOSE_TILE_FITS(indexer) &&
+        CUMO_SDX_IS_STRIDE(a->stridx[0]) && CUMO_SDX_IS_STRIDE(a->stridx[1]) &&
+        CUMO_SDX_GET_STRIDE(a->stridx[0]) == (ssize_t)sizeof(dtype) &&
+        CUMO_SDX_GET_STRIDE(a->stridx[1]) == (ssize_t)(sizeof(dtype) * indexer->shape[0]);
+}
+
 static void
 <%="cumo_#{type_name}_#{name}_gather_launch"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, dtype* buf,
         size_t grid_dim, size_t block_dim)
 {
+    if (<%="cumo_#{type_name}_#{name}_is_transpose"%>(a, indexer)) {
+        CUMO_TRANSPOSE_LAUNCH(<%="cumo_#{type_name}_#{name}_gather_transpose_kernel"%>,
+                              indexer->shape[0], indexer->shape[1], (const char*)a->ptr, buf);
+        return;
+    }
     <%= indexer_switch("cumo_#{type_name}_#{name}_gather_kernel", "*a, *indexer, buf") %>
 }
 
@@ -91,6 +133,11 @@ static void
 <%="cumo_#{type_name}_#{name}_scatter_launch"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, const dtype* buf,
         size_t grid_dim, size_t block_dim)
 {
+    if (<%="cumo_#{type_name}_#{name}_is_transpose"%>(a, indexer)) {
+        CUMO_TRANSPOSE_LAUNCH(<%="cumo_#{type_name}_#{name}_scatter_transpose_kernel"%>,
+                              indexer->shape[1], indexer->shape[0], buf, (char*)a->ptr);
+        return;
+    }
     <%= indexer_switch("cumo_#{type_name}_#{name}_scatter_kernel", "*a, *indexer, buf") %>
 }
 <% end %>

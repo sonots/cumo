@@ -1210,6 +1210,37 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    # An operand laid out column by column, a transposed view or a contiguous
+    # array scanned down axis 0, goes to and from the scan's buffer through a
+    # tile.
+    sub_test_case "#{dtype}, cumulative ops over a transposed view" do
+      test "cumsum and cumprod along the rows of a transposed view match the copy" do
+        [[45, 70], [32, 33], [70, 45]].each do |r, c|
+          a = dtype.cast(Array.new(r * c) { |i| i % 3 + 1 }).reshape(c, r)
+          t = a.transpose
+          assert { t.cumsum(axis: 1) == t.dup.cumsum(axis: 1) }
+          assert { t.cumprod(axis: 1) == t.dup.cumprod(axis: 1) } if r < 40
+        end
+      end
+
+      test "cumsum and cumprod down axis 0 of a contiguous array match the transposed copy" do
+        [[45, 70], [33, 32]].each do |r, c|
+          a = dtype.cast(Array.new(r * c) { |i| i % 3 + 1 }).reshape(r, c)
+          assert { a.cumsum(axis: 0) == a.transpose.dup.cumsum(axis: 1).transpose }
+          assert { a.cumprod(axis: 0) == a.transpose.dup.cumprod(axis: 1).transpose } if r < 40
+        end
+      end
+
+      if [Cumo::DFloat, Cumo::SFloat].include?(dtype)
+        test "the nan-aware cumsum of a transposed view matches the copy" do
+          a = dtype.new(40, 36).seq
+          a[3, 5] = Float::NAN
+          t = a.transpose
+          assert { t.cumsum(axis: 1, nan: true) == t.dup.cumsum(axis: 1, nan: true) }
+        end
+      end
+    end
+
     # An elementwise op cannot read an index view itself, so ndloop gathers it
     # into a buffer first and, for inplace, scatters the answer back. The copies
     # move one element of each size at a time.
