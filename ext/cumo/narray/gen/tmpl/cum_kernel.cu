@@ -80,10 +80,37 @@ __global__ void <%="cumo_#{type_name}_#{name}_scatter_kernel_dim#{idim}"%>(cumo_
 }
 <% end %>
 
+// A transposed view walked in the order of its rows has each thread a row
+// apart from the next, so none of their reads combine. A tile reads it along
+// its columns instead and writes the buffer along its rows.
+__global__ void <%="cumo_#{type_name}_#{name}_gather_transpose_kernel"%>(const char *src, dtype* buf, uint64_t rows, uint64_t cols)
+{
+    CUMO_TRANSPOSE_TILE_DECL(dtype, tile);
+
+    CUMO_TRANSPOSE_TILE_LOOP(tile, rows, cols,
+        *(const dtype*)(src + cumo_tile_src * sizeof(dtype)),
+        buf[cumo_tile_dst] = cumo_tile_val;
+    );
+}
+
+static int
+<%="cumo_#{type_name}_#{name}_gather_is_transpose"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer)
+{
+    return CUMO_TRANSPOSE_TILE_FITS(indexer) &&
+        CUMO_SDX_IS_STRIDE(a->stridx[0]) && CUMO_SDX_IS_STRIDE(a->stridx[1]) &&
+        CUMO_SDX_GET_STRIDE(a->stridx[0]) == (ssize_t)sizeof(dtype) &&
+        CUMO_SDX_GET_STRIDE(a->stridx[1]) == (ssize_t)(sizeof(dtype) * indexer->shape[0]);
+}
+
 static void
 <%="cumo_#{type_name}_#{name}_gather_launch"%>(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, dtype* buf,
         size_t grid_dim, size_t block_dim)
 {
+    if (<%="cumo_#{type_name}_#{name}_gather_is_transpose"%>(a, indexer)) {
+        CUMO_TRANSPOSE_LAUNCH(<%="cumo_#{type_name}_#{name}_gather_transpose_kernel"%>,
+                              indexer->shape[0], indexer->shape[1], (const char*)a->ptr, buf);
+        return;
+    }
     <%= indexer_switch("cumo_#{type_name}_#{name}_gather_kernel", "*a, *indexer, buf") %>
 }
 
