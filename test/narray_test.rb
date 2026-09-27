@@ -1210,7 +1210,9 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
-    # A scan along the rows of a transposed view gathers it through a tile.
+    # An operand laid out column by column, a transposed view or a contiguous
+    # array scanned down axis 0, goes to and from the scan's buffer through a
+    # tile.
     sub_test_case "#{dtype}, cumulative ops over a transposed view" do
       test "cumsum and cumprod along the rows of a transposed view match the copy" do
         [[45, 70], [32, 33], [70, 45]].each do |r, c|
@@ -1218,6 +1220,14 @@ class NArrayTest < Test::Unit::TestCase
           t = a.transpose
           assert { t.cumsum(axis: 1) == t.dup.cumsum(axis: 1) }
           assert { t.cumprod(axis: 1) == t.dup.cumprod(axis: 1) } if r < 40
+        end
+      end
+
+      test "cumsum and cumprod down axis 0 of a contiguous array match the transposed copy" do
+        [[45, 70], [33, 32]].each do |r, c|
+          a = dtype.cast(Array.new(r * c) { |i| i % 3 + 1 }).reshape(r, c)
+          assert { a.cumsum(axis: 0) == a.transpose.dup.cumsum(axis: 1).transpose }
+          assert { a.cumprod(axis: 0) == a.transpose.dup.cumprod(axis: 1).transpose } if r < 40
         end
       end
 
