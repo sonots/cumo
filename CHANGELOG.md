@@ -1,3 +1,45 @@
+# 0.11.0 (2026/09/27)
+
+Breaking changes:
+
+* `sort`, `sort_index`, `cumsum` and `cumprod` raise `ArgumentError` on `keepdims:`, which they accepted and ignored, since they keep the shape of their input. They take `axis:` and `nan:`, and `nan:` stays on every type as it does for `sum` and `median`. Numo still accepts `keepdims:` here without a word (PR #552)
+* `reverse` raises `ArgumentError` on `keepdims:` and `nan:`, which it accepted and ignored, and takes `axis:` only. Numo still accepts both without a word (PR #551)
+
+Fixes:
+
+* Fix a store from an overlapping part of the same array, such as `a[0...-k] = a[k..]`, writing wrong values, since threads read elements other threads had already overwritten. With 10 million SFloat elements and a shift of 1024 every run was wrong, on every path and every dtype. The source is now copied first when it shares an element with the destination, which gives numpy's answer (PR #553, PR #542)
+* Fix `ElementwiseKernel` and `ReductionKernel` racing when an input shares memory with an output but is not read element for element, such as a contiguous input shifted against its output. Such an input is copied first (PR #535)
+* Fix a leak of the new shape when `expand_dims` cannot allocate its strides (PR #563)
+
+Changes:
+
+* `cumsum` and `cumprod` down axis 0, or along a transposed view, gather and scatter their buffer through a shared-memory tile: on a 2048 x 2048 SFloat, `a.cumsum(axis: 0)` spends 133 us on the GPU where it spent 315, and the gather for `a.transpose.cumsum(axis: 1)` takes 51 us where it took 154 (PR #565)
+* An elementwise op on a view built on an index array gathers it into a buffer a typed element at a time rather than with a memcpy of a run-time size: `a[idx, true] + 1` on a 512 x 512 SFloat spends 2.75 us in the gather where it spent 5.2 (PR #564)
+* Say in the API docs of `MemoryPool.used_bytes` and `total_bytes` what each counts and when, and in the README that `used_bytes` waits for the garbage collector where CuPy's `used_bytes()` and PyTorch's `memory_allocated()` do not (PR #562)
+* `ElementwiseKernel` and `ReductionKernel` accept `Cumo::HFloat` and `Cumo::BFloat` as `float16` and `bfloat16`, CUDA's `__half` and `__nv_bfloat16`. A Ruby number handed to one is rounded on the host the way `Cumo::HFloat[x]` and `Cumo::BFloat[x]` round it (PR #561)
+* CI builds against CUDA 13.4.1 and 12.9.2 where it built against 13.2.1, and keeps 12.8.1 (PR #560)
+* `concatenate`, and `hstack`, `vstack` and `dstack` through it, write every part in one kernel launch when every part is a contiguous array of the result's class, and no longer fill the result with zeros first: `hstack` of six SFloat parts of 1500 x 64 takes 5.2 us where it took 18.3 (PR #559)
+* Elementwise ops, bias adds and math functions such as `gelu` move 16 bytes of each operand a thread when the last axis is contiguous in every operand: at 1500 x 384 and 1500 x 1536 SFloat, an add takes 4.18 us where it took 5.67, a bias add 15.1 where it took 27.4, and `gelu` 16.7 where it took 23.7. An HFloat add is 2.3 times faster and an Int8 add 3.6 times. Integer `div`, `mod` and `reciprocal`, and DComplex, keep the old loop (PR #558)
+* Say in the README and in comments why one spelling is faster than another rather than the timings of one GPU, which read as wrong on another card (PR #557, PR #556)
+* `layer_norm` and `rms_norm` hold a row in registers when it divides into sixteen-byte vectors and fits in eight of them a thread, and read it once: `layer_norm` over 1500 x 384 takes 6.7 us where it took 18.5. `layer_norm` takes the variance about the mean in a second pass, which is also more accurate, and a row whose sum overflows near the top of the range stays finite (PR #555)
+* `softmax` holds a row of up to 16 elements a thread in registers and reads it once: 1500 x 1500 takes 18.8 us where it took 34.4. SFloat and DFloat answers move by a few ulp, and HFloat and BFloat come closer to the reference, since `exp` is no longer rounded to half precision before the scale (PR #554)
+* `sort`, `sort_index`, `cumsum`, `cumprod` and `reverse` accept an empty array and answer an empty array of the same shape, where they raised. A missing axis still raises `DimensionError` (PR #550, PR #549)
+* A copy that the wide byte copy cannot take, as reductions, `argmax` and `sort` make of a non-contiguous input, goes a typed element at a time: `argmax` over a column slice runs 1.9 times faster and a copy of a column slice 1.3 times (PR #548)
+* A kernel over a view of 2 to 4 dimensions whose offsets fit an int32 does its address arithmetic in 32 bits: a store with a cast, `abs` or `clip` on such a view runs 1.17 to 1.32 times faster (PR #547)
+* A DFloat `logseq` of base 10 or 2 calls `exp10` or `exp2` rather than `pow`: 200,000 elements take 20 us where they took 84 (PR #546)
+* The rank switch of every generated kernel launcher comes from one helper in the kernel generator, and the generated sources are token for token what they were (PR #545)
+* `logseq` writes a strided, index or transposed view in one launch rather than one per row: a 6250 x 32 DFloat view takes 87 us where it took 14 ms (PR #544)
+* A reduction along a last axis of 16 elements or fewer gives a row that spans more than one 32-byte sector two threads: `Cumo::SFloat.ones(1536, 64)[true, 0...16].sum(axis: 1)` takes 2.18 us where it took 4.20, and `max`, `mean`, `mulsum` and `argmax` over short rows run 1.2 to 1.8 times faster (PR #543)
+* A store between views of the same type moves 16, 8, 4 or 2 bytes a thread over a run contiguous and aligned on both sides, through one set of kernels the copy behind `dup` shares: the store of an im2col unfold runs about 2 times faster (PR #541)
+* `cumsum` and `cumprod` no longer wait for the GPU. A 1-D scan shorter than 8192 elements ran on the host after a device synchronize, and every other shape waited for the stream to drain: `x = a * 1; x.cumsum + 1` takes about 9 us where it took 0.3 to 0.8 ms (PR #540)
+* `rand`, `rand_norm` and `seq` write a view built on an index array directly rather than through a buffer copied out and back, and so do `real=` and `imag=`: `rand` into a `[6250, 1024][true, idx64]` SFloat view takes 12.7 us where it took 80.7. An axis of length one merges with its neighbour, so a `[N, 1]` column runs what a flat array runs. A seed draws the same values as before (PR #539)
+* `ElementwiseKernel` and `ReductionKernel` read a reversed or stepped view, or a frozen array, where it is rather than copying it on every call, and `ReductionKernel` reads a transposed view the same way: a reduction along the first axis of a transposed 4000 by 4000 array no longer pays a copy that took longer than the reduction. An `ElementwiseKernel` input that is transposed is still copied, in tiles, which beats reading it across rows (PR #538, PR #535)
+* `ReductionKernel` over a leading axis gives a block up to 32 outputs that lie end to end, so a warp reads neighbouring outputs: a sum over axis 0 of a [4000, 4000] SFloat takes 0.169 ms where it took 0.413, what Cumo's own `sum` takes (PR #537)
+* `ElementwiseKernel` and `ReductionKernel` walk neighbouring dimensions that every array lays out end to end as one: a `ReductionKernel` sum over everything of a [160, 100, 1000] SFloat takes 0.162 ms where it took 0.193 (PR #536)
+* Fix a stream test that failed about once in a thousand runs, since its fill on a non-blocking stream was not ordered before its launch on the null stream (PR #534)
+* Say in the README where `CUMO_ALLOW_TF32` pays and where it does not: it speeds up matrix products and convolutions, buys nothing where reading the weights takes the time, and its rounding can push a training step past a tolerance single precision meets (PR #533)
+* A number stored with `a[...] = x`, `a[] = x` or `store(x)` goes through `fill`, one kernel launch with nothing reserved, where it filled a 0-dimensional array first. `fill` writes a view built on an index array or a mask directly rather than through a copy of the whole view (PR #532)
+
 # 0.10.0 (2026/09/22)
 
 Breaking changes:
