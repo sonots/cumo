@@ -2,10 +2,11 @@
 #include "cumo/indexer.h"
 
 // The copies move whole elements. With the element size known at compile time
-// each is one load and one store; a memcpy of a runtime size goes byte by byte
-// and made an index view the operand of an elementwise op cost twice the gather
-// of the same view into an array.
+// each is one load and one store, where a memcpy of a size known only at run
+// time goes byte by byte. cumo_ndloop_untyped stands for the memcpy, for a size
+// or a layout that no element type fits.
 struct __align__(16) cumo_ndloop_elm16 { uint64_t v[2]; };
+struct cumo_ndloop_untyped;
 
 #define CUMO_NDLOOP_COPY_BUFFER_KERNEL(NDIM) \
 template<typename V> \
@@ -27,7 +28,7 @@ __global__ void cumo_ndloop_copy_to_buffer_kernel_dim##NDIM( \
     } \
 } \
 template<> \
-__global__ void cumo_ndloop_copy_from_buffer_kernel_dim##NDIM<char>( \
+__global__ void cumo_ndloop_copy_from_buffer_kernel_dim##NDIM<cumo_ndloop_untyped>( \
         cumo_na_iarray_stridx_t a, cumo_na_indexer_t indexer, char *buf, size_t elmsz) { \
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) { \
         cumo_na_indexer_set_dim##NDIM(&indexer, i); \
@@ -36,7 +37,7 @@ __global__ void cumo_ndloop_copy_from_buffer_kernel_dim##NDIM<char>( \
     } \
 } \
 template<> \
-__global__ void cumo_ndloop_copy_to_buffer_kernel_dim##NDIM<char>( \
+__global__ void cumo_ndloop_copy_to_buffer_kernel_dim##NDIM<cumo_ndloop_untyped>( \
         cumo_na_iarray_stridx_t a, cumo_na_indexer_t indexer, char *buf, size_t elmsz) { \
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) { \
         cumo_na_indexer_set_dim##NDIM(&indexer, i); \
@@ -85,7 +86,7 @@ cumo_ndloop_is_typed(const cumo_na_iarray_stridx_t* a, const cumo_na_indexer_t* 
     }
 
 #define CUMO_NDLOOP_BUFFER_DISPATCH(DIR) \
-    if (!cumo_ndloop_is_typed(a, indexer, elmsz)) { CUMO_NDLOOP_BUFFER_SWITCH(DIR, char) } \
+    if (!cumo_ndloop_is_typed(a, indexer, elmsz)) { CUMO_NDLOOP_BUFFER_SWITCH(DIR, cumo_ndloop_untyped) } \
     else switch (elmsz) { \
     case 1: CUMO_NDLOOP_BUFFER_SWITCH(DIR, uint8_t) break; \
     case 2: CUMO_NDLOOP_BUFFER_SWITCH(DIR, uint16_t) break; \
@@ -116,6 +117,9 @@ void cumo_ndloop_copy_to_buffer_kernel_launch(cumo_na_iarray_stridx_t *a, cumo_n
     CUMO_NDLOOP_BUFFER_DISPATCH(to)
     cumo_cuda_runtime_check_kernel_launch();
 }
+
+#undef CUMO_NDLOOP_BUFFER_DISPATCH
+#undef CUMO_NDLOOP_BUFFER_SWITCH
 
 #if defined(__cplusplus)
 #if 0
