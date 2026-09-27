@@ -1210,6 +1210,30 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    # An elementwise op cannot read an index view itself, so ndloop gathers it
+    # into a buffer first and, for inplace, scatters the answer back. The copies
+    # move one element of each size at a time.
+    sub_test_case "#{dtype}, elementwise on an index view" do
+      small = ->(shape, from = 1) { dtype.cast(Array.new(shape.reduce(:*)) { |i| i % 7 + from }).reshape(*shape) }
+
+      test "an index view reads its rows as the gathered copy does" do
+        a = small.call([9, 5])
+        idx = Cumo::Int32[7, 2, 5, 0]
+        assert { a[idx, true] + 1 == a[idx, true].dup + 1 }
+        b = small.call([4, 9, 5], 2)
+        assert { b[true, idx, true] * 2 == b[true, idx, true].dup * 2 }
+      end
+
+      test "inplace on an index view writes those rows and leaves the rest" do
+        a = small.call([9, 5])
+        before = a.to_a
+        idx = [7, 2, 5]
+        a[Cumo::Int32.cast(idx), true].inplace + 1
+        expected = before.each_with_index.map { |row, r| idx.include?(r) ? row.map { |x| x + 1 } : row }
+        assert { a == dtype.cast(expected) }
+      end
+    end
+
     # A contiguous operand, or a row repeated down the rows, is moved 16 bytes
     # at a time. A reversed view walks backwards, so it takes the loop that
     # moves one element and gives the answer to compare with.
