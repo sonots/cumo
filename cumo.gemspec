@@ -25,9 +25,8 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 3.0.0"
 
   spec.files = `git ls-files -z`.split("\x0").reject do |f|
-    f.match(%r{^(.github|test|spec|features|docker|examples)/})
+    f.start_with?(*%w[.github/ test/ examples/ bin/ bench/ docker- Dockerfile Gemfile .gitignore .rubocop])
   end
-  spec.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
