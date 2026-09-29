@@ -207,12 +207,18 @@ def have_cusolver?
     message("cuSOLVER header not found; building without Cumo::Linalg\n")
     return false
   end
-  unless have_library('cusolver')
-    message("cuSOLVER library not found; building without Cumo::Linalg\n")
+  ok = checking_for("cusolverDnXgetrf in cusolverDn.h") do
+    try_compile(<<-SRC)
+#include <cusolverDn.h>
+int main(void) { return cusolverDnXgetrf == 0; }
+    SRC
+  end
+  unless ok
+    message("cuSOLVER has no 64-bit generic API; building without Cumo::Linalg\n")
     return false
   end
-  unless have_func('cusolverDnXgetrf', 'cusolverDn.h')
-    message("cuSOLVER has no 64-bit generic API; building without Cumo::Linalg\n")
+  unless have_library('cusolver')
+    message("cuSOLVER library not found; building without Cumo::Linalg\n")
     return false
   end
   true

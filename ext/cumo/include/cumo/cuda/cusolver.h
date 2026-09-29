@@ -3,7 +3,6 @@
 
 #include <ruby.h>
 #ifdef CUSOLVER_FOUND
-// cusolver_common.h reads __cplusplus without defined(), which -Wundef flags in C
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wundef"
 #include <cusolverDn.h>

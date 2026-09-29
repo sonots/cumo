@@ -30,12 +30,32 @@ get_cusolver_error_msg(cusolverStatus_t error)
         RETURN_MSG(CUSOLVER_STATUS_NOT_SUPPORTED);
         RETURN_MSG(CUSOLVER_STATUS_ZERO_PIVOT);
         RETURN_MSG(CUSOLVER_STATUS_INVALID_LICENSE);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_PARAMS_NOT_INITIALIZED);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_PARAMS_INVALID);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_PARAMS_INVALID_PREC);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_PARAMS_INVALID_REFINE);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_PARAMS_INVALID_MAXITER);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_INTERNAL_ERROR);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_NOT_SUPPORTED);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_OUT_OF_RANGE);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_NRHS_NOT_SUPPORTED_FOR_REFINE_GMRES);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_INFOS_NOT_INITIALIZED);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_INFOS_NOT_DESTROYED);
+        RETURN_MSG(CUSOLVER_STATUS_IRS_MATRIX_SINGULAR);
+        RETURN_MSG(CUSOLVER_STATUS_INVALID_WORKSPACE);
 
 #undef RETURN_MSG
     default:
-        // The IRS statuses and whatever a later toolkit adds
         return "CUSOLVER_STATUS_UNKNOWN";
     }
+}
+
+NORETURN(static void raise_cusolver_error(cusolverStatus_t status));
+
+static void
+raise_cusolver_error(cusolverStatus_t status)
+{
+    rb_raise(cumo_cuda_eCusolverError, "%s (error=%d)", get_cusolver_error_msg(status), status);
 }
 
 void
@@ -43,7 +63,7 @@ cumo_cuda_cusolver_check_status(cusolverStatus_t status)
 {
     cumo_cuda_runtime_note_device_write();
     if (status != CUSOLVER_STATUS_SUCCESS) {
-        rb_raise(cumo_cuda_eCusolverError, "%s (error=%d)", get_cusolver_error_msg(status), status);
+        raise_cusolver_error(status);
     }
 }
 
@@ -56,7 +76,10 @@ static VALUE
 rb_cusolver_version(VALUE self)
 {
     int version;
-    cumo_cuda_cusolver_check_status(cusolverGetVersion(&version));
+    cusolverStatus_t status = cusolverGetVersion(&version);
+    if (status != CUSOLVER_STATUS_SUCCESS) {
+        raise_cusolver_error(status);
+    }
     return INT2NUM(version);
 }
 
