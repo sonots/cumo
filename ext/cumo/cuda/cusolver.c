@@ -272,7 +272,9 @@ syevd_body(VALUE arg)
 {
     cusolver_call_t *c = (cusolver_call_t*)arg;
     cudaDataType wtype = (c->dtype == CUDA_R_32F || c->dtype == CUDA_C_32F) ? CUDA_R_32F : CUDA_R_64F;
-    double zero = 0;
+    float zero_f = 0;
+    double zero_d = 0;
+    void *zero = wtype == CUDA_R_32F ? (void*)&zero_f : (void*)&zero_d;
     size_t d_size = 0;
     size_t h_size = 0;
 
@@ -280,7 +282,7 @@ syevd_body(VALUE arg)
     if (c->range) {
         check_call(cusolverDnXsyevdx_bufferSize(
                 c->ctx.handle, c->ctx.params, c->jobz, CUSOLVER_EIG_RANGE_I, CUBLAS_FILL_MODE_UPPER, c->n,
-                c->dtype, c->a, c->n, &zero, &zero, c->il, c->iu, &c->meig, wtype, c->w, c->dtype,
+                c->dtype, c->a, c->n, zero, zero, c->il, c->iu, &c->meig, wtype, c->w, c->dtype,
                 &d_size, &h_size));
     } else {
         check_call(cusolverDnXsyevd_bufferSize(
@@ -292,7 +294,7 @@ syevd_body(VALUE arg)
     if (c->range) {
         cumo_cuda_cusolver_check_status(cusolverDnXsyevdx(
                 c->ctx.handle, c->ctx.params, c->jobz, CUSOLVER_EIG_RANGE_I, CUBLAS_FILL_MODE_UPPER, c->n,
-                c->dtype, c->a, c->n, &zero, &zero, c->il, c->iu, &c->meig, wtype, c->w, c->dtype,
+                c->dtype, c->a, c->n, zero, zero, c->il, c->iu, &c->meig, wtype, c->w, c->dtype,
                 c->d_work, d_size, c->h_work, h_size, c->d_info));
     } else {
         cumo_cuda_cusolver_check_status(cusolverDnXsyevd(
@@ -630,7 +632,6 @@ parse_eigen_args(cusolver_call_t *c, VALUE a, VALUE w, VALUE vectors, VALUE il, 
             rb_raise(rb_eArgError, "il and iu must satisfy 1 <= il <= iu <= n");
         }
     }
-    c->meig = c->range ? c->iu - c->il + 1 : c->n;
 }
 
 /*

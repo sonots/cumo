@@ -356,13 +356,14 @@ module Cumo
       raise NArray::ShapeError, 'input array b must have the shape of a' if b_given && b.shape != a.shape
 
       il, iu = eigen_range(vals_range, n)
-      w = ([SFloat, SComplex].include?(klass) ? SFloat : DFloat).new(n)
+      w = ([SFloat, SComplex].include?(klass) ? SFloat : DFloat).new(n).fill(Float::NAN)
       v = to_column_major(klass, a)
-      meig, = if b_given
-                cusolver(:sygvd, v, to_column_major(klass, b), w, !vals_only, il, iu)
-              else
-                cusolver(:syevd, v, w, !vals_only, il, iu)
-              end
+      meig, info = if b_given
+                     cusolver(:sygvd, v, to_column_major(klass, b), w, !vals_only, il, iu)
+                   else
+                     cusolver(:syevd, v, w, !vals_only, il, iu)
+                   end
+      raise LapackError, "the #{-info}-th argument of #{b_given ? 'sygvd' : 'syevd'} had illegal value" if info.negative?
 
       vals = il ? w[0...meig].dup : w
       vecs = if vals_only

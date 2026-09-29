@@ -75,6 +75,21 @@ class LinalgEighTest < Test::Unit::TestCase
     assert_equal([1.0, 1.0], Cumo::Linalg.eigh(a, uplo: 'L', turbo: true)[0].to_a)
   end
 
+  test "vals_only with vals_range" do
+    a = Cumo::DFloat[[4, 1, 2], [1, 3, 0], [2, 0, 5]]
+    vals, vecs = Cumo::Linalg.eigh(a, vals_only: true, vals_range: 1..2)
+    assert_nil(vecs)
+    assert_close(Cumo::Linalg.eigvalsh(a).to_a[1..2], vals, 1e-12)
+  end
+
+  test "a B that is not positive definite answers NaN rather than stale memory" do
+    10.times { Cumo::DFloat.new(2).fill(12_345.0) }
+    GC.start
+    vals, vecs = Cumo::Linalg.eigh(Cumo::DFloat[[2, 1], [1, 2]], Cumo::DFloat[[1, 0], [0, -1]])
+    assert_true(vals.to_a.all?(&:nan?))
+    assert_equal([2, 2], vecs.shape)
+  end
+
   test "an integer matrix" do
     vals, vecs = Cumo::Linalg.eigh(Cumo::Int32[[2, 1], [1, 2]])
     assert_kind_of(Cumo::DFloat, vals)
