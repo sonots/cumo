@@ -106,10 +106,7 @@ module Cumo
       lu, ipiv, info = getrf(BLAS_CLASSES[blas_char(a).to_sym], a)
       raise LapackError, "the #{info.abs}-th argument of getrf had illegal value" if info.negative?
 
-      if info.positive?
-        warn("the factorization has been completed, but the factor U[#{info - 1}, #{info - 1}] is " \
-             'exactly zero, indicating that the matrix is singular.')
-      end
+      warn_singular_factor(info) if info.positive?
 
       [lu.transpose.dup, Int32.cast(ipiv)]
     end
@@ -244,13 +241,13 @@ module Cumo
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
 
-      klass = BLAS_CLASSES[blas_char(a).to_sym]
-      return one(klass) if a.shape[0].zero?
+      bchr = blas_char(a)
+      return one(bchr) if a.shape[0].zero?
 
-      lu, ipiv, info = getrf(klass, a)
+      dg, sign, info = lu_diagonal(BLAS_CLASSES[bchr.to_sym], a)
       raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
 
-      to_ruby(lu.diagonal.prod) * (swaps(ipiv).odd? ? -1 : 1)
+      to_ruby(dg.prod * sign)
     end
 
     # Computes the sign and the natural logarithm of the absolute value of the
@@ -261,16 +258,19 @@ module Cumo
     #   for a singular matrix, and the logarithm, -Infinity for a singular
     #   matrix
     def slogdet(a)
-      lu, ipiv = lu_fact(a)
-      klass = lu.class
-      return [one(klass), 0.0] if lu.empty?
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
 
-      dg = lu.diagonal
+      bchr = blas_char(a)
+      return [one(bchr), 0.0] if a.shape == [0, 0]
+
+      dg, sign, info = lu_diagonal(BLAS_CLASSES[bchr.to_sym], a)
+      raise LapackError, "the #{info.abs}-th argument of getrf had illegal value" if info.negative?
+
+      warn_singular_factor(info) if info.positive?
       return 0, -Float::INFINITY if to_ruby(dg.eq(0).count_true).positive?
 
-      sign = ((-1.0)**(swaps(ipiv) % 2)) * to_ruby((dg / dg.abs).prod)
-      logdet = to_ruby(NMath.log(dg.abs).sum(axis: -1))
-      [sign, logdet]
+      abs = dg.abs
+      [to_ruby((dg / abs).prod * sign), to_ruby(NMath.log(abs).sum)]
     end
 
     # Computes a square matrix raised to an integer power.
@@ -324,12 +324,19 @@ module Cumo
       x.transpose.dup
     end
 
-    def one(klass)
-      [SComplex, DComplex].include?(klass) ? Complex(1.0, 0.0) : 1.0
+    def warn_singular_factor(info)
+      warn("the factorization has been completed, but the factor U[#{info - 1}, #{info - 1}] is " \
+           'exactly zero, indicating that the matrix is singular.')
     end
 
-    def swaps(ipiv)
-      to_ruby(ipiv.ne(ipiv.class.new(ipiv.size).seq(1)).count_true)
+    def one(bchr)
+      %w[c z].include?(bchr) ? Complex(1.0, 0.0) : 1.0
+    end
+
+    def lu_diagonal(klass, a)
+      lu, ipiv, info = getrf(klass, a)
+      swapped = ipiv.ne(ipiv.class.new(ipiv.size).seq(1)).count_true % 2
+      [lu.transpose.diagonal, (swapped * -2.0) + 1.0, info]
     end
 
     def pivots(ipiv, n)
@@ -385,6 +392,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :one, :swaps, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
