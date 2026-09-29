@@ -15,9 +15,6 @@ module Cumo
   # Linear algebra on the GPU, with the functions of Numo::Linalg from
   # numo-linalg-alt under the same names, arguments and errors.
   module Linalg
-    # Raised where Numo::Linalg raises Numo::Linalg::LapackError.
-    class LapackError < StandardError; end
-
     BLAS_CLASSES = { s: SFloat, d: DFloat, c: SComplex, z: DComplex }.freeze
     INTEGER_CLASSES = [Bit, Int64, Int32, Int16, Int8, UInt64, UInt32, UInt16, UInt8].freeze
     private_constant :BLAS_CLASSES, :INTEGER_CLASSES
@@ -30,12 +27,15 @@ module Cumo
     #
     # @param args [Array<Cumo::NArray, Array>]
     # @return [String]
-    # @raise [TypeError] if none of the arrays has such a type
+    # @raise [TypeError] if none of the arrays has such a type, or one is
+    #   HFloat or BFloat
     def blas_char(*args)
       type = 'n'
       args.each do |arg|
         arg = NArray.asarray(arg) if arg.is_a?(Array)
         klass = arg.class
+        raise TypeError, 'invalid data type for BLAS/LAPACK' if [HFloat, BFloat].include?(klass)
+
         if INTEGER_CLASSES.include?(klass)
           type = 'd' if type == 'n'
         elsif klass == DFloat
@@ -58,26 +58,27 @@ module Cumo
     end
 
     # Returns the dot product of two vectors, a matrix and a vector, or two
-    # matrices. The dot product of two vectors is a zero-dimensional array, or
-    # a Float or Complex in compatible mode.
+    # matrices. The dot product of two vectors is a Float or a Complex, which
+    # waits for the GPU.
     #
     # @param a [Cumo::NArray, Array] 1- or 2-dimensional
     # @param b [Cumo::NArray, Array] 1- or 2-dimensional
-    # @return [Cumo::NArray]
+    # @return [Cumo::NArray, Float, Complex]
     def dot(a, b)
-      a = NArray.asarray(a) unless a.is_a?(NArray)
-      b = NArray.asarray(b) unless b.is_a?(NArray)
-      klass = BLAS_CLASSES[blas_char(a, b).to_sym]
-      a = klass.cast(a)
-      b = klass.cast(b)
-
+      a, b = cast_to_blas_class(a, b)
       if a.ndim == 1
-        b.ndim == 1 ? blas_dot(a, b) : blas_gemv(b, a, trans: true)
+        if b.ndim == 1
+          check_dot(a, b)
+          c = a.mulsum(b)
+          return c.is_a?(NArray) ? c.extract_cpu : c
+        end
+        check_gemv(b, a, trans: true)
       elsif b.ndim == 1
-        blas_gemv(a, b)
+        check_gemv(a, b)
       else
-        blas_gemm(a, b)
+        check_gemm(a, b)
       end
+      a.dot(b)
     end
 
     # Returns the product of two matrices.
@@ -86,18 +87,24 @@ module Cumo
     # @param b [Cumo::NArray, Array] 2-dimensional
     # @return [Cumo::NArray]
     def matmul(a, b)
-      klass = BLAS_CLASSES[blas_char(a, b).to_sym]
-      blas_gemm(klass.cast(a), klass.cast(b))
+      a, b = cast_to_blas_class(a, b)
+      check_gemm(a, b)
+      a.dot(b)
     end
 
-    def blas_dot(x, y)
+    def cast_to_blas_class(a, b)
+      a = NArray.asarray(a) unless a.is_a?(NArray)
+      b = NArray.asarray(b) unless b.is_a?(NArray)
+      klass = BLAS_CLASSES[blas_char(a, b).to_sym]
+      [klass.cast(a), klass.cast(b)]
+    end
+
+    def check_dot(x, y)
       raise ArgumentError, 'x must not be empty' if x.empty? || y.empty?
       raise ArgumentError, 'x and y must have same size' if x.size != y.size
-
-      x.mulsum(y)
     end
 
-    def blas_gemv(a, x, trans: false)
+    def check_gemv(a, x, trans: false)
       raise ArgumentError, 'a must be 2-dimensional' if a.ndim != 2
       raise ArgumentError, 'x must be 1-dimensional' if x.ndim != 1
       raise ArgumentError, 'a must not be empty' if a.empty?
@@ -105,20 +112,16 @@ module Cumo
 
       n = trans ? a.shape[0] : a.shape[1]
       raise NArray::ShapeError, "shape1[1](=#{n}) != shape2[0](=#{x.size})" if n != x.size
-
-      trans ? x[:new, true].gemm(a).flatten : a.gemm(x[true, :new]).flatten
     end
 
-    def blas_gemm(a, b)
+    def check_gemm(a, b)
       raise ArgumentError, 'a must be 2-dimensional' if a.ndim != 2
       raise ArgumentError, 'b must be 2-dimensional' if b.ndim != 2
       raise ArgumentError, 'a must not be empty' if a.empty?
       raise ArgumentError, 'b must not be empty' if b.empty?
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
-
-      a.gemm(b)
     end
 
-    private_class_method :blas_dot, :blas_gemv, :blas_gemm
+    private_class_method :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
