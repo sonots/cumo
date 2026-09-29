@@ -106,10 +106,7 @@ module Cumo
       lu, ipiv, info = getrf(BLAS_CLASSES[blas_char(a).to_sym], a)
       raise LapackError, "the #{info.abs}-th argument of getrf had illegal value" if info.negative?
 
-      if info.positive?
-        warn("the factorization has been completed, but the factor U[#{info - 1}, #{info - 1}] is " \
-             'exactly zero, indicating that the matrix is singular.')
-      end
+      warn_singular_factor(info) if info.positive?
 
       [lu.transpose.dup, Int32.cast(ipiv)]
     end
@@ -236,6 +233,46 @@ module Cumo
       invert(klass, lu, ipiv, 'getrf')
     end
 
+    # Computes the determinant of a square matrix from its LU factorization.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @return [Float, Complex]
+    def det(a)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      bchr = blas_char(a)
+      return one(bchr) if a.shape[0].zero?
+
+      dg, sign, info = lu_diagonal(BLAS_CLASSES[bchr.to_sym], a)
+      raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
+
+      to_ruby(dg.prod * sign)
+    end
+
+    # Computes the sign and the natural logarithm of the absolute value of the
+    # determinant, which does not overflow where det does.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @return [Array] the sign, a Float or a Complex of absolute value 1, or 0
+    #   for a singular matrix, and the logarithm, -Infinity for a singular
+    #   matrix
+    def slogdet(a)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+
+      bchr = blas_char(a)
+      return [one(bchr), 0.0] if a.shape == [0, 0]
+
+      dg, sign, info = lu_diagonal(BLAS_CLASSES[bchr.to_sym], a)
+      raise LapackError, "the #{info.abs}-th argument of getrf had illegal value" if info.negative?
+
+      warn_singular_factor(info) if info.positive?
+      return 0, -Float::INFINITY if to_ruby(dg.eq(0).count_true).positive?
+
+      abs = dg.abs
+      [to_ruby((dg / abs).prod * sign), to_ruby(NMath.log(abs).sum)]
+    end
+
     # Computes a square matrix raised to an integer power.
     #
     # @param a [Cumo::NArray] the square matrix
@@ -285,6 +322,21 @@ module Cumo
       raise LapackError, "the #{info.abs}-th argument of #{routine} had illegal value" if info.negative?
 
       x.transpose.dup
+    end
+
+    def warn_singular_factor(info)
+      warn("the factorization has been completed, but the factor U[#{info - 1}, #{info - 1}] is " \
+           'exactly zero, indicating that the matrix is singular.')
+    end
+
+    def one(bchr)
+      %w[c z].include?(bchr) ? Complex(1.0, 0.0) : 1.0
+    end
+
+    def lu_diagonal(klass, a)
+      lu, ipiv, info = getrf(klass, a)
+      swapped = ipiv.ne(ipiv.class.new(ipiv.size).seq(1)).count_true % 2
+      [lu.transpose.diagonal, (swapped * -2.0) + 1.0, info]
     end
 
     def pivots(ipiv, n)
@@ -340,6 +392,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
