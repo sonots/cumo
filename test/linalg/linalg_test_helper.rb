@@ -2,6 +2,7 @@
 
 require_relative "../test_helper"
 require "cumo/linalg"
+require "stringio"
 
 module LinalgTestHelper
   COMPLEX_TYPES = [Cumo::SComplex, Cumo::DComplex].freeze
@@ -30,6 +31,15 @@ module LinalgTestHelper
     actual = [actual.is_a?(Cumo::NArray) ? actual.to_a : actual].flatten
     assert_equal(expected.size, actual.size)
     expected.zip(actual) { |e, a| assert_operator((e - a).abs, :<=, delta) }
+  end
+
+  def capture_stderr
+    orig = $stderr
+    $stderr = StringIO.new
+    yield
+    $stderr.string
+  ensure
+    $stderr = orig
   end
 
   private

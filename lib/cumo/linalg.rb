@@ -15,6 +15,9 @@ module Cumo
   # Linear algebra on the GPU, with the functions of Numo::Linalg from
   # numo-linalg-alt under the same names, arguments and errors.
   module Linalg
+    # Raised where Numo::Linalg raises Numo::Linalg::LapackError.
+    class LapackError < StandardError; end
+
     BLAS_CLASSES = { s: SFloat, d: DFloat, c: SComplex, z: DComplex }.freeze
     INTEGER_CLASSES = [Bit, Int64, Int32, Int16, Int8, UInt64, UInt32, UInt16, UInt8].freeze
     private_constant :BLAS_CLASSES, :INTEGER_CLASSES
@@ -69,8 +72,7 @@ module Cumo
       if a.ndim == 1
         if b.ndim == 1
           check_dot(a, b)
-          c = a.mulsum(b)
-          return c.is_a?(NArray) ? c.extract_cpu : c
+          return to_ruby(a.mulsum(b))
         end
         check_gemv(b, a, trans: true)
       elsif b.ndim == 1
@@ -90,6 +92,70 @@ module Cumo
       a, b = cast_to_blas_class(a, b)
       check_gemm(a, b)
       a.dot(b)
+    end
+
+    # Computes the LU factorization of a matrix with partial pivoting,
+    # A = P L U, as LAPACK's getrf does.
+    #
+    # @param a [Cumo::NArray] 2-dimensional
+    # @return [Array<Cumo::NArray, Cumo::Int32>] the factors L and U in one
+    #   matrix, the unit diagonal of L left out, and the 1-based pivot indices
+    def lu_fact(a)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+
+      klass = BLAS_CLASSES[blas_char(a).to_sym]
+      lu = klass.cast(a).transpose.dup
+      ipiv, info = cusolver(:getrf, lu)
+      raise LapackError, "the #{info.abs}-th argument of getrf had illegal value" if info.negative?
+
+      if info.positive?
+        warn("the factorization has been completed, but the factor U[#{info - 1}, #{info - 1}] is " \
+             'exactly zero, indicating that the matrix is singular.')
+      end
+
+      [lu.transpose.dup, Int32.cast(ipiv)]
+    end
+
+    # Solves A X = B, A^T X = B or A^H X = B from the LU factorization of A
+    # that lu_fact answers.
+    #
+    # @param lu [Cumo::NArray] the square matrix of factors
+    # @param ipiv [Cumo::NArray] the 1-based pivot indices
+    # @param b [Cumo::NArray] 1- or 2-dimensional
+    # @param trans [String] 'N', 'T' or 'C'
+    # @return [Cumo::NArray] X, of the shape of b
+    def lu_solve(lu, ipiv, b, trans: 'N')
+      raise NArray::ShapeError, 'input array lu must be 2-dimensional' if lu.ndim != 2
+      raise NArray::ShapeError, 'input array lu must be square' if lu.shape[0] != lu.shape[1]
+      raise NArray::ShapeError, "incompatible dimensions: lu.shape[0] = #{lu.shape[0]} != b.shape[0] = #{b.shape[0]}" if lu.shape[0] != b.shape[0]
+      raise ArgumentError, 'trans must be "N", "T", or "C"' unless %w[N T C].include?(trans)
+
+      klass = BLAS_CLASSES[blas_char(lu).to_sym]
+      n = lu.shape[0]
+      ipiv = NArray.asarray(ipiv) unless ipiv.is_a?(NArray)
+      raise ArgumentError, 'input array ipiv must be 1-dimensional' if ipiv.ndim != 1
+      raise ArgumentError, "input array ipiv must have #{n} elements" if ipiv.size != n
+      raise ArgumentError, 'input array b must be 1 or 2-dimensional' unless [1, 2].include?(b.ndim)
+
+      ipiv = Int64.new(n).store(ipiv)
+      raise ArgumentError, "input array ipiv must be in 1..#{n}" if n.positive? && (to_ruby(ipiv.min) < 1 || to_ruby(ipiv.max) > n)
+
+      x = klass.cast(b)
+      x = b.ndim == 1 ? x.dup : x.transpose.dup
+      info = cusolver(:getrs, klass.cast(lu).transpose.dup, ipiv, x, trans)
+      raise LapackError, "the #{info.abs}-th argument of getrs had illegal value" if info.negative?
+
+      b.ndim == 1 ? x : x.transpose.dup
+    end
+
+    def cusolver(routine, *args)
+      raise NotImplementedError, 'Cumo is built without cuSOLVER' unless CUDA::Cusolver.available?
+
+      CUDA::Cusolver.__send__(routine, *args)
+    end
+
+    def to_ruby(x)
+      x.is_a?(NArray) ? x.extract_cpu : x
     end
 
     def cast_to_blas_class(a, b)
@@ -122,6 +188,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
