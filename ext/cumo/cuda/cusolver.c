@@ -70,6 +70,14 @@ cumo_cuda_cusolver_check_status(cusolverStatus_t status)
     }
 }
 
+static void
+check_call(cusolverStatus_t status)
+{
+    if (status != CUSOLVER_STATUS_SUCCESS) {
+        raise_cusolver_error(status);
+    }
+}
+
 /*
   Returns the version of the cuSOLVER library cumo is linked with.
 
@@ -79,19 +87,8 @@ static VALUE
 rb_cusolver_version(VALUE self)
 {
     int version;
-    cusolverStatus_t status = cusolverGetVersion(&version);
-    if (status != CUSOLVER_STATUS_SUCCESS) {
-        raise_cusolver_error(status);
-    }
+    check_call(cusolverGetVersion(&version));
     return INT2NUM(version);
-}
-
-static void
-check_call(cusolverStatus_t status)
-{
-    if (status != CUSOLVER_STATUS_SUCCESS) {
-        raise_cusolver_error(status);
-    }
 }
 
 typedef struct {
@@ -215,6 +212,27 @@ call_ensure(VALUE arg)
     return Qnil;
 }
 
+static void
+check_pivots(const int64_t *d_ipiv, int64_t n)
+{
+    int64_t *h_ipiv = ALLOC_N(int64_t, n);
+    cudaError_t status = cumo_cuda_runtime_memcpy_to_host(h_ipiv, d_ipiv, sizeof(int64_t) * n);
+    int64_t i;
+    int in_range = 1;
+
+    for (i = 0; status == cudaSuccess && i < n; ++i) {
+        if (h_ipiv[i] < 1 || h_ipiv[i] > n) {
+            in_range = 0;
+            break;
+        }
+    }
+    ruby_xfree(h_ipiv);
+    cumo_cuda_runtime_check_status(status);
+    if (!in_range) {
+        rb_raise(rb_eArgError, "input array ipiv must be in 1..%"PRId64, n);
+    }
+}
+
 /*
   Factorizes a matrix in place as P A = L U with cusolverDnXgetrf.
 
@@ -253,7 +271,7 @@ rb_cusolver_getrf(VALUE self, VALUE a)
 
   @param lu [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
     contiguous, of shape [n, n]: the column-major factors
-  @param ipiv [Cumo::Int64] contiguous, of length n, each in 1..n
+  @param ipiv [Cumo::Int64] contiguous, of length n, each in 1..n, which is checked
   @param b [Cumo::NArray] of the class of lu, contiguous, of shape [n] or
     [nrhs, n]: the column-major right-hand sides, overwritten with X
   @param trans [String] "N", "T" or "C"
@@ -263,11 +281,22 @@ static VALUE
 rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans)
 {
     cusolver_call_t c = {0};
-    cumo_narray_t *nlu = check_contiguous_array(lu, Qnil, 2, "lu");
-    cumo_narray_t *nipiv = check_contiguous_array(ipiv, cumo_cInt64, 1, "ipiv");
-    cumo_narray_t *nb;
     const char *t = StringValueCStr(trans);
+    cumo_narray_t *nlu;
+    cumo_narray_t *nipiv;
+    cumo_narray_t *nb;
 
+    if (strcmp(t, "N") == 0) {
+        c.trans = CUBLAS_OP_N;
+    } else if (strcmp(t, "T") == 0) {
+        c.trans = CUBLAS_OP_T;
+    } else if (strcmp(t, "C") == 0) {
+        c.trans = CUBLAS_OP_C;
+    } else {
+        rb_raise(rb_eArgError, "trans must be \"N\", \"T\", or \"C\"");
+    }
+    nlu = check_contiguous_array(lu, Qnil, 2, "lu");
+    nipiv = check_contiguous_array(ipiv, cumo_cInt64, 1, "ipiv");
     c.dtype = cusolver_dtype(lu);
     c.n = (int64_t)CUMO_NA_SHAPE(nlu)[0];
     if ((int64_t)CUMO_NA_SHAPE(nlu)[1] != c.n) {
@@ -285,20 +314,12 @@ rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans)
         rb_raise(cumo_na_eShapeError, "b must have %"PRId64" rows", c.n);
     }
     c.nrhs = CUMO_NA_NDIM(nb) == 1 ? 1 : (int64_t)CUMO_NA_SHAPE(nb)[0];
-    if (strcmp(t, "N") == 0) {
-        c.trans = CUBLAS_OP_N;
-    } else if (strcmp(t, "T") == 0) {
-        c.trans = CUBLAS_OP_T;
-    } else if (strcmp(t, "C") == 0) {
-        c.trans = CUBLAS_OP_C;
-    } else {
-        rb_raise(rb_eArgError, "trans must be \"N\", \"T\", or \"C\"");
-    }
     if (c.n == 0 || c.nrhs == 0) {
         return INT2FIX(0);
     }
-    c.a = cumo_na_get_offset_pointer_for_read(lu);
     c.ipiv = (int64_t*)cumo_na_get_offset_pointer_for_read(ipiv);
+    check_pivots(c.ipiv, c.n);
+    c.a = cumo_na_get_offset_pointer_for_read(lu);
     c.b = cumo_na_get_offset_pointer_for_read_write(b);
     c.ctx = cusolver_context();
     rb_ensure(getrs_body, (VALUE)&c, call_ensure, (VALUE)&c);

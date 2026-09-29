@@ -51,7 +51,7 @@ class LinalgLuFactTest < Test::Unit::TestCase
 
   test "a singular matrix warns and answers the factors" do
     lu = piv = nil
-    stderr = capture_stderr { lu, piv = Cumo::Linalg.lu_fact(Cumo::DFloat[[1, 2], [2, 4]]) }
+    _, stderr = capture_output { lu, piv = Cumo::Linalg.lu_fact(Cumo::DFloat[[1, 2], [2, 4]]) }
     assert_equal("the factorization has been completed, but the factor U[1, 1] is exactly zero, " \
                  "indicating that the matrix is singular.\n",
                  stderr)

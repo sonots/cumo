@@ -104,7 +104,7 @@ module Cumo
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
 
       klass = BLAS_CLASSES[blas_char(a).to_sym]
-      lu = klass.cast(a).transpose.dup
+      lu = klass.new(*a.shape.reverse).store(a.transpose)
       ipiv, info = cusolver(:getrf, lu)
       raise LapackError, "the #{info.abs}-th argument of getrf had illegal value" if info.negative?
 
@@ -137,12 +137,9 @@ module Cumo
       raise ArgumentError, "input array ipiv must have #{n} elements" if ipiv.size != n
       raise ArgumentError, 'input array b must be 1 or 2-dimensional' unless [1, 2].include?(b.ndim)
 
-      ipiv = Int64.new(n).store(ipiv)
-      raise ArgumentError, "input array ipiv must be in 1..#{n}" if n.positive? && (to_ruby(ipiv.min) < 1 || to_ruby(ipiv.max) > n)
-
-      x = klass.cast(b)
-      x = b.ndim == 1 ? x.dup : x.transpose.dup
-      info = cusolver(:getrs, klass.cast(lu).transpose.dup, ipiv, x, trans)
+      x = b.ndim == 1 ? klass.new(n).store(b) : klass.new(*b.shape.reverse).store(b.transpose)
+      lu = klass.new(n, n).store(lu.transpose)
+      info = cusolver(:getrs, lu, Int64.new(n).store(ipiv), x, trans)
       raise LapackError, "the #{info.abs}-th argument of getrs had illegal value" if info.negative?
 
       b.ndim == 1 ? x : x.transpose.dup
