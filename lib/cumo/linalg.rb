@@ -330,6 +330,59 @@ module Cumo
       from_column_major(x)
     end
 
+    # Computes the eigenvalues and eigenvectors of a Hermitian matrix, or of
+    # the generalized problem A x = lambda B x with B positive definite. The
+    # upper triangles are read, and uplo: and turbo: are accepted and ignored,
+    # as numo-linalg-alt does.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @param b [Cumo::NArray, nil] the square matrix B, or nil
+    # @param vals_only [Boolean] whether to leave the eigenvectors out
+    # @param vals_range [Range, Array, nil] the indices of the eigenvalues to
+    #   answer, 0-based, in ascending order of the eigenvalues
+    # @return [Array] the eigenvalues in ascending order, and the eigenvectors
+    #   in the columns of a matrix, or nil
+    def eigh(a, b = nil, vals_only: false, vals_range: nil, uplo: 'U', turbo: false)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      b_given = !b.nil?
+      raise NArray::ShapeError, 'input array b must be 2-dimensional' if b_given && b.ndim != 2
+      raise NArray::ShapeError, 'input array b must be square' if b_given && b.shape[0] != b.shape[1]
+
+      blas_char(b) if b_given
+      klass = BLAS_CLASSES[blas_char(a).to_sym]
+      n = a.shape[0]
+      raise NArray::ShapeError, 'input array b must have the shape of a' if b_given && b.shape != a.shape
+
+      il, iu = eigen_range(vals_range, n)
+      w = ([SFloat, SComplex].include?(klass) ? SFloat : DFloat).new(n)
+      v = to_column_major(klass, a)
+      meig, = if b_given
+                cusolver(:sygvd, v, to_column_major(klass, b), w, !vals_only, il, iu)
+              else
+                cusolver(:syevd, v, w, !vals_only, il, iu)
+              end
+
+      vals = il ? w[0...meig].dup : w
+      vecs = if vals_only
+               nil
+             elsif il
+               v.transpose[true, 0...meig].dup
+             else
+               v.transpose.dup
+             end
+      [vals, vecs]
+    end
+
+    # Computes the eigenvalues of a Hermitian matrix, or of the generalized
+    # problem A x = lambda B x.
+    #
+    # @return [Cumo::NArray] the eigenvalues in ascending order
+    def eigvalsh(a, b = nil, vals_range: nil, uplo: 'U', turbo: false)
+      eigh(a, b, vals_only: true, vals_range: vals_range, uplo: uplo, turbo: turbo)[0]
+    end
+
     # Computes the determinant of a square matrix from its LU factorization.
     #
     # @param a [Cumo::NArray] the square matrix
@@ -422,6 +475,18 @@ module Cumo
       x.ndim == 1 ? x : x.transpose.dup
     end
 
+    def eigen_range(vals_range, n)
+      return [nil, nil] if vals_range.nil?
+
+      il = vals_range.first(1)[0] + 1
+      iu = vals_range.last(1)[0] + 1
+      raise ArgumentError, 'il must satisfy 1 <= il <= n' if il < 1 || il > n
+      raise ArgumentError, 'iu must satisfy 1 <= iu <= n' if iu < 1 || iu > n
+      raise ArgumentError, 'iu must be greater than or equal to il' if iu < il
+
+      [il, iu]
+    end
+
     def lapack_uplo(uplo)
       cusolver(:uplo, uplo)
     end
@@ -505,6 +570,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end

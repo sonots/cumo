@@ -151,6 +151,12 @@ typedef struct {
     cudaDataType dtype;
     cublasOperation_t trans;
     cublasFillMode_t uplo;
+    cusolverEigMode_t jobz;
+    int range;
+    int64_t il;
+    int64_t iu;
+    int64_t meig;
+    void *w;
     int64_t m;
     int64_t n;
     int64_t nrhs;
@@ -257,6 +263,87 @@ potri_body(VALUE arg)
     default: POTRI(Z, cuDoubleComplex);
 #undef POTRI
     }
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+static VALUE
+syevd_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+    cudaDataType wtype = (c->dtype == CUDA_R_32F || c->dtype == CUDA_C_32F) ? CUDA_R_32F : CUDA_R_64F;
+    double zero = 0;
+    size_t d_size = 0;
+    size_t h_size = 0;
+
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    if (c->range) {
+        check_call(cusolverDnXsyevdx_bufferSize(
+                c->ctx.handle, c->ctx.params, c->jobz, CUSOLVER_EIG_RANGE_I, CUBLAS_FILL_MODE_UPPER, c->n,
+                c->dtype, c->a, c->n, &zero, &zero, c->il, c->iu, &c->meig, wtype, c->w, c->dtype,
+                &d_size, &h_size));
+    } else {
+        check_call(cusolverDnXsyevd_bufferSize(
+                c->ctx.handle, c->ctx.params, c->jobz, CUBLAS_FILL_MODE_UPPER, c->n,
+                c->dtype, c->a, c->n, wtype, c->w, c->dtype, &d_size, &h_size));
+    }
+    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
+    if (c->range) {
+        cumo_cuda_cusolver_check_status(cusolverDnXsyevdx(
+                c->ctx.handle, c->ctx.params, c->jobz, CUSOLVER_EIG_RANGE_I, CUBLAS_FILL_MODE_UPPER, c->n,
+                c->dtype, c->a, c->n, &zero, &zero, c->il, c->iu, &c->meig, wtype, c->w, c->dtype,
+                c->d_work, d_size, c->h_work, h_size, c->d_info));
+    } else {
+        cumo_cuda_cusolver_check_status(cusolverDnXsyevd(
+                c->ctx.handle, c->ctx.params, c->jobz, CUBLAS_FILL_MODE_UPPER, c->n,
+                c->dtype, c->a, c->n, wtype, c->w, c->dtype, c->d_work, d_size, c->h_work, h_size, c->d_info));
+        c->meig = c->n;
+    }
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+static VALUE
+sygvd_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+    cusolverDnHandle_t h = c->ctx.handle;
+    cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1;
+    cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
+    int n = (int)c->n;
+    int il = (int)c->il;
+    int iu = (int)c->iu;
+    int meig = n;
+    int lwork = 0;
+
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    switch (c->dtype) {
+#define SYGVD(prefix, type, wtype)                                                                          \
+        if (c->range) {                                                                                     \
+            check_call(cusolverDn##prefix##dx_bufferSize(                                                   \
+                    h, itype, c->jobz, CUSOLVER_EIG_RANGE_I, uplo, n, (type*)c->a, n, (type*)c->b, n,        \
+                    0, 0, il, iu, &meig, (wtype*)c->w, &lwork));                                              \
+            c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));                     \
+            cumo_cuda_cusolver_check_status(cusolverDn##prefix##dx(                                          \
+                    h, itype, c->jobz, CUSOLVER_EIG_RANGE_I, uplo, n, (type*)c->a, n, (type*)c->b, n,        \
+                    0, 0, il, iu, &meig, (wtype*)c->w, (type*)c->d_work, lwork, c->d_info));                  \
+        } else {                                                                                            \
+            check_call(cusolverDn##prefix##d_bufferSize(                                                    \
+                    h, itype, c->jobz, uplo, n, (type*)c->a, n, (type*)c->b, n, (wtype*)c->w, &lwork));       \
+            c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));                     \
+            cumo_cuda_cusolver_check_status(cusolverDn##prefix##d(                                           \
+                    h, itype, c->jobz, uplo, n, (type*)c->a, n, (type*)c->b, n, (wtype*)c->w,                  \
+                    (type*)c->d_work, lwork, c->d_info));                                                     \
+        }                                                                                                   \
+        break
+    case CUDA_R_32F: SYGVD(Ssygv, float, float);
+    case CUDA_R_64F: SYGVD(Dsygv, double, double);
+    case CUDA_C_32F: SYGVD(Chegv, cuComplex, float);
+    default: SYGVD(Zhegv, cuDoubleComplex, double);
+#undef SYGVD
+    }
+    c->meig = meig;
     c->info = read_info(c->d_info);
     return Qnil;
 }
@@ -517,6 +604,108 @@ rb_cusolver_potri(VALUE self, VALUE a, VALUE uplo)
     return INT2NUM(c.info);
 }
 
+static VALUE
+eigen_real_class(cudaDataType dtype)
+{
+    return (dtype == CUDA_R_32F || dtype == CUDA_C_32F) ? cumo_cSFloat : cumo_cDFloat;
+}
+
+static void
+parse_eigen_args(cusolver_call_t *c, VALUE a, VALUE w, VALUE vectors, VALUE il, VALUE iu)
+{
+    cumo_narray_t *nw;
+
+    c->n = check_square_matrix(a, "a");
+    c->dtype = cusolver_dtype(a);
+    nw = check_contiguous_array(w, eigen_real_class(c->dtype), 1, "w");
+    if ((int64_t)CUMO_NA_SHAPE(nw)[0] != c->n) {
+        rb_raise(cumo_na_eShapeError, "w must have %"PRId64" elements", c->n);
+    }
+    c->jobz = RTEST(vectors) ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
+    c->range = !NIL_P(il);
+    if (c->range) {
+        c->il = NUM2LL(il);
+        c->iu = NUM2LL(iu);
+        if (c->il < 1 || c->iu < c->il || c->iu > c->n) {
+            rb_raise(rb_eArgError, "il and iu must satisfy 1 <= il <= iu <= n");
+        }
+    }
+    c->meig = c->range ? c->iu - c->il + 1 : c->n;
+}
+
+/*
+  Computes the eigenvalues, and the eigenvectors with vectors, of a
+  Hermitian matrix in place with cusolverDnXsyevd, or with cusolverDnXsyevdx
+  for the il-th to the iu-th eigenvalue. The upper triangle is read.
+
+  @param a [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+    contiguous, of shape [n, n]: the column-major matrix, overwritten with
+    the eigenvectors in its first columns
+  @param w [Cumo::SFloat, Cumo::DFloat] contiguous, of length n, filled
+    with the eigenvalues in ascending order
+  @param vectors [Boolean]
+  @param il [Integer, nil] 1-based
+  @param iu [Integer, nil] 1-based
+  @return [Array] the number of eigenvalues found, and the info cuSOLVER
+    reports
+ */
+static VALUE
+rb_cusolver_syevd(VALUE self, VALUE a, VALUE w, VALUE vectors, VALUE il, VALUE iu)
+{
+    cusolver_call_t c = {0};
+
+    parse_eigen_args(&c, a, w, vectors, il, iu);
+    if (c.n == 0) {
+        return rb_assoc_new(INT2FIX(0), INT2FIX(0));
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+    c.w = cumo_na_get_offset_pointer_for_write(w);
+    c.ctx = cusolver_context();
+    rb_ensure(syevd_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return rb_assoc_new(LL2NUM(c.meig), INT2NUM(c.info));
+}
+
+/*
+  Computes the eigenvalues, and the eigenvectors with vectors, of
+  A x = lambda B x for Hermitian A and Hermitian positive definite B in place
+  with cusolverDn<t>sygvd or hegvd, or with sygvdx or hegvdx for the il-th
+  to the iu-th eigenvalue. The upper triangles are read.
+
+  @param a [Cumo::NArray] contiguous, of shape [n, n]: the column-major A,
+    overwritten with the eigenvectors in its first columns
+  @param b [Cumo::NArray] of the class and shape of a: the column-major B,
+    overwritten
+  @param w [Cumo::SFloat, Cumo::DFloat] contiguous, of length n
+  @param vectors [Boolean]
+  @param il [Integer, nil] 1-based
+  @param iu [Integer, nil] 1-based
+  @return [Array] the number of eigenvalues found, and the info cuSOLVER
+    reports
+ */
+static VALUE
+rb_cusolver_sygvd(VALUE self, VALUE a, VALUE b, VALUE w, VALUE vectors, VALUE il, VALUE iu)
+{
+    cusolver_call_t c = {0};
+
+    parse_eigen_args(&c, a, w, vectors, il, iu);
+    check_contiguous_array(b, rb_obj_class(a), 2, "b");
+    if (check_square_matrix(b, "b") != c.n) {
+        rb_raise(cumo_na_eShapeError, "b must have the shape of a");
+    }
+    if (c.n > INT_MAX) {
+        rb_raise(rb_eArgError, "a is too large for sygvd");
+    }
+    if (c.n == 0) {
+        return rb_assoc_new(INT2FIX(0), INT2FIX(0));
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+    c.b = cumo_na_get_offset_pointer_for_read_write(b);
+    c.w = cumo_na_get_offset_pointer_for_write(w);
+    c.ctx = cusolver_context();
+    rb_ensure(sygvd_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return rb_assoc_new(LL2NUM(c.meig), INT2NUM(c.info));
+}
+
 #endif // CUSOLVER_FOUND
 
 /*
@@ -555,7 +744,10 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "potrs", rb_cusolver_potrs, 3);
     rb_define_singleton_method(mCusolver, "potri", rb_cusolver_potri, 2);
     rb_define_singleton_method(mCusolver, "uplo", rb_cusolver_uplo, 1);
-    rb_funcall(mCusolver, rb_intern("private_class_method"), 6, ID2SYM(rb_intern("uplo")),
+    rb_define_singleton_method(mCusolver, "syevd", rb_cusolver_syevd, 5);
+    rb_define_singleton_method(mCusolver, "sygvd", rb_cusolver_sygvd, 6);
+    rb_funcall(mCusolver, rb_intern("private_class_method"), 8,
+               ID2SYM(rb_intern("syevd")), ID2SYM(rb_intern("sygvd")), ID2SYM(rb_intern("uplo")),
                ID2SYM(rb_intern("getrf")), ID2SYM(rb_intern("getrs")),
                ID2SYM(rb_intern("potrf")), ID2SYM(rb_intern("potrs")), ID2SYM(rb_intern("potri")));
 #endif // CUSOLVER_FOUND
