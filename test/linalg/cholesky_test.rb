@@ -94,6 +94,9 @@ class LinalgCholeskyTest < Test::Unit::TestCase
     assert_equal('invalid uplo: Upper', error.message)
     error = assert_raise(TypeError) { Cumo::Linalg.cholesky(a, uplo: :U) }
     assert_equal('no implicit conversion of Symbol into Integer', error.message)
+    assert_equal(Cumo::Linalg.cho_inv(c).to_a, Cumo::Linalg.cho_inv(c, uplo: 85).to_a)
+    error = assert_raise(TypeError) { Cumo::Linalg.cho_inv(c, uplo: '') }
+    assert_equal('no implicit conversion of String into Integer', error.message)
   end
 
   test "a matrix that is not positive definite" do

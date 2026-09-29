@@ -130,7 +130,7 @@ module Cumo
       ipiv = pivots(ipiv, n)
       raise ArgumentError, 'input array b must be 1 or 2-dimensional' unless [1, 2].include?(b.ndim)
 
-      x, info = getrs(klass, klass.new(n, n).store(lu.transpose), ipiv, b, trans)
+      x, info = getrs(klass, to_column_major(klass, lu), ipiv, b, trans)
       raise LapackError, "the #{info.abs}-th argument of getrs had illegal value" if info.negative?
 
       x
@@ -175,7 +175,7 @@ module Cumo
       ipiv = pivots(ipiv, n)
       return klass.new(0, 0) if n.zero?
 
-      lu = klass.new(n, n).store(lu.transpose)
+      lu = to_column_major(klass, lu)
       raise LapackError, 'the matrix is singular and its inverse could not be computed' if singular?(lu)
 
       invert(klass, lu, ipiv, "#{bchr}getri")
@@ -248,7 +248,7 @@ module Cumo
       raise ArgumentError, "invalid uplo: #{uplo}" unless %w[U L].include?(uplo)
 
       c, = potrf(klass, a, fill)
-      fill == 'U' ? c.triu : c.tril
+      fill == 'U' ? c.transpose.triu : c.transpose.tril
     end
 
     # Computes the Cholesky factorization of a Hermitian positive definite
@@ -273,7 +273,7 @@ module Cumo
               'and the factorization could not be completed.'
       end
 
-      c
+      c.transpose.dup
     end
 
     # Computes the inverse of a Hermitian positive definite matrix from the
@@ -411,8 +411,7 @@ module Cumo
 
     def potrf(klass, a, uplo)
       c = to_column_major(klass, a)
-      info = cusolver(:potrf, c, uplo)
-      [c.transpose.dup, info]
+      [c, cusolver(:potrf, c, uplo)]
     end
 
     def to_column_major(klass, x)
@@ -424,12 +423,7 @@ module Cumo
     end
 
     def lapack_uplo(uplo)
-      raise TypeError, "no implicit conversion of #{uplo.class} into Integer" unless uplo.is_a?(String)
-
-      fill = uplo[0]
-      raise ArgumentError, "uplo must be 'U' or 'L'" unless %w[U L].include?(fill)
-
-      fill
+      cusolver(:uplo, uplo)
     end
 
     def invert(klass, lu, ipiv, routine)
