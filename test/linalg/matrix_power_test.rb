@@ -27,6 +27,17 @@ class LinalgMatrixPowerTest < Test::Unit::TestCase
     assert_kind_of(Cumo::DFloat, Cumo::Linalg.matrix_power(Cumo::Int32.cast(A), 2))
   end
 
+  test "powers by squaring answer the repeated product" do
+    a = Cumo::DFloat[[1, 1], [1, 0]]
+    (2..8).each do |n|
+      expected = (n - 1).times.reduce([[1, 1], [1, 0]]) { |acc, _elem| host_dot(acc, [[1, 1], [1, 0]]) }
+      assert_equal(expected, Cumo::Linalg.matrix_power(a, n).to_a, "n=#{n}")
+    end
+    assert_close(host_dot(host_dot([[-2.0, 1.0], [1.5, -0.5]], [[-2.0, 1.0], [1.5, -0.5]]), [[-2.0, 1.0], [1.5, -0.5]]),
+                 Cumo::Linalg.matrix_power(Cumo::DFloat.cast(A), -3),
+                 1e-12)
+  end
+
   test "negative powers" do
     assert_close([[-2.0, 1.0], [1.5, -0.5]], Cumo::Linalg.matrix_power(Cumo::DFloat.cast(A), -1), 1e-14)
     assert_close([[5.5, -2.5], [-3.75, 1.75]], Cumo::Linalg.matrix_power(Cumo::DFloat.cast(A), -2), 1e-13)

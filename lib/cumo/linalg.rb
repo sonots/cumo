@@ -130,12 +130,10 @@ module Cumo
 
       klass = BLAS_CLASSES[blas_char(lu).to_sym]
       n = lu.shape[0]
-      ipiv = NArray.asarray(ipiv) unless ipiv.is_a?(NArray)
-      raise ArgumentError, 'input array ipiv must be 1-dimensional' if ipiv.ndim != 1
-      raise ArgumentError, "input array ipiv must have #{n} elements" if ipiv.size != n
+      ipiv = pivots(ipiv, n)
       raise ArgumentError, 'input array b must be 1 or 2-dimensional' unless [1, 2].include?(b.ndim)
 
-      x, info = getrs(klass, klass.new(n, n).store(lu.transpose), Int64.new(n).store(ipiv), b, trans)
+      x, info = getrs(klass, klass.new(n, n).store(lu.transpose), ipiv, b, trans)
       raise LapackError, "the #{info.abs}-th argument of getrs had illegal value" if info.negative?
 
       x
@@ -170,25 +168,20 @@ module Cumo
     # @return [Cumo::NArray]
     # @raise [LapackError] if the matrix is singular
     def lu_inv(lu, ipiv)
+      lu = NArray.asarray(lu) unless lu.is_a?(NArray)
       bchr = blas_char(lu)
       klass = BLAS_CLASSES[bchr.to_sym]
       raise ArgumentError, 'input array a must be 2-dimensional' if lu.ndim != 2
       raise ArgumentError, 'input array a must be square' if lu.shape[0] != lu.shape[1]
 
       n = lu.shape[0]
-      ipiv = NArray.asarray(ipiv) unless ipiv.is_a?(NArray)
-      raise ArgumentError, 'input array ipiv must be 1-dimensional' if ipiv.ndim != 1
-      raise ArgumentError, "input array ipiv must have #{n} elements" if ipiv.size != n
-
+      ipiv = pivots(ipiv, n)
       return klass.new(0, 0) if n.zero?
 
       lu = klass.new(n, n).store(lu.transpose)
       raise LapackError, 'the matrix is singular and its inverse could not be computed' if singular?(lu)
 
-      inv, info = getrs(klass, lu, Int64.new(n).store(ipiv), klass.eye(n), 'N')
-      raise LapackError, "the #{info.abs}-th argument of #{bchr}getri had illegal value" if info.negative?
-
-      inv
+      invert(klass, lu, ipiv, "#{bchr}getri")
     end
 
     # Solves A X = B for a square matrix A.
@@ -236,16 +229,11 @@ module Cumo
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
 
       klass = BLAS_CLASSES[blas_char(a).to_sym]
-      return klass.new(0, 0) if a.shape[0].zero?
-
       lu, ipiv, info = getrf(klass, a)
       raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
       raise LapackError, 'The matrix is singular, and the inverse matrix could not be computed.' if info.positive?
 
-      a_inv, info = getrs(klass, lu, ipiv, klass.eye(a.shape[0]), 'N')
-      raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
-
-      a_inv
+      invert(klass, lu, ipiv, 'getrf')
     end
 
     # Computes a square matrix raised to an integer power.
@@ -258,18 +246,21 @@ module Cumo
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
       raise ArgumentError, "exponent n must be an integer: #{n}" unless n.is_a?(Integer)
 
-      if n.zero?
-        a.class.eye(a.shape[0])
-      elsif n.positive?
-        r = a.dup
-        (n - 1).times { r = matmul(r, a) }
-        r
-      else
-        inv_a = inv(a)
-        r = inv_a.dup
-        (-n - 1).times { r = matmul(r, inv_a) }
-        r
+      return a.class.eye(a.shape[0]) if n.zero?
+      return a.dup if n == 1
+
+      power(n.positive? ? BLAS_CLASSES[blas_char(a).to_sym].cast(a) : inv(a), n.abs)
+    end
+
+    def power(a, n)
+      result = nil
+      square = a
+      while n.positive?
+        result = result ? matmul(square, result) : square if n.odd?
+        n >>= 1
+        square = matmul(square, square) if n.positive?
       end
+      result
     end
 
     def getrf(klass, a)
@@ -285,8 +276,28 @@ module Cumo
       [b.ndim == 1 ? x : x.transpose.dup, info]
     end
 
+    def invert(klass, lu, ipiv, routine)
+      n = lu.shape[0]
+      return klass.new(0, 0) if n.zero?
+
+      x = klass.eye(n)
+      info = cusolver(:getrs, lu, ipiv, x, 'N')
+      raise LapackError, "the #{info.abs}-th argument of #{routine} had illegal value" if info.negative?
+
+      x.transpose.dup
+    end
+
+    def pivots(ipiv, n)
+      ipiv = NArray.asarray(ipiv) unless ipiv.is_a?(NArray)
+      raise ArgumentError, 'input array ipiv must be 1-dimensional' if ipiv.ndim != 1
+      raise ArgumentError, "input array ipiv must have #{n} elements" if ipiv.size != n
+
+      Int64.new(n).store(ipiv)
+    end
+
     def singular?(lu)
-      to_ruby(lu.diagonal.eq(0).count_true).positive?
+      diagonal = lu.diagonal
+      to_ruby((diagonal.eq(0) | diagonal.isnan).count_true).positive?
     end
 
     def cusolver(routine, *args)
@@ -329,6 +340,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :getrf, :getrs, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end

@@ -59,6 +59,18 @@ class LinalgInvTest < Test::Unit::TestCase
     assert_equal('the matrix is singular and its inverse could not be computed', error.message)
   end
 
+  test "lu_inv of Arrays" do
+    assert_close([[-2.0, 1.0], [1.5, -0.5]], Cumo::Linalg.lu_inv([[3.0, 4.0], [1 / 3.0, 2 / 3.0]], [2, 2]), 1e-14)
+  end
+
+  test "a NaN on the diagonal of U raises in inv and lu_inv alike" do
+    a = Cumo::DFloat[[Float::NAN, 1], [1, 1]]
+    assert_raise(Cumo::Linalg::LapackError) { Cumo::Linalg.inv(a) }
+    lu = piv = nil
+    capture_output { lu, piv = Cumo::Linalg.lu_fact(a) }
+    assert_raise(Cumo::Linalg::LapackError) { Cumo::Linalg.lu_inv(lu, piv) }
+  end
+
   test "an empty matrix answers an empty matrix" do
     assert_equal([0, 0], Cumo::Linalg.inv(Cumo::DFloat.new(0, 0)).shape)
     assert_equal([0, 0], Cumo::Linalg.lu_inv(Cumo::DFloat.new(0, 0), Cumo::Int32[]).shape)
