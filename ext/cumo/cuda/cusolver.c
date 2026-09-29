@@ -150,6 +150,7 @@ typedef struct {
     cusolver_context_t ctx;
     cudaDataType dtype;
     cublasOperation_t trans;
+    cublasFillMode_t uplo;
     int64_t m;
     int64_t n;
     int64_t nrhs;
@@ -198,6 +199,77 @@ getrs_body(VALUE arg)
     cumo_cuda_cusolver_check_status(cusolverDnXgetrs(
             c->ctx.handle, c->ctx.params, c->trans, c->n, c->nrhs, c->dtype, c->a, c->n, c->ipiv,
             c->dtype, c->b, c->n, c->d_info));
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+static VALUE
+potrf_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+    size_t d_size = 0;
+    size_t h_size = 0;
+
+    check_call(cusolverDnXpotrf_bufferSize(
+            c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->dtype, &d_size, &h_size));
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
+    cumo_cuda_cusolver_check_status(cusolverDnXpotrf(
+            c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n,
+            c->dtype, c->d_work, d_size, c->h_work, h_size, c->d_info));
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+static VALUE
+potrs_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    cumo_cuda_cusolver_check_status(cusolverDnXpotrs(
+            c->ctx.handle, c->ctx.params, c->uplo, c->n, c->nrhs, c->dtype, c->a, c->n,
+            c->dtype, c->b, c->n, c->d_info));
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+static VALUE
+potri_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+    cusolverDnHandle_t h = c->ctx.handle;
+    int n = (int)c->n;
+    int lwork = 0;
+
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    switch (c->dtype) {
+    case CUDA_R_32F:
+        check_call(cusolverDnSpotri_bufferSize(h, c->uplo, n, (float*)c->a, n, &lwork));
+        c->d_work = cumo_cuda_runtime_malloc(sizeof(float) * (lwork > 0 ? lwork : 1));
+        cumo_cuda_cusolver_check_status(cusolverDnSpotri(
+                h, c->uplo, n, (float*)c->a, n, (float*)c->d_work, lwork, c->d_info));
+        break;
+    case CUDA_R_64F:
+        check_call(cusolverDnDpotri_bufferSize(h, c->uplo, n, (double*)c->a, n, &lwork));
+        c->d_work = cumo_cuda_runtime_malloc(sizeof(double) * (lwork > 0 ? lwork : 1));
+        cumo_cuda_cusolver_check_status(cusolverDnDpotri(
+                h, c->uplo, n, (double*)c->a, n, (double*)c->d_work, lwork, c->d_info));
+        break;
+    case CUDA_C_32F:
+        check_call(cusolverDnCpotri_bufferSize(h, c->uplo, n, (cuComplex*)c->a, n, &lwork));
+        c->d_work = cumo_cuda_runtime_malloc(sizeof(cuComplex) * (lwork > 0 ? lwork : 1));
+        cumo_cuda_cusolver_check_status(cusolverDnCpotri(
+                h, c->uplo, n, (cuComplex*)c->a, n, (cuComplex*)c->d_work, lwork, c->d_info));
+        break;
+    default:
+        check_call(cusolverDnZpotri_bufferSize(h, c->uplo, n, (cuDoubleComplex*)c->a, n, &lwork));
+        c->d_work = cumo_cuda_runtime_malloc(sizeof(cuDoubleComplex) * (lwork > 0 ? lwork : 1));
+        cumo_cuda_cusolver_check_status(cusolverDnZpotri(
+                h, c->uplo, n, (cuDoubleComplex*)c->a, n, (cuDoubleComplex*)c->d_work, lwork, c->d_info));
+        break;
+    }
     c->info = read_info(c->d_info);
     return Qnil;
 }
@@ -326,6 +398,121 @@ rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans)
     return INT2NUM(c.info);
 }
 
+static cublasFillMode_t
+parse_uplo(VALUE uplo)
+{
+    const char *u = StringValueCStr(uplo);
+    if (strcmp(u, "U") == 0) return CUBLAS_FILL_MODE_UPPER;
+    if (strcmp(u, "L") == 0) return CUBLAS_FILL_MODE_LOWER;
+    rb_raise(rb_eArgError, "uplo must be 'U' or 'L'");
+}
+
+static int64_t
+check_square_matrix(VALUE a, const char *name)
+{
+    cumo_narray_t *na = check_contiguous_array(a, Qnil, 2, name);
+    if (CUMO_NA_SHAPE(na)[0] != CUMO_NA_SHAPE(na)[1]) {
+        rb_raise(cumo_na_eShapeError, "%s must be square", name);
+    }
+    return (int64_t)CUMO_NA_SHAPE(na)[0];
+}
+
+/*
+  Factorizes a Hermitian positive definite matrix in place as A = U^H U or
+  A = L L^H with cusolverDnXpotrf.
+
+  @param a [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+    contiguous, of shape [n, n]: the column-major matrix, whose uplo
+    triangle is overwritten with the factor
+  @param uplo [String] "U" or "L"
+  @return [Integer] the info cuSOLVER reports
+ */
+static VALUE
+rb_cusolver_potrf(VALUE self, VALUE a, VALUE uplo)
+{
+    cusolver_call_t c = {0};
+
+    c.uplo = parse_uplo(uplo);
+    c.n = check_square_matrix(a, "a");
+    c.dtype = cusolver_dtype(a);
+    if (c.n == 0) {
+        return INT2FIX(0);
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+    c.ctx = cusolver_context();
+    rb_ensure(potrf_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return INT2NUM(c.info);
+}
+
+/*
+  Solves A X = B in place with cusolverDnXpotrs, from the factor potrf
+  answered.
+
+  @param a [Cumo::NArray] contiguous, of shape [n, n]: the column-major
+    factor in its uplo triangle
+  @param b [Cumo::NArray] of the class of a, contiguous, of shape [n] or
+    [nrhs, n]: the column-major right-hand sides, overwritten with X
+  @param uplo [String] "U" or "L"
+  @return [Integer] the info cuSOLVER reports
+ */
+static VALUE
+rb_cusolver_potrs(VALUE self, VALUE a, VALUE b, VALUE uplo)
+{
+    cusolver_call_t c = {0};
+    cumo_narray_t *nb;
+
+    c.uplo = parse_uplo(uplo);
+    c.n = check_square_matrix(a, "a");
+    c.dtype = cusolver_dtype(a);
+    if (!rb_obj_is_kind_of(b, cumo_cNArray)) {
+        rb_raise(rb_eTypeError, "b must be Cumo::NArray");
+    }
+    CumoGetNArray(b, nb);
+    nb = check_contiguous_array(b, rb_obj_class(a), CUMO_NA_NDIM(nb) == 1 ? 1 : 2, "b");
+    if ((int64_t)CUMO_NA_SHAPE(nb)[CUMO_NA_NDIM(nb) - 1] != c.n) {
+        rb_raise(cumo_na_eShapeError, "b must have %"PRId64" rows", c.n);
+    }
+    c.nrhs = CUMO_NA_NDIM(nb) == 1 ? 1 : (int64_t)CUMO_NA_SHAPE(nb)[0];
+    if (c.n == 0 || c.nrhs == 0) {
+        return INT2FIX(0);
+    }
+    c.a = cumo_na_get_offset_pointer_for_read(a);
+    c.b = cumo_na_get_offset_pointer_for_read_write(b);
+    c.ctx = cusolver_context();
+    rb_ensure(potrs_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return INT2NUM(c.info);
+}
+
+/*
+  Computes the inverse of A in place with cusolverDn<t>potri, from the
+  factor potrf answered.
+
+  @param a [Cumo::NArray] contiguous, of shape [n, n]: the column-major
+    factor in its uplo triangle, which is overwritten with that triangle of
+    the inverse
+  @param uplo [String] "U" or "L"
+  @return [Integer] the info cuSOLVER reports
+ */
+static VALUE
+rb_cusolver_potri(VALUE self, VALUE a, VALUE uplo)
+{
+    cusolver_call_t c = {0};
+
+    c.uplo = parse_uplo(uplo);
+    c.n = check_square_matrix(a, "a");
+    c.dtype = cusolver_dtype(a);
+    if (c.n > INT_MAX) {
+        rb_raise(rb_eArgError, "a is too large for potri");
+    }
+    if (c.n == 0) {
+        return INT2FIX(0);
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+    c.ctx = cusolver_context();
+    rb_ensure(potri_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return INT2NUM(c.info);
+}
+
 #endif // CUSOLVER_FOUND
 
 /*
@@ -360,6 +547,11 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "version", rb_cusolver_version, 0);
     rb_define_singleton_method(mCusolver, "getrf", rb_cusolver_getrf, 1);
     rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, 4);
-    rb_funcall(mCusolver, rb_intern("private_class_method"), 2, ID2SYM(rb_intern("getrf")), ID2SYM(rb_intern("getrs")));
+    rb_define_singleton_method(mCusolver, "potrf", rb_cusolver_potrf, 2);
+    rb_define_singleton_method(mCusolver, "potrs", rb_cusolver_potrs, 3);
+    rb_define_singleton_method(mCusolver, "potri", rb_cusolver_potri, 2);
+    rb_funcall(mCusolver, rb_intern("private_class_method"), 5,
+               ID2SYM(rb_intern("getrf")), ID2SYM(rb_intern("getrs")),
+               ID2SYM(rb_intern("potrf")), ID2SYM(rb_intern("potrs")), ID2SYM(rb_intern("potri")));
 #endif // CUSOLVER_FOUND
 }

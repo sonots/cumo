@@ -233,6 +233,103 @@ module Cumo
       invert(klass, lu, ipiv, 'getrf')
     end
 
+    # Computes the Cholesky factorization of a Hermitian positive definite
+    # matrix, A = U^H U or A = L L^H.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @param uplo [String] 'U' for the upper factor, 'L' for the lower
+    # @return [Cumo::NArray] the factor, with zeros in the other triangle
+    def cholesky(a, uplo: 'U')
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      klass = BLAS_CLASSES[blas_char(a).to_sym]
+      fill = lapack_uplo(uplo)
+      raise ArgumentError, "invalid uplo: #{uplo}" unless %w[U L].include?(uplo)
+
+      c, = potrf(klass, a, fill)
+      fill == 'U' ? c.triu : c.tril
+    end
+
+    # Computes the Cholesky factorization of a Hermitian positive definite
+    # matrix as LAPACK's potrf does, leaving the other triangle as it was.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @param uplo [String] 'U' for the upper factor, 'L' for the lower
+    # @return [Cumo::NArray]
+    # @raise [LapackError] if the matrix is not positive definite
+    def cho_fact(a, uplo: 'U')
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+      raise ArgumentError, 'uplo must be "U" or "L"' unless %w[U L].include?(uplo)
+
+      bchr = blas_char(a)
+      c, info = potrf(BLAS_CLASSES[bchr.to_sym], a, uplo)
+      raise LapackError, "the #{-info}-th argument of #{bchr}potrf had illegal value" if info.negative?
+
+      if info.positive?
+        raise LapackError,
+              "the leading principal minor of order #{info} is not positive, " \
+              'and the factorization could not be completed.'
+      end
+
+      c
+    end
+
+    # Computes the inverse of a Hermitian positive definite matrix from the
+    # factor cho_fact answers, as LAPACK's potri does: only the uplo triangle
+    # holds the inverse.
+    #
+    # @param a [Cumo::NArray] the factor
+    # @param uplo [String] the triangle the factor is in
+    # @return [Cumo::NArray]
+    # @raise [LapackError] if the factor has a zero on its diagonal
+    def cho_inv(a, uplo: 'U')
+      a = NArray.asarray(a) unless a.is_a?(NArray)
+      bchr = blas_char(a)
+      klass = BLAS_CLASSES[bchr.to_sym]
+      fill = lapack_uplo(uplo)
+      raise ArgumentError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise ArgumentError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      return klass.new(0, 0) if a.empty?
+
+      inv = to_column_major(klass, a)
+      zero = inv.diagonal.eq(0).where.to_a.first
+      unless zero.nil?
+        raise LapackError,
+              "the (#{zero}, #{zero})-th element of the factor U or L is zero, " \
+              'and the inverse could not be computed.'
+      end
+
+      info = cusolver(:potri, inv, fill)
+      raise LapackError, "the #{info.abs}-th argument of #{bchr}potri had illegal value" if info.negative?
+
+      inv.transpose.dup
+    end
+
+    # Solves A X = B from the Cholesky factor of A that cho_fact answers.
+    #
+    # @param a [Cumo::NArray] the factor
+    # @param b [Cumo::NArray] 1- or 2-dimensional
+    # @param uplo [String] the triangle the factor is in
+    # @return [Cumo::NArray] X, of the shape of b
+    def cho_solve(a, b, uplo: 'U')
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+      raise NArray::ShapeError, "incompatible dimensions: a.shape[0] = #{a.shape[0]} != b.shape[0] = #{b.shape[0]}" if a.shape[0] != b.shape[0]
+
+      klass = BLAS_CLASSES[blas_char(a, b).to_sym]
+      fill = lapack_uplo(uplo)
+      raise ArgumentError, 'input array b must be 1- or 2-dimensional' unless [1, 2].include?(b.ndim)
+
+      x = to_column_major(klass, b)
+      info = cusolver(:potrs, to_column_major(klass, a), x, fill)
+      raise LapackError, "the #{-info}-th argument of potrs had illegal value" if info.negative?
+
+      from_column_major(x)
+    end
+
     # Computes the determinant of a square matrix from its LU factorization.
     #
     # @param a [Cumo::NArray] the square matrix
@@ -301,16 +398,38 @@ module Cumo
     end
 
     def getrf(klass, a)
-      lu = klass.new(*a.shape.reverse).store(a.transpose)
+      lu = to_column_major(klass, a)
       ipiv, info = cusolver(:getrf, lu)
       [lu, ipiv, info]
     end
 
     def getrs(klass, lu, ipiv, b, trans)
-      n = lu.shape[0]
-      x = b.ndim == 1 ? klass.new(n).store(b) : klass.new(*b.shape.reverse).store(b.transpose)
+      x = to_column_major(klass, b)
       info = cusolver(:getrs, lu, ipiv, x, trans)
-      [b.ndim == 1 ? x : x.transpose.dup, info]
+      [from_column_major(x), info]
+    end
+
+    def potrf(klass, a, uplo)
+      c = to_column_major(klass, a)
+      info = cusolver(:potrf, c, uplo)
+      [c.transpose.dup, info]
+    end
+
+    def to_column_major(klass, x)
+      x.ndim == 1 ? klass.new(*x.shape).store(x) : klass.new(*x.shape.reverse).store(x.transpose)
+    end
+
+    def from_column_major(x)
+      x.ndim == 1 ? x : x.transpose.dup
+    end
+
+    def lapack_uplo(uplo)
+      raise TypeError, "no implicit conversion of #{uplo.class} into Integer" unless uplo.is_a?(String)
+
+      fill = uplo[0]
+      raise ArgumentError, "uplo must be 'U' or 'L'" unless %w[U L].include?(fill)
+
+      fill
     end
 
     def invert(klass, lu, ipiv, routine)
@@ -392,6 +511,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
