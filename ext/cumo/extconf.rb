@@ -99,6 +99,7 @@ cuda/runtime
 cuda/nvrtc
 cuda/cudnn
 cuda/cudnn_impl
+cuda/cusolver
 )
 
 $objs = srcs.map { |src| "#{src}.o" }
@@ -166,7 +167,6 @@ have_library('cuda')
 have_library('cudart')
 have_library('nvrtc')
 have_library('cublas')
-# have_library('cusolver')
 # have_library('curand')
 
 # cuDNN 8 is the first release that supports CUDA 11, which cumo requires.
@@ -200,6 +200,33 @@ end
 if have_cudnn?
   $CFLAGS << " -DCUDNN_FOUND"
   $CXXFLAGS << " -DCUDNN_FOUND"
+end
+
+def have_cusolver?
+  unless have_header('cusolverDn.h')
+    message("cuSOLVER header not found; building without Cumo::Linalg\n")
+    return false
+  end
+  ok = checking_for("cusolverDnXgetrf in cusolverDn.h") do
+    try_compile(<<-SRC)
+#include <cusolverDn.h>
+int main(void) { return cusolverDnXgetrf == 0; }
+    SRC
+  end
+  unless ok
+    message("cuSOLVER has no 64-bit generic API; building without Cumo::Linalg\n")
+    return false
+  end
+  unless have_library('cusolver')
+    message("cuSOLVER library not found; building without Cumo::Linalg\n")
+    return false
+  end
+  true
+end
+
+if have_cusolver?
+  $CFLAGS << " -DCUSOLVER_FOUND"
+  $CXXFLAGS << " -DCUSOLVER_FOUND"
 end
 
 have_library('stdc++')
