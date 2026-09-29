@@ -236,6 +236,43 @@ module Cumo
       invert(klass, lu, ipiv, 'getrf')
     end
 
+    # Computes the determinant of a square matrix from its LU factorization.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @return [Float, Complex]
+    def det(a)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      klass = BLAS_CLASSES[blas_char(a).to_sym]
+      return one(klass) if a.shape[0].zero?
+
+      lu, ipiv, info = getrf(klass, a)
+      raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
+
+      to_ruby(lu.diagonal.prod) * (swaps(ipiv).odd? ? -1 : 1)
+    end
+
+    # Computes the sign and the natural logarithm of the absolute value of the
+    # determinant, which does not overflow where det does.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @return [Array] the sign, a Float or a Complex of absolute value 1, or 0
+    #   for a singular matrix, and the logarithm, -Infinity for a singular
+    #   matrix
+    def slogdet(a)
+      lu, ipiv = lu_fact(a)
+      klass = lu.class
+      return [one(klass), 0.0] if lu.empty?
+
+      dg = lu.diagonal
+      return 0, -Float::INFINITY if to_ruby(dg.eq(0).count_true).positive?
+
+      sign = ((-1.0)**(swaps(ipiv) % 2)) * to_ruby((dg / dg.abs).prod)
+      logdet = to_ruby(NMath.log(dg.abs).sum(axis: -1))
+      [sign, logdet]
+    end
+
     # Computes a square matrix raised to an integer power.
     #
     # @param a [Cumo::NArray] the square matrix
@@ -285,6 +322,14 @@ module Cumo
       raise LapackError, "the #{info.abs}-th argument of #{routine} had illegal value" if info.negative?
 
       x.transpose.dup
+    end
+
+    def one(klass)
+      [SComplex, DComplex].include?(klass) ? Complex(1.0, 0.0) : 1.0
+    end
+
+    def swaps(ipiv)
+      to_ruby(ipiv.ne(ipiv.class.new(ipiv.size).seq(1)).count_true)
     end
 
     def pivots(ipiv, n)
@@ -340,6 +385,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :one, :swaps, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
