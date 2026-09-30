@@ -395,18 +395,7 @@ module Cumo
     def svd(a, driver: 'svd', job: 'A')
       raise ArgumentError, "invalid job: #{job}" unless /^[ASN]/i.match?(job.to_s)
 
-      a = NArray.asarray(a) unless a.is_a?(NArray)
-      bchr = blas_char(a)
-      raise ArgumentError, "invalid driver: #{driver}" unless %w[svd sdd].include?(driver.to_s)
-
-      fill = svd_job(job, driver.to_s)
-      raise ArgumentError, 'input array must be 2-dimensional' if a.ndim != 2
-
-      s, u, vt, info = gesvd(BLAS_CLASSES[bchr.to_sym], a, fill)
-      raise LapackError, "the #{info.abs}-th argument had illegal value" if info.negative?
-      raise LapackError, 'the did not converge' if info.positive?
-
-      [s, u, vt]
+      svd_call(a, driver, job, 'the did not converge')
     end
 
     # Computes the singular values of a matrix.
@@ -415,16 +404,7 @@ module Cumo
     # @param driver [String] 'sdd' or 'svd', which both run cuSOLVER's gesvd
     # @return [Cumo::NArray] the singular values in descending order
     def svdvals(a, driver: 'sdd')
-      a = NArray.asarray(a) unless a.is_a?(NArray)
-      bchr = blas_char(a)
-      raise ArgumentError, "invalid driver: #{driver}" unless %w[svd sdd].include?(driver.to_s)
-      raise ArgumentError, 'input array must be 2-dimensional' if a.ndim != 2
-
-      s, _u, _vt, info = gesvd(BLAS_CLASSES[bchr.to_sym], a, 'N')
-      raise LapackError, "the #{info.abs}-th argument had illegal value" if info.negative?
-      raise LapackError, 'the decomposition did not converge' if info.positive?
-
-      s
+      svd_call(a, driver, 'N', 'the decomposition did not converge')[0]
     end
 
     # Computes the rank of a matrix, the number of its singular values above
@@ -454,7 +434,7 @@ module Cumo
     def pinv(a, driver: 'svd', rcond: nil)
       s, u, vh = svd(a, driver: driver, job: 'S')
       rcond = a.shape.max * s.class::EPSILON if rcond.nil?
-      rank = s.empty? ? 0 : to_ruby(s.gt(s[0] * rcond).count_true)
+      rank = count_above(s, rcond)
       return u.class.zeros(*a.shape.reverse) if rank.zero?
 
       u = u[true, 0...rank] / s[0...rank]
@@ -484,7 +464,7 @@ module Cumo
     def null_space(a, rcond: nil)
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
 
-      s, _u, vt = svd(a, driver: 'sdd', job: 'A')
+      s, _u, vt = svd(a, driver: 'sdd', job: a.shape[0] >= a.shape[1] ? 'S' : 'A')
       rank = numerical_rank(s, a, rcond)
       n = vt.shape[0]
       rank == n ? vt.class.new(n, 0) : vt[rank...n, true].conj.transpose.dup
@@ -519,15 +499,19 @@ module Cumo
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
       raise NArray::ShapeError, "incompatible dimensions: a.shape[0] = #{a.shape[0]} != b.shape[0] = #{b.shape[0]}" if a.shape[0] != b.shape[0]
 
-      klass = BLAS_CLASSES[blas_char(a).to_sym]
+      bchr = blas_char(a)
+      klass = BLAS_CLASSES[bchr.to_sym]
+      raise ArgumentError, 'input array b must be 1 or 2-dimensional' unless [1, 2].include?(b.ndim)
+
       m, n = a.shape
+      resid_class = m < n ? DFloat : b.class
       b = klass.cast(b)
       s, u, vt, info = gesvd(klass, a, 'S')
-      raise LapackError, "the #{info.abs}-th argument of #{blas_char(a)}gelsd had illegal value" if info.negative?
+      raise LapackError, "the #{info.abs}-th argument of #{bchr}gelsd had illegal value" if info.negative?
       raise LapackError, 'the algorithm for computing the SVD failed to converge' if info.positive?
 
-      rcond = s.class::EPSILON if rcond.nil? || rcond.negative?
-      rank = s.empty? ? 0 : to_ruby(s.gt(s[0] * rcond).count_true)
+      rcond = s.class::EPSILON / 2 if rcond.nil? || rcond <= 0 || rcond >= 1
+      rank = count_above(s, rcond)
       x = if rank.zero?
             klass.zeros(*([n] + b.shape[1..]))
           else
@@ -540,7 +524,7 @@ module Cumo
                  r = klass.cast(a).dot(x) - b
                  to_ruby((r.abs**2).sum(axis: 0))
                else
-                 klass[]
+                 resid_class[]
                end
       [x, resids, rank, s]
     end
@@ -637,6 +621,25 @@ module Cumo
       x.ndim == 1 ? x : x.transpose.dup
     end
 
+    def svd_call(a, driver, job, not_converged)
+      a = NArray.asarray(a) unless a.is_a?(NArray)
+      bchr = blas_char(a)
+      raise ArgumentError, "invalid driver: #{driver}" unless %w[svd sdd].include?(driver.to_s)
+
+      fill = svd_job(job, driver.to_s)
+      raise ArgumentError, 'input array must be 2-dimensional' if a.ndim != 2
+
+      s, u, vt, info = gesvd(BLAS_CLASSES[bchr.to_sym], a, fill)
+      raise LapackError, "the #{info.abs}-th argument had illegal value" if info.negative?
+      raise LapackError, not_converged if info.positive?
+
+      [s, u, vt]
+    end
+
+    def count_above(s, factor)
+      s.empty? ? 0 : to_ruby(s.gt(s.max * factor).count_true)
+    end
+
     def svd_job(job, driver)
       raise TypeError, "no implicit conversion of #{job.class} into String" unless job.is_a?(String)
 
@@ -652,7 +655,7 @@ module Cumo
       rows, cols = tall ? [m, n] : [n, m]
       complex = [SComplex, DComplex].include?(klass)
       buf = tall ? to_column_major(klass, a) : klass.new(m, n).store(a)
-      buf = buf.conj if !tall && complex
+      buf = buf.conj if !tall && complex && job != 'N'
       s = ([SFloat, SComplex].include?(klass) ? SFloat : DFloat).new(cols)
       u = vt = nil
       unless job == 'N'
@@ -671,8 +674,7 @@ module Cumo
     end
 
     def numerical_rank(s, a, rcond)
-      tol = rcond.nil? || rcond.negative? ? a.shape.max * s.class::EPSILON : rcond
-      s.empty? ? 0 : to_ruby(s.gt(s.max * tol).count_true)
+      count_above(s, rcond.nil? || rcond.negative? ? a.shape.max * s.class::EPSILON : rcond)
     end
 
     def eigen_range(vals_range, n)
@@ -770,6 +772,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end

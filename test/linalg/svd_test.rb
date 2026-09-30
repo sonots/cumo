@@ -69,6 +69,22 @@ class LinalgSvdTest < Test::Unit::TestCase
     end
   end
 
+  test "lstsq reads rcond as LAPACK's gelsd does" do
+    a = Cumo::DFloat[[1, 0], [0, 1e-20], [0, 0]]
+    b = Cumo::DFloat[1, 1, 0]
+    [0.0, 1.0, -1.0, nil].each do |rcond|
+      x, _, rank, = Cumo::Linalg.lstsq(a, b, rcond: rcond)
+      assert_equal(1, rank, "rcond #{rcond.inspect}")
+      assert_equal([1.0, 0.0], x.to_a)
+    end
+    assert_equal(2, Cumo::Linalg.lstsq(Cumo::DFloat[[1, 0], [0, 1.5e-16]], Cumo::DFloat[1, 1])[2])
+  end
+
+  test "lstsq answers empty residuals of the class numo-linalg-alt answers" do
+    assert_kind_of(Cumo::Int32, Cumo::Linalg.lstsq(Cumo::DFloat[[1, 0], [0, 1]], Cumo::Int32[1, 2])[1])
+    assert_kind_of(Cumo::DFloat, Cumo::Linalg.lstsq(Cumo::SFloat[[1, 0, 1], [0, 1, 1]], Cumo::SFloat[1, 2])[1])
+  end
+
   test "matrix_rank" do
     assert_equal(2, Cumo::Linalg.matrix_rank(Cumo::DFloat[[1, 2, 3], [4, 5, 6]]))
     assert_equal(1, Cumo::Linalg.matrix_rank(Cumo::DFloat[[1, 2], [2, 4]]))
@@ -128,6 +144,7 @@ class LinalgSvdTest < Test::Unit::TestCase
       [:svd, [Cumo::DFloat[1, 2]], {}, ArgumentError, 'input array must be 2-dimensional'],
       [:svdvals, [w], { driver: 'X' }, ArgumentError, 'invalid driver: X'],
       [:orth, [Cumo::DFloat[1, 2]], {}, Cumo::NArray::ShapeError, 'input array a must be 2-dimensional'],
+      [:lstsq, [w.transpose.dup, Cumo::DFloat.ones(3, 2, 2)], {}, ArgumentError, 'input array b must be 1 or 2-dimensional'],
       [
         :lstsq,
         [w.transpose.dup, Cumo::DFloat[1, 2]],
