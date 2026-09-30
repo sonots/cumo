@@ -384,6 +384,40 @@ module Cumo
       eigh(a, b, vals_only: true, vals_range: vals_range, uplo: uplo, turbo: turbo)[0]
     end
 
+    # Computes the eigenvalues and the right and left eigenvectors of a
+    # general square matrix with cuSOLVER's geev. cuSOLVER has no left
+    # eigenvectors, so they are the conjugated rows of the inverse of the
+    # right eigenvectors, normalized as LAPACK normalizes them.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @param left [Boolean] whether to compute the left eigenvectors
+    # @param right [Boolean] whether to compute the right eigenvectors
+    # @return [Array] the eigenvalues, which are complex, and the left and
+    #   the right eigenvectors, each nil when not computed and complex only
+    #   when an eigenvalue is
+    # @raise [NotImplementedError] if the cuSOLVER Cumo is built with has no
+    #   cusolverDnXgeev, which CUDA 11 does not have
+    def eig(a, left: false, right: true)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise ArgumentError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      w, vr = geev(a, left || right)
+      [w, left ? left_eigenvectors(vr) : nil, right ? vr : nil]
+    end
+
+    # Computes the eigenvalues of a general square matrix.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @return [Cumo::SComplex, Cumo::DComplex]
+    # @raise [NotImplementedError] if the cuSOLVER Cumo is built with has no
+    #   cusolverDnXgeev, which CUDA 11 does not have
+    def eigvals(a)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      geev(a, false)[0]
+    end
+
     # Computes the singular value decomposition A = U S V^H.
     #
     # @param a [Cumo::NArray] 2-dimensional, of shape [m, n]
@@ -904,6 +938,44 @@ module Cumo
       x.ndim.zero? ? to_ruby(x) : x
     end
 
+    def geev(a, vectors)
+      bchr = blas_char(a)
+      raise NotImplementedError, 'Cumo is built with a cuSOLVER that has no cusolverDnXgeev' if CUDA::Cusolver.available? && !CUDA::Cusolver.respond_to?(:geev, true)
+
+      klass = BLAS_CLASSES[bchr.to_sym]
+      n = a.shape[0]
+      w = (%w[s c].include?(bchr) ? SComplex : DComplex).new(n)
+      vr = vectors ? klass.new(n, n) : nil
+      info = cusolver(:geev, to_column_major(klass, a), w, vr)
+      raise LapackError, "the #{info.abs}-th argument of #{bchr}geev had illegal value" if info.negative?
+      raise LapackError, 'the QR algorithm failed to compute all the eigenvalues.' if info.positive?
+      return [w, nil] unless vectors
+
+      vr = from_column_major(vr)
+      [w, %w[s d].include?(bchr) ? unpack_eigenvectors(w, vr) : vr]
+    end
+
+    def unpack_eigenvectors(w, v)
+      ids = w.imag.gt(0).where
+      return v if ids.empty?
+
+      packed = w.class.cast(v)
+      packed[true, ids].imag = v[true, ids + 1]
+      packed[true, ids + 1] = packed[true, ids].conj
+      packed
+    end
+
+    def left_eigenvectors(vr)
+      return vr.dup if vr.empty?
+
+      vl = inv(vr).conj.transpose.dup
+      vl /= NMath.sqrt((vl.abs**2).sum(axis: 0))
+      return vl unless vl.is_a?(SComplex) || vl.is_a?(DComplex)
+
+      largest = vl[vl.abs.max_index(axis: 0)]
+      vl * (largest.conj / largest.abs)
+    end
+
     def eigen_range(vals_range, n)
       return [nil, nil] if vals_range.nil?
 
@@ -999,6 +1071,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :geev, :unpack_eigenvectors, :left_eigenvectors, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
