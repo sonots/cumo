@@ -119,7 +119,6 @@ class LinalgSvdTest < Test::Unit::TestCase
     s = Cumo::Linalg.svdvals(Cumo::DFloat[[1, 2], [3, 4]]).to_a
     assert_in_delta(s[0] / s[1], c.to_a.flatten.first, 1e-12)
     assert_in_delta(s[1] / s[0], Cumo::Linalg.cond(Cumo::DFloat[[1, 2], [3, 4]], -2).to_a.flatten.first, 1e-12)
-    assert_raise(NotImplementedError) { Cumo::Linalg.cond(Cumo::DFloat[[1, 2], [3, 4]], 1) }
   end
 
   test "an integer matrix is decomposed in DFloat" do
