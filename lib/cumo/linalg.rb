@@ -470,18 +470,78 @@ module Cumo
       rank == n ? vt.class.new(n, 0) : vt[rank...n, true].conj.transpose.dup
     end
 
-    # Computes the condition number of a matrix in the 2-norm, the ratio of
-    # its largest singular value to its smallest.
+    # Computes the norm of a vector or a matrix, or the norms of the vectors or
+    # the matrices along the given axes.
+    #
+    #   |  ord  |  matrix norm           | vector norm                 |
+    #   | ----- | ---------------------- | --------------------------- |
+    #   |  nil  | Frobenius norm         | 2-norm                      |
+    #   | 'fro' | Frobenius norm         |  -                          |
+    #   | 'nuc' | nuclear norm           |  -                          |
+    #   | 'inf' | x.abs.sum(axis:-1).max | x.abs.max                   |
+    #   |    0  |  -                     | (x.ne 0).sum                |
+    #   |    1  | x.abs.sum(axis:-2).max | same as below               |
+    #   |    2  | 2-norm (max sing_vals) | same as below               |
+    #   | other |  -                     | (x.abs**ord).sum**(1.0/ord) |
+    #
+    # @param a [Cumo::NArray, Array]
+    # @param ord [String, Numeric, nil] the order of the norm
+    # @param axis [Integer, Array, nil] one axis for vector norms or two for
+    #   matrix norms; by default the whole array, which must be 1- or
+    #   2-dimensional unless ord is nil
+    # @param keepdims [Boolean] whether the normed axes are left with size one
+    # @return [Float, Integer, Complex, Cumo::NArray] a scalar, which waits for
+    #   the GPU, where numo-linalg-alt answers one
+    def norm(a, ord = nil, axis: nil, keepdims: false)
+      a = NArray.asarray(a) unless a.is_a?(NArray)
+      return 0.0 if a.empty?
+
+      blas_char(a)
+      a = a.reshape(1) if a.ndim.zero?
+      ord = Float::INFINITY if ord == 'inf'
+      ord = -Float::INFINITY if ord == '-inf'
+      if axis.nil?
+        norm = whole_norm(a, ord)
+        return keepdims ? NArray.asarray(norm).reshape(*([1] * a.ndim)) : norm unless norm.nil?
+
+        axis = Array.new(a.ndim) { |d| d }
+      else
+        axis = norm_axes(axis)
+      end
+      raise ArgumentError, "the number of dimensions of axis is inappropriate for the norm: #{axis.size}" unless [1, 2].include?(axis.size)
+      raise ArgumentError, "axis is out of range: #{axis}" unless axis.all? { |ax| (-a.ndim...a.ndim).cover?(ax) }
+
+      a = DFloat.cast(a) if a.is_a?(Bit)
+      return vector_norm(a, ord || 2, axis[0], keepdims) if axis.size == 1
+
+      axes = axis.map { |ax| ax.negative? ? ax + a.ndim : ax }
+      raise ArgumentError, "invalid axis: #{axis}" if axes.uniq.size == 1
+
+      norm = matrix_norm(a, ord || 'fro', *axes)
+      return norm unless keepdims
+
+      shape = a.shape.dup
+      axes.each { |ax| shape[ax] = 1 }
+      NArray.asarray(norm).reshape(*shape)
+    end
+
+    # Computes the condition number of a matrix, the norm of the matrix times
+    # the norm of its inverse. For nil and 2, the ratio of its largest
+    # singular value to its smallest.
     #
     # @param a [Cumo::NArray] 2-dimensional
-    # @param ord [Integer, nil] nil or 2, or -2 for the inverse ratio
-    # @return [Cumo::NArray] zero-dimensional, as numo-linalg-alt answers
-    # @raise [NotImplementedError] for another ord, which needs norm
+    # @param ord [String, Integer, nil] nil or 2, or -2 for the inverse ratio,
+    #   or an ord of the matrix norm: 'fro', 'nuc', 1, -1, 'inf' or '-inf'
+    # @return [Cumo::NArray, Float] zero-dimensional for nil, 2, -2 and 'fro',
+    #   as numo-linalg-alt answers, and a Float for the others
     def cond(a, ord = nil)
-      raise NotImplementedError, "cond with ord #{ord.inspect} needs norm, which Cumo::Linalg does not have yet" unless [nil, 2, -2].include?(ord)
+      if ord.nil? || ord == 2 || ord == -2
+        svals = svdvals(a)
+        return ord == -2 ? svals[false, -1] / svals[false, 0] : svals[false, 0] / svals[false, -1]
+      end
 
-      svals = svdvals(a)
-      ord == -2 ? svals[false, -1] / svals[false, 0] : svals[false, 0] / svals[false, -1]
+      inv_a = inv(a)
+      norm(a, ord, axis: [-2, -1]) * norm(inv_a, ord, axis: [-2, -1])
     end
 
     # Computes the least-squares solution to A x = b, the one of least norm
@@ -730,6 +790,120 @@ module Cumo
       count_above(s, rcond.nil? || rcond.negative? ? a.shape.max * s.class::EPSILON : rcond)
     end
 
+    def whole_norm(a, ord)
+      case a.ndim
+      when 1
+        frobenius(a) if ord.nil? || ord == 2
+      when 2
+        if ord.nil? || ord == 'fro'
+          frobenius(a)
+        elsif [1, Float::INFINITY].include?(ord)
+          matrix_norm(to_float(a), ord, 0, 1)
+        end
+      else
+        frobenius(a) if ord.nil?
+      end
+    end
+
+    def frobenius(a)
+      x = magnitudes(to_float(a))
+      squares = to_ruby(x.mulsum(x))
+      return squares if squares.nan?
+      return Math.sqrt(squares) if squares.finite? && squares >= x.size * x.class::MIN / x.class::EPSILON
+
+      x = x.abs
+      scale = x.max
+      largest = to_ruby(scale)
+      return largest unless largest.positive? && largest.finite?
+
+      scaled = x / scale
+      to_ruby(NMath.sqrt(scaled.mulsum(scaled)) * scale)
+    end
+
+    def norm_axes(axis)
+      case axis
+      when Integer
+        [axis]
+      when Array, NArray
+        axis.flatten.to_a
+      else
+        raise ArgumentError, "invalid axis: #{axis}"
+      end
+    end
+
+    def vector_norm(a, ord, axis, keepdims)
+      raise ArgumentError, "invalid ord: #{ord}" unless ord.is_a?(Numeric)
+
+      norm = if ord.infinite?
+               ord.positive? ? a.abs.max(axis: axis, keepdims: keepdims) : a.abs.min(axis: axis, keepdims: keepdims)
+             elsif ord.zero?
+               a.class.cast(a.ne(0)).sum(axis: axis, keepdims: keepdims)
+             elsif ord == 1
+               a.abs.sum(axis: axis, keepdims: keepdims)
+             elsif ord == 2
+               x = magnitudes(to_float(a))
+               NMath.sqrt(x.mulsum(x, axis: axis, keepdims: keepdims))
+             else
+               (to_float(a).abs**ord).sum(axis: axis, keepdims: keepdims)**1.fdiv(ord)
+             end
+      to_scalar(norm)
+    end
+
+    def matrix_norm(a, ord, r_axis, c_axis)
+      raise ArgumentError, "invalid ord: #{ord}" unless ord.is_a?(String) || ord.is_a?(Numeric)
+
+      case ord
+      when 'fro'
+        x = magnitudes(to_float(a))
+        sum = x.mulsum(x, axis: [r_axis, c_axis])
+        NMath.sqrt(sum.ndim.zero? ? DFloat.cast(sum) : sum)
+      when 'nuc'
+        to_scalar(stacked_svdvals(a, r_axis, c_axis).sum(axis: -1))
+      when String
+        raise ArgumentError, "invalid ord: #{ord}"
+      when 2, -2
+        s = stacked_svdvals(a, r_axis, c_axis)
+        to_scalar(ord == 2 ? s.max(axis: -1) : s.min(axis: -1))
+      when 1, -1
+        sums = a.abs.sum(axis: r_axis)
+        c_axis -= 1 if c_axis > r_axis
+        to_scalar(ord == 1 ? sums.max(axis: c_axis) : sums.min(axis: c_axis))
+      else
+        raise ArgumentError, "invalid ord: #{ord}" unless ord.infinite?
+
+        sums = a.abs.sum(axis: c_axis)
+        r_axis -= 1 if r_axis > c_axis
+        to_scalar(ord.positive? ? sums.max(axis: r_axis) : sums.min(axis: r_axis))
+      end
+    end
+
+    def stacked_svdvals(a, r_axis, c_axis)
+      return svdvals(a) if a.ndim == 2
+
+      b = a.transpose(*((0...a.ndim).to_a - [r_axis, c_axis]), r_axis, c_axis)
+      batch = b.shape[0...-2]
+      matrices = b.dup.reshape(batch.reduce(:*), *b.shape[-2..])
+      s = nil
+      matrices.shape[0].times do |i|
+        vals = svdvals(matrices[i, true, true])
+        s ||= vals.class.zeros(matrices.shape[0], vals.size)
+        s[i, true] = vals
+      end
+      s.reshape(*batch, s.shape[1])
+    end
+
+    def magnitudes(x)
+      x.is_a?(SComplex) || x.is_a?(DComplex) ? x.abs : x
+    end
+
+    def to_float(a)
+      INTEGER_CLASSES.include?(a.class) ? DFloat.cast(a) : a
+    end
+
+    def to_scalar(x)
+      x.ndim.zero? ? to_ruby(x) : x
+    end
+
     def eigen_range(vals_range, n)
       return [nil, nil] if vals_range.nil?
 
@@ -825,6 +999,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
