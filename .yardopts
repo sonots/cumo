@@ -1,0 +1,8 @@
+--no-private
+--exclude ext/cumo/narray/gen/
+lib/**/*.rb
+ext/**/*.c
+ext/**/*.cpp
+-
+*.md
+LICENSE.txt
