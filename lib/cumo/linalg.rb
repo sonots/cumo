@@ -529,6 +529,41 @@ module Cumo
       [x, resids, rank, s]
     end
 
+    # Computes the QR factorization A = Q R.
+    #
+    # @param a [Cumo::NArray] 2-dimensional, of shape [m, n]
+    # @param mode [String] 'reduce' for Q of shape [m, m] and R of [m, n],
+    #   'r' for R alone, 'economic' for [m, k] and [k, n] with k = min(m, n),
+    #   'raw' for the Householder vectors and their factors as LAPACK's geqrf
+    #   answers them
+    # @return [Array<Cumo::NArray>, Cumo::NArray] Q and R, R, or the vectors
+    #   and the factors
+    def qr(a, mode: 'reduce')
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise ArgumentError, "invalid mode: #{mode}" unless %w[reduce r economic raw].include?(mode)
+
+      klass = BLAS_CLASSES[blas_char(a).to_sym]
+      m, n = a.shape
+      buf = to_column_major(klass, a)
+      tau = klass.new([m, n].min)
+      cusolver(:geqrf, buf, tau)
+      qr = buf.transpose.dup
+      return [qr, tau] if mode == 'raw'
+
+      r = m > n && mode == 'economic' ? qr[0...n, true].triu : qr.triu
+      return r if mode == 'r'
+
+      q = if m < n
+            buf[0...m, true].dup
+          elsif mode == 'economic'
+            buf
+          else
+            klass.zeros(m, m).tap { |x| x[0...n, true] = buf if n.positive? }
+          end
+      cusolver(:orgqr, q, tau)
+      [q.transpose.dup, r]
+    end
+
     # Computes the determinant of a square matrix from its LU factorization.
     #
     # @param a [Cumo::NArray] the square matrix

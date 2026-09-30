@@ -160,6 +160,8 @@ typedef struct {
     void *u;
     void *vt;
     signed char job;
+    void *tau;
+    int64_t k;
     int64_t m;
     int64_t n;
     int64_t nrhs;
@@ -372,6 +374,54 @@ gesvd_body(VALUE arg)
             c->ctx.handle, c->ctx.params, c->job, c->job, c->m, c->n, c->dtype, c->a, c->m,
             stype, c->w, c->dtype, c->u, c->m, c->dtype, c->vt, ldvt, c->dtype,
             c->d_work, d_size, c->h_work, h_size, c->d_info));
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+static VALUE
+geqrf_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+    size_t d_size = 0;
+    size_t h_size = 0;
+
+    check_call(cusolverDnXgeqrf_bufferSize(
+            c->ctx.handle, c->ctx.params, c->m, c->n, c->dtype, c->a, c->m, c->dtype, c->tau, c->dtype,
+            &d_size, &h_size));
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
+    cumo_cuda_cusolver_check_status(cusolverDnXgeqrf(
+            c->ctx.handle, c->ctx.params, c->m, c->n, c->dtype, c->a, c->m, c->dtype, c->tau, c->dtype,
+            c->d_work, d_size, c->h_work, h_size, c->d_info));
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+static VALUE
+orgqr_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+    cusolverDnHandle_t h = c->ctx.handle;
+    int m = (int)c->m;
+    int n = (int)c->n;
+    int k = (int)c->k;
+    int lwork = 0;
+
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    switch (c->dtype) {
+#define ORGQR(fn, type)                                                                             \
+        check_call(cusolverDn##fn##_bufferSize(h, m, n, k, (type*)c->a, m, (type*)c->tau, &lwork));  \
+        c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));                 \
+        cumo_cuda_cusolver_check_status(cusolverDn##fn(                                              \
+                h, m, n, k, (type*)c->a, m, (type*)c->tau, (type*)c->d_work, lwork, c->d_info));      \
+        break
+    case CUDA_R_32F: ORGQR(Sorgqr, float);
+    case CUDA_R_64F: ORGQR(Dorgqr, double);
+    case CUDA_C_32F: ORGQR(Cungqr, cuComplex);
+    default: ORGQR(Zungqr, cuDoubleComplex);
+#undef ORGQR
+    }
     c->info = read_info(c->d_info);
     return Qnil;
 }
@@ -802,6 +852,83 @@ rb_cusolver_gesvd(VALUE self, VALUE a, VALUE s, VALUE u, VALUE vt, VALUE job)
     return INT2NUM(c.info);
 }
 
+static void
+check_tau(VALUE tau, VALUE a, int64_t k)
+{
+    cumo_narray_t *nt = check_contiguous_array(tau, rb_obj_class(a), 1, "tau");
+    if ((int64_t)CUMO_NA_SHAPE(nt)[0] != k) {
+        rb_raise(cumo_na_eShapeError, "tau must have %"PRId64" elements", k);
+    }
+}
+
+/*
+  Computes the QR factorization A = Q R in place with cusolverDnXgeqrf, as
+  LAPACK's geqrf does: R in the upper triangle and the Householder vectors
+  of Q below it.
+
+  @param a [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+    contiguous, of shape [n, m]: the column-major m by n matrix, overwritten
+  @param tau [Cumo::NArray] of the class of a, contiguous, of length
+    min(m, n): filled with the scalar factors of the reflectors
+  @return [Integer] the info cuSOLVER reports
+ */
+static VALUE
+rb_cusolver_geqrf(VALUE self, VALUE a, VALUE tau)
+{
+    cusolver_call_t c = {0};
+    cumo_narray_t *na = check_contiguous_array(a, Qnil, 2, "a");
+
+    c.dtype = cusolver_dtype(a);
+    c.m = (int64_t)CUMO_NA_SHAPE(na)[1];
+    c.n = (int64_t)CUMO_NA_SHAPE(na)[0];
+    check_tau(tau, a, c.m < c.n ? c.m : c.n);
+    if (c.m == 0 || c.n == 0) {
+        return INT2FIX(0);
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+    c.tau = cumo_na_get_offset_pointer_for_write(tau);
+    c.ctx = cusolver_context();
+    rb_ensure(geqrf_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return INT2NUM(c.info);
+}
+
+/*
+  Forms the m by n matrix Q with orthonormal columns from the first k
+  reflectors geqrf answered, in place with cusolverDn<t>orgqr or ungqr.
+
+  @param a [Cumo::NArray] contiguous, of shape [n, m] with m >= n: the
+    column-major reflectors, overwritten with Q
+  @param tau [Cumo::NArray] of the class of a, of length k
+  @return [Integer] the info cuSOLVER reports
+ */
+static VALUE
+rb_cusolver_orgqr(VALUE self, VALUE a, VALUE tau)
+{
+    cusolver_call_t c = {0};
+    cumo_narray_t *na = check_contiguous_array(a, Qnil, 2, "a");
+    cumo_narray_t *nt;
+
+    c.dtype = cusolver_dtype(a);
+    c.m = (int64_t)CUMO_NA_SHAPE(na)[1];
+    c.n = (int64_t)CUMO_NA_SHAPE(na)[0];
+    nt = check_contiguous_array(tau, rb_obj_class(a), 1, "tau");
+    c.k = (int64_t)CUMO_NA_SHAPE(nt)[0];
+    if (c.m < c.n || c.n < c.k) {
+        rb_raise(cumo_na_eShapeError, "orgqr needs m >= n >= k");
+    }
+    if (c.m > INT_MAX) {
+        rb_raise(rb_eArgError, "a is too large for orgqr");
+    }
+    if (c.n == 0) {
+        return INT2FIX(0);
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+    c.tau = cumo_na_get_offset_pointer_for_read(tau);
+    c.ctx = cusolver_context();
+    rb_ensure(orgqr_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return INT2NUM(c.info);
+}
+
 #endif // CUSOLVER_FOUND
 
 /*
@@ -843,7 +970,10 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "syevd", rb_cusolver_syevd, 5);
     rb_define_singleton_method(mCusolver, "sygvd", rb_cusolver_sygvd, 6);
     rb_define_singleton_method(mCusolver, "gesvd", rb_cusolver_gesvd, 5);
-    rb_funcall(mCusolver, rb_intern("private_class_method"), 9, ID2SYM(rb_intern("gesvd")),
+    rb_define_singleton_method(mCusolver, "geqrf", rb_cusolver_geqrf, 2);
+    rb_define_singleton_method(mCusolver, "orgqr", rb_cusolver_orgqr, 2);
+    rb_funcall(mCusolver, rb_intern("private_class_method"), 11,
+               ID2SYM(rb_intern("geqrf")), ID2SYM(rb_intern("orgqr")), ID2SYM(rb_intern("gesvd")),
                ID2SYM(rb_intern("syevd")), ID2SYM(rb_intern("sygvd")), ID2SYM(rb_intern("uplo")),
                ID2SYM(rb_intern("getrf")), ID2SYM(rb_intern("getrs")),
                ID2SYM(rb_intern("potrf")), ID2SYM(rb_intern("potrs")), ID2SYM(rb_intern("potri")));
