@@ -529,6 +529,49 @@ module Cumo
       [x, resids, rank, s]
     end
 
+    # Computes the QR factorization A = Q R.
+    #
+    # @param a [Cumo::NArray] 2-dimensional, of shape [m, n]
+    # @param mode [String] 'reduce' for Q of shape [m, m] and R of [m, n],
+    #   'r' for R alone, 'economic' for [m, k] and [k, n] with k = min(m, n),
+    #   'raw' for the Householder vectors and their factors as LAPACK's geqrf
+    #   answers them
+    # @return [Array<Cumo::NArray>, Cumo::NArray] Q and R, R, or the vectors
+    #   and the factors
+    def qr(a, mode: 'reduce')
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise ArgumentError, "invalid mode: #{mode}" unless %w[reduce r economic raw].include?(mode)
+
+      bchr = blas_char(a)
+      klass = BLAS_CLASSES[bchr.to_sym]
+      m, n = a.shape
+      k = [m, n].min
+      return empty_qr(klass, m, n, mode) if k.zero?
+
+      buf = to_column_major(klass, a)
+      tau = klass.new(k)
+      info = cusolver(:geqrf, buf, tau)
+      raise LapackError, "the #{-info}-th argument of #{bchr}geqrf had illegal value" if info.negative?
+
+      qr = buf.transpose.dup
+      return [qr, tau] if mode == 'raw'
+
+      r = m > n && mode == 'economic' ? qr[0...n, true].triu : qr.triu!
+      return r if mode == 'r'
+
+      q = if m < n
+            buf[0...m, true].dup
+          elsif mode == 'economic'
+            buf
+          else
+            klass.zeros(m, m).tap { |x| x[0...n, true] = buf }
+          end
+      info = cusolver(:orgqr, q, tau)
+      raise LapackError, "the #{-info}-th argument of #{bchr}orgqr had illegal value" if info.negative?
+
+      [q.transpose.dup, r]
+    end
+
     # Computes the determinant of a square matrix from its LU factorization.
     #
     # @param a [Cumo::NArray] the square matrix
@@ -619,6 +662,16 @@ module Cumo
 
     def from_column_major(x)
       x.ndim == 1 ? x : x.transpose.dup
+    end
+
+    def empty_qr(klass, m, n, mode)
+      return [klass.new(m, n), klass.new(0)] if mode == 'raw'
+
+      r = mode == 'economic' ? klass.new(0, n) : klass.new(m, n)
+      return r if mode == 'r'
+
+      q = mode == 'economic' || m.zero? ? klass.new(m, 0) : klass.eye(m)
+      [q, r]
     end
 
     def svd_call(a, driver, job, not_converged)
@@ -772,6 +825,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
