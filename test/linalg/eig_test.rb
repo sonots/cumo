@@ -11,13 +11,13 @@ class LinalgEigTest < Test::Unit::TestCase
   end
 
   types = {
-    Cumo::SFloat => [1e-4, Cumo::SComplex],
-    Cumo::DFloat => [1e-12, Cumo::DComplex],
-    Cumo::SComplex => [1e-4, Cumo::SComplex],
-    Cumo::DComplex => [1e-12, Cumo::DComplex]
+    Cumo::SFloat => [1e-4, 3e-5, Cumo::SComplex],
+    Cumo::DFloat => [1e-12, 1e-13, Cumo::DComplex],
+    Cumo::SComplex => [1e-4, 3e-5, Cumo::SComplex],
+    Cumo::DComplex => [1e-12, 1e-13, Cumo::DComplex]
   }
 
-  types.each do |type, (tol, complex)|
+  types.each do |type, (tol, residual, complex)|
     sub_test_case type.to_s do
       setup do
         rng = Random.new(5)
@@ -29,16 +29,12 @@ class LinalgEigTest < Test::Unit::TestCase
         w, vl, vr = Cumo::Linalg.eig(@a, left: true)
         assert_kind_of(complex, w)
         assert_equal([[5], [5, 5], [5, 5]], [w.shape, vl.shape, vr.shape])
-        w = w.to_a
-        av = host_dot(@host, vr.to_a)
-        assert_close(vr.to_a.map { |row| row.each_with_index.map { |x, j| x * w[j] } }, av, tol * 1000)
-        vlh = conj_t(vl.to_a)
-        assert_close(vlh.each_with_index.map { |row, i| row.map { |x| x * w[i] } }, host_dot(vlh, @host), tol * 1000)
+        assert_eigenvectors(@host, w, vl, vr, residual)
         [vl, vr].each do |v|
           assert_close([1.0] * 5, v.to_a.transpose.map { |col| Math.sqrt(col.sum { |x| x.abs**2 }) }, tol * 100)
           assert_largest_real(v, tol * 100)
         end
-        assert_close(w, Cumo::Linalg.eigvals(@a), tol * 100)
+        assert_close(w.to_a, Cumo::Linalg.eigvals(@a), tol * 100)
       end
 
       test "the eigenvectors are real when every eigenvalue is" do
@@ -62,10 +58,44 @@ class LinalgEigTest < Test::Unit::TestCase
     end
   end
 
-  test "the left eigenvectors of a defective matrix" do
-    _, vl, vr = Cumo::Linalg.eig(Cumo::DFloat[[1, 1], [0, 1]], left: true)
-    vl.to_a.transpose.each { |col| assert_in_delta(0.0, col[0], 1e-8) }
-    vr.to_a.transpose.each { |col| assert_in_delta(0.0, col[1], 1e-8) }
+  test "defective matrices and repeated eigenvalues" do
+    [
+      [[1, 1], [0, 1]],
+      [[1, 1, 1], [0, 1, 1], [0, 0, 1]],
+      [[0, 1], [0, 0]],
+      [[0, 1, 0], [0, 0, 1], [0, 0, 0]],
+      [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+      [[0, 0], [0, 0]],
+      [[2, 1, 0], [0, 2, 0], [0, 0, 3]]
+    ].each do |host|
+      [[Cumo::DFloat, 1e-13], [Cumo::DComplex, 1e-13], [Cumo::SFloat, 1e-5]].each do |type, residual|
+        w, vl, vr = Cumo::Linalg.eig(type.cast(host), left: true)
+        assert_eigenvectors(host, w, vl, vr, residual)
+        [vl, vr].each do |v|
+          assert_close([1.0] * host.size, v.to_a.transpose.map { |col| Math.sqrt(col.sum { |x| x.abs**2 }) }, residual)
+        end
+      end
+    end
+  end
+
+  test "the left eigenvectors of a conjugate pair are matched to their eigenvalues" do
+    host = [[1, -2, 0, 0], [2, 1, 0, 0], [0, 0, 3, -1], [0, 0, 1, 3]]
+    w, vl, vr = Cumo::Linalg.eig(Cumo::DFloat.cast(host), left: true)
+    assert_kind_of(Cumo::DComplex, vl)
+    assert_eigenvectors(host, w, vl, vr, 1e-13)
+  end
+
+  test "an eigenvalue keeps its closest partner when another eigenvalue has none close" do
+    perm = Cumo::Linalg.__send__(:match_eigenvalues, Cumo::DComplex[2, 1], Cumo::DComplex[1, 3.5])
+    assert_equal([1, 0], perm.to_a)
+  end
+
+  test "the eigenvalues left over after the closest pairs go to their closest partners" do
+    w = Cumo::DComplex[1, 1, 5, 5]
+    target = Cumo::DComplex[5, 5, 1, 1]
+    perm = Cumo::Linalg.__send__(:match_eigenvalues, w, target).to_a
+    assert_equal([0, 1, 2, 3], perm.sort)
+    assert_equal(w.to_a, perm.map { |j| target.to_a[j] })
   end
 
   test "left and right choose the eigenvectors" do
@@ -122,6 +152,14 @@ class LinalgEigTest < Test::Unit::TestCase
       assert_in_delta(1.0, phase.abs, tol)
       assert_close(e.map { |x| x * phase }, a, tol)
     end
+  end
+
+  def assert_eigenvectors(host, w, vl, vr, residual)
+    w = w.to_a
+    av = host_dot(host, vr.to_a)
+    assert_close(vr.to_a.map { |row| row.each_with_index.map { |x, j| x * w[j] } }, av, residual)
+    vlh = conj_t(vl.to_a)
+    assert_close(vlh.each_with_index.map { |row, i| row.map { |x| x * w[i] } }, host_dot(vlh, host), residual)
   end
 
   def assert_largest_real(v, tol)

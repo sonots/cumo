@@ -386,8 +386,11 @@ module Cumo
 
     # Computes the eigenvalues and the right and left eigenvectors of a
     # general square matrix with cuSOLVER's geev. cuSOLVER has no left
-    # eigenvectors, so they are the conjugated rows of the inverse of the
-    # right eigenvectors, normalized as LAPACK normalizes them.
+    # eigenvectors, so they are the right eigenvectors of the conjugate
+    # transpose, whose eigenvalues are matched to the eigenvalues of the
+    # matrix. For an eigenvalue that is ill-conditioned, as in a defective
+    # matrix, the left eigenvector then belongs to an eigenvalue that
+    # differs from the one answered by about its rounding error.
     #
     # @param a [Cumo::NArray] the square matrix
     # @param left [Boolean] whether to compute the left eigenvectors
@@ -401,8 +404,8 @@ module Cumo
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
       raise ArgumentError, 'input array a must be square' if a.shape[0] != a.shape[1]
 
-      w, vr = geev(a, left || right)
-      [w, left ? left_eigenvectors(vr) : nil, right ? vr : nil]
+      w, vr = geev(a, right)
+      [w, left ? left_eigenvectors(a, w) : nil, vr]
     end
 
     # Computes the eigenvalues of a general square matrix.
@@ -965,15 +968,38 @@ module Cumo
       packed
     end
 
-    def left_eigenvectors(vr)
-      return vr.dup if vr.empty?
+    def left_eigenvectors(a, w)
+      mu, y = geev(BLAS_CLASSES[blas_char(a).to_sym].cast(a).conj.transpose, true)
+      y.empty? ? y : y[true, match_eigenvalues(w, mu.conj)].dup
+    end
 
-      vl = inv(vr).conj.transpose.dup
-      vl /= NMath.sqrt((vl.abs**2).sum(axis: 0))
-      return vl unless vl.is_a?(SComplex) || vl.is_a?(DComplex)
+    def match_eigenvalues(w, target)
+      n = w.size
+      dist = (w.reshape(n, 1) - target.reshape(1, n)).abs
+      flat = dist.min_index(axis: 1)
+      gaps = dist[flat].to_a
+      nearest = (flat % n).to_a
+      order = (0...n).sort_by { |i| gaps[i] }
+      perm = Array.new(n)
+      free = Array.new(n, true)
+      order.each do |i|
+        next unless free[nearest[i]]
 
-      largest = vl[vl.abs.max_index(axis: 0)]
-      vl * (largest.conj / largest.abs)
+        perm[i] = nearest[i]
+        free[nearest[i]] = false
+      end
+      rows = order.select { |i| perm[i].nil? }
+      return Int32.cast(perm) if rows.empty?
+
+      cols = (0...n).select { |j| free[j] }
+      sub = dist[rows, cols].to_a
+      open = cols.each_index.to_a
+      rows.each_with_index do |i, r|
+        c = open.min_by { |k| sub[r][k] }
+        perm[i] = cols[c]
+        open.delete(c)
+      end
+      Int32.cast(perm)
     end
 
     def eigen_range(vals_range, n)
@@ -1071,6 +1097,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :geev, :unpack_eigenvectors, :left_eigenvectors, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
