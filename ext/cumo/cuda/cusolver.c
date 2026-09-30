@@ -852,13 +852,14 @@ rb_cusolver_gesvd(VALUE self, VALUE a, VALUE s, VALUE u, VALUE vt, VALUE job)
     return INT2NUM(c.info);
 }
 
-static void
+static int64_t
 check_tau(VALUE tau, VALUE a, int64_t k)
 {
     cumo_narray_t *nt = check_contiguous_array(tau, rb_obj_class(a), 1, "tau");
-    if ((int64_t)CUMO_NA_SHAPE(nt)[0] != k) {
+    if (k >= 0 && (int64_t)CUMO_NA_SHAPE(nt)[0] != k) {
         rb_raise(cumo_na_eShapeError, "tau must have %"PRId64" elements", k);
     }
+    return (int64_t)CUMO_NA_SHAPE(nt)[0];
 }
 
 /*
@@ -906,13 +907,11 @@ rb_cusolver_orgqr(VALUE self, VALUE a, VALUE tau)
 {
     cusolver_call_t c = {0};
     cumo_narray_t *na = check_contiguous_array(a, Qnil, 2, "a");
-    cumo_narray_t *nt;
 
     c.dtype = cusolver_dtype(a);
     c.m = (int64_t)CUMO_NA_SHAPE(na)[1];
     c.n = (int64_t)CUMO_NA_SHAPE(na)[0];
-    nt = check_contiguous_array(tau, rb_obj_class(a), 1, "tau");
-    c.k = (int64_t)CUMO_NA_SHAPE(nt)[0];
+    c.k = check_tau(tau, a, -1);
     if (c.m < c.n || c.n < c.k) {
         rb_raise(cumo_na_eShapeError, "orgqr needs m >= n >= k");
     }

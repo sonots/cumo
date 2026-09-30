@@ -12,7 +12,7 @@ class LinalgQrTest < Test::Unit::TestCase
   types = { Cumo::SFloat => 1e-4, Cumo::DFloat => 1e-12, Cumo::SComplex => 1e-4, Cumo::DComplex => 1e-12 }
 
   types.each do |type, tol|
-    [[4, 4], [5, 3], [3, 5]].each do |m, n|
+    [[4, 4], [5, 3], [3, 5], [1, 3], [3, 1]].each do |m, n|
       sub_test_case "#{type} #{m}x#{n}" do
         setup do
           rng = Random.new(m * 7 + n)
@@ -69,6 +69,28 @@ class LinalgQrTest < Test::Unit::TestCase
     a = Cumo::DFloat[[1, 2], [3, 4], [5, 6]]
     Cumo::Linalg.qr(a)
     assert_equal([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], a.to_a)
+  end
+
+  test "empty matrices answer empty factors" do
+    [[3, 0], [0, 3], [0, 0]].each do |m, n|
+      a = Cumo::DFloat.new(m, n)
+      q, r = Cumo::Linalg.qr(a)
+      assert_equal([[m, m], [m, n]], [q.shape, r.shape], "#{m}x#{n}")
+      assert_equal(identity(m), q.to_a) if m.positive?
+      q, r = Cumo::Linalg.qr(a, mode: 'economic')
+      assert_equal([[m, 0], [0, n]], [q.shape, r.shape], "#{m}x#{n}")
+      assert_equal([m, n], Cumo::Linalg.qr(a, mode: 'r').shape)
+      packed, tau = Cumo::Linalg.qr(a, mode: 'raw')
+      assert_equal([[m, n], [0]], [packed.shape, tau.shape])
+    end
+  end
+
+  test "geqrf and orgqr check what they are handed" do
+    cusolver = Cumo::CUDA::Cusolver
+    assert_raise(Cumo::NArray::ShapeError) { cusolver.__send__(:geqrf, Cumo::DFloat.new(2, 3), Cumo::DFloat.new(3)) }
+    assert_raise(TypeError) { cusolver.__send__(:geqrf, Cumo::DFloat.new(2, 3), Cumo::SFloat.new(2)) }
+    assert_raise(Cumo::NArray::ShapeError) { cusolver.__send__(:orgqr, Cumo::DFloat.new(3, 2), Cumo::DFloat.new(1)) }
+    assert_raise(Cumo::NArray::ShapeError) { cusolver.__send__(:orgqr, Cumo::DFloat.new(2, 3), Cumo::DFloat.new(3)) }
   end
 
   test "errors" do
