@@ -1,8 +1,10 @@
 --no-private
 --exclude ext/cumo/narray/gen/
+-e ext/cumo/narray/gen/cogen_runner.rb
 lib/**/*.rb
 ext/**/*.c
 ext/**/*.cpp
+tmp/yard/types/*.c
 -
 *.md
 LICENSE.txt
