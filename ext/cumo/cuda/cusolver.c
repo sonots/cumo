@@ -157,6 +157,9 @@ typedef struct {
     int64_t iu;
     int64_t meig;
     void *w;
+    void *u;
+    void *vt;
+    signed char job;
     int64_t m;
     int64_t n;
     int64_t nrhs;
@@ -346,6 +349,29 @@ sygvd_body(VALUE arg)
 #undef SYGVD
     }
     c->meig = meig;
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+static VALUE
+gesvd_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+    cudaDataType stype = (c->dtype == CUDA_R_32F || c->dtype == CUDA_C_32F) ? CUDA_R_32F : CUDA_R_64F;
+    int64_t ldvt = c->n;
+    size_t d_size = 0;
+    size_t h_size = 0;
+
+    check_call(cusolverDnXgesvd_bufferSize(
+            c->ctx.handle, c->ctx.params, c->job, c->job, c->m, c->n, c->dtype, c->a, c->m,
+            stype, c->w, c->dtype, c->u, c->m, c->dtype, c->vt, ldvt, c->dtype, &d_size, &h_size));
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
+    cumo_cuda_cusolver_check_status(cusolverDnXgesvd(
+            c->ctx.handle, c->ctx.params, c->job, c->job, c->m, c->n, c->dtype, c->a, c->m,
+            stype, c->w, c->dtype, c->u, c->m, c->dtype, c->vt, ldvt, c->dtype,
+            c->d_work, d_size, c->h_work, h_size, c->d_info));
     c->info = read_info(c->d_info);
     return Qnil;
 }
@@ -707,6 +733,75 @@ rb_cusolver_sygvd(VALUE self, VALUE a, VALUE b, VALUE w, VALUE vectors, VALUE il
     return rb_assoc_new(LL2NUM(c.meig), INT2NUM(c.info));
 }
 
+static void
+check_shape(VALUE x, VALUE klass, int64_t rows, int64_t cols, const char *name)
+{
+    cumo_narray_t *nx = check_contiguous_array(x, klass, 2, name);
+    if ((int64_t)CUMO_NA_SHAPE(nx)[0] != rows || (int64_t)CUMO_NA_SHAPE(nx)[1] != cols) {
+        rb_raise(cumo_na_eShapeError, "%s must be of shape [%"PRId64", %"PRId64"]", name, rows, cols);
+    }
+}
+
+/*
+  Computes the singular value decomposition A = U S V^H in place with
+  cusolverDnXgesvd, for m >= n.
+
+  @param a [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+    contiguous, of shape [n, m]: the column-major m by n matrix, overwritten
+  @param s [Cumo::SFloat, Cumo::DFloat] contiguous, of length n, filled with
+    the singular values in descending order
+  @param u [Cumo::NArray, nil] of the class of a: the column-major U, of
+    shape [m, m] for job "A" and [n, m] for "S", or nil for "N"
+  @param vt [Cumo::NArray, nil] of the class of a and of shape [n, n]: the
+    column-major V^H, or nil for "N"
+  @param job [String] "A", "S" or "N", for U and V^H alike
+  @return [Integer] the info cuSOLVER reports
+ */
+static VALUE
+rb_cusolver_gesvd(VALUE self, VALUE a, VALUE s, VALUE u, VALUE vt, VALUE job)
+{
+    cusolver_call_t c = {0};
+    cumo_narray_t *na;
+    cumo_narray_t *ns;
+    const char *j = StringValueCStr(job);
+
+    if (strcmp(j, "A") != 0 && strcmp(j, "S") != 0 && strcmp(j, "N") != 0) {
+        rb_raise(rb_eArgError, "job must be \"A\", \"S\" or \"N\"");
+    }
+    c.job = j[0];
+    na = check_contiguous_array(a, Qnil, 2, "a");
+    c.dtype = cusolver_dtype(a);
+    c.m = (int64_t)CUMO_NA_SHAPE(na)[1];
+    c.n = (int64_t)CUMO_NA_SHAPE(na)[0];
+    if (c.m < c.n) {
+        rb_raise(cumo_na_eShapeError, "a must have at least as many rows as columns");
+    }
+    ns = check_contiguous_array(s, eigen_real_class(c.dtype), 1, "s");
+    if ((int64_t)CUMO_NA_SHAPE(ns)[0] != c.n) {
+        rb_raise(cumo_na_eShapeError, "s must have %"PRId64" elements", c.n);
+    }
+    if (c.job == 'N') {
+        if (!NIL_P(u) || !NIL_P(vt)) {
+            rb_raise(rb_eArgError, "u and vt must be nil for job \"N\"");
+        }
+    } else {
+        check_shape(u, rb_obj_class(a), c.job == 'A' ? c.m : c.n, c.m, "u");
+        check_shape(vt, rb_obj_class(a), c.n, c.n, "vt");
+    }
+    if (c.n == 0) {
+        return INT2FIX(0);
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+    c.w = cumo_na_get_offset_pointer_for_write(s);
+    if (c.job != 'N') {
+        c.u = cumo_na_get_offset_pointer_for_write(u);
+        c.vt = cumo_na_get_offset_pointer_for_write(vt);
+    }
+    c.ctx = cusolver_context();
+    rb_ensure(gesvd_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return INT2NUM(c.info);
+}
+
 #endif // CUSOLVER_FOUND
 
 /*
@@ -747,7 +842,8 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "uplo", rb_cusolver_uplo, 1);
     rb_define_singleton_method(mCusolver, "syevd", rb_cusolver_syevd, 5);
     rb_define_singleton_method(mCusolver, "sygvd", rb_cusolver_sygvd, 6);
-    rb_funcall(mCusolver, rb_intern("private_class_method"), 8,
+    rb_define_singleton_method(mCusolver, "gesvd", rb_cusolver_gesvd, 5);
+    rb_funcall(mCusolver, rb_intern("private_class_method"), 9, ID2SYM(rb_intern("gesvd")),
                ID2SYM(rb_intern("syevd")), ID2SYM(rb_intern("sygvd")), ID2SYM(rb_intern("uplo")),
                ID2SYM(rb_intern("getrf")), ID2SYM(rb_intern("getrs")),
                ID2SYM(rb_intern("potrf")), ID2SYM(rb_intern("potrs")), ID2SYM(rb_intern("potri")));
