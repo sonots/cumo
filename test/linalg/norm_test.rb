@@ -141,7 +141,12 @@ class LinalgNormTest < Test::Unit::TestCase
   test "the whole array is scaled so its squares do not overflow or underflow" do
     assert_in_delta(Math.sqrt(2) * 1e200, Cumo::Linalg.norm(Cumo::DFloat[1e200, 1e200]), 1e188)
     assert_in_delta(Math.sqrt(10) * 1e-200, Cumo::Linalg.norm(Cumo::DFloat[[1e-200, 3e-200]]), 1e-212)
+    assert_in_delta(Math.sqrt(10) * 1e-160, Cumo::Linalg.norm(Cumo::DFloat[1e-160, 3e-160]), 1e-172)
     assert_in_delta(Math.sqrt(10) * 1e30, Cumo::Linalg.norm(Cumo::SFloat[1e30, 3e30]), 1e25)
+    tiny = Cumo::SFloat.new(1001).fill(1e-20)
+    tiny[0] = 1.2e-19
+    expected = Math.sqrt((1.2e-19**2) + ((1e-20**2) * 1000))
+    assert_in_delta(expected, Cumo::Linalg.norm(tiny), expected * 1e-6)
     assert_in_delta(Math.sqrt(2) * 1e200, Cumo::Linalg.norm(Cumo::DComplex[[[1e200, 1e200i]]]), 1e188)
   end
 

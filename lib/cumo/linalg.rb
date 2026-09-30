@@ -806,7 +806,11 @@ module Cumo
     end
 
     def frobenius(a)
-      x = BLAS_CLASSES[blas_char(a).to_sym].cast(a).abs
+      x = magnitudes(BLAS_CLASSES[blas_char(a).to_sym].cast(a))
+      squares = to_ruby(x.mulsum(x))
+      return Math.sqrt(squares) if squares.finite? && squares >= x.size * x.class::MIN / x.class::EPSILON
+
+      x = x.abs
       scale = x.max
       largest = to_ruby(scale)
       return largest unless largest.positive? && largest.finite?
@@ -834,6 +838,9 @@ module Cumo
                a.class.cast(a.ne(0)).sum(axis: axis, keepdims: keepdims)
              elsif ord == 1
                a.abs.sum(axis: axis, keepdims: keepdims)
+             elsif ord == 2
+               x = magnitudes(to_float(a))
+               x.mulsum(x, axis: axis, keepdims: keepdims)**0.5
              else
                (to_float(a).abs**ord).sum(axis: axis, keepdims: keepdims)**1.fdiv(ord)
              end
@@ -845,7 +852,8 @@ module Cumo
 
       case ord
       when 'fro'
-        sum = (to_float(a).abs**2).sum(axis: [r_axis, c_axis])
+        x = magnitudes(to_float(a))
+        sum = x.mulsum(x, axis: [r_axis, c_axis])
         NMath.sqrt(sum.ndim.zero? ? DFloat.cast(sum) : sum)
       when 'nuc'
         to_scalar(stacked_svdvals(a, r_axis, c_axis).sum(axis: -1))
@@ -880,6 +888,10 @@ module Cumo
         s[i, true] = vals
       end
       s.reshape(*batch, s.shape[1])
+    end
+
+    def magnitudes(x)
+      x.is_a?(SComplex) || x.is_a?(DComplex) ? x.abs : x
     end
 
     def to_float(a)
@@ -985,6 +997,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
