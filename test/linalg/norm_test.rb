@@ -67,6 +67,7 @@ class LinalgNormTest < Test::Unit::TestCase
   end
 
   test "the classes numo-linalg-alt answers" do
+    omit_unless_cusolver
     m = Cumo::DFloat[[1, 2, -3, 1], [-4, 1, 8, 2]]
     assert_kind_of(Float, Cumo::Linalg.norm(m, 1, axis: [1, 0]))
     assert_kind_of(Float, Cumo::Linalg.norm(m, 'nuc', axis: [0, 1]))
@@ -154,7 +155,9 @@ class LinalgNormTest < Test::Unit::TestCase
     assert_equal(0.0, Cumo::Linalg.norm(Cumo::DFloat[0, 0]))
     assert_equal(Float::INFINITY, Cumo::Linalg.norm(Cumo::DFloat[Float::INFINITY, 1]))
     assert_equal(Float::INFINITY, Cumo::Linalg.norm(Cumo::DFloat[-Float::INFINITY, 1]))
-    assert_true(Cumo::Linalg.norm(Cumo::DFloat[Float::NAN, 1]).nan?)
+    [[Float::NAN, 1], [Float::NAN, 0], [Float::INFINITY, Float::NAN], [[Float::NAN, 0], [0, 0]]].each do |values|
+      assert_true(Cumo::Linalg.norm(Cumo::DFloat[*values]).nan?, values.inspect)
+    end
   end
 
   test "empty arrays answer zero, as numo-linalg-alt does" do
@@ -175,7 +178,21 @@ class LinalgNormTest < Test::Unit::TestCase
   end
 
   test "a zero-dimensional array is normed as a vector of one" do
-    assert_equal(3.0, Cumo::Linalg.norm(Cumo::DFloat[-3, 0].sum))
+    x = Cumo::DFloat[-3, 0].sum
+    assert_equal(3.0, Cumo::Linalg.norm(x))
+    assert_equal(3.0, Cumo::Linalg.norm(x, 1))
+    assert_equal(3.0, Cumo::Linalg.norm(x, 'inf'))
+    assert_equal(3.0, Cumo::Linalg.norm(x, axis: 0))
+    assert_equal([[3.0], [3.0]], [Cumo::Linalg.norm(x, keepdims: true).to_a, Cumo::Linalg.norm(x, 1, axis: 0, keepdims: true).to_a])
+  end
+
+  test "HFloat and BFloat are not normed, as in the other functions" do
+    [Cumo::HFloat, Cumo::BFloat].each do |type|
+      [[nil, {}], [1, {}], [nil, { axis: 0 }], [3, {}]].each do |ord, kwargs|
+        error = assert_raise(TypeError) { Cumo::Linalg.norm(type[3, 4], ord, **kwargs) }
+        assert_equal('invalid data type for BLAS/LAPACK', error.message)
+      end
+    end
   end
 
   test "errors" do

@@ -496,6 +496,8 @@ module Cumo
       a = NArray.asarray(a) unless a.is_a?(NArray)
       return 0.0 if a.empty?
 
+      blas_char(a)
+      a = a.reshape(1) if a.ndim.zero?
       ord = Float::INFINITY if ord == 'inf'
       ord = -Float::INFINITY if ord == '-inf'
       if axis.nil?
@@ -795,10 +797,8 @@ module Cumo
       when 2
         if ord.nil? || ord == 'fro'
           frobenius(a)
-        elsif ord == 1
-          to_ruby(BLAS_CLASSES[blas_char(a).to_sym].cast(a).abs.sum(axis: 0).max)
-        elsif ord == Float::INFINITY
-          to_ruby(BLAS_CLASSES[blas_char(a).to_sym].cast(a).abs.sum(axis: 1).max)
+        elsif [1, Float::INFINITY].include?(ord)
+          matrix_norm(to_float(a), ord, 0, 1)
         end
       else
         frobenius(a) if ord.nil?
@@ -806,8 +806,9 @@ module Cumo
     end
 
     def frobenius(a)
-      x = magnitudes(BLAS_CLASSES[blas_char(a).to_sym].cast(a))
+      x = magnitudes(to_float(a))
       squares = to_ruby(x.mulsum(x))
+      return squares if squares.nan?
       return Math.sqrt(squares) if squares.finite? && squares >= x.size * x.class::MIN / x.class::EPSILON
 
       x = x.abs
@@ -815,7 +816,8 @@ module Cumo
       largest = to_ruby(scale)
       return largest unless largest.positive? && largest.finite?
 
-      to_ruby(NMath.sqrt(((x / scale)**2).sum) * scale)
+      scaled = x / scale
+      to_ruby(NMath.sqrt(scaled.mulsum(scaled)) * scale)
     end
 
     def norm_axes(axis)
@@ -840,7 +842,7 @@ module Cumo
                a.abs.sum(axis: axis, keepdims: keepdims)
              elsif ord == 2
                x = magnitudes(to_float(a))
-               x.mulsum(x, axis: axis, keepdims: keepdims)**0.5
+               NMath.sqrt(x.mulsum(x, axis: axis, keepdims: keepdims))
              else
                (to_float(a).abs**ord).sum(axis: axis, keepdims: keepdims)**1.fdiv(ord)
              end
