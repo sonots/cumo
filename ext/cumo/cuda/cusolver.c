@@ -928,6 +928,72 @@ rb_cusolver_orgqr(VALUE self, VALUE a, VALUE tau)
     return INT2NUM(c.info);
 }
 
+#ifdef HAVE_CUSOLVERDNXGEEV
+static VALUE
+geev_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+    cudaDataType wtype = (c->dtype == CUDA_R_32F || c->dtype == CUDA_C_32F) ? CUDA_C_32F : CUDA_C_64F;
+    size_t d_size = 0;
+    size_t h_size = 0;
+
+    check_call(cusolverDnXgeev_bufferSize(
+            c->ctx.handle, c->ctx.params, CUSOLVER_EIG_MODE_NOVECTOR, c->jobz, c->n, c->dtype, c->a, c->n,
+            wtype, c->w, c->dtype, NULL, c->n, c->dtype, c->u, c->n, c->dtype, &d_size, &h_size));
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
+    cumo_cuda_cusolver_check_status(cusolverDnXgeev(
+            c->ctx.handle, c->ctx.params, CUSOLVER_EIG_MODE_NOVECTOR, c->jobz, c->n, c->dtype, c->a, c->n,
+            wtype, c->w, c->dtype, NULL, c->n, c->dtype, c->u, c->n, c->dtype,
+            c->d_work, d_size, c->h_work, h_size, c->d_info));
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+/*
+  Computes the eigenvalues and the right eigenvectors of a general square
+  matrix in place with cusolverDnXgeev, which has no left eigenvectors.
+
+  @param a [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+    contiguous, of shape [n, n]: the column-major matrix, overwritten
+  @param w [Cumo::SComplex, Cumo::DComplex] contiguous, of length n, of the
+    precision of a: the eigenvalues
+  @param vr [Cumo::NArray, nil] of the class of a, contiguous, of shape
+    [n, n]: the column-major right eigenvectors, packed as LAPACK packs
+    them for a real a, or nil for none
+  @return [Integer] the info cuSOLVER reports
+ */
+static VALUE
+rb_cusolver_geev(VALUE self, VALUE a, VALUE w, VALUE vr)
+{
+    cusolver_call_t c = {0};
+    cumo_narray_t *nw;
+
+    c.n = check_square_matrix(a, "a");
+    c.dtype = cusolver_dtype(a);
+    nw = check_contiguous_array(w, eigen_real_class(c.dtype) == cumo_cSFloat ? cumo_cSComplex : cumo_cDComplex, 1, "w");
+    if ((int64_t)CUMO_NA_SHAPE(nw)[0] != c.n) {
+        rb_raise(cumo_na_eShapeError, "w must have %"PRId64" elements", c.n);
+    }
+    c.jobz = NIL_P(vr) ? CUSOLVER_EIG_MODE_NOVECTOR : CUSOLVER_EIG_MODE_VECTOR;
+    if (!NIL_P(vr)) {
+        check_shape(vr, rb_obj_class(a), c.n, c.n, "vr");
+    }
+    if (c.n == 0) {
+        return INT2FIX(0);
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+    c.w = cumo_na_get_offset_pointer_for_write(w);
+    if (!NIL_P(vr)) {
+        c.u = cumo_na_get_offset_pointer_for_write(vr);
+    }
+    c.ctx = cusolver_context();
+    rb_ensure(geev_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return INT2NUM(c.info);
+}
+#endif // HAVE_CUSOLVERDNXGEEV
+
 #endif // CUSOLVER_FOUND
 
 /*
@@ -971,6 +1037,10 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "gesvd", rb_cusolver_gesvd, 5);
     rb_define_singleton_method(mCusolver, "geqrf", rb_cusolver_geqrf, 2);
     rb_define_singleton_method(mCusolver, "orgqr", rb_cusolver_orgqr, 2);
+#ifdef HAVE_CUSOLVERDNXGEEV
+    rb_define_singleton_method(mCusolver, "geev", rb_cusolver_geev, 3);
+    rb_funcall(mCusolver, rb_intern("private_class_method"), 1, ID2SYM(rb_intern("geev")));
+#endif
     rb_funcall(mCusolver, rb_intern("private_class_method"), 11,
                ID2SYM(rb_intern("geqrf")), ID2SYM(rb_intern("orgqr")), ID2SYM(rb_intern("gesvd")),
                ID2SYM(rb_intern("syevd")), ID2SYM(rb_intern("sygvd")), ID2SYM(rb_intern("uplo")),
