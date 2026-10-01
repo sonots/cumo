@@ -4172,6 +4172,59 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "inplace cumsum and cumprod write into the array and the views of it" do
+    views = {
+      "whole" => ->(a) { a },
+      "step 2" => ->(a) { a[true, (0..).step(2)] },
+      "reversed" => ->(a) { a[true, (-1..0).step(-1)] },
+      "transposed" => ->(a) { a.transpose },
+      "index" => ->(a) { a[Cumo::Int32[2, 0, 1], true] }
+    }
+    [Cumo::Int32, Cumo::SFloat, Cumo::DFloat, Cumo::DComplex, Cumo::HFloat, Cumo::BFloat].each do |klass|
+      views.each do |label, view|
+        %i[cumsum cumprod].each do |m|
+          [{}, { axis: 0 }, { axis: 1 }].each do |kw|
+            a = klass.cast((Cumo::Int32.new(3, 6).seq % 3) + 1)
+            assert_inplace_scan(a, view, m, kw, "#{klass} #{label}")
+          end
+        end
+      end
+    end
+    nan = Cumo::DFloat[[1, Float::NAN, 2, 2, 1, Float::NAN], [3, 2, Float::NAN, 1, 2, 1], [Float::NAN, 1, 2, 3, 1, 2]]
+    views.each do |label, view|
+      %i[cumsum cumprod].each do |m|
+        [{ nan: true }, { axis: 0, nan: true }, { axis: 1, nan: true }].each do |kw|
+          assert_inplace_scan(nan.dup, view, m, kw, "DFloat with NaN #{label}")
+        end
+      end
+    end
+  end
+
+  test "inplace cumsum and cumprod write into views of a 3-dimensional array" do
+    views = {
+      "transposed (0, 2, 1)" => ->(a) { a.transpose(0, 2, 1) },
+      "transposed (2, 0, 1)" => ->(a) { a.transpose(2, 0, 1) },
+      "middle step 2" => ->(a) { a[true, (0..).step(2), true] },
+      "index" => ->(a) { a[Cumo::Int32[1, 0], true, true] }
+    }
+    views.each do |label, view|
+      %i[cumsum cumprod].each do |m|
+        [{}, { axis: 1 }, { axis: [0, 1] }, { axis: [1, 2] }].each do |kw|
+          a = Cumo::DFloat.cast((Cumo::Int32.new(2, 4, 3).seq % 3) + 1)
+          assert_inplace_scan(a, view, m, kw, label)
+        end
+      end
+    end
+  end
+
+  def assert_inplace_scan(a, view, method, kw, label)
+    want = a.dup
+    view.call(want)[] = view.call(a).dup.public_send(method, **kw)
+    view.call(a).inplace.public_send(method, **kw)
+    nan = ->(x) { x.respond_to?(:nan?) && x.nan? ? :nan : x }
+    assert_equal(want.to_a.flatten.map(&nan), a.to_a.flatten.map(&nan), "#{label} #{method} #{kw}")
+  end
+
   # cuBLAS reads gemm's alpha and beta in the compute type, so for the complex
   # types they are complex. A real-valued Complex(3) cannot tell that apart
   # from a scalar read as a float; an imaginary part can.
