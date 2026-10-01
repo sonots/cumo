@@ -408,6 +408,42 @@ module Cumo
       [w, left ? left_eigenvectors(a, w) : nil, vr]
     end
 
+    # Computes the Bunch-Kaufman decomposition of a symmetric or Hermitian
+    # matrix, A = U D U^T or A = L D L^T, with U^H and L^H for a Hermitian
+    # one, where U or L is a permuted unit triangular matrix and D is block
+    # diagonal with blocks of order 1 and 2.
+    #
+    # @param a [Cumo::NArray] the square matrix, of which only the uplo
+    #   triangle is read
+    # @param uplo [String] 'U' or 'L'
+    # @param hermitian [Boolean] whether a complex matrix is Hermitian rather
+    #   than symmetric
+    # @return [Array] the permuted triangular factor, D, and the
+    #   permutation, a Cumo::Int32, that makes the factor triangular
+    # @raise [NotImplementedError] for a Hermitian complex matrix if the
+    #   cuSOLVER Cumo is built with has no cusolverDnXhetrf, which CUDA 11
+    #   and 12 do not have
+    def ldl(a, uplo: 'U', hermitian: true)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      bchr = blas_char(a)
+      klass = BLAS_CLASSES[bchr.to_sym]
+      uplo = lapack_uplo(uplo)
+      return [klass.new(0, 0), klass.new(0, 0), Int32.new(0)] if a.shape[0].zero?
+
+      lud = to_column_major(klass, a)
+      ipiv, info = cusolver(:sytrf, lud, uplo, hermitian)
+      fnc = %w[c z].include?(bchr) && hermitian ? "#{bchr}hetrf" : "#{bchr}sytrf"
+      raise LapackError, "the #{info.abs}-th argument of #{fnc} had illegal value" if info.negative?
+
+      if info.positive?
+        warn("the factorization has been completed, but the D[#{info - 1}, #{info - 1}] is " \
+             'exactly zero, indicating that the block diagonal matrix is singular.')
+      end
+      ldl_factors(from_column_major(lud), ipiv.to_a, uplo, hermitian)
+    end
+
     # Computes the eigenvalues of a general square matrix.
     #
     # @param a [Cumo::NArray] the square matrix
@@ -1002,6 +1038,48 @@ module Cumo
       Int32.cast(perm)
     end
 
+    def ldl_factors(lud, piv, uplo, hermitian)
+      n = lud.shape[0]
+      perm = Array.new(n) { |k| k }
+      blocks = []
+      swaps = []
+      upper = uplo == 'U'
+      pending = false
+      (upper ? 0.upto(n - 1) : (n - 1).downto(0)).each do |k|
+        other = upper ? k - 1 : k + 1
+        if piv[k].positive?
+          swaps << [piv[k] - 1, k, upper ? 0..k : k...n]
+        elsif piv[k].negative? && other.between?(0, n - 1) && piv[k] == piv[other] && !pending
+          blocks << [other, k]
+          swaps << [-piv[k] - 1, other, upper ? 0..k : k...n]
+          pending = true
+          next
+        end
+        pending = false
+      end
+
+      factor = upper ? lud.triu : lud.tril
+      diagonal = lud.diag_indices
+      factor[diagonal] = 1
+      d = lud.class.zeros(n, n)
+      d[diagonal] = lud[diagonal]
+      unless blocks.empty?
+        inner = Int32.cast(blocks.map { |r, c| (r * n) + c })
+        mirror = Int32.cast(blocks.map { |r, c| (c * n) + r })
+        off = lud[inner]
+        d[inner] = off
+        d[mirror] = hermitian ? off.conj : off
+        factor[inner] = 0
+      end
+      swaps.each do |i, k, cols|
+        perm[i], perm[k] = perm[k], perm[i]
+        factor[[i, k], cols] = factor[[k, i], cols] if i != k
+      end
+      inverse = Array.new(n)
+      perm.each_with_index { |p, j| inverse[p] = j }
+      [factor, d, Int32.cast(inverse)]
+    end
+
     def eigen_range(vals_range, n)
       return [nil, nil] if vals_range.nil?
 
@@ -1097,6 +1175,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
