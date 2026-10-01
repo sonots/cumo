@@ -745,6 +745,41 @@ module Cumo
       [to_ruby((dg / abs).prod * sign), to_ruby(NMath.log(abs).sum)]
     end
 
+    # Computes the matrix exponential by scaling and squaring with a Pade
+    # approximant, as numo-linalg-alt does.
+    #
+    # @param a [Cumo::NArray] the square matrix
+    # @param ord [Integer] the order of the Pade approximant
+    # @return [Cumo::NArray]
+    def expm(a, ord = 8)
+      raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
+      raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
+
+      a = BLAS_CLASSES[blas_char(a).to_sym].cast(a)
+      n = a.shape[0]
+      return a.dup if n.zero?
+
+      norm = to_ruby(a.abs.max)
+      n_sqr = norm.positive? ? [0, Math.log2(norm).to_i + 1].max : 0
+      a /= 2**n_sqr
+      x = a.dup
+      c = 0.5
+      sgn = 1
+      nume = a.class.eye(n) + (c * a)
+      deno = a.class.eye(n) - (c * a)
+      (2..ord).each do |k|
+        c *= (ord - k + 1).fdiv(k * ((ord * 2) - k + 1))
+        x = matmul(a, x)
+        c_x = c * x
+        nume += c_x
+        deno += sgn * c_x
+        sgn = -sgn
+      end
+      a_expm = solve(deno, nume)
+      n_sqr.times { a_expm = matmul(a_expm, a_expm) }
+      a_expm
+    end
+
     # Computes a square matrix raised to an integer power.
     #
     # @param a [Cumo::NArray] the square matrix
