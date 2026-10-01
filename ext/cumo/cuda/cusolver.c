@@ -167,6 +167,7 @@ typedef struct {
     int64_t nrhs;
     void *a;
     int64_t *ipiv;
+    int *ipiv32;
     void *b;
     char *d_work;
     void *h_work;
@@ -994,6 +995,120 @@ rb_cusolver_geev(VALUE self, VALUE a, VALUE w, VALUE vr)
 }
 #endif // HAVE_CUSOLVERDNXGEEV
 
+#if defined(HAVE_CUSOLVERDNXSYTRF) && defined(HAVE_CUSOLVERDNXHETRF)
+#define CUMO_CUSOLVER_HETRF
+#endif
+
+static VALUE
+sytrf_body(VALUE arg)
+{
+    cusolver_call_t *c = (cusolver_call_t*)arg;
+#ifdef HAVE_CUSOLVERDNXSYTRF
+    size_t d_size = 0;
+    size_t h_size = 0;
+#endif
+
+    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+#ifdef CUMO_CUSOLVER_HETRF
+    if (c->job == 'H') {
+        check_call(cusolverDnXhetrf_bufferSize(
+                c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
+                &d_size, &h_size));
+        if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+        if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
+        cumo_cuda_cusolver_check_status(cusolverDnXhetrf(
+                c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
+                c->d_work, d_size, c->h_work, h_size, c->d_info));
+        c->info = read_info(c->d_info);
+        return Qnil;
+    }
+#endif
+#ifdef HAVE_CUSOLVERDNXSYTRF
+    check_call(cusolverDnXsytrf_bufferSize(
+            c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
+            &d_size, &h_size));
+    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
+    cumo_cuda_cusolver_check_status(cusolverDnXsytrf(
+            c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
+            c->d_work, d_size, c->h_work, h_size, c->d_info));
+#else
+    {
+        cusolverDnHandle_t h = c->ctx.handle;
+        int n = (int)c->n;
+        int lwork = 0;
+        switch (c->dtype) {
+#define SYTRF(prefix, type)                                                                         \
+            check_call(cusolverDn##prefix##sytrf_bufferSize(h, n, (type*)c->a, n, &lwork));       \
+            c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));          \
+            cumo_cuda_cusolver_check_status(cusolverDn##prefix##sytrf(                               \
+                    h, c->uplo, n, (type*)c->a, n, c->ipiv32, (type*)c->d_work, lwork, c->d_info));  \
+            break
+        case CUDA_R_32F: SYTRF(S, float);
+        case CUDA_R_64F: SYTRF(D, double);
+        case CUDA_C_32F: SYTRF(C, cuComplex);
+        default: SYTRF(Z, cuDoubleComplex);
+#undef SYTRF
+        }
+    }
+#endif
+    c->info = read_info(c->d_info);
+    return Qnil;
+}
+
+/*
+  Factorizes a symmetric or Hermitian matrix in place as A = U D U^T or
+  A = L D L^T (U^H and L^H for a Hermitian one) by the Bunch-Kaufman
+  diagonal pivoting, with cusolverDnXsytrf or cusolverDnXhetrf, or the
+  legacy cusolverDn<t>sytrf where cuSOLVER has no Xsytrf.
+
+  @param a [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+    contiguous, of shape [n, n]: the column-major matrix, whose uplo
+    triangle is overwritten with the factors
+  @param uplo [String] "U" or "L"
+  @param hermitian [Boolean] whether a complex a is Hermitian rather than
+    symmetric
+  @return [Array] the pivots as LAPACK answers them, a Cumo::Int64, or a
+    Cumo::Int32 from the legacy sytrf, and the info cuSOLVER reports
+  @raise [NotImplementedError] for a Hermitian a where cuSOLVER has no
+    Xhetrf
+ */
+static VALUE
+rb_cusolver_sytrf(VALUE self, VALUE a, VALUE uplo, VALUE hermitian)
+{
+    cusolver_call_t c = {0};
+    size_t n;
+    VALUE ipiv;
+
+    c.n = check_square_matrix(a, "a");
+    c.dtype = cusolver_dtype(a);
+    c.uplo = parse_uplo(uplo);
+    c.job = RTEST(hermitian) && (c.dtype == CUDA_C_32F || c.dtype == CUDA_C_64F) ? 'H' : 'S';
+#ifndef CUMO_CUSOLVER_HETRF
+    if (c.job == 'H') {
+        rb_raise(rb_eNotImpError, "Cumo is built with a cuSOLVER that has no cusolverDnXhetrf");
+    }
+#endif
+    n = (size_t)c.n;
+#ifdef HAVE_CUSOLVERDNXSYTRF
+    ipiv = cumo_na_new(cumo_cInt64, 1, &n);
+#else
+    ipiv = cumo_na_new(cumo_cInt32, 1, &n);
+#endif
+    if (c.n == 0) {
+        return rb_assoc_new(ipiv, INT2FIX(0));
+    }
+    c.a = cumo_na_get_offset_pointer_for_read_write(a);
+#ifdef HAVE_CUSOLVERDNXSYTRF
+    c.ipiv = (int64_t*)cumo_na_get_offset_pointer_for_write(ipiv);
+#else
+    c.ipiv32 = (int*)cumo_na_get_offset_pointer_for_write(ipiv);
+#endif
+    c.ctx = cusolver_context();
+    rb_ensure(sytrf_body, (VALUE)&c, call_ensure, (VALUE)&c);
+    return rb_assoc_new(ipiv, INT2NUM(c.info));
+}
+
 #endif // CUSOLVER_FOUND
 
 /*
@@ -1037,6 +1152,8 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "gesvd", rb_cusolver_gesvd, 5);
     rb_define_singleton_method(mCusolver, "geqrf", rb_cusolver_geqrf, 2);
     rb_define_singleton_method(mCusolver, "orgqr", rb_cusolver_orgqr, 2);
+    rb_define_singleton_method(mCusolver, "sytrf", rb_cusolver_sytrf, 3);
+    rb_funcall(mCusolver, rb_intern("private_class_method"), 1, ID2SYM(rb_intern("sytrf")));
 #ifdef HAVE_CUSOLVERDNXGEEV
     rb_define_singleton_method(mCusolver, "geev", rb_cusolver_geev, 3);
     rb_funcall(mCusolver, rb_intern("private_class_method"), 1, ID2SYM(rb_intern("geev")));

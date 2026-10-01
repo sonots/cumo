@@ -228,6 +228,8 @@ if have_cusolver?
   $CFLAGS << " -DCUSOLVER_FOUND"
   $CXXFLAGS << " -DCUSOLVER_FOUND"
   have_func('cusolverDnXgeev', 'cusolverDn.h')
+  have_func('cusolverDnXsytrf', 'cusolverDn.h')
+  have_func('cusolverDnXhetrf', 'cusolverDn.h')
 end
 
 have_library('stdc++')
