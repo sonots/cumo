@@ -77,6 +77,17 @@ class LinalgLdlTest < Test::Unit::TestCase
     assert_false(d.to_a.flatten.any? { |v| v.abs.nan? || v.abs.infinite? })
   end
 
+  test "sytrf zeroes the imaginary part of the diagonal itself" do
+    a = Cumo::DComplex[[Complex(-4, 1), 0], [-1, Complex(0, -2)]]
+    begin
+      _, info = Cumo::CUDA::Cusolver.__send__(:sytrf, a, 'U', true)
+    rescue NotImplementedError => e
+      omit(e.message)
+    end
+    assert_equal(0, info)
+    assert_false(a.to_a.flatten.any? { |v| v.abs.nan? || v.abs.infinite? })
+  end
+
   test "an integer matrix is factored in DFloat" do
     u, d, = Cumo::Linalg.ldl(Cumo::Int32[[4, 2], [2, 3]])
     assert_kind_of(Cumo::DFloat, u)

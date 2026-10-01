@@ -1011,6 +1011,10 @@ sytrf_body(VALUE arg)
     c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
 #ifdef CUMO_CUSOLVER_HETRF
     if (c->job == 'H') {
+        size_t elsize = c->dtype == CUDA_C_32F ? sizeof(cuComplex) : sizeof(cuDoubleComplex);
+        cumo_cuda_runtime_check_status(cudaMemset2DAsync(
+                (char*)c->a + elsize / 2, elsize * (size_t)(c->n + 1), 0, elsize / 2, (size_t)c->n,
+                cumo_cuda_stream()));
         check_call(cusolverDnXhetrf_bufferSize(
                 c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
                 &d_size, &h_size));
@@ -1067,7 +1071,8 @@ sytrf_body(VALUE arg)
     triangle is overwritten with the factors
   @param uplo [String] "U" or "L"
   @param hermitian [Boolean] whether a complex a is Hermitian rather than
-    symmetric
+    symmetric. The imaginary part of its diagonal, which LAPACK ignores and
+    Xhetrf reads, is zeroed first.
   @return [Array] the pivots as LAPACK answers them, a Cumo::Int64, or a
     Cumo::Int32 from the legacy sytrf, and the info cuSOLVER reports
   @raise [NotImplementedError] for a Hermitian a where cuSOLVER has no
@@ -1093,6 +1098,9 @@ rb_cusolver_sytrf(VALUE self, VALUE a, VALUE uplo, VALUE hermitian)
 #ifdef HAVE_CUSOLVERDNXSYTRF
     ipiv = cumo_na_new(cumo_cInt64, 1, &n);
 #else
+    if (c.n > INT_MAX) {
+        rb_raise(rb_eArgError, "a is too large for sytrf");
+    }
     ipiv = cumo_na_new(cumo_cInt32, 1, &n);
 #endif
     if (c.n == 0) {
@@ -1153,13 +1161,12 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "geqrf", rb_cusolver_geqrf, 2);
     rb_define_singleton_method(mCusolver, "orgqr", rb_cusolver_orgqr, 2);
     rb_define_singleton_method(mCusolver, "sytrf", rb_cusolver_sytrf, 3);
-    rb_funcall(mCusolver, rb_intern("private_class_method"), 1, ID2SYM(rb_intern("sytrf")));
 #ifdef HAVE_CUSOLVERDNXGEEV
     rb_define_singleton_method(mCusolver, "geev", rb_cusolver_geev, 3);
     rb_funcall(mCusolver, rb_intern("private_class_method"), 1, ID2SYM(rb_intern("geev")));
 #endif
-    rb_funcall(mCusolver, rb_intern("private_class_method"), 11,
-               ID2SYM(rb_intern("geqrf")), ID2SYM(rb_intern("orgqr")), ID2SYM(rb_intern("gesvd")),
+    rb_funcall(mCusolver, rb_intern("private_class_method"), 12,
+               ID2SYM(rb_intern("sytrf")), ID2SYM(rb_intern("geqrf")), ID2SYM(rb_intern("orgqr")), ID2SYM(rb_intern("gesvd")),
                ID2SYM(rb_intern("syevd")), ID2SYM(rb_intern("sygvd")), ID2SYM(rb_intern("uplo")),
                ID2SYM(rb_intern("getrf")), ID2SYM(rb_intern("getrs")),
                ID2SYM(rb_intern("potrf")), ID2SYM(rb_intern("potrs")), ID2SYM(rb_intern("potri")));

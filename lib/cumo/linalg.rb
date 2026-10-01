@@ -433,13 +433,8 @@ module Cumo
       return [klass.new(0, 0), klass.new(0, 0), Int32.new(0)] if a.shape[0].zero?
 
       lud = to_column_major(klass, a)
-      herm = %w[c z].include?(bchr) && hermitian
-      if herm
-        diagonal = Int32.new(a.shape[0]).seq * (a.shape[0] + 1)
-        lud[diagonal] = lud[diagonal].real
-      end
       ipiv, info = cusolver(:sytrf, lud, uplo, hermitian)
-      fnc = herm ? "#{bchr}hetrf" : "#{bchr}sytrf"
+      fnc = %w[c z].include?(bchr) && hermitian ? "#{bchr}hetrf" : "#{bchr}sytrf"
       raise LapackError, "the #{info.abs}-th argument of #{fnc} had illegal value" if info.negative?
 
       if info.positive?
@@ -1064,7 +1059,7 @@ module Cumo
       end
 
       factor = upper ? lud.triu : lud.tril
-      diagonal = Int32.new(n).seq * (n + 1)
+      diagonal = lud.diag_indices
       factor[diagonal] = 1
       d = lud.class.zeros(n, n)
       d[diagonal] = lud[diagonal]
@@ -1078,7 +1073,7 @@ module Cumo
       end
       swaps.each do |i, k, cols|
         perm[i], perm[k] = perm[k], perm[i]
-        factor[[i, k], cols] = factor[[k, i], cols].dup if i != k
+        factor[[i, k], cols] = factor[[k, i], cols] if i != k
       end
       inverse = Array.new(n)
       perm.each_with_index { |p, j| inverse[p] = j }
