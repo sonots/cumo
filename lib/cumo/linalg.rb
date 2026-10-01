@@ -761,19 +761,19 @@ module Cumo
 
       norm = to_ruby(a.abs.max)
       n_sqr = norm.positive? ? [0, Math.log2(norm).to_i + 1].max : 0
-      a /= 2**n_sqr
-      x = a.dup
+      a *= 0.5**n_sqr
+      x = a
       c = 0.5
-      sgn = 1
-      nume = a.class.eye(n) + (c * a)
-      deno = a.class.eye(n) - (c * a)
+      identity = a.class.eye(n)
+      c_a = c * a
+      nume = identity + c_a
+      deno = identity - c_a
       (2..ord).each do |k|
         c *= (ord - k + 1).fdiv(k * ((ord * 2) - k + 1))
         x = matmul(a, x)
         c_x = c * x
         nume += c_x
-        deno += sgn * c_x
-        sgn = -sgn
+        deno = k.even? ? deno + c_x : deno - c_x
       end
       a_expm = solve(deno, nume)
       n_sqr.times { a_expm = matmul(a_expm, a_expm) }

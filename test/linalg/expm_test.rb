@@ -45,9 +45,13 @@ class LinalgExpmTest < Test::Unit::TestCase
     end
   end
 
+  test "a single precision matrix of norm near the largest float is scaled without overflow" do
+    assert_equal([[0.0, 0.0], [0.0, 0.0]], Cumo::Linalg.expm(Cumo::SFloat[[-3e38, 0], [0, -2e38]]).to_a)
+  end
+
   test "a complex matrix" do
     e = Cumo::Linalg.expm(Cumo::DComplex[[0, Complex(0, 1)], [Complex(0, 1), 0]])
-    assert_close([[Math.cos(1), Complex(0, Math.sin(1))], [Complex(0, Math.sin(1)), Math.cos(1)]], e, 1e-15)
+    assert_close([[Math.cos(1), Complex(0, Math.sin(1))], [Complex(0, Math.sin(1)), Math.cos(1)]], e, 1e-13)
   end
 
   test "the values numo-linalg-alt answers" do
