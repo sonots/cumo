@@ -112,7 +112,7 @@ static VALUE
     reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 2);
   <% end %>
   <% unless type_name == 'robject' %>
-    ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP;
+    ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_INPLACE;
   <% end %>
     return cumo_na_ndloop(&ndf, 2, self, reduce);
 }

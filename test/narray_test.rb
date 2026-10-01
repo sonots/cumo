@@ -4172,6 +4172,32 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "inplace cumsum and cumprod write into the array and the views of it" do
+    views = {
+      "whole" => ->(a) { a },
+      "step 2" => ->(a) { a[true, (0..).step(2)] },
+      "reversed" => ->(a) { a[true, (-1..0).step(-1)] },
+      "transposed" => ->(a) { a.transpose },
+      "index" => ->(a) { a[Cumo::Int32[2, 0, 1], true] }
+    }
+    [Cumo::Int32, Cumo::SFloat, Cumo::DFloat, Cumo::DComplex].each do |klass|
+      views.each do |label, view|
+        %i[cumsum cumprod].each do |m|
+          [{}, { axis: 0 }, { axis: 1 }].each do |kw|
+            a = klass.cast((Cumo::Int32.new(3, 6).seq % 3) + 1)
+            want = a.dup
+            view.call(want)[] = view.call(a).dup.public_send(m, **kw)
+            view.call(a).inplace.public_send(m, **kw)
+            assert_equal(want.to_a, a.to_a, "#{klass} #{label} #{m} #{kw}")
+          end
+        end
+      end
+    end
+    a = Cumo::DFloat[[1, Float::NAN, 2], [3, 4, Float::NAN]]
+    a.inplace.cumsum(axis: 1, nan: true)
+    assert_equal([[1.0, 1.0, 3.0], [3.0, 7.0, 7.0]], a.to_a)
+  end
+
   # cuBLAS reads gemm's alpha and beta in the compute type, so for the complex
   # types they are complex. A real-valued Complex(3) cannot tell that apart
   # from a scalar read as a float; an imaginary part can.
