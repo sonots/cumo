@@ -422,7 +422,7 @@ module Cumo
     #   permutation, a Cumo::Int32, that makes the factor triangular
     # @raise [NotImplementedError] for a Hermitian complex matrix if the
     #   cuSOLVER Cumo is built with has no cusolverDnXhetrf, which CUDA 11
-    #   does not have
+    #   and 12 do not have
     def ldl(a, uplo: 'U', hermitian: true)
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
