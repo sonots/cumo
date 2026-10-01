@@ -103,16 +103,13 @@ static VALUE
   <% unless type_name == 'robject' %>
     // The whole array reaches the iterator at once, which is what lets the scan
     // take every row in one call.
-    ndf.flag = CUMO_NDF_HAS_LOOP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_CUM;
+    ndf.flag |= CUMO_NDF_INDEXER_LOOP;
   <% end %>
 
   <% if is_float %>
     reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan, 1, 2);
   <% else %>
     reduce = cumo_na_parse_reduce_dimension(argc, argv, 1, &self, &ndf, 0, 1, 2);
-  <% end %>
-  <% unless type_name == 'robject' %>
-    ndf.flag |= CUMO_NDF_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_INPLACE;
   <% end %>
     return cumo_na_ndloop(&ndf, 2, self, reduce);
 }
