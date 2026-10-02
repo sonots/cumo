@@ -456,6 +456,45 @@ class NArrayExtraTest < CumoTestBase
     end
   end
 
+  def test_triu_and_tril_of_a_stack_of_wide_and_tall_matrices
+    TYPES.each do |dtype|
+      [[2, 3, 4], [2, 4, 3]].each do |shape|
+        a = dtype.new(*shape).seq + 1
+        values = a.to_a
+        [-1, 0, 2].each do |k|
+          upper = values.map { |m| m.each_with_index.map { |row, i| row.each_with_index.map { |x, j| j - i >= k ? x : 0 } } }
+          lower = values.map { |m| m.each_with_index.map { |row, i| row.each_with_index.map { |x, j| j - i <= k ? x : 0 } } }
+          assert_equal(dtype[*upper], a.triu(k))
+          assert_equal(dtype[*lower], a.tril(k))
+        end
+      end
+    end
+  end
+
+  def test_triu_and_tril_through_a_contiguous_view
+    TYPES.each do |dtype|
+      a = dtype.new(4, 3).seq + 1
+      av = a[1..2, true]
+      assert_predicate(av, :contiguous?)
+
+      av.triu!
+      assert_equal(dtype[[1, 2, 3], [4, 5, 6], [0, 8, 9], [10, 11, 12]], a)
+
+      b = dtype.new(4, 3).seq + 1
+      b[1..2, true].tril!
+      assert_equal(dtype[[1, 2, 3], [4, 0, 0], [7, 8, 0], [10, 11, 12]], b)
+    end
+  end
+
+  def test_triu_and_tril_of_an_empty_matrix
+    (TYPES - [Cumo::Bit, Cumo::RObject]).each do |dtype|
+      [[0, 3], [3, 0], [2, 0, 3]].each do |shape|
+        assert_equal(shape, dtype.new(*shape).triu.shape)
+        assert_equal(shape, dtype.new(*shape).tril.shape)
+      end
+    end
+  end
+
   def test_diag_indices
     TYPES.each do |dtype|
       a = dtype[1, 2, 3]

@@ -385,6 +385,30 @@ __global__ void cumo_concat_kernel(char* dst, CUMO_GRID_CONSTANT cumo_concat_par
     }
 }
 
+template<typename V>
+__global__ void cumo_na_zero_triangle_kernel(V* p, uint64_t rows, uint64_t m, uint64_t n, int64_t k, bool below)
+{
+    for (uint64_t r = blockIdx.y; r < rows; r += gridDim.y) {
+        int64_t i = (int64_t)(r % m);
+        int64_t lo = below ? 0 : i + k + 1;
+        int64_t hi = below ? i + k : (int64_t)n;
+        if (lo < 0) { lo = 0; }
+        if (hi > (int64_t)n) { hi = (int64_t)n; }
+        V* row = p + r * n;
+        for (int64_t j = lo + (int64_t)(blockIdx.x * blockDim.x + threadIdx.x); j < hi; j += (int64_t)gridDim.x * blockDim.x) {
+            row[j] = V();
+        }
+    }
+}
+
+template<typename V>
+static void cumo_na_zero_triangle_launch(char* p, uint64_t rows, uint64_t m, uint64_t n, int64_t k, bool below)
+{
+    uint64_t gx = (n + CUMO_MAX_BLOCK_DIM - 1) / CUMO_MAX_BLOCK_DIM;
+    dim3 grid((unsigned int)(gx < 1024 ? gx : 1024), (unsigned int)(rows < 65535 ? rows : 65535));
+    cumo_na_zero_triangle_kernel<V><<<grid, CUMO_MAX_BLOCK_DIM, 0, cumo_cuda_stream()>>>((V*)p, rows, m, n, k, below);
+}
+
 #if defined(__cplusplus)
 extern "C" {
 #if 0
@@ -431,6 +455,21 @@ cumo_na_concat_kernel_launch(char* dst, char** srcs, size_t* row_bytes, int n, s
     case 4: cumo_concat_kernel<uint32_t><<<blocks, CUMO_MAX_BLOCK_DIM, 0, cumo_cuda_stream()>>>(dst, parts, n, (uint32_t)rows, row_width); break;
     case 2: cumo_concat_kernel<uint16_t><<<blocks, CUMO_MAX_BLOCK_DIM, 0, cumo_cuda_stream()>>>(dst, parts, n, (uint32_t)rows, row_width); break;
     default: cumo_concat_kernel<uint8_t><<<blocks, CUMO_MAX_BLOCK_DIM, 0, cumo_cuda_stream()>>>(dst, parts, n, (uint32_t)rows, row_width); break;
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+    return 1;
+}
+
+int
+cumo_na_zero_triangle_kernel_launch(char* p, size_t elmsz, uint64_t rows, uint64_t m, uint64_t n, int64_t k, int below)
+{
+    switch (elmsz) {
+    case 16: cumo_na_zero_triangle_launch<uint4>(p, rows, m, n, k, below); break;
+    case 8: cumo_na_zero_triangle_launch<uint64_t>(p, rows, m, n, k, below); break;
+    case 4: cumo_na_zero_triangle_launch<uint32_t>(p, rows, m, n, k, below); break;
+    case 2: cumo_na_zero_triangle_launch<uint16_t>(p, rows, m, n, k, below); break;
+    case 1: cumo_na_zero_triangle_launch<uint8_t>(p, rows, m, n, k, below); break;
+    default: return 0;
     }
     cumo_cuda_runtime_check_kernel_launch();
     return 1;
