@@ -38,7 +38,7 @@ module MakeMakefileCuda
     # TODO(sonots): Make it possible to configure "nvcc" and additional arguments
     def nvcc_command
       s = MakeMakefileCuda::Nvcc.generate(argv)
-      cmd = "nvcc #{s}"
+      cmd = "nvcc #{s} -Xfatbin=-compress-all"
       if ENV['CUMO_NVCC_GENERATE_CODE']
         ENV['CUMO_NVCC_GENERATE_CODE'].split.each do |code|
           cmd << " --generate-code=#{code}"
