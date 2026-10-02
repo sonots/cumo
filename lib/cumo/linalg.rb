@@ -88,7 +88,10 @@ module Cumo
       9 => 5_914_384_781_877_411_840_000.0,
       13 => 113_250_775_606_021_113_483_283_660_800_000_000.0
     }.freeze
+    POTRF_UPPER_FILL_BELOW = 32
+    DFLOAT_POTRF_UPPER_FILL_BELOW = 800
     private_constant :BLAS_CLASSES, :INTEGER_CLASSES, :PADE_COEFFICIENTS, :PADE_THETAS, :PADE_ERROR_COEFFICIENTS
+    private_constant :POTRF_UPPER_FILL_BELOW, :DFLOAT_POTRF_UPPER_FILL_BELOW
 
     module_function
 
@@ -326,7 +329,7 @@ module Cumo
       raise ArgumentError, 'uplo must be "U" or "L"' unless %w[U L].include?(uplo)
 
       bchr = blas_char(a)
-      c, info = potrf(BLAS_CLASSES[bchr.to_sym], a, uplo)
+      c, info, transposed = potrf(BLAS_CLASSES[bchr.to_sym], a, uplo)
       raise LapackError, "the #{-info}-th argument of #{bchr}potrf had illegal value" if info.negative?
 
       if info.positive?
@@ -335,7 +338,7 @@ module Cumo
               'and the factorization could not be completed.'
       end
 
-      c.contiguous? ? c : c.dup
+      transposed ? c.dup : c
     end
 
     # Computes the inverse of a Hermitian positive definite matrix from the
@@ -983,11 +986,12 @@ module Cumo
 
     def potrf(klass, a, uplo)
       n = a.shape[0]
-      upper_below = klass == DFloat ? 800 : 32
+      upper_below = klass == DFloat ? DFLOAT_POTRF_UPPER_FILL_BELOW : POTRF_UPPER_FILL_BELOW
       fill = n < upper_below ? 'U' : 'L'
-      c = fill == uplo ? to_column_major(klass, a) : klass.new(n, n).store(a)
+      transposed = fill == uplo
+      c = transposed ? to_column_major(klass, a) : klass.new(n, n).store(a)
       info = cusolver(:potrf, c, fill)
-      [fill == uplo ? c.transpose : c, info]
+      [transposed ? c.transpose : c, info, transposed]
     end
 
     def to_column_major(klass, x)

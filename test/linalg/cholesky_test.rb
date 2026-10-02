@@ -85,20 +85,28 @@ class LinalgCholeskyTest < Test::Unit::TestCase
       %w[U L].each do |uplo|
         test "#{type} #{n}x#{n} #{uplo} reads only the uplo triangle" do
           b = type.new(n, n).rand(-1, 1)
+          b += type.new(n, n).rand(-1, 1) * Complex(0, 1) if [Cumo::SComplex, Cumo::DComplex].include?(type)
           a = (b.dot(b.transpose.conj) / n) + type.eye(n)
           noise = type.new(n, n).rand(-9, 9)
           g = uplo == 'U' ? a.triu + noise.tril(-1) : a.tril + noise.triu(1)
           c = Cumo::Linalg.cholesky(g, uplo: uplo)
           assert_equal(0.0, (uplo == 'U' ? c.tril(-1) : c.triu(1)).abs.max.to_f)
           product = uplo == 'U' ? c.transpose.conj.dot(c) : c.dot(c.transpose.conj)
-          assert_operator((product - a).abs.max.to_f, :<, tol * n)
+          assert_operator((product - a).abs.max.to_f, :<, tol * 10)
           f = Cumo::Linalg.cho_fact(g, uplo: uplo)
-          other = uplo == 'U' ? [f.tril(-1), g.tril(-1)] : [f.triu(1), g.triu(1)]
-          assert_equal(other[1].to_a, other[0].to_a)
-          assert_equal((uplo == 'U' ? c.triu : c.tril).to_a, (uplo == 'U' ? f.triu : f.tril).to_a)
+          other = uplo == 'U' ? f.tril(-1) - g.tril(-1) : f.triu(1) - g.triu(1)
+          own = uplo == 'U' ? f.triu - c : f.tril - c
+          assert_equal([0.0, 0.0], [other.abs.max.to_f, own.abs.max.to_f])
         end
       end
     end
+  end
+
+  test "cho_fact of a 1 x 1 matrix answers an array of its own" do
+    a = Cumo::DFloat[[4]]
+    f = Cumo::Linalg.cho_fact(a)
+    assert_equal([[2.0]], f.to_a)
+    assert_not_match(/view/, f.inspect)
   end
 
   test "an integer matrix" do
