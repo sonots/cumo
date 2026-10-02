@@ -56,22 +56,6 @@ narray/ndloop_kernel
 narray/data
 narray/data_kernel
 narray/sort_kernel
-narray/types/bit
-narray/types/int8
-narray/types/int16
-narray/types/int32
-narray/types/int64
-narray/types/uint8
-narray/types/uint16
-narray/types/uint32
-narray/types/uint64
-narray/types/hfloat
-narray/types/bfloat
-narray/types/sfloat
-narray/types/dfloat
-narray/types/scomplex
-narray/types/dcomplex
-narray/types/robject
 narray/math
 narray/SFMT
 narray/struct
@@ -86,8 +70,9 @@ cuda/cudnn
 cuda/cudnn_impl
 cuda/cusolver
 )
-srcs += %w[bit int8 int16 int32 int64 uint8 uint16 uint32 uint64 hfloat bfloat sfloat dfloat scomplex dcomplex robject].product(KERNEL_PARTS).map do |type_name, part|
-  "narray/types/" + kernel_part_basename(type_name, part)
+%w[bit int8 int16 int32 int64 uint8 uint16 uint32 uint64 hfloat bfloat sfloat dfloat scomplex dcomplex robject].each do |type_name|
+  srcs << "narray/types/#{type_name}"
+  srcs.concat(KERNEL_PARTS.map { |part| "narray/types/" + kernel_part_basename(type_name, part) })
 end
 
 $objs = srcs.map { |src| "#{src}.o" }

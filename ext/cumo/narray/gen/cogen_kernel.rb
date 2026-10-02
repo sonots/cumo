@@ -40,21 +40,25 @@ erb_dir = ["tmpl"]
 erb_dir.unshift("tmpl_bit") if (type_name == "bit")
 erb_dir.map! { |d| File.join(thisdir, d) }
 
-REDUCE_VARIANT_TEMPLATES = %w[accum accum_index accum_arg].freeze
-REDUCE_TEMPLATES = %w[cum layer_norm rms_norm softmax bit_count bit_reduce bit_stat].freeze
+TEMPLATE_KERNEL_PARTS = {
+  "accum" => %w[reduce reduce_nan],
+  "accum_index" => %w[reduce reduce_nan],
+  "accum_arg" => %w[reduce reduce_nan],
+  "accum_binary" => %w[reduce reduce_nan reduce_from],
+  "cum" => %w[reduce],
+  "layer_norm" => %w[reduce],
+  "rms_norm" => %w[reduce],
+  "softmax" => %w[reduce],
+  "bit_count" => %w[reduce],
+  "bit_reduce" => %w[reduce],
+  "bit_stat" => %w[reduce],
+}.freeze
 
 abort "unknown kernel part: #{$kernel_part}" unless KERNEL_PARTS.include?($kernel_part)
 
 class ErbPP
-  # A template that launches reductions is emitted into every part that holds
-  # one of its forms, and each launcher picks its own part.
   def kernel_parts
-    case get(:erb_base)
-    when "accum_binary" then %w[reduce reduce_nan reduce_from]
-    when *REDUCE_VARIANT_TEMPLATES then %w[reduce reduce_nan]
-    when *REDUCE_TEMPLATES then %w[reduce]
-    else %w[main]
-    end
+    TEMPLATE_KERNEL_PARTS.fetch(get(:erb_base), %w[main])
   end
 
   def kernel_part?(nan: false, from: nil)
