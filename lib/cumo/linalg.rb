@@ -198,10 +198,7 @@ module Cumo
       ipiv = pivots(ipiv, n)
       raise ArgumentError, 'input array b must be 1 or 2-dimensional' unless [1, 2].include?(b.ndim)
 
-      x, info = getrs(klass, to_column_major(klass, lu), ipiv, b, trans)
-      raise LapackError, "the #{info.abs}-th argument of getrs had illegal value" if info.negative?
-
-      x
+      getrs(klass, to_column_major(klass, lu), ipiv, b, trans)
     end
 
     # Computes the LU factorization of a matrix and returns its separate
@@ -246,7 +243,7 @@ module Cumo
       lu = to_column_major(klass, lu)
       raise LapackError, 'the matrix is singular and its inverse could not be computed' if singular?(lu)
 
-      invert(klass, lu, ipiv, "#{bchr}getri")
+      invert(klass, lu, ipiv)
     end
 
     # Solves A X = B for a square matrix A.
@@ -276,10 +273,7 @@ module Cumo
         return klass.new(*b.shape).store(b)
       end
 
-      x, info = getrs(klass, lu, ipiv, b, 'N')
-      raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
-
-      x
+      getrs(klass, lu, ipiv, b, 'N')
     end
 
     # Computes the inverse of a square matrix.
@@ -298,7 +292,7 @@ module Cumo
       raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
       raise LapackError, 'The matrix is singular, and the inverse matrix could not be computed.' if info.positive?
 
-      invert(klass, lu, ipiv, 'getrf')
+      invert(klass, lu, ipiv)
     end
 
     # Computes the Cholesky factorization of a Hermitian positive definite
@@ -392,8 +386,7 @@ module Cumo
       raise ArgumentError, 'input array b must be 1- or 2-dimensional' unless [1, 2].include?(b.ndim)
 
       x = to_column_major(klass, b)
-      info = cusolver(:potrs, to_column_major(klass, a), x, fill)
-      raise LapackError, "the #{-info}-th argument of potrs had illegal value" if info.negative?
+      cusolver(:potrs, to_column_major(klass, a), x, fill)
 
       from_column_major(x)
     end
@@ -751,8 +744,7 @@ module Cumo
 
       buf = to_column_major(klass, a)
       tau = klass.new(k)
-      info = cusolver(:geqrf, buf, tau)
-      raise LapackError, "the #{-info}-th argument of #{bchr}geqrf had illegal value" if info.negative?
+      cusolver(:geqrf, buf, tau)
 
       qr = buf.transpose.dup
       return [qr, tau] if mode == 'raw'
@@ -767,8 +759,7 @@ module Cumo
           else
             klass.zeros(m, m).tap { |x| x[0...n, true] = buf }
           end
-      info = cusolver(:orgqr, q, tau)
-      raise LapackError, "the #{-info}-th argument of #{bchr}orgqr had illegal value" if info.negative?
+      cusolver(:orgqr, q, tau)
 
       [q.transpose.dup, r]
     end
@@ -986,8 +977,8 @@ module Cumo
 
     def getrs(klass, lu, ipiv, b, trans)
       x = to_column_major(klass, b)
-      info = cusolver(:getrs, lu, ipiv, x, trans)
-      [from_column_major(x), info]
+      cusolver(:getrs, lu, ipiv, x, trans)
+      from_column_major(x)
     end
 
     def potrf(klass, a, uplo)
@@ -1302,13 +1293,12 @@ module Cumo
       cusolver(:uplo, uplo)
     end
 
-    def invert(klass, lu, ipiv, routine)
+    def invert(klass, lu, ipiv)
       n = lu.shape[0]
       return klass.new(0, 0) if n.zero?
 
       x = klass.eye(n)
-      info = cusolver(:getrs, lu, ipiv, x, 'N')
-      raise LapackError, "the #{info.abs}-th argument of #{routine} had illegal value" if info.negative?
+      cusolver(:getrs, lu, ipiv, x, 'N')
 
       x.transpose.dup
     end

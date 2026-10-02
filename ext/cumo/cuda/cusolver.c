@@ -92,9 +92,38 @@ rb_cusolver_version(VALUE self)
 }
 
 typedef struct {
+    char *work;
+    size_t size;
+    int *info;
+    cudaEvent_t done;
+} cusolver_scratch_t;
+
+typedef struct {
     cusolverDnHandle_t handle;
     cusolverDnParams_t params;
+    cusolver_scratch_t *scratch;
 } cusolver_context_t;
+
+#define CUSOLVER_KEPT_WORK_MAX ((size_t)32 << 20)
+
+static cusolver_scratch_t*
+cusolver_scratch(void)
+{
+    static cusolver_scratch_t *scratch = 0;
+    cusolver_scratch_t *s;
+
+    if (scratch == 0) {
+        scratch = ZALLOC_N(cusolver_scratch_t, cumo_cuda_runtime_get_device_count());
+    }
+    s = &scratch[cumo_cuda_runtime_get_device()];
+    if (s->info == NULL) {
+        cumo_cuda_runtime_check_status(cudaEventCreateWithFlags(&s->done, cudaEventDisableTiming));
+        s->info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    } else {
+        cumo_cuda_runtime_check_status(cudaStreamWaitEvent(cumo_cuda_stream(), s->done, 0));
+    }
+    return s;
+}
 
 static cusolver_context_t
 cusolver_context(void)
@@ -112,6 +141,7 @@ cusolver_context(void)
         check_call(cusolverDnCreateParams(&contexts[device].params));
     }
     check_call(cusolverDnSetStream(contexts[device].handle, cumo_cuda_stream()));
+    contexts[device].scratch = cusolver_scratch();
     return contexts[device];
 }
 
@@ -170,10 +200,31 @@ typedef struct {
     int *ipiv32;
     void *b;
     char *d_work;
+    char *loose_work;
     void *h_work;
     int *d_info;
     int info;
 } cusolver_call_t;
+
+static char*
+cusolver_work(cusolver_call_t *c, size_t size)
+{
+    cusolver_scratch_t *s = c->ctx.scratch;
+
+    if (size > CUSOLVER_KEPT_WORK_MAX) {
+        c->loose_work = cumo_cuda_runtime_malloc(size);
+        return c->loose_work;
+    }
+    if (size > s->size) {
+        char *old = s->work;
+        s->work = NULL;
+        s->size = 0;
+        if (old != NULL) { cumo_cuda_runtime_return_scratch(old, 1, NULL); }
+        s->work = cumo_cuda_runtime_malloc(size);
+        s->size = size;
+    }
+    return s->work;
+}
 
 static int
 read_info(int *d_info)
@@ -192,8 +243,8 @@ getrf_body(VALUE arg)
 
     check_call(cusolverDnXgetrf_bufferSize(
             c->ctx.handle, c->ctx.params, c->m, c->n, c->dtype, c->a, c->m, c->dtype, &d_size, &h_size));
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
-    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    c->d_info = c->ctx.scratch->info;
+    if (d_size > 0) c->d_work = cusolver_work(c, d_size);
     if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
     cumo_cuda_cusolver_check_status(cusolverDnXgetrf(
             c->ctx.handle, c->ctx.params, c->m, c->n, c->dtype, c->a, c->m, c->ipiv,
@@ -207,11 +258,10 @@ getrs_body(VALUE arg)
 {
     cusolver_call_t *c = (cusolver_call_t*)arg;
 
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    c->d_info = c->ctx.scratch->info;
     cumo_cuda_cusolver_check_status(cusolverDnXgetrs(
             c->ctx.handle, c->ctx.params, c->trans, c->n, c->nrhs, c->dtype, c->a, c->n, c->ipiv,
             c->dtype, c->b, c->n, c->d_info));
-    c->info = read_info(c->d_info);
     return Qnil;
 }
 
@@ -224,8 +274,8 @@ potrf_body(VALUE arg)
 
     check_call(cusolverDnXpotrf_bufferSize(
             c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->dtype, &d_size, &h_size));
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
-    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    c->d_info = c->ctx.scratch->info;
+    if (d_size > 0) c->d_work = cusolver_work(c, d_size);
     if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
     cumo_cuda_cusolver_check_status(cusolverDnXpotrf(
             c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n,
@@ -239,11 +289,10 @@ potrs_body(VALUE arg)
 {
     cusolver_call_t *c = (cusolver_call_t*)arg;
 
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    c->d_info = c->ctx.scratch->info;
     cumo_cuda_cusolver_check_status(cusolverDnXpotrs(
             c->ctx.handle, c->ctx.params, c->uplo, c->n, c->nrhs, c->dtype, c->a, c->n,
             c->dtype, c->b, c->n, c->d_info));
-    c->info = read_info(c->d_info);
     return Qnil;
 }
 
@@ -255,11 +304,11 @@ potri_body(VALUE arg)
     int n = (int)c->n;
     int lwork = 0;
 
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    c->d_info = c->ctx.scratch->info;
     switch (c->dtype) {
 #define POTRI(prefix, type)                                                                        \
         check_call(cusolverDn##prefix##potri_bufferSize(h, c->uplo, n, (type*)c->a, n, &lwork));  \
-        c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));             \
+        c->d_work = cusolver_work(c, sizeof(type) * (lwork > 0 ? lwork : 1));                     \
         cumo_cuda_cusolver_check_status(cusolverDn##prefix##potri(                                  \
                 h, c->uplo, n, (type*)c->a, n, (type*)c->d_work, lwork, c->d_info));                \
         break
@@ -284,7 +333,7 @@ syevd_body(VALUE arg)
     size_t d_size = 0;
     size_t h_size = 0;
 
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    c->d_info = c->ctx.scratch->info;
     if (c->range) {
         check_call(cusolverDnXsyevdx_bufferSize(
                 c->ctx.handle, c->ctx.params, c->jobz, CUSOLVER_EIG_RANGE_I, CUBLAS_FILL_MODE_UPPER, c->n,
@@ -295,7 +344,7 @@ syevd_body(VALUE arg)
                 c->ctx.handle, c->ctx.params, c->jobz, CUBLAS_FILL_MODE_UPPER, c->n,
                 c->dtype, c->a, c->n, wtype, c->w, c->dtype, &d_size, &h_size));
     }
-    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    if (d_size > 0) c->d_work = cusolver_work(c, d_size);
     if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
     if (c->range) {
         cumo_cuda_cusolver_check_status(cusolverDnXsyevdx(
@@ -325,21 +374,21 @@ sygvd_body(VALUE arg)
     int meig = n;
     int lwork = 0;
 
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    c->d_info = c->ctx.scratch->info;
     switch (c->dtype) {
 #define SYGVD(prefix, type, wtype)                                                                          \
         if (c->range) {                                                                                     \
             check_call(cusolverDn##prefix##dx_bufferSize(                                                   \
                     h, itype, c->jobz, CUSOLVER_EIG_RANGE_I, uplo, n, (type*)c->a, n, (type*)c->b, n,        \
                     0, 0, il, iu, &meig, (wtype*)c->w, &lwork));                                              \
-            c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));                     \
+            c->d_work = cusolver_work(c, sizeof(type) * (lwork > 0 ? lwork : 1));                             \
             cumo_cuda_cusolver_check_status(cusolverDn##prefix##dx(                                          \
                     h, itype, c->jobz, CUSOLVER_EIG_RANGE_I, uplo, n, (type*)c->a, n, (type*)c->b, n,        \
                     0, 0, il, iu, &meig, (wtype*)c->w, (type*)c->d_work, lwork, c->d_info));                  \
         } else {                                                                                            \
             check_call(cusolverDn##prefix##d_bufferSize(                                                    \
                     h, itype, c->jobz, uplo, n, (type*)c->a, n, (type*)c->b, n, (wtype*)c->w, &lwork));       \
-            c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));                     \
+            c->d_work = cusolver_work(c, sizeof(type) * (lwork > 0 ? lwork : 1));                             \
             cumo_cuda_cusolver_check_status(cusolverDn##prefix##d(                                           \
                     h, itype, c->jobz, uplo, n, (type*)c->a, n, (type*)c->b, n, (wtype*)c->w,                  \
                     (type*)c->d_work, lwork, c->d_info));                                                     \
@@ -368,8 +417,8 @@ gesvd_body(VALUE arg)
     check_call(cusolverDnXgesvd_bufferSize(
             c->ctx.handle, c->ctx.params, c->job, c->job, c->m, c->n, c->dtype, c->a, c->m,
             stype, c->w, c->dtype, c->u, c->m, c->dtype, c->vt, ldvt, c->dtype, &d_size, &h_size));
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
-    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    c->d_info = c->ctx.scratch->info;
+    if (d_size > 0) c->d_work = cusolver_work(c, d_size);
     if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
     cumo_cuda_cusolver_check_status(cusolverDnXgesvd(
             c->ctx.handle, c->ctx.params, c->job, c->job, c->m, c->n, c->dtype, c->a, c->m,
@@ -389,13 +438,13 @@ geqrf_body(VALUE arg)
     check_call(cusolverDnXgeqrf_bufferSize(
             c->ctx.handle, c->ctx.params, c->m, c->n, c->dtype, c->a, c->m, c->dtype, c->tau, c->dtype,
             &d_size, &h_size));
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
-    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    c->d_info = c->ctx.scratch->info;
+    if (d_size > 0) c->d_work = cusolver_work(c, d_size);
     if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
     cumo_cuda_cusolver_check_status(cusolverDnXgeqrf(
             c->ctx.handle, c->ctx.params, c->m, c->n, c->dtype, c->a, c->m, c->dtype, c->tau, c->dtype,
             c->d_work, d_size, c->h_work, h_size, c->d_info));
-    c->info = read_info(c->d_info);
+    if (h_size > 0) { cumo_cuda_runtime_check_status(cudaStreamSynchronize(cumo_cuda_stream())); }
     return Qnil;
 }
 
@@ -409,11 +458,11 @@ orgqr_body(VALUE arg)
     int k = (int)c->k;
     int lwork = 0;
 
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    c->d_info = c->ctx.scratch->info;
     switch (c->dtype) {
 #define ORGQR(fn, type)                                                                             \
         check_call(cusolverDn##fn##_bufferSize(h, m, n, k, (type*)c->a, m, (type*)c->tau, &lwork));  \
-        c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));                 \
+        c->d_work = cusolver_work(c, sizeof(type) * (lwork > 0 ? lwork : 1));                         \
         cumo_cuda_cusolver_check_status(cusolverDn##fn(                                              \
                 h, m, n, k, (type*)c->a, m, (type*)c->tau, (type*)c->d_work, lwork, c->d_info));      \
         break
@@ -423,7 +472,6 @@ orgqr_body(VALUE arg)
     default: ORGQR(Zungqr, cuDoubleComplex);
 #undef ORGQR
     }
-    c->info = read_info(c->d_info);
     return Qnil;
 }
 
@@ -431,8 +479,8 @@ static VALUE
 call_ensure(VALUE arg)
 {
     cusolver_call_t *c = (cusolver_call_t*)arg;
-    cumo_cuda_runtime_return_scratch(c->d_work, 1, NULL);
-    cumo_cuda_runtime_return_scratch((char*)c->d_info, 0, NULL);
+    if (c->ctx.scratch != NULL) { cudaEventRecord(c->ctx.scratch->done, cumo_cuda_stream()); }
+    cumo_cuda_runtime_return_scratch(c->loose_work, c->loose_work != NULL, NULL);
     ruby_xfree(c->h_work);
     return Qnil;
 }
@@ -500,7 +548,7 @@ rb_cusolver_getrf(VALUE self, VALUE a)
   @param b [Cumo::NArray] of the class of lu, contiguous, of shape [n] or
     [nrhs, n]: the column-major right-hand sides, overwritten with X
   @param trans [String] "N", "T" or "C"
-  @return [Integer] the info cuSOLVER reports
+  @return [nil]
  */
 static int64_t check_square_matrix(VALUE a, const char *name);
 
@@ -537,7 +585,7 @@ rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans)
     }
     c.nrhs = CUMO_NA_NDIM(nb) == 1 ? 1 : (int64_t)CUMO_NA_SHAPE(nb)[0];
     if (c.n == 0 || c.nrhs == 0) {
-        return INT2FIX(0);
+        return Qnil;
     }
     c.ipiv = (int64_t*)cumo_na_get_offset_pointer_for_read(ipiv);
     check_pivots(c.ipiv, c.n);
@@ -545,7 +593,7 @@ rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans)
     c.b = cumo_na_get_offset_pointer_for_read_write(b);
     c.ctx = cusolver_context();
     rb_ensure(getrs_body, (VALUE)&c, call_ensure, (VALUE)&c);
-    return INT2NUM(c.info);
+    return Qnil;
 }
 
 static char
@@ -623,7 +671,7 @@ rb_cusolver_potrf(VALUE self, VALUE a, VALUE uplo)
   @param b [Cumo::NArray] of the class of a, contiguous, of shape [n] or
     [nrhs, n]: the column-major right-hand sides, overwritten with X
   @param uplo [String] "U" or "L"
-  @return [Integer] the info cuSOLVER reports
+  @return [nil]
  */
 static VALUE
 rb_cusolver_potrs(VALUE self, VALUE a, VALUE b, VALUE uplo)
@@ -644,13 +692,13 @@ rb_cusolver_potrs(VALUE self, VALUE a, VALUE b, VALUE uplo)
     }
     c.nrhs = CUMO_NA_NDIM(nb) == 1 ? 1 : (int64_t)CUMO_NA_SHAPE(nb)[0];
     if (c.n == 0 || c.nrhs == 0) {
-        return INT2FIX(0);
+        return Qnil;
     }
     c.a = cumo_na_get_offset_pointer_for_read(a);
     c.b = cumo_na_get_offset_pointer_for_read_write(b);
     c.ctx = cusolver_context();
     rb_ensure(potrs_body, (VALUE)&c, call_ensure, (VALUE)&c);
-    return INT2NUM(c.info);
+    return Qnil;
 }
 
 /*
@@ -872,7 +920,7 @@ check_tau(VALUE tau, VALUE a, int64_t k)
     contiguous, of shape [n, m]: the column-major m by n matrix, overwritten
   @param tau [Cumo::NArray] of the class of a, contiguous, of length
     min(m, n): filled with the scalar factors of the reflectors
-  @return [Integer] the info cuSOLVER reports
+  @return [nil]
  */
 static VALUE
 rb_cusolver_geqrf(VALUE self, VALUE a, VALUE tau)
@@ -885,13 +933,13 @@ rb_cusolver_geqrf(VALUE self, VALUE a, VALUE tau)
     c.n = (int64_t)CUMO_NA_SHAPE(na)[0];
     check_tau(tau, a, c.m < c.n ? c.m : c.n);
     if (c.m == 0 || c.n == 0) {
-        return INT2FIX(0);
+        return Qnil;
     }
     c.a = cumo_na_get_offset_pointer_for_read_write(a);
     c.tau = cumo_na_get_offset_pointer_for_write(tau);
     c.ctx = cusolver_context();
     rb_ensure(geqrf_body, (VALUE)&c, call_ensure, (VALUE)&c);
-    return INT2NUM(c.info);
+    return Qnil;
 }
 
 /*
@@ -901,7 +949,7 @@ rb_cusolver_geqrf(VALUE self, VALUE a, VALUE tau)
   @param a [Cumo::NArray] contiguous, of shape [n, m] with m >= n: the
     column-major reflectors, overwritten with Q
   @param tau [Cumo::NArray] of the class of a, of length k
-  @return [Integer] the info cuSOLVER reports
+  @return [nil]
  */
 static VALUE
 rb_cusolver_orgqr(VALUE self, VALUE a, VALUE tau)
@@ -920,13 +968,13 @@ rb_cusolver_orgqr(VALUE self, VALUE a, VALUE tau)
         rb_raise(rb_eArgError, "a is too large for orgqr");
     }
     if (c.n == 0) {
-        return INT2FIX(0);
+        return Qnil;
     }
     c.a = cumo_na_get_offset_pointer_for_read_write(a);
     c.tau = cumo_na_get_offset_pointer_for_read(tau);
     c.ctx = cusolver_context();
     rb_ensure(orgqr_body, (VALUE)&c, call_ensure, (VALUE)&c);
-    return INT2NUM(c.info);
+    return Qnil;
 }
 
 #ifdef HAVE_CUSOLVERDNXGEEV
@@ -941,8 +989,8 @@ geev_body(VALUE arg)
     check_call(cusolverDnXgeev_bufferSize(
             c->ctx.handle, c->ctx.params, CUSOLVER_EIG_MODE_NOVECTOR, c->jobz, c->n, c->dtype, c->a, c->n,
             wtype, c->w, c->dtype, NULL, c->n, c->dtype, c->u, c->n, c->dtype, &d_size, &h_size));
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
-    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    c->d_info = c->ctx.scratch->info;
+    if (d_size > 0) c->d_work = cusolver_work(c, d_size);
     if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
     cumo_cuda_cusolver_check_status(cusolverDnXgeev(
             c->ctx.handle, c->ctx.params, CUSOLVER_EIG_MODE_NOVECTOR, c->jobz, c->n, c->dtype, c->a, c->n,
@@ -1008,7 +1056,7 @@ sytrf_body(VALUE arg)
     size_t h_size = 0;
 #endif
 
-    c->d_info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
+    c->d_info = c->ctx.scratch->info;
 #ifdef CUMO_CUSOLVER_HETRF
     if (c->job == 'H') {
         size_t elsize = c->dtype == CUDA_C_32F ? sizeof(cuComplex) : sizeof(cuDoubleComplex);
@@ -1018,7 +1066,7 @@ sytrf_body(VALUE arg)
         check_call(cusolverDnXhetrf_bufferSize(
                 c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
                 &d_size, &h_size));
-        if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+        if (d_size > 0) c->d_work = cusolver_work(c, d_size);
         if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
         cumo_cuda_cusolver_check_status(cusolverDnXhetrf(
                 c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
@@ -1031,7 +1079,7 @@ sytrf_body(VALUE arg)
     check_call(cusolverDnXsytrf_bufferSize(
             c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
             &d_size, &h_size));
-    if (d_size > 0) c->d_work = cumo_cuda_runtime_malloc(d_size);
+    if (d_size > 0) c->d_work = cusolver_work(c, d_size);
     if (h_size > 0) c->h_work = ruby_xmalloc(h_size);
     cumo_cuda_cusolver_check_status(cusolverDnXsytrf(
             c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n, c->ipiv, c->dtype,
@@ -1044,7 +1092,7 @@ sytrf_body(VALUE arg)
         switch (c->dtype) {
 #define SYTRF(prefix, type)                                                                         \
             check_call(cusolverDn##prefix##sytrf_bufferSize(h, n, (type*)c->a, n, &lwork));       \
-            c->d_work = cumo_cuda_runtime_malloc(sizeof(type) * (lwork > 0 ? lwork : 1));          \
+            c->d_work = cusolver_work(c, sizeof(type) * (lwork > 0 ? lwork : 1));                  \
             cumo_cuda_cusolver_check_status(cusolverDn##prefix##sytrf(                               \
                     h, c->uplo, n, (type*)c->a, n, c->ipiv32, (type*)c->d_work, lwork, c->d_info));  \
             break
