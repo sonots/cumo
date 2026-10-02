@@ -486,8 +486,30 @@ class NArrayExtraTest < CumoTestBase
     end
   end
 
+  def test_triu_and_tril_of_bit
+    a = Cumo::Bit.cast(Cumo::Int32.ones(3, 3))
+    assert_equal(Cumo::Bit[[1, 1, 1], [0, 1, 1], [0, 0, 1]], a.triu)
+    assert_equal(Cumo::Bit[[0, 0, 0], [1, 0, 0], [1, 1, 0]], a.tril(-1))
+  end
+
+  def test_triu_and_tril_with_a_k_that_is_not_an_integer
+    a = Cumo::DFloat.new(3, 3).seq + 1
+    assert_equal(Cumo::DFloat[[1, 2, 3], [4, 5, 6], [0, 8, 9]], a.triu(-0.5))
+    assert_equal(Cumo::DFloat[[1, 2, 0], [4, 5, 6], [7, 8, 9]], a.tril(0.5))
+    assert_equal(a.triu(1), a.triu(Cumo::Int32[0, 1, 2][1]))
+    assert_equal(a.tril(1), a.tril(Cumo::Int32[0, 1, 2][1]))
+  end
+
+  def test_triu_and_tril_beyond_one_launch_of_rows_and_columns
+    assert_equal(3, Cumo::Int32.ones(70_000, 2).triu.sum.to_i)
+    assert_equal(139_999, Cumo::Int32.ones(70_000, 2).tril.sum.to_i)
+    assert_equal(105_000, Cumo::Int32.ones(35_000, 2, 2).triu.sum.to_i)
+    assert_equal(50_000, Cumo::Int32.ones(1, 200_000).triu(150_000).sum.to_i)
+    assert_equal(150_001, Cumo::Int32.ones(1, 200_000).tril(150_000).sum.to_i)
+  end
+
   def test_triu_and_tril_of_an_empty_matrix
-    (TYPES - [Cumo::Bit, Cumo::RObject]).each do |dtype|
+    TYPES.each do |dtype|
       [[0, 3], [3, 0], [2, 0, 3]].each do |shape|
         assert_equal(shape, dtype.new(*shape).triu.shape)
         assert_equal(shape, dtype.new(*shape).tril.shape)

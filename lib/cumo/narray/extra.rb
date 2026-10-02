@@ -1063,7 +1063,7 @@ module Cumo
       end
       if !contiguous?
         store(triu(k))
-      elsif !zero_below_diagonal(k)
+      elsif !(k.is_a?(Integer) && zero_below_diagonal(k))
         *shp, m, n = shape
         idx = tril_indices(k - 1)
         reshape!(*shp, m * n)
@@ -1103,7 +1103,7 @@ module Cumo
       end
       if !contiguous?
         store(tril(k))
-      elsif !zero_above_diagonal(k)
+      elsif !(k.is_a?(Integer) && zero_above_diagonal(k))
         idx = triu_indices(k + 1)
         *shp, m, n = shape
         reshape!(*shp, m * n)

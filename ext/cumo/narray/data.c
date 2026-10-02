@@ -902,7 +902,7 @@ int cumo_na_concat_kernel_launch(char* dst, char** srcs, size_t* row_bytes, int 
 int cumo_na_zero_triangle_kernel_launch(char* p, size_t elmsz, uint64_t rows, uint64_t m, uint64_t n, int64_t k, int below);
 
 static int
-cumo_na_concat_plain_p(VALUE a)
+cumo_na_plain_contiguous_p(VALUE a)
 {
     return !CUMO_TEST_COLUMN_MAJOR(a) && !CUMO_TEST_BYTE_SWAPPED(a) && cumo_na_check_contiguous(a) == Qtrue;
 }
@@ -944,7 +944,7 @@ cumo_na_concat_parts(VALUE self, VALUE parts, VALUE vaxis)
         srcs[k] = cumo_na_get_offset_pointer_for_read(RARRAY_AREF(parts, k));
     }
 
-    if (RARRAY_LEN(parts) != n || rb_obj_class(self) != klass || !cumo_na_concat_plain_p(self)) { return Qfalse; }
+    if (RARRAY_LEN(parts) != n || rb_obj_class(self) != klass || !cumo_na_plain_contiguous_p(self)) { return Qfalse; }
     CumoGetNArray(self, na);
     nd = na->ndim;
     if (axis < 0 || axis >= nd) { return Qfalse; }
@@ -954,7 +954,7 @@ cumo_na_concat_parts(VALUE self, VALUE parts, VALUE vaxis)
 
     for (k = 0; k < n; ++k) {
         a = RARRAY_AREF(parts, k);
-        if (rb_obj_class(a) != klass || !cumo_na_concat_plain_p(a)) { return Qfalse; }
+        if (rb_obj_class(a) != klass || !cumo_na_plain_contiguous_p(a)) { return Qfalse; }
         CumoGetNArray(a, nb);
         if (nb->ndim > nd) { return Qfalse; }
         pd = nd - nb->ndim;
@@ -990,7 +990,7 @@ cumo_na_zero_triangle(VALUE self, VALUE vk, int below)
 
     if (RTEST(rb_obj_is_kind_of(self, cumo_cBit)) || RTEST(rb_obj_is_kind_of(self, cumo_cRObject))) { return Qfalse; }
     p = cumo_na_get_offset_pointer_for_write(self);
-    if (!cumo_na_concat_plain_p(self) || cumo_na_get_offset_pointer_for_write(self) != p) { return Qfalse; }
+    if (!cumo_na_plain_contiguous_p(self)) { return Qfalse; }
     CumoGetNArray(self, na);
     if (na->ndim < 2) { return Qfalse; }
     if (na->size == 0) { return Qtrue; }
