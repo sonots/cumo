@@ -310,7 +310,7 @@ module Cumo
       raise ArgumentError, "invalid uplo: #{uplo}" unless %w[U L].include?(uplo)
 
       c, = potrf(klass, a, fill)
-      fill == 'U' ? c.transpose.triu : c.transpose.tril
+      fill == 'U' ? c.triu : c.tril
     end
 
     # Computes the Cholesky factorization of a Hermitian positive definite
@@ -335,7 +335,7 @@ module Cumo
               'and the factorization could not be completed.'
       end
 
-      c.transpose.dup
+      c.contiguous? ? c : c.dup
     end
 
     # Computes the inverse of a Hermitian positive definite matrix from the
@@ -982,8 +982,12 @@ module Cumo
     end
 
     def potrf(klass, a, uplo)
-      c = to_column_major(klass, a)
-      [c, cusolver(:potrf, c, uplo)]
+      n = a.shape[0]
+      upper_below = klass == DFloat ? 800 : 32
+      fill = n < upper_below ? 'U' : 'L'
+      c = fill == uplo ? to_column_major(klass, a) : klass.new(n, n).store(a)
+      info = cusolver(:potrf, c, fill)
+      [fill == uplo ? c.transpose : c, info]
     end
 
     def to_column_major(klass, x)
