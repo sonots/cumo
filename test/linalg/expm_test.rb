@@ -35,6 +35,12 @@ class LinalgExpmTest < Test::Unit::TestCase
         assert_in_delta(Math.exp(1), e[1, 1].to_a.flatten.first.real, tol * 100)
       end
 
+      test "a matrix whose 1-norm far exceeds its largest element" do
+        n = 32
+        expected = Array.new(n) { |i| Array.new(n) { |j| (i == j ? 1 : 0) + ((Math.exp(n) - 1) / n) } }
+        assert_close(expected, Cumo::Linalg.expm(type.new(n, n).fill(1)), Math.exp(n) / n * tol * 100)
+      end
+
       test "expm(a) times expm(-a) is the identity" do
         rng = Random.new(3)
         host = linalg_values(type, Array.new(5) { Array.new(5) { (rng.rand - 0.5) * 2 } })
@@ -43,6 +49,63 @@ class LinalgExpmTest < Test::Unit::TestCase
         assert_close(Array.new(5) { |i| Array.new(5) { |j| i == j ? 1 : 0 } }, product, tol * 100)
       end
     end
+  end
+
+  [1e-3, 0.02, 0.2, 0.5, 1.5, 3.0].each do |scale|
+    test "a matrix scaled by #{scale} agrees with its Taylor series" do
+      rng = Random.new(5)
+      a = Array.new(6) { Array.new(6) { (rng.rand - 0.5) * 2 * scale } }
+      term = Array.new(6) { |i| Array.new(6) { |j| i == j ? 1.0 : 0.0 } }
+      expected = term
+      (1..60).each do |k|
+        term = host_dot(term, a).map { |row| row.map { |x| x / k } }
+        expected = expected.zip(term).map { |row, t| row.zip(t).map(&:sum) }
+      end
+      assert_close(expected, Cumo::Linalg.expm(Cumo::DFloat.cast(a)), Math.exp(scale * 6) * 1e-14)
+    end
+  end
+
+  test "the logarithm in experiment 1 of Al-Mohy and Higham (2012) exponentiates back" do
+    expected = [[3.2346e-1, 3e4, 3e4, 3e4], [0, 3.0089e-1, 3e4, 3e4], [0, 0, 3.221e-1, 3e4], [0, 0, 0, 3.0744e-1]]
+    logm = Cumo::DFloat[
+      [-1.12867982029050462e+00, 9.61418377142025565e+04, -4.52485573953179264e+09, 2.92496941103871812e+14],
+      [0, -1.20101052953082288e+00, 9.63469687211303099e+04, -4.68104828911105442e+09],
+      [0, 0, -1.13289322264498393e+00, 9.53249183094775653e+04],
+      [0, 0, 0, -1.17947533272554850e+00]
+    ]
+    expected.flatten.zip(Cumo::Linalg.expm(logm).to_a.flatten) do |e, x|
+      assert_in_delta(e, x, e.abs * 1e-4)
+    end
+  end
+
+  { Cumo::DFloat => [1e31, 1e-12], Cumo::SFloat => [1e4, 1e-6] }.each do |type, (b, tol)|
+    test "a #{type} triangular matrix of off-diagonal #{b} keeps its diagonal" do
+      e = Math::E
+      expected = [e, b * ((e * e) - e), 0, e * e]
+      expected.zip(Cumo::Linalg.expm(type[[1, b], [0, 2]]).to_a.flatten) do |x, actual|
+        assert_in_delta(x, actual, x.abs * tol)
+      end
+    end
+  end
+
+  test "the backward error bound ell agrees with scipy" do
+    [[1e4, 3, 0, 10], [1e4, 3, 3, 7], [1e4, 5, 3, 2], [1e4, 7, 0, 2], [1e4, 9, 0, 1], [1e8, 3, 10, 2], [1e20, 13, 0, 2]].each do |b, m, s, ell|
+      a = Cumo::DFloat[[1, b, b], [0, 2, b], [0, 0, 0.5]]
+      norm = Cumo::Linalg.__send__(:onenorm, a)
+      assert_equal(ell, Cumo::Linalg.__send__(:pade_ell, a.abs, norm, m, s), [b, m, s].inspect)
+    end
+  end
+
+  test "a matrix with a NaN answers NaN" do
+    assert(Cumo::Linalg.expm(Cumo::DFloat[[Float::NAN, 0], [0, 1]]).to_a.flatten.all?(&:nan?))
+  end
+
+  test "a zero matrix answers the identity" do
+    assert_equal([[1.0, 0.0], [0.0, 1.0]], Cumo::Linalg.expm(Cumo::DFloat.zeros(2, 2)).to_a)
+  end
+
+  test "a double precision matrix of norm near the largest float is scaled without overflow" do
+    assert_equal([[0.0, 0.0], [0.0, 0.0]], Cumo::Linalg.expm(Cumo::DFloat[[-1e308, 0], [0, -2e307]]).to_a)
   end
 
   test "a single precision matrix of norm near the largest float is scaled without overflow" do
