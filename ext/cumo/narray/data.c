@@ -899,9 +899,10 @@ cumo_na_diagonal(int argc, VALUE *argv, VALUE self)
 //----------------------------------------------------------------------
 
 int cumo_na_concat_kernel_launch(char* dst, char** srcs, size_t* row_bytes, int n, size_t rows);
+int cumo_na_zero_triangle_kernel_launch(char* p, size_t elmsz, uint64_t rows, uint64_t m, uint64_t n, int64_t k, int below);
 
 static int
-cumo_na_concat_plain_p(VALUE a)
+cumo_na_plain_contiguous_p(VALUE a)
 {
     return !CUMO_TEST_COLUMN_MAJOR(a) && !CUMO_TEST_BYTE_SWAPPED(a) && cumo_na_check_contiguous(a) == Qtrue;
 }
@@ -943,7 +944,7 @@ cumo_na_concat_parts(VALUE self, VALUE parts, VALUE vaxis)
         srcs[k] = cumo_na_get_offset_pointer_for_read(RARRAY_AREF(parts, k));
     }
 
-    if (RARRAY_LEN(parts) != n || rb_obj_class(self) != klass || !cumo_na_concat_plain_p(self)) { return Qfalse; }
+    if (RARRAY_LEN(parts) != n || rb_obj_class(self) != klass || !cumo_na_plain_contiguous_p(self)) { return Qfalse; }
     CumoGetNArray(self, na);
     nd = na->ndim;
     if (axis < 0 || axis >= nd) { return Qfalse; }
@@ -953,7 +954,7 @@ cumo_na_concat_parts(VALUE self, VALUE parts, VALUE vaxis)
 
     for (k = 0; k < n; ++k) {
         a = RARRAY_AREF(parts, k);
-        if (rb_obj_class(a) != klass || !cumo_na_concat_plain_p(a)) { return Qfalse; }
+        if (rb_obj_class(a) != klass || !cumo_na_plain_contiguous_p(a)) { return Qfalse; }
         CumoGetNArray(a, nb);
         if (nb->ndim > nd) { return Qfalse; }
         pd = nd - nb->ndim;
@@ -979,6 +980,40 @@ cumo_na_concat_parts(VALUE self, VALUE parts, VALUE vaxis)
     return cumo_na_concat_kernel_launch(dst, srcs, row_bytes, used, rows) ? Qtrue : Qfalse;
 }
 
+static VALUE
+cumo_na_zero_triangle(VALUE self, VALUE vk, int below)
+{
+    char *p;
+    cumo_narray_t *na;
+    long k = NUM2LONG(vk);
+    size_t m, n, limit;
+
+    if (RTEST(rb_obj_is_kind_of(self, cumo_cBit)) || RTEST(rb_obj_is_kind_of(self, cumo_cRObject))) { return Qfalse; }
+    p = cumo_na_get_offset_pointer_for_write(self);
+    if (!cumo_na_plain_contiguous_p(self)) { return Qfalse; }
+    CumoGetNArray(self, na);
+    if (na->ndim < 2) { return Qfalse; }
+    if (na->size == 0) { return Qtrue; }
+    m = na->shape[na->ndim - 2];
+    n = na->shape[na->ndim - 1];
+    limit = m + n;
+    if (k > (long)limit) { k = (long)limit; }
+    if (k < -(long)limit) { k = -(long)limit; }
+    return cumo_na_zero_triangle_kernel_launch(p, cumo_na_element_stride(self), na->size / n, m, n, k, below) ? Qtrue : Qfalse;
+}
+
+static VALUE
+cumo_na_zero_below_diagonal(VALUE self, VALUE vk)
+{
+    return cumo_na_zero_triangle(self, vk, 1);
+}
+
+static VALUE
+cumo_na_zero_above_diagonal(VALUE self, VALUE vk)
+{
+    return cumo_na_zero_triangle(self, vk, 0);
+}
+
 //----------------------------------------------------------------------
 
 
@@ -990,6 +1025,8 @@ Init_cumo_na_data(void)
 
     rb_define_method(cNArray, "flatten", cumo_na_flatten, 0);
     rb_define_private_method(cNArray, "concatenate_parts", cumo_na_concat_parts, 2);
+    rb_define_private_method(cNArray, "zero_below_diagonal", cumo_na_zero_below_diagonal, 1);
+    rb_define_private_method(cNArray, "zero_above_diagonal", cumo_na_zero_above_diagonal, 1);
     rb_define_method(cNArray, "swapaxes", cumo_na_swapaxes, 2);
     rb_define_method(cNArray, "transpose", cumo_na_transpose, -1);
 

@@ -1061,15 +1061,16 @@ module Cumo
       if ndim < 2
         raise NArray::ShapeError, "must be >= 2-dimensional array"
       end
-      if contiguous?
+      if !contiguous?
+        store(triu(k))
+      elsif !(k.is_a?(Integer) && zero_below_diagonal(k))
         *shp, m, n = shape
         idx = tril_indices(k - 1)
         reshape!(*shp, m * n)
         self[false, idx] = 0
         reshape!(*shp, m, n)
-      else
-        store(triu(k))
       end
+      self
     end
 
     # Return the indices for the upper-triangle on and above the k-th diagonal.
@@ -1100,15 +1101,16 @@ module Cumo
       if ndim < 2
         raise NArray::ShapeError, "must be >= 2-dimensional array"
       end
-      if contiguous?
+      if !contiguous?
+        store(tril(k))
+      elsif !(k.is_a?(Integer) && zero_above_diagonal(k))
         idx = triu_indices(k + 1)
         *shp, m, n = shape
         reshape!(*shp, m * n)
         self[false, idx] = 0
         reshape!(*shp, m, n)
-      else
-        store(tril(k))
       end
+      self
     end
 
     # Return the indices for the lower-triangle on and below the k-th diagonal.
