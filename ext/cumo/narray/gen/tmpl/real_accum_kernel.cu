@@ -198,6 +198,7 @@ extern "C" {
 #endif
 #endif
 
+<% if kernel_part? %>
 void cumo_<%=type_name%>_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, <%=dtype%>, cumo_<%=type_name%>_sum_impl>(*arg, cumo_<%=type_name%>_sum_impl{});
@@ -251,7 +252,8 @@ void cumo_<%=type_name%>_rms_kernel_launch(cumo_na_reduction_arg_t* arg)
     cumo_reduce_split<dtype, double, cumo_<%=type_name%>_rms_impl>(*arg, cumo_<%=type_name%>_rms_impl{n});
 }
 <% end %>
-<% if is_float %>
+<% end %>
+<% if is_float && kernel_part?(nan: true) %>
 
 void cumo_<%=type_name%>_sum_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 {

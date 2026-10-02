@@ -6,13 +6,18 @@ libpath = File.absolute_path(File.dirname(__FILE__)) + "/../../../../lib"
 $LOAD_PATH.unshift libpath
 
 require_relative "narray_def"
+require_relative "kernel_parts"
 
 $line_number = false
+$kernel_part = "main"
 
 while true
   if ARGV[0] == "-l"
     $line_number = true
     ARGV.shift
+  elsif ARGV[0] == "-p"
+    ARGV.shift
+    $kernel_part = ARGV.shift
   elsif ARGV[0] == "-o"
     ARGV.shift
     $output = ARGV.shift
@@ -24,7 +29,7 @@ while true
 end
 
 if ARGV.size != 1
-  puts "usage:\n  ruby #{$0} [-l] erb_base [type_file]"
+  puts "usage:\n  ruby #{$0} [-l] [-p part] [-o output] type_file"
   exit 1
 end
 
@@ -35,7 +40,31 @@ erb_dir = ["tmpl"]
 erb_dir.unshift("tmpl_bit") if (type_name == "bit")
 erb_dir.map! { |d| File.join(thisdir, d) }
 
+TEMPLATE_KERNEL_PARTS = {
+  "accum" => %w[reduce reduce_nan],
+  "accum_index" => %w[reduce reduce_nan],
+  "accum_arg" => %w[reduce reduce_nan],
+  "accum_binary" => %w[reduce reduce_nan reduce_from],
+  "cum" => %w[reduce],
+  "layer_norm" => %w[reduce],
+  "rms_norm" => %w[reduce],
+  "softmax" => %w[reduce],
+  "bit_count" => %w[reduce],
+  "bit_reduce" => %w[reduce],
+  "bit_stat" => %w[reduce],
+}.freeze
+
+abort "unknown kernel part: #{$kernel_part}" unless KERNEL_PARTS.include?($kernel_part)
+
 class ErbPP
+  def kernel_parts
+    TEMPLATE_KERNEL_PARTS.fetch(get(:erb_base), %w[main])
+  end
+
+  def kernel_part?(nan: false, from: nil)
+    $kernel_part == (from ? "reduce_from" : nan ? "reduce_nan" : "reduce")
+  end
+
   def indexer_dims(narrow = false)
     dims = (0..opt_indexer_ndim).to_a << ""
     dims += opt_indexer_narrow_dims.map { |d| "#{d}n" } if narrow
@@ -53,6 +82,12 @@ class ErbPP
     end
     switch = "switch (indexer->ndim) { #{cases.join(' ')} default: #{kernel}_dim#{launch} }"
     narrow ? "{ const cumo_na_iarray_t* const narrow_[] = {#{narrow.join(', ')}}; #{switch} }" : switch
+  end
+end
+
+class DefModule
+  def method_code
+    @children.select { |c| c.kernel_parts.include?($kernel_part) }.map { |c| c.result }.join("\n")
   end
 end
 

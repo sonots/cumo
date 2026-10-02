@@ -166,4 +166,11 @@ class CumoTest < Test::Unit::TestCase
   def test_version
     assert_nothing_raised { Cumo::VERSION }
   end
+
+  test "every cumo function the extension calls is defined in it" do
+    omit("ldd -r is Linux only") unless RUBY_PLATFORM.include?("linux")
+    so = $LOADED_FEATURES.grep(%r{/cumo\.so\z}).first
+    report = IO.popen(["ldd", "-r", so], err: [:child, :out], &:read)
+    assert_equal([], report.scan(/undefined symbol: (cumo_\w+)/).flatten)
+  end
 end
