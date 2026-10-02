@@ -119,11 +119,13 @@ extern "C" {
 #endif
 #endif
 
+<% if kernel_part? %>
 void cumo_<%=type_name%>_min_index_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, idx_t, cumo_<%=type_name%>_min_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_min_index_int<%=i%>_impl{});
 }
-<% if is_float %>
+<% end %>
+<% if is_float && kernel_part?(nan: true) %>
 
 void cumo_<%=type_name%>_min_index_nan_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
@@ -131,11 +133,13 @@ void cumo_<%=type_name%>_min_index_nan_int<%=i%>_kernel_launch(cumo_na_reduction
 }
 <% end %>
 
+<% if kernel_part? %>
 void cumo_<%=type_name%>_max_index_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, idx_t, cumo_<%=type_name%>_max_index_int<%=i%>_impl>(*arg, cumo_<%=type_name%>_max_index_int<%=i%>_impl{});
 }
-<% if is_float %>
+<% end %>
+<% if is_float && kernel_part?(nan: true) %>
 
 void cumo_<%=type_name%>_max_index_nan_int<%=i%>_kernel_launch(cumo_na_reduction_arg_t* arg)
 {

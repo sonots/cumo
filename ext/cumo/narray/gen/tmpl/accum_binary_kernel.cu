@@ -63,10 +63,12 @@ extern "C" {
 //<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 //<% ([nil] + from_types).each do |from| %>
 //<% sfx = from ? "_from_#{from[:id]}" : "" %>
+//<% if kernel_part?(nan: nan == "_nan", from: from) %>
 void <%="cumo_#{type_name}_#{name}#{nan}#{sfx}_kernel_launch"%>(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* in2)
 {
     cumo_reduce_zip_split<dtype, <%= from ? from[:ctype] : "dtype" %>, dtype, <%="cumo_#{type_name}_#{name}#{nan}#{sfx}_impl"%>>(*arg, *in2, <%="cumo_#{type_name}_#{name}#{nan}#{sfx}_impl"%>{});
 }
+//<% end %>
 //<% end %>
 //<% end %>
 <% end %>

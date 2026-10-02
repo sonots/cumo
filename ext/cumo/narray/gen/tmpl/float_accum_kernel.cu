@@ -169,6 +169,7 @@ extern "C" {
 #endif
 #endif
 
+<% if kernel_part? %>
 void cumo_<%=type_name%>_mean_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     <%=acc%> n = (<%=acc%>)(arg->in_indexer.total_size / arg->out_indexer.total_size);
@@ -190,6 +191,8 @@ void cumo_<%=type_name%>_rms_kernel_launch(cumo_na_reduction_arg_t* arg)
     <%=acc%> n = (<%=acc%>)(arg->in_indexer.total_size / arg->out_indexer.total_size);
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_rms_impl>(*arg, cumo_<%=type_name%>_rms_impl{n});
 }
+<% end %>
+<% if kernel_part?(nan: true) %>
 
 void cumo_<%=type_name%>_mean_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
@@ -210,12 +213,15 @@ void cumo_<%=type_name%>_rms_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_rms_nan_impl>(*arg, cumo_<%=type_name%>_rms_nan_impl{});
 }
-<% if is_double_precision %>
+<% end %>
+<% if is_double_precision && kernel_part? %>
 
 void cumo_<%=type_name%>_kahan_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_kahan_sum_impl>(*arg, cumo_<%=type_name%>_kahan_sum_impl{});
 }
+<% end %>
+<% if is_double_precision && kernel_part?(nan: true) %>
 
 void cumo_<%=type_name%>_kahan_sum_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 {

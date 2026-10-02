@@ -5,6 +5,7 @@ require 'fileutils'
 require "erb"
 require 'etc'
 require_relative '../../3rd_party/mkmf-cu/lib/mkmf-cu'
+require_relative 'narray/gen/kernel_parts'
 
 def d(file)
   File.join(__dir__, file)
@@ -71,22 +72,6 @@ narray/types/dfloat
 narray/types/scomplex
 narray/types/dcomplex
 narray/types/robject
-narray/types/bit_kernel
-narray/types/int8_kernel
-narray/types/int16_kernel
-narray/types/int32_kernel
-narray/types/int64_kernel
-narray/types/uint8_kernel
-narray/types/uint16_kernel
-narray/types/uint32_kernel
-narray/types/uint64_kernel
-narray/types/hfloat_kernel
-narray/types/bfloat_kernel
-narray/types/sfloat_kernel
-narray/types/dfloat_kernel
-narray/types/scomplex_kernel
-narray/types/dcomplex_kernel
-narray/types/robject_kernel
 narray/math
 narray/SFMT
 narray/struct
@@ -101,6 +86,9 @@ cuda/cudnn
 cuda/cudnn_impl
 cuda/cusolver
 )
+srcs += %w[bit int8 int16 int32 int64 uint8 uint16 uint32 uint64 hfloat bfloat sfloat dfloat scomplex dcomplex robject].product(KERNEL_PARTS).map do |type_name, part|
+  "narray/types/" + kernel_part_basename(type_name, part)
+end
 
 $objs = srcs.map { |src| "#{src}.o" }
 
