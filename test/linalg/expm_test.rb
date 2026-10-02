@@ -78,6 +78,32 @@ class LinalgExpmTest < Test::Unit::TestCase
     end
   end
 
+  { Cumo::DFloat => [1e31, 1e-12], Cumo::SFloat => [1e4, 1e-6] }.each do |type, (b, tol)|
+    test "a #{type} triangular matrix of off-diagonal #{b} keeps its diagonal" do
+      e = Math::E
+      expected = [e, b * ((e * e) - e), 0, e * e]
+      expected.zip(Cumo::Linalg.expm(type[[1, b], [0, 2]]).to_a.flatten) do |x, actual|
+        assert_in_delta(x, actual, x.abs * tol)
+      end
+    end
+  end
+
+  test "the backward error bound ell agrees with scipy" do
+    [[1e4, 3, 0, 10], [1e4, 3, 3, 7], [1e4, 5, 3, 2], [1e4, 7, 0, 2], [1e4, 9, 0, 1], [1e8, 3, 10, 2], [1e20, 13, 0, 2]].each do |b, m, s, ell|
+      a = Cumo::DFloat[[1, b, b], [0, 2, b], [0, 0, 0.5]]
+      norm = Cumo::Linalg.__send__(:onenorm, a)
+      assert_equal(ell, Cumo::Linalg.__send__(:pade_ell, a.abs, norm, m, s), [b, m, s].inspect)
+    end
+  end
+
+  test "a matrix with a NaN answers NaN" do
+    assert(Cumo::Linalg.expm(Cumo::DFloat[[Float::NAN, 0], [0, 1]]).to_a.flatten.all?(&:nan?))
+  end
+
+  test "a zero matrix answers the identity" do
+    assert_equal([[1.0, 0.0], [0.0, 1.0]], Cumo::Linalg.expm(Cumo::DFloat.zeros(2, 2)).to_a)
+  end
+
   test "a double precision matrix of norm near the largest float is scaled without overflow" do
     assert_equal([[0.0, 0.0], [0.0, 0.0]], Cumo::Linalg.expm(Cumo::DFloat[[-1e308, 0], [0, -2e307]]).to_a)
   end

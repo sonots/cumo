@@ -815,10 +815,10 @@ module Cumo
 
     # Computes the matrix exponential by scaling and squaring, choosing the
     # order of the Pade approximant and the number of squarings from the
-    # 1-norms of powers of a, as scipy.linalg.expm does (Al-Mohy and Higham,
-    # 2009). Given ord, it instead uses an approximant of that order scaled by
-    # the largest element, as numo-linalg-alt does, which loses accuracy once
-    # the 1-norm of a is large.
+    # 1-norms of powers of a by the algorithm of Al-Mohy and Higham (2009)
+    # that scipy.linalg.expm uses. Given ord, it instead uses an approximant
+    # of that order scaled by the largest element, as numo-linalg-alt does,
+    # which loses accuracy once the 1-norm of a is large.
     #
     # @param a [Cumo::NArray] the square matrix
     # @param ord [Integer, nil] the order of the Pade approximant, chosen from
@@ -863,34 +863,49 @@ module Cumo
 
     def scaled_pade_expm(a)
       norm = onenorm(a)
-      prescale = norm**10 > a.class::MAX ? Math.log2(norm / PADE_THETAS[13]).ceil.clamp(0..) : 0
-      x = adaptive_pade_expm(prescale.positive? ? a * (0.5**prescale) : a)
+      return a.class.new(*a.shape).fill(Float::NAN) if norm.nan?
+      raise FloatDomainError, norm.to_s if norm.infinite?
+
+      x = adaptive_pade_expm(a, norm)
+      return x if x
+
+      prescale = Math.log2(norm / PADE_THETAS[13]).ceil
+      x = adaptive_pade_expm(a * (0.5**prescale), norm * (0.5**prescale))
       prescale.times { x = matmul(x, x) }
       x
     end
 
-    def adaptive_pade_expm(a)
+    def adaptive_pade_expm(a, norm)
       a2 = matmul(a, a)
       a4 = matmul(a2, a2)
       a6 = matmul(a4, a2)
-      powers = [a.class.eye(a.shape[0]), a2, a4, a6]
+      d4 = onenorm(a4)**0.25
       d6 = onenorm(a6)**(1.0 / 6)
-      eta1 = [onenorm(a4)**0.25, d6].max
-      return pade_quotient(a, powers, 3) if eta1 < PADE_THETAS[3] && pade_ell(a, 3).zero?
-      return pade_quotient(a, powers, 5) if eta1 < PADE_THETAS[5] && pade_ell(a, 5).zero?
+      return unless d4.finite? && d6.finite?
+
+      abs_a = DFloat.cast(a.abs)
+      powers = [a.class.eye(a.shape[0]), a2, a4, a6]
+      eta1 = [d4, d6].max
+      return pade_quotient(a, powers, 3) if eta1 < PADE_THETAS[3] && pade_ell(abs_a, norm, 3).zero?
+      return pade_quotient(a, powers, 5) if eta1 < PADE_THETAS[5] && pade_ell(abs_a, norm, 5).zero?
 
       a8 = matmul(a6, a2)
-      powers << a8
       d8 = onenorm(a8)**0.125
-      eta3 = [d6, d8].max
-      return pade_quotient(a, powers, 7) if eta3 < PADE_THETAS[7] && pade_ell(a, 7).zero?
-      return pade_quotient(a, powers, 9) if eta3 < PADE_THETAS[9] && pade_ell(a, 9).zero?
+      return unless d8.finite?
 
-      eta4 = [d8, onenorm(matmul(a4, a6))**0.1].max
+      powers << a8
+      eta3 = [d6, d8].max
+      return pade_quotient(a, powers, 7) if eta3 < PADE_THETAS[7] && pade_ell(abs_a, norm, 7).zero?
+      return pade_quotient(a, powers, 9) if eta3 < PADE_THETAS[9] && pade_ell(abs_a, norm, 9).zero?
+
+      d10 = onenorm(matmul(a4, a6))**0.1
+      return unless d10.finite?
+
+      eta4 = [d8, d10].max
       eta5 = [eta3, eta4].min
       s = eta5.positive? ? Math.log2(eta5 / PADE_THETAS[13]).ceil.clamp(0..) : 0
-      s += pade_ell(a * (0.5**s), 13)
-      x = pade13_quotient(powers, a, s)
+      s += pade_ell(abs_a, norm, 13, s)
+      x = pade13_quotient(a, powers, s)
       s.times { x = matmul(x, x) }
       x
     end
@@ -898,12 +913,14 @@ module Cumo
     def pade_quotient(a, powers, m)
       b = PADE_COEFFICIENTS[m]
       terms = powers.first((m / 2) + 1).each_with_index
-      u = matmul(a, terms.sum { |x, i| b[(i * 2) + 1] * x })
-      v = terms.sum { |x, i| b[i * 2] * x }
+      odd = terms.map { |x, i| b[(i * 2) + 1] * x }
+      even = terms.map { |x, i| b[i * 2] * x }
+      u = matmul(a, odd.reduce(:+))
+      v = even.reduce(:+)
       solve(v - u, v + u)
     end
 
-    def pade13_quotient(powers, a, s)
+    def pade13_quotient(a, powers, s)
       b = PADE_COEFFICIENTS[13]
       identity, a2, a4, a6 = powers
       b1 = a * (0.5**s)
@@ -917,15 +934,20 @@ module Cumo
       solve(v - u, v + u)
     end
 
-    def pade_ell(a, m)
-      abs_a = DFloat.cast(a.abs)
-      v = DFloat.ones(a.shape[0])
-      ((m * 2) + 1).times { v = v.dot(abs_a) }
-      power_norm = to_ruby(v.max)
-      return 0 if power_norm.zero?
+    def pade_ell(abs_a, norm, m, s = 0)
+      power = (m * 2) + 1
+      log2_power_norm = power_norm_log2(abs_a, power) || (power_norm_log2(abs_a / norm, power) + (power * Math.log2(norm)))
+      return 0 if log2_power_norm.infinite?
 
-      alpha = power_norm / (onenorm(a) * PADE_ERROR_COEFFICIENTS[m])
-      (Math.log2(alpha / (2.0**-53)) / (m * 2)).ceil.clamp(0..)
+      log2_alpha = log2_power_norm - (s * m * 2) - Math.log2(norm) - Math.log2(PADE_ERROR_COEFFICIENTS[m])
+      ((log2_alpha + 53) / (m * 2)).ceil.clamp(0..)
+    end
+
+    def power_norm_log2(abs_a, power)
+      v = DFloat.ones(abs_a.shape[0])
+      power.times { v = v.dot(abs_a) }
+      power_norm = to_ruby(v.max)
+      Math.log2(power_norm) if power_norm.finite?
     end
 
     def fixed_pade_expm(a, ord)
@@ -952,7 +974,8 @@ module Cumo
     end
 
     def onenorm(a)
-      to_ruby(a.abs.sum(axis: 0).max)
+      sums = a.abs.sum(axis: 0)
+      to_ruby(sums.sum).nan? ? Float::NAN : to_ruby(sums.max)
     end
 
     def getrf(klass, a)
@@ -1358,6 +1381,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :pade_ell, :fixed_pade_expm, :onenorm, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :pade_ell, :power_norm_log2, :fixed_pade_expm, :onenorm, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
