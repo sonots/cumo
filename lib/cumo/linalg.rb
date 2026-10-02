@@ -20,7 +20,75 @@ module Cumo
 
     BLAS_CLASSES = { s: SFloat, d: DFloat, c: SComplex, z: DComplex }.freeze
     INTEGER_CLASSES = [Bit, Int64, Int32, Int16, Int8, UInt64, UInt32, UInt16, UInt8].freeze
-    private_constant :BLAS_CLASSES, :INTEGER_CLASSES
+    PADE_COEFFICIENTS = {
+      3 => [
+        120.0,
+        60.0,
+        12.0,
+        1.0
+      ],
+      5 => [
+        30240.0,
+        15120.0,
+        3360.0,
+        420.0,
+        30.0,
+        1.0
+      ],
+      7 => [
+        17297280.0,
+        8648640.0,
+        1995840.0,
+        277200.0,
+        25200.0,
+        1512.0,
+        56.0,
+        1.0
+      ],
+      9 => [
+        17643225600.0,
+        8821612800.0,
+        2075673600.0,
+        302702400.0,
+        30270240.0,
+        2162160.0,
+        110880.0,
+        3960.0,
+        90.0,
+        1.0
+      ],
+      13 => [
+        64764752532480000.0,
+        32382376266240000.0,
+        7771770303897600.0,
+        1187353796428800.0,
+        129060195264000.0,
+        10559470521600.0,
+        670442572800.0,
+        33522128640.0,
+        1323241920.0,
+        40840800.0,
+        960960.0,
+        16380.0,
+        182.0,
+        1.0
+      ]
+    }.freeze
+    PADE_THETAS = {
+      3 => 1.495585217958292e-2,
+      5 => 2.539398330063230e-1,
+      7 => 9.504178996162932e-1,
+      9 => 2.097847961257068,
+      13 => 4.25
+    }.freeze
+    PADE_ERROR_COEFFICIENTS = {
+      3 => 100800.0,
+      5 => 10059033600.0,
+      7 => 4487938430976000.0,
+      9 => 5_914_384_781_877_411_840_000.0,
+      13 => 113_250_775_606_021_113_483_283_660_800_000_000.0
+    }.freeze
+    private_constant :BLAS_CLASSES, :INTEGER_CLASSES, :PADE_COEFFICIENTS, :PADE_THETAS, :PADE_ERROR_COEFFICIENTS
 
     module_function
 
@@ -745,39 +813,25 @@ module Cumo
       [to_ruby((dg / abs).prod * sign), to_ruby(NMath.log(abs).sum)]
     end
 
-    # Computes the matrix exponential by scaling and squaring with a Pade
-    # approximant, as numo-linalg-alt does.
+    # Computes the matrix exponential by scaling and squaring, choosing the
+    # order of the Pade approximant and the number of squarings from the
+    # 1-norms of powers of a, as scipy.linalg.expm does (Al-Mohy and Higham,
+    # 2009). Given ord, it instead uses an approximant of that order scaled by
+    # the largest element, as numo-linalg-alt does, which loses accuracy once
+    # the 1-norm of a is large.
     #
     # @param a [Cumo::NArray] the square matrix
-    # @param ord [Integer] the order of the Pade approximant
+    # @param ord [Integer, nil] the order of the Pade approximant, chosen from
+    #   a when nil
     # @return [Cumo::NArray]
-    def expm(a, ord = 8)
+    def expm(a, ord = nil)
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
 
       a = BLAS_CLASSES[blas_char(a).to_sym].cast(a)
-      n = a.shape[0]
-      return a.dup if n.zero?
+      return a.dup if a.shape[0].zero?
 
-      norm = to_ruby(a.abs.max)
-      n_sqr = norm.positive? ? [0, Math.log2(norm).to_i + 1].max : 0
-      a *= 0.5**n_sqr
-      x = a
-      c = 0.5
-      identity = a.class.eye(n)
-      c_a = c * a
-      nume = identity + c_a
-      deno = identity - c_a
-      (2..ord).each do |k|
-        c *= (ord - k + 1).fdiv(k * ((ord * 2) - k + 1))
-        x = matmul(a, x)
-        c_x = c * x
-        nume += c_x
-        deno = k.even? ? deno + c_x : deno - c_x
-      end
-      a_expm = solve(deno, nume)
-      n_sqr.times { a_expm = matmul(a_expm, a_expm) }
-      a_expm
+      ord ? fixed_pade_expm(a, ord) : scaled_pade_expm(a)
     end
 
     # Computes a square matrix raised to an integer power.
@@ -805,6 +859,100 @@ module Cumo
         square = matmul(square, square) if n.positive?
       end
       result
+    end
+
+    def scaled_pade_expm(a)
+      norm = onenorm(a)
+      prescale = norm**10 > a.class::MAX ? Math.log2(norm / PADE_THETAS[13]).ceil.clamp(0..) : 0
+      x = adaptive_pade_expm(prescale.positive? ? a * (0.5**prescale) : a)
+      prescale.times { x = matmul(x, x) }
+      x
+    end
+
+    def adaptive_pade_expm(a)
+      a2 = matmul(a, a)
+      a4 = matmul(a2, a2)
+      a6 = matmul(a4, a2)
+      powers = [a.class.eye(a.shape[0]), a2, a4, a6]
+      d6 = onenorm(a6)**(1.0 / 6)
+      eta1 = [onenorm(a4)**0.25, d6].max
+      return pade_quotient(a, powers, 3) if eta1 < PADE_THETAS[3] && pade_ell(a, 3).zero?
+      return pade_quotient(a, powers, 5) if eta1 < PADE_THETAS[5] && pade_ell(a, 5).zero?
+
+      a8 = matmul(a6, a2)
+      powers << a8
+      d8 = onenorm(a8)**0.125
+      eta3 = [d6, d8].max
+      return pade_quotient(a, powers, 7) if eta3 < PADE_THETAS[7] && pade_ell(a, 7).zero?
+      return pade_quotient(a, powers, 9) if eta3 < PADE_THETAS[9] && pade_ell(a, 9).zero?
+
+      eta4 = [d8, onenorm(matmul(a4, a6))**0.1].max
+      eta5 = [eta3, eta4].min
+      s = eta5.positive? ? Math.log2(eta5 / PADE_THETAS[13]).ceil.clamp(0..) : 0
+      s += pade_ell(a * (0.5**s), 13)
+      x = pade13_quotient(powers, a, s)
+      s.times { x = matmul(x, x) }
+      x
+    end
+
+    def pade_quotient(a, powers, m)
+      b = PADE_COEFFICIENTS[m]
+      terms = powers.first((m / 2) + 1).each_with_index
+      u = matmul(a, terms.sum { |x, i| b[(i * 2) + 1] * x })
+      v = terms.sum { |x, i| b[i * 2] * x }
+      solve(v - u, v + u)
+    end
+
+    def pade13_quotient(powers, a, s)
+      b = PADE_COEFFICIENTS[13]
+      identity, a2, a4, a6 = powers
+      b1 = a * (0.5**s)
+      b2 = a2 * (0.5**(s * 2))
+      b4 = a4 * (0.5**(s * 4))
+      b6 = a6 * (0.5**(s * 6))
+      u2 = matmul(b6, (b[13] * b6) + (b[11] * b4) + (b[9] * b2))
+      u = matmul(b1, u2 + (b[7] * b6) + (b[5] * b4) + (b[3] * b2) + (b[1] * identity))
+      v2 = matmul(b6, (b[12] * b6) + (b[10] * b4) + (b[8] * b2))
+      v = v2 + (b[6] * b6) + (b[4] * b4) + (b[2] * b2) + (b[0] * identity)
+      solve(v - u, v + u)
+    end
+
+    def pade_ell(a, m)
+      abs_a = DFloat.cast(a.abs)
+      v = DFloat.ones(a.shape[0])
+      ((m * 2) + 1).times { v = v.dot(abs_a) }
+      power_norm = to_ruby(v.max)
+      return 0 if power_norm.zero?
+
+      alpha = power_norm / (onenorm(a) * PADE_ERROR_COEFFICIENTS[m])
+      (Math.log2(alpha / (2.0**-53)) / (m * 2)).ceil.clamp(0..)
+    end
+
+    def fixed_pade_expm(a, ord)
+      n = a.shape[0]
+      norm = to_ruby(a.abs.max)
+      n_sqr = norm.positive? ? [0, Math.log2(norm).to_i + 1].max : 0
+      a *= 0.5**n_sqr
+      x = a
+      c = 0.5
+      identity = a.class.eye(n)
+      c_a = c * a
+      nume = identity + c_a
+      deno = identity - c_a
+      (2..ord).each do |k|
+        c *= (ord - k + 1).fdiv(k * ((ord * 2) - k + 1))
+        x = matmul(a, x)
+        c_x = c * x
+        nume += c_x
+        deno = k.even? ? deno + c_x : deno - c_x
+      end
+      a_expm = solve(deno, nume)
+      n_sqr.times { a_expm = matmul(a_expm, a_expm) }
+      a_expm
+    end
+
+    def onenorm(a)
+      to_ruby(a.abs.sum(axis: 0).max)
     end
 
     def getrf(klass, a)
@@ -1210,6 +1358,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :pade_ell, :fixed_pade_expm, :onenorm, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
