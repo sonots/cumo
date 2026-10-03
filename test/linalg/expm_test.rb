@@ -96,6 +96,23 @@ class LinalgExpmTest < Test::Unit::TestCase
     end
   end
 
+  test "the tenth power is formed only when it can change the number of squarings" do
+    squarings = ->(a4, a6, d6, d8) { Cumo::Linalg.__send__(:pade13_squarings, a4, a6, d6, d8) }
+    assert_equal([3, 3], [squarings.call(nil, nil, 10.0, 30.0), squarings.call(nil, nil, 32.0, 20.0)])
+    eye = Cumo::DFloat.eye(2)
+    assert_equal(3, squarings.call(eye * (30.0**4), eye * (30.0**6), 60.0, 10.0))
+    assert_equal(2, squarings.call(eye * (5.0**4), eye * (5.0**6), 60.0, 10.0))
+    assert_equal(4, squarings.call(eye * (100.0**4), eye * (100.0**6), 60.0, 10.0))
+    assert_nil(squarings.call(eye * 1e200, eye * 1e200, 60.0, 10.0))
+  end
+
+  test "a nilpotent matrix whose eighth power vanishes takes the degree 13 approximant" do
+    a = Cumo::DFloat.zeros(8, 8)
+    7.times { |i| a[i, i + 1] = 10 }
+    expected = Array.new(8) { |i| Array.new(8) { |j| j >= i ? (10.0**(j - i)) / (1..(j - i)).reduce(1, :*) : 0 } }
+    assert_close(expected, Cumo::Linalg.expm(a), (10.0**7) / 5040 * 1e-12)
+  end
+
   test "a matrix with a NaN answers NaN" do
     assert(Cumo::Linalg.expm(Cumo::DFloat[[Float::NAN, 0], [0, 1]]).to_a.flatten.all?(&:nan?))
   end
