@@ -113,6 +113,27 @@ class LinalgExpmTest < Test::Unit::TestCase
     assert_close(expected, Cumo::Linalg.expm(a), (10.0**7) / 5040 * 1e-12)
   end
 
+  sub_test_case "compatible mode" do
+    setup do
+      @orig_compatible_mode = Cumo.compatible_mode_enabled?
+      Cumo.enable_compatible_mode
+    end
+
+    teardown do
+      @orig_compatible_mode ? Cumo.enable_compatible_mode : Cumo.disable_compatible_mode
+    end
+
+    test "expm reads its norms back" do
+      a = Cumo::DFloat[[1, 2], [3, 4]]
+      assert_close([[51.96895619870497, 74.73656456700311], [112.1048468505047, 164.07380304920954]], Cumo::Linalg.expm(a), 1e-12)
+      e = Cumo::Linalg.expm(Cumo::SComplex[[0, Complex(0, 1)], [Complex(0, 1), 0]])
+      assert_close([[Math.cos(1), Complex(0, Math.sin(1))], [Complex(0, Math.sin(1)), Math.cos(1)]], e, 1e-6)
+      n = Cumo::DFloat.zeros(8, 8)
+      7.times { |i| n[i, i + 1] = 10 }
+      assert_in_delta(1e7 / 5040, Cumo::Linalg.expm(n)[0, 7], 1e-6)
+    end
+  end
+
   test "a matrix with a NaN answers NaN" do
     assert(Cumo::Linalg.expm(Cumo::DFloat[[Float::NAN, 0], [0, 1]]).to_a.flatten.all?(&:nan?))
   end

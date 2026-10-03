@@ -985,8 +985,9 @@ module Cumo
 
     def onenorms(*mats)
       sums = mats.map { |a| a.abs.sum(axis: 0) }
-      reduced = sums.flat_map { |s| [s.sum.reshape(1), s.max.reshape(1)] }
-      reduced.first.class.hstack(reduced).to_a.each_slice(2).map { |total, max| total.nan? ? Float::NAN : max }
+      sums = sums.first.class.vstack(sums)
+      totals, maxes = sums.class.vstack([sums.sum(axis: 1), sums.max(axis: 1)]).to_a
+      totals.zip(maxes).map { |total, max| total.nan? ? Float::NAN : max }
     end
 
     def getrf(klass, a)
