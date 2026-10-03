@@ -554,18 +554,22 @@ rb_cusolver_getrf(VALUE self, VALUE a)
     [nrhs, n]: the column-major right-hand sides, overwritten with X
   @param trans [String] "N", "T" or "C"
   @param check [Boolean] whether to read ipiv back and check that each is in
-    1..n, which pivots getrf has just answered need not be
+    1..n, true by default; pivots getrf has just answered need not be
   @return [nil]
  */
 static int64_t check_square_matrix(VALUE a, const char *name);
 
 static VALUE
-rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans, VALUE check)
+rb_cusolver_getrs(int argc, VALUE *argv, VALUE self)
 {
     cusolver_call_t c = {0};
-    const char *t = StringValueCStr(trans);
+    VALUE lu, ipiv, b, trans, check;
+    const char *t;
     cumo_narray_t *nipiv;
     cumo_narray_t *nb;
+
+    rb_scan_args(argc, argv, "41", &lu, &ipiv, &b, &trans, &check);
+    t = StringValueCStr(trans);
 
     if (strcmp(t, "N") == 0) {
         c.trans = CUBLAS_OP_N;
@@ -595,7 +599,7 @@ rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans, VALUE 
         return Qnil;
     }
     c.ipiv = (int64_t*)cumo_na_get_offset_pointer_for_read(ipiv);
-    if (RTEST(check)) {
+    if (NIL_P(check) || RTEST(check)) {
         check_pivots(c.ipiv, c.n);
     }
     c.a = cumo_na_get_offset_pointer_for_read(lu);
@@ -652,15 +656,18 @@ check_square_matrix(VALUE a, const char *name)
     contiguous, of shape [n, n]: the column-major matrix, whose uplo
     triangle is overwritten with the factor
   @param uplo [String] "U" or "L"
-  @param read_info [Boolean] whether to wait for the info cuSOLVER reports
+  @param want_info [Boolean] whether to wait for the info cuSOLVER reports,
+    true by default
   @return [Integer, nil] the info cuSOLVER reports, or nil if it is not read
  */
 static VALUE
-rb_cusolver_potrf(VALUE self, VALUE a, VALUE uplo, VALUE read_info)
+rb_cusolver_potrf(int argc, VALUE *argv, VALUE self)
 {
     cusolver_call_t c = {0};
+    VALUE a, uplo, want_info;
 
-    c.skip_info = !RTEST(read_info);
+    rb_scan_args(argc, argv, "21", &a, &uplo, &want_info);
+    c.skip_info = !NIL_P(want_info) && !RTEST(want_info);
     c.uplo = parse_uplo(uplo);
     c.n = check_square_matrix(a, "a");
     c.dtype = cusolver_dtype(a);
@@ -1209,8 +1216,8 @@ Init_cumo_cuda_cusolver(void)
 #ifdef CUSOLVER_FOUND
     rb_define_singleton_method(mCusolver, "version", rb_cusolver_version, 0);
     rb_define_singleton_method(mCusolver, "getrf", rb_cusolver_getrf, 1);
-    rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, 5);
-    rb_define_singleton_method(mCusolver, "potrf", rb_cusolver_potrf, 3);
+    rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, -1);
+    rb_define_singleton_method(mCusolver, "potrf", rb_cusolver_potrf, -1);
     rb_define_singleton_method(mCusolver, "potrs", rb_cusolver_potrs, 3);
     rb_define_singleton_method(mCusolver, "potri", rb_cusolver_potri, 2);
     rb_define_singleton_method(mCusolver, "uplo", rb_cusolver_uplo, 1);
