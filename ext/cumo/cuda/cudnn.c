@@ -74,12 +74,6 @@ cumo_cuda_cudnn_release_conv_held(VALUE held)
 
 static cumo_cuda_thread_local_t handles;
 
-static void
-destroy_handle(void *entry)
-{
-    cudnnDestroy(*(cudnnHandle_t*)entry);
-}
-
 // One handle per thread, as in cublas.c: the stream set on the handle must
 // not be reset by another thread before the call.
 cudnnHandle_t
@@ -141,7 +135,7 @@ Init_cumo_cuda_cudnn(void)
 
     rb_define_singleton_method(mCUDNN, "available?", rb_cudnn_available_p, 0);
 #ifdef CUDNN_FOUND
-    cumo_cuda_thread_local_init(&handles, sizeof(cudnnHandle_t), destroy_handle);
+    cumo_cuda_thread_local_init(&handles, sizeof(cudnnHandle_t));
     init_max_workspace_size();
     rb_define_singleton_method(mCUDNN, "max_workspace_size", rb_cudnn_max_workspace_size, 0);
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));

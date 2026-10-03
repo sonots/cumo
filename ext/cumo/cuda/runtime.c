@@ -843,10 +843,16 @@ rb_cudaDeviceSynchronize(VALUE self)
 }
 
 typedef struct {
-    const cumo_cuda_thread_local_t *local;
+    cumo_cuda_thread_local_t *local;
     size_t device_count;
     char entries[];
 } thread_table_t;
+
+typedef struct spare_entry {
+    struct spare_entry *next;
+    size_t device;
+    char entry[];
+} spare_entry_t;
 
 static int
 entry_filled(const char *entry, size_t size)
@@ -862,32 +868,61 @@ static void
 thread_table_free(void *ptr)
 {
     thread_table_t *t = (thread_table_t*)ptr;
-    size_t size = t->local->entry_size;
+    cumo_cuda_thread_local_t *local = t->local;
     size_t i;
     for (i = 0; i < t->device_count; ++i) {
-        char *entry = t->entries + i * size;
-        if (entry_filled(entry, size) && cudaSetDevice((int)i) == cudaSuccess) {
-            t->local->destroy(entry);
-        }
+        char *entry = t->entries + i * local->entry_size;
+        spare_entry_t *spare;
+        if (!entry_filled(entry, local->entry_size)) { continue; }
+        spare = (spare_entry_t*)malloc(sizeof(spare_entry_t) + local->entry_size);
+        if (spare == NULL) { continue; }
+        spare->device = i;
+        memcpy(spare->entry, entry, local->entry_size);
+        pthread_mutex_lock(&local->lock);
+        spare->next = (spare_entry_t*)local->spare;
+        local->spare = spare;
+        pthread_mutex_unlock(&local->lock);
     }
     free(t);
 }
 
 void
-cumo_cuda_thread_local_init(cumo_cuda_thread_local_t *local, size_t entry_size, void (*destroy)(void *entry))
+cumo_cuda_thread_local_init(cumo_cuda_thread_local_t *local, size_t entry_size)
 {
     local->entry_size = entry_size;
-    local->destroy = destroy;
-    if (pthread_key_create(&local->key, thread_table_free) != 0) {
-        rb_raise(rb_eRuntimeError, "pthread_key_create failed");
+    local->spare = NULL;
+    if (pthread_mutex_init(&local->lock, NULL) != 0 || pthread_key_create(&local->key, thread_table_free) != 0) {
+        rb_raise(rb_eRuntimeError, "cannot set up a per-thread table");
     }
+}
+
+static int
+take_spare(cumo_cuda_thread_local_t *local, size_t device, char *entry)
+{
+    spare_entry_t **link;
+    spare_entry_t *found = NULL;
+
+    pthread_mutex_lock(&local->lock);
+    for (link = (spare_entry_t**)&local->spare; *link; link = &(*link)->next) {
+        if ((*link)->device == device) {
+            found = *link;
+            *link = found->next;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&local->lock);
+    if (found == NULL) { return 0; }
+    memcpy(entry, found->entry, local->entry_size);
+    free(found);
+    return 1;
 }
 
 void *
 cumo_cuda_thread_local_get(cumo_cuda_thread_local_t *local)
 {
     thread_table_t *t = (thread_table_t*)pthread_getspecific(local->key);
-    int device = cumo_cuda_runtime_get_device();
+    size_t device = (size_t)cumo_cuda_runtime_get_device();
+    char *entry;
 
     if (t == NULL) {
         size_t count = (size_t)cumo_cuda_runtime_get_device_count();
@@ -900,7 +935,11 @@ cumo_cuda_thread_local_get(cumo_cuda_thread_local_t *local)
             rb_memerror();
         }
     }
-    return t->entries + (size_t)device * local->entry_size;
+    entry = t->entries + device * local->entry_size;
+    if (!entry_filled(entry, local->entry_size) && take_spare(local, device, entry)) {
+        cumo_cuda_runtime_check_status(cudaSetDevice((int)device));
+    }
+    return entry;
 }
 
 void

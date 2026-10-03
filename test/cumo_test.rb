@@ -69,8 +69,11 @@ class CumoTest < Test::Unit::TestCase
     require "cumo"
     require "cumo/linalg"
     used = lambda do
-      `nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits`
-        .lines.to_h { |l| l.split(",").map(&:to_i) }.fetch(Process.pid)
+      rows = `nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits`.lines
+      mib = rows.to_h { |l| l.split(",").map(&:strip) }[Process.pid.to_s]
+      Integer(mib) if mib&.match?(/\A\d+\z/)
+    rescue SystemCallError
+      nil
     end
     a = Cumo::SFloat.new(64, 64).rand
     w = Cumo::SFloat.new(1, 1, 3, 3).rand
@@ -84,11 +87,14 @@ class CumoTest < Test::Unit::TestCase
     Thread.new(&work).join
     before = used.call
     8.times { Thread.new(&work).join }
-    print used.call - before
+    after = used.call
+    print(before && after ? after - before : "unmeasurable")
   RUBY
 
-  test "a thread that ends takes its library handles with it" do
-    assert_operator(Integer(run_child(HANDLES_SCRIPT).lines.last), :<, 32)
+  test "a thread that ends leaves its library handles to the next one" do
+    out = run_child(HANDLES_SCRIPT)
+    omit("nvidia-smi cannot tell this process's device memory") if out.include?("unmeasurable")
+    assert_operator(Integer(out.lines.last), :<, 32)
   end
 
   def setup

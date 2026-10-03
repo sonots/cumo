@@ -45,15 +45,9 @@ cumo_cuda_cublas_check_status(cublasStatus_t status)
 
 static cumo_cuda_thread_local_t handles;
 
-static void
-destroy_handle(void *entry)
-{
-    cublasDestroy(*(cublasHandle_t*)entry);
-}
-
 // One handle per thread: the stream is set on the handle before each call,
 // and another thread with another current stream must not reset it in
-// between. The handle goes with the thread.
+// between. A thread that ends leaves its handle to the next one.
 cublasHandle_t
 cumo_cuda_cublas_handle()
 {
@@ -85,7 +79,7 @@ Init_cumo_cuda_cublas(void)
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
 
-    cumo_cuda_thread_local_init(&handles, sizeof(cublasHandle_t), destroy_handle);
+    cumo_cuda_thread_local_init(&handles, sizeof(cublasHandle_t));
 
     /*
       Document-module: Cumo::Cublas

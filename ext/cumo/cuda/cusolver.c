@@ -127,14 +127,6 @@ cusolver_scratch(void)
 
 static cumo_cuda_thread_local_t contexts;
 
-static void
-destroy_context(void *entry)
-{
-    cusolver_context_t *c = (cusolver_context_t*)entry;
-    if (c->handle) { cusolverDnDestroy(c->handle); }
-    if (c->params) { cusolverDnDestroyParams(c->params); }
-}
-
 static cusolver_context_t
 cusolver_context(void)
 {
@@ -1219,7 +1211,7 @@ Init_cumo_cuda_cusolver(void)
 
     rb_define_singleton_method(mCusolver, "available?", rb_cusolver_available_p, 0);
 #ifdef CUSOLVER_FOUND
-    cumo_cuda_thread_local_init(&contexts, sizeof(cusolver_context_t), destroy_context);
+    cumo_cuda_thread_local_init(&contexts, sizeof(cusolver_context_t));
     rb_define_singleton_method(mCusolver, "version", rb_cusolver_version, 0);
     rb_define_singleton_method(mCusolver, "getrf", rb_cusolver_getrf, 1);
     rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, -1);
