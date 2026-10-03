@@ -677,6 +677,9 @@ module Cumo
         return ord == -2 ? svals[false, -1] / svals[false, 0] : svals[false, 0] / svals[false, -1]
       end
 
+      matrix_ord = ['fro', 'nuc', 'inf', '-inf', 1, -1].include?(ord) || (ord.is_a?(Float) && ord.infinite?)
+      raise ArgumentError, "invalid ord: #{ord}" unless matrix_ord
+
       inv_a = inv(a)
       norm(a, ord, axis: [-2, -1]) * norm(inv_a, ord, axis: [-2, -1])
     end
