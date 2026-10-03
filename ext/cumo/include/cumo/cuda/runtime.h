@@ -2,6 +2,7 @@
 #define CUMO_CUDA_RUNTIME_H
 
 #include "cumo/narray.h"
+#include <pthread.h>
 #include <cuda_runtime.h>
 
 #if defined(__cplusplus)
@@ -124,6 +125,16 @@ cumo_cuda_runtime_memcpy_to_pinned(void *dst, const void *src, size_t bytes)
 
 // The same into pageable memory, through the staging buffer above.
 cudaError_t cumo_cuda_runtime_memcpy_to_host(void *dst, const void *src, size_t bytes);
+
+typedef struct {
+    pthread_key_t key;
+    size_t entry_size;
+    pthread_mutex_t lock;
+    void *spare;
+} cumo_cuda_thread_local_t;
+
+void cumo_cuda_thread_local_init(cumo_cuda_thread_local_t *local, size_t entry_size);
+void *cumo_cuda_thread_local_get(cumo_cuda_thread_local_t *local);
 
 static inline int
 cumo_cuda_runtime_get_device_count()

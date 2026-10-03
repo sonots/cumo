@@ -43,31 +43,22 @@ cumo_cuda_cublas_check_status(cublasStatus_t status)
     }
 }
 
-// Lazily initialize cublas handle, and cache it
+static cumo_cuda_thread_local_t handles;
+
+// One handle per thread: the stream is set on the handle before each call,
+// and another thread with another current stream must not reset it in
+// between. A thread that ends leaves its handle to the next one.
 cublasHandle_t
 cumo_cuda_cublas_handle()
 {
-    // One table per thread: the stream is set on the handle before each call,
-    // and another thread with another current stream must not reset it in
-    // between. A handle is never destroyed.
-    static __thread cublasHandle_t *handles = 0;
-    int device;
-    if (handles == 0) {
-        int i;
-        int device_count = cumo_cuda_runtime_get_device_count();
-        handles = ALLOC_N(cublasHandle_t, device_count);
-        for (i = 0; i < device_count; ++i) {
-            handles[i] = 0;
-        }
-    }
-    device = cumo_cuda_runtime_get_device();
-    if (handles[device] == 0) {
+    cublasHandle_t *handle = (cublasHandle_t*)cumo_cuda_thread_local_get(&handles);
+    if (*handle == 0) {
         // A discarded status leaves the handle NULL, and cuBLAS reports that as
         // CUBLAS_STATUS_NOT_INITIALIZED at the next call instead of the reason.
-        cumo_cuda_cublas_check_status(cublasCreate(&handles[device]));
+        cumo_cuda_cublas_check_status(cublasCreate(handle));
     }
-    cumo_cuda_cublas_check_status(cublasSetStream(handles[device], cumo_cuda_stream()));
-    return handles[device];
+    cumo_cuda_cublas_check_status(cublasSetStream(*handle, cumo_cuda_stream()));
+    return *handle;
 }
 
 VALUE
@@ -87,6 +78,8 @@ Init_cumo_cuda_cublas(void)
 {
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
+
+    cumo_cuda_thread_local_init(&handles, sizeof(cublasHandle_t));
 
     /*
       Document-module: Cumo::Cublas
