@@ -50,6 +50,21 @@ class CumoTest < Test::Unit::TestCase
     assert_equal(1, flags("CUMO_SHOW_WARNING" => "1", "CUMO_SHOW_WARNING_ONCE" => "flase").scan(sync).size)
   end
 
+  LOADING_SCRIPT = <<~'RUBY'
+    require "cumo"
+    require "fiddle"
+    mode = Fiddle::Pointer.malloc(4)
+    Fiddle::Function.new(Fiddle.dlopen("libcuda.so.1")["cuModuleGetLoadingMode"], [Fiddle::TYPE_VOIDP], Fiddle::TYPE_INT).call(mode)
+    print [ENV["CUDA_MODULE_LOADING"], mode[0, 4].unpack1("l")].inspect
+  RUBY
+
+  test "modules load lazily unless CUDA_MODULE_LOADING says otherwise" do
+    lazy = 2
+    eager = 1
+    assert_equal(["LAZY", lazy].inspect, run_child(LOADING_SCRIPT, env: { "CUDA_MODULE_LOADING" => nil }).lines.last)
+    assert_equal(["EAGER", eager].inspect, run_child(LOADING_SCRIPT, env: { "CUDA_MODULE_LOADING" => "EAGER" }).lines.last)
+  end
+
   def setup
     @orig_compatible_mode = Cumo.compatible_mode_enabled?
   end
