@@ -204,6 +204,7 @@ typedef struct {
     void *h_work;
     int *d_info;
     int info;
+    int skip_info;
 } cusolver_call_t;
 
 static char*
@@ -280,7 +281,11 @@ potrf_body(VALUE arg)
     cumo_cuda_cusolver_check_status(cusolverDnXpotrf(
             c->ctx.handle, c->ctx.params, c->uplo, c->n, c->dtype, c->a, c->n,
             c->dtype, c->d_work, d_size, c->h_work, h_size, c->d_info));
-    c->info = read_info(c->d_info);
+    if (!c->skip_info) {
+        c->info = read_info(c->d_info);
+    } else if (h_size > 0) {
+        cumo_cuda_runtime_check_status(cudaStreamSynchronize(cumo_cuda_stream()));
+    }
     return Qnil;
 }
 
@@ -544,21 +549,27 @@ rb_cusolver_getrf(VALUE self, VALUE a)
 
   @param lu [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
     contiguous, of shape [n, n]: the column-major factors
-  @param ipiv [Cumo::Int64] contiguous, of length n, each in 1..n, which is checked
+  @param ipiv [Cumo::Int64] contiguous, of length n, each in 1..n
   @param b [Cumo::NArray] of the class of lu, contiguous, of shape [n] or
     [nrhs, n]: the column-major right-hand sides, overwritten with X
   @param trans [String] "N", "T" or "C"
+  @param check [Boolean] whether to read ipiv back and check that each is in
+    1..n, true by default; pivots getrf has just answered need not be
   @return [nil]
  */
 static int64_t check_square_matrix(VALUE a, const char *name);
 
 static VALUE
-rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans)
+rb_cusolver_getrs(int argc, VALUE *argv, VALUE self)
 {
     cusolver_call_t c = {0};
-    const char *t = StringValueCStr(trans);
+    VALUE lu, ipiv, b, trans, check;
+    const char *t;
     cumo_narray_t *nipiv;
     cumo_narray_t *nb;
+
+    rb_scan_args(argc, argv, "41", &lu, &ipiv, &b, &trans, &check);
+    t = StringValueCStr(trans);
 
     if (strcmp(t, "N") == 0) {
         c.trans = CUBLAS_OP_N;
@@ -588,7 +599,9 @@ rb_cusolver_getrs(VALUE self, VALUE lu, VALUE ipiv, VALUE b, VALUE trans)
         return Qnil;
     }
     c.ipiv = (int64_t*)cumo_na_get_offset_pointer_for_read(ipiv);
-    check_pivots(c.ipiv, c.n);
+    if (NIL_P(check) || RTEST(check)) {
+        check_pivots(c.ipiv, c.n);
+    }
     c.a = cumo_na_get_offset_pointer_for_read(lu);
     c.b = cumo_na_get_offset_pointer_for_read_write(b);
     c.ctx = cusolver_context();
@@ -643,23 +656,28 @@ check_square_matrix(VALUE a, const char *name)
     contiguous, of shape [n, n]: the column-major matrix, whose uplo
     triangle is overwritten with the factor
   @param uplo [String] "U" or "L"
-  @return [Integer] the info cuSOLVER reports
+  @param want_info [Boolean] whether to wait for the info cuSOLVER reports,
+    true by default
+  @return [Integer, nil] the info cuSOLVER reports, or nil if it is not read
  */
 static VALUE
-rb_cusolver_potrf(VALUE self, VALUE a, VALUE uplo)
+rb_cusolver_potrf(int argc, VALUE *argv, VALUE self)
 {
     cusolver_call_t c = {0};
+    VALUE a, uplo, want_info;
 
+    rb_scan_args(argc, argv, "21", &a, &uplo, &want_info);
+    c.skip_info = !NIL_P(want_info) && !RTEST(want_info);
     c.uplo = parse_uplo(uplo);
     c.n = check_square_matrix(a, "a");
     c.dtype = cusolver_dtype(a);
     if (c.n == 0) {
-        return INT2FIX(0);
+        return c.skip_info ? Qnil : INT2FIX(0);
     }
     c.a = cumo_na_get_offset_pointer_for_read_write(a);
     c.ctx = cusolver_context();
     rb_ensure(potrf_body, (VALUE)&c, call_ensure, (VALUE)&c);
-    return INT2NUM(c.info);
+    return c.skip_info ? Qnil : INT2NUM(c.info);
 }
 
 /*
@@ -1198,8 +1216,8 @@ Init_cumo_cuda_cusolver(void)
 #ifdef CUSOLVER_FOUND
     rb_define_singleton_method(mCusolver, "version", rb_cusolver_version, 0);
     rb_define_singleton_method(mCusolver, "getrf", rb_cusolver_getrf, 1);
-    rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, 4);
-    rb_define_singleton_method(mCusolver, "potrf", rb_cusolver_potrf, 2);
+    rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, -1);
+    rb_define_singleton_method(mCusolver, "potrf", rb_cusolver_potrf, -1);
     rb_define_singleton_method(mCusolver, "potrs", rb_cusolver_potrs, 3);
     rb_define_singleton_method(mCusolver, "potri", rb_cusolver_potri, 2);
     rb_define_singleton_method(mCusolver, "uplo", rb_cusolver_uplo, 1);
