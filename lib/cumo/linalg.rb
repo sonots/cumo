@@ -873,8 +873,9 @@ module Cumo
       a2 = matmul(a, a)
       a4 = matmul(a2, a2)
       a6 = matmul(a4, a2)
-      d4 = onenorm(a4)**0.25
-      d6 = onenorm(a6)**(1.0 / 6)
+      n4, n6 = onenorms(a4, a6)
+      d4 = n4**0.25
+      d6 = n6**(1.0 / 6)
       return unless d4.finite? && d6.finite?
 
       abs_a = DFloat.cast(a.abs)
@@ -892,12 +893,9 @@ module Cumo
       return pade_quotient(a, powers, 7) if eta3 < PADE_THETAS[7] && pade_ell(abs_a, norm, 7).zero?
       return pade_quotient(a, powers, 9) if eta3 < PADE_THETAS[9] && pade_ell(abs_a, norm, 9).zero?
 
-      d10 = onenorm(matmul(a4, a6))**0.1
-      return unless d10.finite?
+      s = pade13_squarings(a4, a6, d6, d8)
+      return unless s
 
-      eta4 = [d8, d10].max
-      eta5 = [eta3, eta4].min
-      s = eta5.positive? ? Math.log2(eta5 / PADE_THETAS[13]).ceil.clamp(0..) : 0
       s += pade_ell(abs_a, norm, 13, s)
       x = pade13_quotient(a, powers, s)
       s.times { x = matmul(x, x) }
@@ -967,9 +965,29 @@ module Cumo
       a_expm
     end
 
+    def pade13_squarings(a4, a6, d6, d8)
+      s = squarings_for(d8)
+      return s if d8 >= d6 || s == squarings_for(d6)
+
+      d10 = onenorm(matmul(a4, a6))**0.1
+      squarings_for(d10.clamp(d8, d6)) if d10.finite?
+    end
+
+    def squarings_for(eta)
+      return 0 unless eta.positive?
+
+      Math.log2(eta / PADE_THETAS[13]).ceil.clamp(0..)
+    end
+
     def onenorm(a)
-      sums = a.abs.sum(axis: 0)
-      to_ruby(sums.sum).nan? ? Float::NAN : to_ruby(sums.max)
+      onenorms(a).first
+    end
+
+    def onenorms(*mats)
+      sums = mats.map { |a| a.abs.sum(axis: 0) }
+      sums = sums.first.class.vstack(sums)
+      totals, maxes = sums.class.vstack([sums.sum(axis: 1), sums.max(axis: 1)]).to_a
+      totals.zip(maxes).map { |total, max| total.nan? ? Float::NAN : max }
     end
 
     def getrf(klass, a)
@@ -1379,6 +1397,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :pade_ell, :power_norm_log2, :fixed_pade_expm, :onenorm, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :pade_ell, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
