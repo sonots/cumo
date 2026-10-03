@@ -635,8 +635,7 @@ module Cumo
 
       blas_char(a)
       a = a.reshape(1) if a.ndim.zero?
-      ord = Float::INFINITY if ord == 'inf'
-      ord = -Float::INFINITY if ord == '-inf'
+      ord = norm_ord(ord)
       if axis.nil?
         norm = whole_norm(a, ord)
         return keepdims ? NArray.asarray(norm).reshape(*([1] * a.ndim)) : norm unless norm.nil?
@@ -667,8 +666,9 @@ module Cumo
     # singular value to its smallest.
     #
     # @param a [Cumo::NArray] 2-dimensional
-    # @param ord [String, Integer, nil] nil or 2, or -2 for the inverse ratio,
-    #   or an ord of the matrix norm: 'fro', 'nuc', 1, -1, 'inf' or '-inf'
+    # @param ord [String, Numeric, nil] nil or 2, or -2 for the inverse ratio,
+    #   or an ord of the matrix norm: 'fro', 'nuc', 1, -1, 'inf', '-inf' or
+    #   an infinite Numeric
     # @return [Cumo::NArray, Float] zero-dimensional for nil, 2, -2 and 'fro',
     #   as numo-linalg-alt answers, and a Float for the others
     def cond(a, ord = nil)
@@ -676,6 +676,9 @@ module Cumo
         svals = svdvals(a)
         return ord == -2 ? svals[false, -1] / svals[false, 0] : svals[false, 0] / svals[false, -1]
       end
+
+      ord = norm_ord(ord)
+      raise ArgumentError, "invalid ord: #{ord}" unless matrix_ord?(ord)
 
       inv_a = inv(a)
       norm(a, ord, axis: [-2, -1]) * norm(inv_a, ord, axis: [-2, -1])
@@ -1145,8 +1148,24 @@ module Cumo
       to_scalar(norm)
     end
 
+    def norm_ord(ord)
+      case ord
+      when 'inf' then Float::INFINITY
+      when '-inf' then -Float::INFINITY
+      else ord
+      end
+    end
+
+    def matrix_ord?(ord)
+      case ord
+      when 'fro', 'nuc', 2, -2, 1, -1 then true
+      when Numeric then !ord.infinite?.nil?
+      else false
+      end
+    end
+
     def matrix_norm(a, ord, r_axis, c_axis)
-      raise ArgumentError, "invalid ord: #{ord}" unless ord.is_a?(String) || ord.is_a?(Numeric)
+      raise ArgumentError, "invalid ord: #{ord}" unless matrix_ord?(ord)
 
       case ord
       when 'fro'
@@ -1155,8 +1174,6 @@ module Cumo
         NMath.sqrt(sum.ndim.zero? ? DFloat.cast(sum) : sum)
       when 'nuc'
         to_scalar(stacked_svdvals(a, r_axis, c_axis).sum(axis: -1))
-      when String
-        raise ArgumentError, "invalid ord: #{ord}"
       when 2, -2
         s = stacked_svdvals(a, r_axis, c_axis)
         to_scalar(ord == 2 ? s.max(axis: -1) : s.min(axis: -1))
@@ -1165,8 +1182,6 @@ module Cumo
         c_axis -= 1 if c_axis > r_axis
         to_scalar(ord == 1 ? sums.max(axis: c_axis) : sums.min(axis: c_axis))
       else
-        raise ArgumentError, "invalid ord: #{ord}" unless ord.infinite?
-
         sums = a.abs.sum(axis: c_axis)
         r_axis -= 1 if r_axis > c_axis
         to_scalar(ord.positive? ? sums.max(axis: r_axis) : sums.min(axis: r_axis))
@@ -1397,6 +1412,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :pade_ell, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :pade_ell, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end

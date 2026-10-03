@@ -238,8 +238,29 @@ class LinalgNormTest < Test::Unit::TestCase
     test "cond errors" do
       error = assert_raise(Cumo::Linalg::LapackError) { Cumo::Linalg.cond(Cumo::DFloat[[1, 2], [2, 4]], 1) }
       assert_equal('The matrix is singular, and the inverse matrix could not be computed.', error.message)
-      error = assert_raise(ArgumentError) { Cumo::Linalg.cond(Cumo::DFloat[[1, 2], [3, 4]], 3) }
-      assert_equal('invalid ord: 3', error.message)
+    end
+
+    test "cond rejects an invalid ord before it inverts the matrix" do
+      singular = Cumo::DFloat[[1, 2], [2, 4]]
+      [[3, 'invalid ord: 3'], ['x', 'invalid ord: x'], [:fro, 'invalid ord: fro'], [1.5, 'invalid ord: 1.5']].each do |ord, message|
+        error = assert_raise(ArgumentError) { Cumo::Linalg.cond(singular, ord) }
+        assert_equal(message, error.message)
+      end
+      error = assert_raise(ArgumentError) { Cumo::Linalg.cond(Cumo::DFloat[[1, 2, 3]], 'x') }
+      assert_equal('invalid ord: x', error.message)
+      assert_in_delta(21.0, Cumo::Linalg.cond(Cumo::DFloat[[1, 2], [3, 4]], Float::INFINITY), 1e-13)
+      assert_in_delta(6.0, Cumo::Linalg.cond(Cumo::DFloat[[1, 2], [3, 4]], -1.0), 1e-13)
+    end
+
+    test "cond takes the infinite Numeric ords norm takes" do
+      klass = Class.new(Numeric)
+      klass.define_method(:infinite?) { 1 }
+      klass.define_method(:positive?) { true }
+      klass.define_method(:to_s) { 'Infinity' }
+      infinity = klass.new
+      a = Cumo::DFloat[[1, 2], [3, 4]]
+      assert_in_delta(7.0, Cumo::Linalg.norm(a, infinity, axis: [-2, -1]), 1e-13)
+      assert_in_delta(21.0, Cumo::Linalg.cond(a, infinity), 1e-13)
     end
   end
 
