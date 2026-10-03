@@ -201,7 +201,7 @@ module Cumo
       ipiv = pivots(ipiv, n)
       raise ArgumentError, 'input array b must be 1 or 2-dimensional' unless [1, 2].include?(b.ndim)
 
-      getrs(klass, to_column_major(klass, lu), ipiv, b, trans)
+      getrs(klass, to_column_major(klass, lu), ipiv, b, trans, true)
     end
 
     # Computes the LU factorization of a matrix and returns its separate
@@ -246,7 +246,7 @@ module Cumo
       lu = to_column_major(klass, lu)
       raise LapackError, 'the matrix is singular and its inverse could not be computed' if singular?(lu)
 
-      invert(klass, lu, ipiv)
+      invert(klass, lu, ipiv, true)
     end
 
     # Solves A X = B for a square matrix A.
@@ -276,7 +276,7 @@ module Cumo
         return klass.new(*b.shape).store(b)
       end
 
-      getrs(klass, lu, ipiv, b, 'N')
+      getrs(klass, lu, ipiv, b, 'N', false)
     end
 
     # Computes the inverse of a square matrix.
@@ -295,7 +295,7 @@ module Cumo
       raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
       raise LapackError, 'The matrix is singular, and the inverse matrix could not be computed.' if info.positive?
 
-      invert(klass, lu, ipiv)
+      invert(klass, lu, ipiv, false)
     end
 
     # Computes the Cholesky factorization of a Hermitian positive definite
@@ -312,7 +312,7 @@ module Cumo
       fill = lapack_uplo(uplo)
       raise ArgumentError, "invalid uplo: #{uplo}" unless %w[U L].include?(uplo)
 
-      c, = potrf(klass, a, fill)
+      c, = potrf(klass, a, fill, false)
       fill == 'U' ? c.triu : c.tril
     end
 
@@ -329,7 +329,7 @@ module Cumo
       raise ArgumentError, 'uplo must be "U" or "L"' unless %w[U L].include?(uplo)
 
       bchr = blas_char(a)
-      c, info, transposed = potrf(BLAS_CLASSES[bchr.to_sym], a, uplo)
+      c, info, transposed = potrf(BLAS_CLASSES[bchr.to_sym], a, uplo, true)
       raise LapackError, "the #{-info}-th argument of #{bchr}potrf had illegal value" if info.negative?
 
       if info.positive?
@@ -978,19 +978,19 @@ module Cumo
       [lu, ipiv, info]
     end
 
-    def getrs(klass, lu, ipiv, b, trans)
+    def getrs(klass, lu, ipiv, b, trans, check)
       x = to_column_major(klass, b)
-      cusolver(:getrs, lu, ipiv, x, trans)
+      cusolver(:getrs, lu, ipiv, x, trans, check)
       from_column_major(x)
     end
 
-    def potrf(klass, a, uplo)
+    def potrf(klass, a, uplo, read_info)
       n = a.shape[0]
       upper_below = klass == DFloat ? DFLOAT_POTRF_UPPER_FILL_BELOW : POTRF_UPPER_FILL_BELOW
       fill = n < upper_below ? 'U' : 'L'
       transposed = fill == uplo
       c = transposed ? to_column_major(klass, a) : klass.new(n, n).store(a)
-      info = cusolver(:potrf, c, fill)
+      info = cusolver(:potrf, c, fill, read_info)
       [transposed ? c.transpose : c, info, transposed]
     end
 
@@ -1301,12 +1301,12 @@ module Cumo
       cusolver(:uplo, uplo)
     end
 
-    def invert(klass, lu, ipiv)
+    def invert(klass, lu, ipiv, check)
       n = lu.shape[0]
       return klass.new(0, 0) if n.zero?
 
       x = klass.eye(n)
-      cusolver(:getrs, lu, ipiv, x, 'N')
+      cusolver(:getrs, lu, ipiv, x, 'N', check)
 
       x.transpose.dup
     end
