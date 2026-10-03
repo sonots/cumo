@@ -72,30 +72,27 @@ cumo_cuda_cudnn_release_conv_held(VALUE held)
     return Qnil;
 }
 
-// Lazily initialize cudnn handle, and cache it
+static cumo_cuda_thread_local_t handles;
+
+static void
+destroy_handle(void *entry)
+{
+    cudnnDestroy(*(cudnnHandle_t*)entry);
+}
+
+// One handle per thread, as in cublas.c: the stream set on the handle must
+// not be reset by another thread before the call.
 cudnnHandle_t
 cumo_cuda_cudnn_handle()
 {
-    // One table per thread, as in cublas.c: the stream set on the handle must
-    // not be reset by another thread before the call. A handle is never destroyed.
-    static __thread cudnnHandle_t *handles = 0;
-    int device;
-    if (handles == 0) {
-        int i;
-        int device_count = cumo_cuda_runtime_get_device_count();
-        handles = ALLOC_N(cudnnHandle_t, device_count);
-        for (i = 0; i < device_count; ++i) {
-            handles[i] = 0;
-        }
-    }
-    device = cumo_cuda_runtime_get_device();
-    if (handles[device] == 0) {
+    cudnnHandle_t *handle = (cudnnHandle_t*)cumo_cuda_thread_local_get(&handles);
+    if (*handle == 0) {
         // A discarded status leaves the handle NULL, and cuDNN reports that as
         // CUDNN_STATUS_NOT_INITIALIZED at the next call instead of the reason.
-        cumo_cuda_cudnn_check_status(cudnnCreate(&handles[device]));
+        cumo_cuda_cudnn_check_status(cudnnCreate(handle));
     }
-    cumo_cuda_cudnn_check_status(cudnnSetStream(handles[device], cumo_cuda_stream()));
-    return handles[device];
+    cumo_cuda_cudnn_check_status(cudnnSetStream(*handle, cumo_cuda_stream()));
+    return *handle;
 }
 
 #endif // CUDNN_FOUND
@@ -144,6 +141,7 @@ Init_cumo_cuda_cudnn(void)
 
     rb_define_singleton_method(mCUDNN, "available?", rb_cudnn_available_p, 0);
 #ifdef CUDNN_FOUND
+    cumo_cuda_thread_local_init(&handles, sizeof(cudnnHandle_t), destroy_handle);
     init_max_workspace_size();
     rb_define_singleton_method(mCUDNN, "max_workspace_size", rb_cudnn_max_workspace_size, 0);
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));

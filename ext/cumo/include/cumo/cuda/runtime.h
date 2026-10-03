@@ -2,6 +2,7 @@
 #define CUMO_CUDA_RUNTIME_H
 
 #include "cumo/narray.h"
+#include <pthread.h>
 #include <cuda_runtime.h>
 
 #if defined(__cplusplus)
@@ -124,6 +125,20 @@ cumo_cuda_runtime_memcpy_to_pinned(void *dst, const void *src, size_t bytes)
 
 // The same into pageable memory, through the staging buffer above.
 cudaError_t cumo_cuda_runtime_memcpy_to_host(void *dst, const void *src, size_t bytes);
+
+// One entry per device for each thread, such as the library handles, which
+// carry the stream of the thread that set it and so cannot be shared. When the
+// thread ends, destroy is called on every entry that is not all zero, with its
+// device current, and outside the GVL.
+typedef struct {
+    pthread_key_t key;
+    size_t entry_size;
+    void (*destroy)(void *entry);
+} cumo_cuda_thread_local_t;
+
+void cumo_cuda_thread_local_init(cumo_cuda_thread_local_t *local, size_t entry_size, void (*destroy)(void *entry));
+// This thread's entry for the current device, zero until it is first filled.
+void *cumo_cuda_thread_local_get(cumo_cuda_thread_local_t *local);
 
 static inline int
 cumo_cuda_runtime_get_device_count()

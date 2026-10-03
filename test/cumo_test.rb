@@ -65,6 +65,32 @@ class CumoTest < Test::Unit::TestCase
     assert_equal(["EAGER", eager].inspect, run_child(LOADING_SCRIPT, env: { "CUDA_MODULE_LOADING" => "EAGER" }).lines.last)
   end
 
+  HANDLES_SCRIPT = <<~'RUBY'
+    require "cumo"
+    require "cumo/linalg"
+    used = lambda do
+      `nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits`
+        .lines.to_h { |l| l.split(",").map(&:to_i) }.fetch(Process.pid)
+    end
+    a = Cumo::SFloat.new(64, 64).rand
+    w = Cumo::SFloat.new(1, 1, 3, 3).rand
+    work = lambda do
+      a.dot(a)
+      Cumo::Linalg.lu_fact(a) if Cumo::CUDA::Cusolver.available?
+      a.reshape(1, 1, 64, 64).conv(w) if Cumo::CUDA::CUDNN.available?
+      Cumo::CUDA::Runtime.cudaDeviceSynchronize
+    end
+    work.call
+    Thread.new(&work).join
+    before = used.call
+    8.times { Thread.new(&work).join }
+    print used.call - before
+  RUBY
+
+  test "a thread that ends takes its library handles with it" do
+    assert_operator(Integer(run_child(HANDLES_SCRIPT).lines.last), :<, 32)
+  end
+
   def setup
     @orig_compatible_mode = Cumo.compatible_mode_enabled?
   end

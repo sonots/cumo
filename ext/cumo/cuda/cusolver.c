@@ -125,24 +125,29 @@ cusolver_scratch(void)
     return s;
 }
 
+static cumo_cuda_thread_local_t contexts;
+
+static void
+destroy_context(void *entry)
+{
+    cusolver_context_t *c = (cusolver_context_t*)entry;
+    if (c->handle) { cusolverDnDestroy(c->handle); }
+    if (c->params) { cusolverDnDestroyParams(c->params); }
+}
+
 static cusolver_context_t
 cusolver_context(void)
 {
-    static __thread cusolver_context_t *contexts = 0;
-    int device;
-    if (contexts == 0) {
-        contexts = ZALLOC_N(cusolver_context_t, cumo_cuda_runtime_get_device_count());
+    cusolver_context_t *c = (cusolver_context_t*)cumo_cuda_thread_local_get(&contexts);
+    if (c->handle == 0) {
+        check_call(cusolverDnCreate(&c->handle));
     }
-    device = cumo_cuda_runtime_get_device();
-    if (contexts[device].handle == 0) {
-        check_call(cusolverDnCreate(&contexts[device].handle));
+    if (c->params == 0) {
+        check_call(cusolverDnCreateParams(&c->params));
     }
-    if (contexts[device].params == 0) {
-        check_call(cusolverDnCreateParams(&contexts[device].params));
-    }
-    check_call(cusolverDnSetStream(contexts[device].handle, cumo_cuda_stream()));
-    contexts[device].scratch = cusolver_scratch();
-    return contexts[device];
+    check_call(cusolverDnSetStream(c->handle, cumo_cuda_stream()));
+    c->scratch = cusolver_scratch();
+    return *c;
 }
 
 static cudaDataType
@@ -1214,6 +1219,7 @@ Init_cumo_cuda_cusolver(void)
 
     rb_define_singleton_method(mCusolver, "available?", rb_cusolver_available_p, 0);
 #ifdef CUSOLVER_FOUND
+    cumo_cuda_thread_local_init(&contexts, sizeof(cusolver_context_t), destroy_context);
     rb_define_singleton_method(mCusolver, "version", rb_cusolver_version, 0);
     rb_define_singleton_method(mCusolver, "getrf", rb_cusolver_getrf, 1);
     rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, -1);
