@@ -141,13 +141,36 @@ class LinalgNormTest < Test::Unit::TestCase
 
   test "stacked matrices up to 32 rows and columns and past them answer the singular values of each" do
     omit_unless_cusolver
-    { Cumo::DFloat => [[3, 32, 7], [2, 33, 5]], Cumo::DComplex => [[3, 4, 5], [2, 5, 40]] }.each do |type, shapes|
+    {
+      Cumo::DFloat => [[3, 32, 7], [2, 33, 5]],
+      Cumo::DComplex => [[3, 4, 5], [2, 5, 40]],
+      Cumo::SFloat => [[3, 6, 4]],
+      Cumo::SComplex => [[3, 4, 6]]
+    }.each do |type, shapes|
+      tol = [Cumo::SFloat, Cumo::SComplex].include?(type) ? 1e-4 : 1e-12
       shapes.each do |shape|
         t = type.new(*shape).rand_norm
         expected = Array.new(shape[0]) { |i| Cumo::Linalg.svdvals(t[i, true, true].dup).to_a }
-        assert_close(expected.map(&:max), Cumo::Linalg.norm(t, 2, axis: [1, 2]), 1e-12)
-        assert_close(expected.map(&:min), Cumo::Linalg.norm(t, -2, axis: [1, 2]), 1e-12)
-        assert_close(expected.map(&:sum), Cumo::Linalg.norm(t, 'nuc', axis: [1, 2]), 1e-12)
+        assert_close(expected.map(&:max), Cumo::Linalg.norm(t, 2, axis: [1, 2]), tol)
+        assert_close(expected.map(&:min), Cumo::Linalg.norm(t, -2, axis: [1, 2]), tol)
+        assert_close(expected.map(&:sum), Cumo::Linalg.norm(t, 'nuc', axis: [1, 2]), tol)
+      end
+    end
+  end
+
+  test "a stacked matrix holding NaN or Infinity answers NaN whatever its size" do
+    omit_unless_cusolver
+    [[2, 3, 3], [2, 33, 3]].each do |shape|
+      [Float::NAN, Float::INFINITY].each do |v|
+        [Cumo::DFloat, Cumo::DComplex].each do |type|
+          t = type.new(*shape).seq
+          t[0, 0, 0] = v
+          [2, -2, 'nuc'].each do |ord|
+            norms = Cumo::Linalg.norm(t, ord, axis: [1, 2]).to_a
+            assert_true(norms[0].nan?, "#{type} #{shape} #{v} #{ord}")
+            assert_true(norms[1].finite?, "#{type} #{shape} #{v} #{ord}")
+          end
+        end
       end
     end
   end

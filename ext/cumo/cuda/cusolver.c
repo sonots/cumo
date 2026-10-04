@@ -460,6 +460,7 @@ gesvd_body(VALUE arg)
 }
 
 #define CUSOLVER_BATCHED_SVD_MAX 32
+#define CUSOLVER_BATCHED_SVD_UV_MAX ((size_t)64 << 20)
 
 static size_t
 align_up(size_t size)
@@ -474,23 +475,35 @@ gesvdj_batched_body(VALUE arg)
     cusolverDnHandle_t h = c->ctx.handle;
     int m = (int)c->m;
     int n = (int)c->n;
-    int batch = (int)c->k;
+    int64_t k = m < n ? m : n;
+    int64_t done;
+    int chunk;
     int lwork = 0;
     size_t elsize;
+    size_t welsize;
     size_t work_bytes;
     size_t u_bytes;
     size_t v_bytes;
     char *buf;
     int *d_infos;
     int *infos;
-    int i;
+    int64_t i;
+
+    switch (c->dtype) {
+    case CUDA_R_32F: elsize = sizeof(float); welsize = sizeof(float); break;
+    case CUDA_R_64F: elsize = sizeof(double); welsize = sizeof(double); break;
+    case CUDA_C_32F: elsize = sizeof(cuComplex); welsize = sizeof(float); break;
+    default: elsize = sizeof(cuDoubleComplex); welsize = sizeof(double); break;
+    }
+    chunk = (int)(CUSOLVER_BATCHED_SVD_UV_MAX / (elsize * ((size_t)m * m + (size_t)n * n)));
+    if (chunk < 1) chunk = 1;
+    if ((int64_t)chunk > c->k) chunk = (int)c->k;
 
     check_call(cusolverDnCreateGesvdjInfo(&c->gesvdj));
     switch (c->dtype) {
 #define GESVDJ_BUFFER_SIZE(fn, type, rtype)                                                          \
         check_call(cusolverDn##fn##_bufferSize(h, CUSOLVER_EIG_MODE_NOVECTOR, m, n, (type*)c->a, m,  \
-                (rtype*)c->w, NULL, m, NULL, n, &lwork, c->gesvdj, batch));                          \
-        elsize = sizeof(type);                                                                       \
+                (rtype*)c->w, NULL, m, NULL, n, &lwork, c->gesvdj, chunk));                          \
         break
     case CUDA_R_32F: GESVDJ_BUFFER_SIZE(SgesvdjBatched, float, float);
     case CUDA_R_64F: GESVDJ_BUFFER_SIZE(DgesvdjBatched, double, double);
@@ -499,29 +512,35 @@ gesvdj_batched_body(VALUE arg)
 #undef GESVDJ_BUFFER_SIZE
     }
     work_bytes = align_up(elsize * (size_t)(lwork > 0 ? lwork : 1));
-    u_bytes = align_up(elsize * (size_t)m * m * batch);
-    v_bytes = align_up(elsize * (size_t)n * n * batch);
-    buf = cusolver_work(c, work_bytes + u_bytes + v_bytes + sizeof(int) * (size_t)batch);
+    u_bytes = align_up(elsize * (size_t)m * m * chunk);
+    v_bytes = align_up(elsize * (size_t)n * n * chunk);
+    buf = cusolver_work(c, work_bytes + u_bytes + v_bytes + sizeof(int) * (size_t)c->k);
     d_infos = (int*)(buf + work_bytes + u_bytes + v_bytes);
-    switch (c->dtype) {
+    for (done = 0; done < c->k; done += chunk) {
+        int batch = (int)(c->k - done < chunk ? c->k - done : chunk);
+        char *a = (char*)c->a + elsize * (size_t)m * n * done;
+        char *w = (char*)c->w + welsize * (size_t)k * done;
+        switch (c->dtype) {
 #define GESVDJ_BATCHED(fn, type, rtype)                                                              \
-        cumo_cuda_cusolver_check_status(cusolverDn##fn(h, CUSOLVER_EIG_MODE_NOVECTOR, m, n,          \
-                (type*)c->a, m, (rtype*)c->w, (type*)(buf + work_bytes), m,                          \
-                (type*)(buf + work_bytes + u_bytes), n, (type*)buf, lwork, d_infos, c->gesvdj, batch)); \
-        break
-    case CUDA_R_32F: GESVDJ_BATCHED(SgesvdjBatched, float, float);
-    case CUDA_R_64F: GESVDJ_BATCHED(DgesvdjBatched, double, double);
-    case CUDA_C_32F: GESVDJ_BATCHED(CgesvdjBatched, cuComplex, float);
-    default: GESVDJ_BATCHED(ZgesvdjBatched, cuDoubleComplex, double);
+            cumo_cuda_cusolver_check_status(cusolverDn##fn(h, CUSOLVER_EIG_MODE_NOVECTOR, m, n,      \
+                    (type*)a, m, (rtype*)w, (type*)(buf + work_bytes), m,                            \
+                    (type*)(buf + work_bytes + u_bytes), n, (type*)buf, lwork, d_infos + done,       \
+                    c->gesvdj, batch));                                                              \
+            break
+        case CUDA_R_32F: GESVDJ_BATCHED(SgesvdjBatched, float, float);
+        case CUDA_R_64F: GESVDJ_BATCHED(DgesvdjBatched, double, double);
+        case CUDA_C_32F: GESVDJ_BATCHED(CgesvdjBatched, cuComplex, float);
+        default: GESVDJ_BATCHED(ZgesvdjBatched, cuDoubleComplex, double);
 #undef GESVDJ_BATCHED
+        }
     }
-    infos = ALLOC_N(int, batch);
-    cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_host(infos, d_infos, sizeof(int) * (size_t)batch));
+    infos = ruby_xmalloc(sizeof(int) * (size_t)c->k);
+    c->h_work = infos;
+    cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_host(infos, d_infos, sizeof(int) * (size_t)c->k));
     c->info = 0;
-    for (i = 0; i < batch && c->info == 0; i++) {
+    for (i = 0; i < c->k && c->info == 0; i++) {
         c->info = infos[i];
     }
-    xfree(infos);
     return Qnil;
 }
 
@@ -1353,6 +1372,7 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "sygvd", rb_cusolver_sygvd, 6);
     rb_define_singleton_method(mCusolver, "gesvd", rb_cusolver_gesvd, 5);
     rb_define_singleton_method(mCusolver, "gesvdj_batched", rb_cusolver_gesvdj_batched, 2);
+    rb_define_const(mCusolver, "BATCHED_SVD_MAX", INT2FIX(CUSOLVER_BATCHED_SVD_MAX));
     rb_define_singleton_method(mCusolver, "geqrf", rb_cusolver_geqrf, 2);
     rb_define_singleton_method(mCusolver, "orgqr", rb_cusolver_orgqr, 2);
     rb_define_singleton_method(mCusolver, "sytrf", rb_cusolver_sytrf, 3);
