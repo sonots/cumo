@@ -30,6 +30,28 @@ class LinalgLuTest < Test::Unit::TestCase
     end
   end
 
+  types.each_key do |type|
+    [[3, 0], [0, 3], [0, 0]].each do |m, n|
+      test "#{type} #{m}x#{n} answers empty factors" do
+        perm, l, u = Cumo::Linalg.lu(type.new(m, n))
+        assert_equal([[m, m], [m, 0], [0, n]], [perm.shape, l.shape, u.shape])
+        assert_equal(Array.new(m) { |i| Array.new(m) { |j| i == j ? 1 : 0 } }, perm.to_a)
+        assert_equal([type, type, type], [perm.class, l.class, u.class])
+
+        pl, u2 = Cumo::Linalg.lu(type.new(m, n), permute_l: true)
+        assert_equal([[m, 0], [0, n]], [pl.shape, u2.shape])
+        assert_equal([type, type], [pl.class, u2.class])
+      end
+    end
+  end
+
+  test "empty factors of an integer matrix" do
+    perm, l, u = Cumo::Linalg.lu(Cumo::Int32.new(3, 0))
+    assert_equal([[Cumo::Int32, [3, 3]], [Cumo::DFloat, [3, 0]], [Cumo::DFloat, [0, 0]]],
+                 [perm, l, u].map { |x| [x.class, x.shape] })
+    assert_equal([[1, 0, 0], [0, 1, 0], [0, 0, 1]], perm.to_a)
+  end
+
   test "P is a permutation of the class of the input" do
     perm, l, = Cumo::Linalg.lu(Cumo::Int32[[1, 2], [3, 4]])
     assert_kind_of(Cumo::Int32, perm)

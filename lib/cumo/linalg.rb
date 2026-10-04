@@ -220,6 +220,13 @@ module Cumo
 
       m, n = a.shape
       k = [m, n].min
+      if k.zero?
+        klass = BLAS_CLASSES[blas_char(a).to_sym]
+        l = klass.new(m, k)
+        u = klass.new(k, n)
+        return permute_l ? [l, u] : [identity(a.class, m), l, u]
+      end
+
       lu, piv = lu_fact(a)
       l = lu[true, 0...k].tril.tap { |x| x[x.diag_indices] = 1 }
       u = lu[0...k, true].triu
@@ -1121,13 +1128,17 @@ module Cumo
       y
     end
 
+    def identity(klass, n)
+      n.zero? ? klass.new(0, 0) : klass.eye(n)
+    end
+
     def empty_qr(klass, m, n, mode)
       return [klass.new(m, n), klass.new(0)] if mode == 'raw'
 
       r = mode == 'economic' ? klass.new(0, n) : klass.new(m, n)
       return r if mode == 'r'
 
-      q = mode == 'economic' || m.zero? ? klass.new(m, 0) : klass.eye(m)
+      q = mode == 'economic' ? klass.new(m, 0) : identity(klass, m)
       [q, r]
     end
 
@@ -1522,6 +1533,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
