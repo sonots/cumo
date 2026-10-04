@@ -15,6 +15,7 @@ uint64_t cumo_cuda_sync_epoch = 0;
 uint64_t cumo_cuda_launch_epoch = 0;
 
 static __thread cudaStream_t current_stream = 0;
+static pthread_key_t current_stream_key;
 static cumo_cuda_handle_set_t streams;
 static cumo_cuda_handle_set_t events;
 // How many threads have each stream current, so that none of them can
@@ -52,6 +53,12 @@ cumo_cuda_stream(void)
     return current_stream;
 }
 
+static void
+release_current_stream(void *stream)
+{
+    in_use_add((cudaStream_t)stream, -1);
+}
+
 void
 cumo_cuda_stream_set(cudaStream_t stream)
 {
@@ -59,6 +66,7 @@ cumo_cuda_stream_set(cudaStream_t stream)
     in_use_add(current_stream, -1);
     in_use_add(stream, 1);
     current_stream = stream;
+    pthread_setspecific(current_stream_key, stream);
 }
 #define eRuntimeError cumo_cuda_eRuntimeError
 #define mRuntime cumo_cuda_mRuntime
@@ -992,4 +1000,7 @@ Init_cumo_cuda_runtime()
     rb_define_const(mRuntime, "CUDA_HOST_ALLOC_WRITE_COMBINED", UINT2NUM(cudaHostAllocWriteCombined));
     cumo_cuda_handle_set_init(&in_use);
     cumo_cuda_handle_set_init(&pinned);
+    if (pthread_key_create(&current_stream_key, release_current_stream) != 0) {
+        rb_raise(rb_eRuntimeError, "cannot set up the per-thread stream");
+    }
 }
