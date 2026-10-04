@@ -1,4 +1,4 @@
-<% indexer_ops = %w[sum prod min max ptp var stddev mean rms kahan_sum] %>
+<% indexer_ops = %w[sum prod min max ptp var stddev mean rms kahan_sum abs_sum abs_max abs_min] %>
 <% (is_float ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>

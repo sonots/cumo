@@ -341,6 +341,12 @@ elsif is_int && !is_object
   accum "rms", "double", "cumo_cDFloat"
 end
 
+if %w[sfloat dfloat scomplex dcomplex].include?(get(:type_name))
+  accum "abs_sum", "rtype", "cRT"
+  accum "abs_max", "rtype", "cRT"
+  accum "abs_min", "rtype", "cRT"
+end
+
 if is_comparable
   accum "min", "dtype", "cT"
   accum "max", "dtype", "cT"

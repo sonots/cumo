@@ -158,6 +158,14 @@ class LinalgNormTest < Test::Unit::TestCase
     end
   end
 
+  test "the reductions of magnitudes norm uses stay private" do
+    [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex].each do |type|
+      %i[abs_sum abs_max abs_min].each do |name|
+        assert_raise(NoMethodError) { type[[1, -2]].public_send(name) }
+      end
+    end
+  end
+
   test "a stacked matrix holding NaN or Infinity answers NaN whatever its size" do
     omit_unless_cusolver
     [[2, 3, 3], [2, 33, 3]].each do |shape|
