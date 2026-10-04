@@ -130,6 +130,18 @@ struct cumo_<%=type_name%>_rms_nan_impl {
     __device__ rtype MapOut(SumAndCount accum) { return <%=from_acc%>(sqrt(accum.sum / accum.n)); }
 };
 
+<% if %w[sfloat dfloat].include?(type_name) %>
+struct cumo_<%=type_name%>_abs_sum_impl : cumo_<%=type_name%>_sum_impl {
+    __device__ <%=acc%> MapIn(dtype in, int64_t /*index*/) { return <%=to_acc%>(m_abs(in)); }
+};
+
+template <typename Rule>
+struct cumo_<%=type_name%>_abs_extremum_of : cumo_<%=type_name%>_extremum_of<Rule> {
+    __device__ dtype MapIn(dtype in, int64_t /*index*/) { return m_abs(in); }
+};
+
+<% end %>
+
 <% if is_double_precision %>
 // Kahan-Babuska-Neumaier. The compensation term is what makes this associative:
 // a partial carries the running sum and everything that sum has lost, and two
@@ -212,6 +224,24 @@ void cumo_<%=type_name%>_stddev_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 void cumo_<%=type_name%>_rms_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_rms_nan_impl>(*arg, cumo_<%=type_name%>_rms_nan_impl{});
+}
+<% end %>
+<% if %w[sfloat dfloat].include?(type_name) && kernel_part? %>
+void cumo_<%=type_name%>_abs_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_abs_sum_impl>(*arg, cumo_<%=type_name%>_abs_sum_impl{});
+}
+
+void cumo_<%=type_name%>_abs_max_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_extremum_rules::Max>;
+    cumo_reduce_split<dtype, dtype, impl>(*arg, impl{});
+}
+
+void cumo_<%=type_name%>_abs_min_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_extremum_rules::Min>;
+    cumo_reduce_split<dtype, dtype, impl>(*arg, impl{});
 }
 <% end %>
 <% if is_double_precision && kernel_part? %>

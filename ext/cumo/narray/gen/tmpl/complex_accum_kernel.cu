@@ -149,6 +149,32 @@ struct cumo_<%=type_name%>_rms_nan_impl {
     __device__ rtype MapOut(SumAndCount accum) { return r_sqrt(accum.sum / accum.n); }
 };
 
+struct cumo_<%=type_name%>_abs_sum_impl {
+    __device__ rtype Identity(int64_t /*index*/) { return 0; }
+    __device__ rtype MapIn(dtype in, int64_t /*index*/) { return c_abs(in); }
+    __device__ void Reduce(rtype next, rtype& accum) { accum = accum + next; }
+    __device__ rtype MapOut(rtype accum) { return accum; }
+};
+
+struct cumo_<%=type_name%>_abs_extremum_rules {
+    struct Min {
+        __device__ static rtype Identity() { return (rtype)nan(""); }
+        __device__ static void Reduce(rtype next, rtype& accum) { if (next < accum || accum != accum) { accum = next; } }
+    };
+    struct Max {
+        __device__ static rtype Identity() { return (rtype)nan(""); }
+        __device__ static void Reduce(rtype next, rtype& accum) { if (accum < next || accum != accum) { accum = next; } }
+    };
+};
+
+template <typename Rule>
+struct cumo_<%=type_name%>_abs_extremum_of {
+    __device__ rtype Identity(int64_t /*index*/) { return Rule::Identity(); }
+    __device__ rtype MapIn(dtype in, int64_t /*index*/) { return c_abs(in); }
+    __device__ void Reduce(rtype next, rtype& accum) { Rule::Reduce(next, accum); }
+    __device__ rtype MapOut(rtype accum) { return accum; }
+};
+
 <% if is_double_precision %>
 // Kahan-Babuska-Neumaier per component. See the real version for why the
 // compensation term is what lets a tree combine partials at all.
@@ -252,6 +278,24 @@ void cumo_<%=type_name%>_stddev_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 void cumo_<%=type_name%>_rms_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_rms_nan_impl>(*arg, cumo_<%=type_name%>_rms_nan_impl{});
+}
+<% end %>
+<% if kernel_part? %>
+void cumo_<%=type_name%>_abs_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_abs_sum_impl>(*arg, cumo_<%=type_name%>_abs_sum_impl{});
+}
+
+void cumo_<%=type_name%>_abs_max_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_abs_extremum_rules::Max>;
+    cumo_reduce_split<dtype, rtype, impl>(*arg, impl{});
+}
+
+void cumo_<%=type_name%>_abs_min_kernel_launch(cumo_na_reduction_arg_t* arg)
+{
+    using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_abs_extremum_rules::Min>;
+    cumo_reduce_split<dtype, rtype, impl>(*arg, impl{});
 }
 <% end %>
 <% if is_double_precision && kernel_part? %>

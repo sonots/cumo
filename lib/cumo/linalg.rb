@@ -1255,11 +1255,11 @@ module Cumo
       raise ArgumentError, "invalid ord: #{ord}" unless ord.is_a?(Numeric)
 
       norm = if ord.infinite?
-               ord.positive? ? a.abs.max(axis: axis, keepdims: keepdims) : a.abs.min(axis: axis, keepdims: keepdims)
+               reduce_abs(a, ord.positive? ? :max : :min, axis: axis, keepdims: keepdims)
              elsif ord.zero?
                a.class.cast(a.ne(0)).sum(axis: axis, keepdims: keepdims)
              elsif ord == 1
-               a.abs.sum(axis: axis, keepdims: keepdims)
+               reduce_abs(a, :sum, axis: axis, keepdims: keepdims)
              elsif ord == 2
                x = magnitudes(to_float(a))
                NMath.sqrt(x.mulsum(x, axis: axis, keepdims: keepdims))
@@ -1299,11 +1299,11 @@ module Cumo
         s = stacked_svdvals(a, r_axis, c_axis)
         to_scalar(ord == 2 ? s.max(axis: -1) : s.min(axis: -1))
       when 1, -1
-        sums = a.abs.sum(axis: r_axis)
+        sums = reduce_abs(a, :sum, axis: r_axis)
         c_axis -= 1 if c_axis > r_axis
         to_scalar(ord == 1 ? sums.max(axis: c_axis) : sums.min(axis: c_axis))
       else
-        sums = a.abs.sum(axis: c_axis)
+        sums = reduce_abs(a, :sum, axis: c_axis)
         r_axis -= 1 if r_axis > c_axis
         to_scalar(ord.positive? ? sums.max(axis: r_axis) : sums.min(axis: r_axis))
       end
@@ -1351,6 +1351,12 @@ module Cumo
       checked = s + poison
       release(s, poison)
       checked.reshape!(*batch, checked.shape[1])
+    end
+
+    def reduce_abs(a, reduction, **options)
+      return a.__send__(:"abs_#{reduction}", **options) if BLAS_CLASSES.value?(a.class)
+
+      a.abs.__send__(reduction, **options)
     end
 
     def magnitudes(x)
@@ -1568,6 +1574,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :reduce_abs, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
