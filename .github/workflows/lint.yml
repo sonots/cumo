@@ -1,0 +1,36 @@
+name: Lint
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - '**.rb'
+      - '.rubocop*.yml'
+      - 'Gemfile'
+      - '*.gemspec'
+      - 'Rakefile'
+      - '.github/workflows/lint.yml'
+  pull_request:
+    paths:
+      - '**.rb'
+      - '.rubocop*.yml'
+      - 'Gemfile'
+      - '*.gemspec'
+      - 'Rakefile'
+      - '.github/workflows/lint.yml'
+
+jobs:
+  rubocop:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby
+          bundler-cache: true
+
+      - name: RuboCop
+        run: bundle exec rubocop --format progress

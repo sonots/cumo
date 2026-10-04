@@ -12,6 +12,9 @@ on:
       - '.rubocop*.yml'
       - 'docs/**'
       - 'bench/**'
+      - 'lib/**/*.rb'
+      - 'test/**'
+      - 'examples/**'
   pull_request:
     paths-ignore:
       - '**.md'
@@ -22,6 +25,9 @@ on:
       - '.rubocop*.yml'
       - 'docs/**'
       - 'bench/**'
+      - 'lib/**/*.rb'
+      - 'test/**'
+      - 'examples/**'
 
 jobs:
   build:
