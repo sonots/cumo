@@ -894,8 +894,9 @@ module Cumo
       unless norm.finite?
         release(*even)
         return a.class.new(*a.shape).fill(Float::NAN) if norm.nan?
+        raise FloatDomainError, 'Infinity' if a.isinf.any?
 
-        raise FloatDomainError, norm.to_s
+        raise FloatDomainError, "the 1-norm of the matrix overflows #{a.class}"
       end
 
       x = adaptive_pade_expm(a, norm, even, norms)

@@ -180,6 +180,11 @@ class LinalgExpmTest < Test::Unit::TestCase
     error = assert_raise(Cumo::NArray::ShapeError) { Cumo::Linalg.expm(Cumo::DFloat[1]) }
     assert_equal('input array a must be 2-dimensional', error.message)
     assert_raise(TypeError) { Cumo::Linalg.expm(Cumo::HFloat[[1]]) }
-    assert_raise(FloatDomainError) { Cumo::Linalg.expm(Cumo::DFloat[[Float::INFINITY, 0], [0, 1]]) }
+    error = assert_raise(FloatDomainError) { Cumo::Linalg.expm(Cumo::DFloat[[Float::INFINITY, 0], [0, 1]]) }
+    assert_equal('Infinity', error.message)
+    { Cumo::SFloat => -3e38, Cumo::DFloat => -1e308, Cumo::SComplex => -3e38, Cumo::DComplex => -1e308 }.each do |type, v|
+      error = assert_raise(FloatDomainError) { Cumo::Linalg.expm(type[[v, 0], [v, 0]]) }
+      assert_equal("the 1-norm of the matrix overflows #{type}", error.message)
+    end
   end
 end
