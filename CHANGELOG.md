@@ -1,3 +1,20 @@
+# 0.12.0 (2026/10/04)
+
+Fixes:
+
+* Fix a stream left current in a thread that ended never being destroyed. Neither `Stream#destroy` nor the finalizer could free it, so about 0.5 MiB of device memory stayed behind per such stream, and under M:N threads the next Ruby thread on the same native thread inherited it. The current stream now lives on the Ruby `Thread`, which adds about 2% to the fixed cost of a launch (PR #593)
+* Fix a device memory leak each time a thread that used cuBLAS, cuSOLVER or cuDNN ends: 64 MiB per thread for cuBLAS, 32 MiB more for cuSOLVER and about 8 MiB for cuDNN. An ending thread now leaves its handles to the next one, so device memory stays at what the most threads alive at once needed (PR #591)
+* Fix `x.inplace.cumsum` and `cumprod` answering a new array and leaving `x` as it was, which they did since 0.10.0 (PR #582)
+
+Changes:
+
+* Add `Cumo::Linalg`, the functions of `Numo::Linalg` from numo-linalg-alt 0.10.1 on cuSOLVER and cuBLAS, with the same names, arguments, return values and errors: `blas_char`, `dot`, `matmul`, `matrix_power`, `solve`, `inv`, `det`, `slogdet`, `lu`, `lu_fact`, `lu_solve`, `lu_inv`, `cholesky`, `cho_fact`, `cho_solve`, `cho_inv`, `ldl`, `qr`, `eig`, `eigvals`, `eigh`, `eigvalsh`, `svd`, `svdvals`, `pinv`, `lstsq`, `matrix_rank`, `orth`, `null_space`, `norm`, `cond` and `expm`. Load it with `require "cumo/linalg"`. Cumo builds it when the toolkit has cuSOLVER's 64-bit API, and `Cumo::CUDA::Cusolver.available?` says whether it did. `eig` and `eigvals` need `cusolverDnXgeev`, which CUDA 11 does not have, and `ldl` of a Hermitian complex matrix needs `cusolverDnXhetrf`, which CUDA 11 and 12 do not have. Where it differs from numo-linalg-alt on purpose, as in `expm`, `norm` and `cond`, the README says how (PR #594, PR #592, PR #589, PR #588, PR #587, PR #586, PR #584, PR #581, PR #580, PR #577, PR #576, PR #575, PR #574, PR #573, PR #572, PR #571, PR #570, PR #569, PR #568, PR #567)
+* `require "cumo"` sets `CUDA_MODULE_LOADING` to `LAZY` unless it is set already, as PyTorch does. Drivers before 535 otherwise load every kernel module when CUDA starts, which adds about 2.2 GB of RSS. Child processes inherit the setting (PR #590)
+* `triu`, `tril`, `triu!` and `tril!` clear the triangle of a contiguous array with an Integer `k` in one kernel rather than through an index array: `triu` of a 16 x 16 DFloat takes 0.006 ms where it took 0.49 (PR #585)
+* The first kernel of a type costs less host memory. Each type builds separate modules for its reductions, their nan-aware forms and `mulsum` against another type, so DFloat adds 88 MB of RSS for elementwise work and 137 MB once it reduces, where its first kernel of any kind added 181 MB. Every fatbin image is compressed, which takes `cumo.so` from 120 MB to 112 MB (PR #583)
+* The API docs show the NArray methods defined in C, such as `shape` and `NArray.zeros`, and keep the docstrings of the typed-class methods. `.yardopts` keeps the build-time code generators out of the docs, and the gemspec names rubydoc.info as the documentation (PR #579, PR #578)
+* The gem no longer ships the test suite, `bench/` and the files for working on cumo (PR #566)
+
 # 0.11.0 (2026/09/27)
 
 Breaking changes:
