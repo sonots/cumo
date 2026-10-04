@@ -45,6 +45,19 @@ class LinalgLuTest < Test::Unit::TestCase
     end
   end
 
+  test "P of a Bit matrix is a Bit" do
+    perm, l, u = Cumo::Linalg.lu(Cumo::Bit[[0, 1], [1, 1]])
+    assert_equal([Cumo::Bit, Cumo::DFloat, Cumo::DFloat], [perm, l, u].map(&:class))
+    assert_equal([[0, 1], [1, 0]], perm.to_a)
+    assert_equal([[0.0, 1.0], [1.0, 1.0]], host_dot(host_dot(perm.to_a, l.to_a), u.to_a))
+
+    pl, = Cumo::Linalg.lu(Cumo::Bit[[0, 1], [1, 1]], permute_l: true)
+    assert_equal(host_dot(perm.to_a, l.to_a), pl.to_a)
+
+    perm, = Cumo::Linalg.lu(Cumo::Bit.new(3, 0))
+    assert_equal([Cumo::Bit, [[1, 0, 0], [0, 1, 0], [0, 0, 1]]], [perm.class, perm.to_a])
+  end
+
   test "empty factors of an integer matrix" do
     perm, l, u = Cumo::Linalg.lu(Cumo::Int32.new(3, 0))
     assert_equal([[Cumo::Int32, [3, 3]], [Cumo::DFloat, [3, 0]], [Cumo::DFloat, [0, 0]]],

@@ -233,9 +233,9 @@ module Cumo
       release(lu)
       columns = (0...m).to_a
       piv.to_a.each_with_index { |i, j| columns[i - 1], columns[j] = columns[j], columns[i - 1] }
-      identity = a.class.eye(m)
-      perm = identity[true, columns].dup
-      release(identity)
+      eye = identity(a.class, m)
+      perm = eye[true, columns].dup
+      release(eye)
       return [perm, l, u] unless permute_l
 
       pl = perm.dot(l)
@@ -1129,7 +1129,9 @@ module Cumo
     end
 
     def identity(klass, n)
-      n.zero? ? klass.new(0, 0) : klass.eye(n)
+      return klass.new(0, 0) if n.zero?
+
+      klass == Bit ? Bit.cast(UInt8.eye(n)) : klass.eye(n)
     end
 
     def empty_qr(klass, m, n, mode)
