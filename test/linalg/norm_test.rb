@@ -166,6 +166,31 @@ class LinalgNormTest < Test::Unit::TestCase
     end
   end
 
+  test "the reductions of magnitudes answer what abs and the reduction answer" do
+    [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex].each do |type|
+      a = type.new(3, 2049).rand_norm
+      a[1, 7] = Float::NAN
+      a[2, 2048] = Float::INFINITY
+      [nil, 0, 1].each do |axis|
+        options = axis ? { axis: axis, keepdims: true } : {}
+        %i[sum max min].each do |name|
+          expected = a.abs.public_send(name, **options)
+          actual = a.__send__(:"abs_#{name}", **options)
+          assert_equal(expected.class, actual.class)
+          expected, actual = [expected, actual].map { |x| [x.is_a?(Cumo::NArray) ? x.to_a : x].flatten.map { |v| v.nan? ? :nan : v } }
+          if name == :sum
+            marks = [expected, actual].map { |values| values.map { |v| v.is_a?(Float) && v.finite? ? :finite : v } }
+            assert_equal(*marks)
+            finite = [expected, actual].map { |values| values.select { |v| v.is_a?(Float) && v.finite? } }
+            assert_close(*finite, 1e-6)
+          else
+            assert_equal(expected, actual)
+          end
+        end
+      end
+    end
+  end
+
   test "a stacked matrix holding NaN or Infinity answers NaN whatever its size" do
     omit_unless_cusolver
     [[2, 3, 3], [2, 33, 3]].each do |shape|

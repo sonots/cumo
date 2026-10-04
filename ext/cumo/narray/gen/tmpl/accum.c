@@ -1,5 +1,6 @@
 <% indexer_ops = %w[sum prod min max ptp var stddev mean rms kahan_sum abs_sum abs_max abs_min] %>
-<% (is_float ? ["","_nan"] : [""]).each do |nan| %>
+<% nan_forms = is_float && get(:nan_forms) != false %>
+<% (nan_forms ? ["","_nan"] : [""]).each do |nan| %>
 
 <% unless type_name == 'robject' %>
 //<% unless indexer_ops.include?(name) %>
@@ -49,7 +50,7 @@ static void
 
 /*
   <%=name%> of self.
-<% if is_float %>
+<% if nan_forms %>
   @overload <%=name%>(axis:nil, keepdims:false, nan:false)
   @param [TrueClass] nan  If true, apply NaN-aware algorithm (avoid NaN for sum/mean etc, or, return NaN for min/max etc).
 <% else %>
@@ -71,7 +72,7 @@ static VALUE
     cumo_ndfunc_t ndf = { <%=c_iter%>, CUMO_STRIDE_LOOP_NIP|CUMO_NDF_FLAT_REDUCE|CUMO_NDF_INDEXER_LOOP, 2, 1, ain, aout };
     <% end %>
 
-  <% if is_float %>
+  <% if nan_forms %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, <%=c_iter%>_nan);
   <% else %>
     reduce = cumo_na_reduce_dimension(argc, argv, 1, &self, &ndf, 0);

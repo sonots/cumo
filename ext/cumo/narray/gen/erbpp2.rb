@@ -266,7 +266,13 @@ class DefMethod < ErbPP
 
   def init_def
     return if n_arg == :nodef
-    s = (singleton) ? "_singleton" : ""
+    s = if singleton
+          "_singleton"
+        elsif @opts[:private]
+          "_private"
+        else
+          ""
+        end
     "rb_define#{s}_method(#{define_method_args});"
   end
 

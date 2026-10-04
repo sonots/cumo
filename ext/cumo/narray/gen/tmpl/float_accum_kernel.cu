@@ -140,9 +140,6 @@ struct cumo_<%=type_name%>_abs_extremum_of : cumo_<%=type_name%>_extremum_of<Rul
     __device__ dtype MapIn(dtype in, int64_t /*index*/) { return m_abs(in); }
 };
 
-struct cumo_<%=type_name%>_abs_sum_nan_impl : cumo_<%=type_name%>_sum_nan_impl {
-    __device__ <%=acc%> MapIn(dtype in, int64_t /*index*/) { return not_nan(in) ? <%=to_acc%>(m_abs(in)) : <%=acc_zero%>; }
-};
 <% end %>
 
 <% if is_double_precision %>
@@ -244,24 +241,6 @@ void cumo_<%=type_name%>_abs_max_kernel_launch(cumo_na_reduction_arg_t* arg)
 void cumo_<%=type_name%>_abs_min_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_extremum_rules::Min>;
-    cumo_reduce_split<dtype, dtype, impl>(*arg, impl{});
-}
-<% end %>
-<% if %w[sfloat dfloat].include?(type_name) && kernel_part?(nan: true) %>
-void cumo_<%=type_name%>_abs_sum_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
-{
-    cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_abs_sum_nan_impl>(*arg, cumo_<%=type_name%>_abs_sum_nan_impl{});
-}
-
-void cumo_<%=type_name%>_abs_max_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
-{
-    using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_extremum_nan_rules::Max>;
-    cumo_reduce_split<dtype, dtype, impl>(*arg, impl{});
-}
-
-void cumo_<%=type_name%>_abs_min_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
-{
-    using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_extremum_nan_rules::Min>;
     cumo_reduce_split<dtype, dtype, impl>(*arg, impl{});
 }
 <% end %>

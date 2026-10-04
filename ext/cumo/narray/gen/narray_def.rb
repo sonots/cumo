@@ -59,8 +59,8 @@ module NArrayMethod
     def_method(meth, "bit_reduce", **h)
   end
 
-  def accum(meth, dtype, result_class)
-    h = {dtype:dtype, result_class:result_class}
+  def accum(meth, dtype, result_class, **opts)
+    h = {dtype:dtype, result_class:result_class, **opts}
     def_method(meth, "accum", **h)
   end
 

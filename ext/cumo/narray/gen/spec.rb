@@ -342,9 +342,13 @@ elsif is_int && !is_object
 end
 
 if %w[sfloat dfloat scomplex dcomplex].include?(get(:type_name))
-  accum "abs_sum", "rtype", "cRT"
-  accum "abs_max", "rtype", "cRT"
-  accum "abs_min", "rtype", "cRT"
+  %w[abs_sum abs_max abs_min].each do |name|
+    if is_complex
+      accum name, "rtype", "cRT", private: true, nan_forms: false
+    else
+      accum name, "dtype", "cT", private: true, nan_forms: false
+    end
+  end
 end
 
 if is_comparable
