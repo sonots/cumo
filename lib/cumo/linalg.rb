@@ -181,9 +181,7 @@ module Cumo
 
       warn_singular_factor(info) if info.positive?
 
-      factors = lu.transpose.dup
-      release(lu)
-      [factors, Int32.cast(ipiv)]
+      [from_column_major(lu), Int32.cast(ipiv)]
     end
 
     # Solves A X = B, A^T X = B or A^H X = B from the LU factorization of A
@@ -223,11 +221,9 @@ module Cumo
       m, n = a.shape
       k = [m, n].min
       lu, piv = lu_fact(a)
-      lower = lu.tril.tap { |x| x[x.diag_indices] = 1 }
-      upper = lu.triu
-      l = lower[true, 0...k].dup
-      u = upper[0...k, 0...n].dup
-      release(lu, lower, upper)
+      l = lu[true, 0...k].tril.tap { |x| x[x.diag_indices] = 1 }
+      u = lu[0...k, true].triu
+      release(lu)
       columns = (0...m).to_a
       piv.to_a.each_with_index { |i, j| columns[i - 1], columns[j] = columns[j], columns[i - 1] }
       identity = a.class.eye(m)
@@ -363,11 +359,7 @@ module Cumo
               'and the factorization could not be completed.'
       end
 
-      return c unless transposed
-
-      x = c.transpose.dup
-      release(c)
-      x
+      transposed ? from_column_major(c) : c
     end
 
     # Computes the inverse of a Hermitian positive definite matrix from the
@@ -399,9 +391,7 @@ module Cumo
       info = cusolver(:potri, inv, fill)
       raise LapackError, "the #{info.abs}-th argument of #{bchr}potri had illegal value" if info.negative?
 
-      x = inv.transpose.dup
-      release(inv)
-      x
+      from_column_major(inv)
     end
 
     # Solves A X = B from the Cholesky factor of A that cho_fact answers.
@@ -464,13 +454,9 @@ module Cumo
       raise LapackError, "the #{-info}-th argument of #{b_given ? 'sygvd' : 'syevd'} had illegal value" if info.negative?
 
       vals = il ? w[0...meig].dup : w
-      vecs = if vals_only
-               nil
-             elsif il
-               v.transpose[true, 0...meig].dup
-             else
-               v.transpose.dup
-             end
+      return [vals, from_column_major(v)] unless vals_only || il
+
+      vecs = vals_only ? nil : v.transpose[true, 0...meig].dup
       release(v)
       [vals, vecs]
     end
@@ -787,14 +773,9 @@ module Cumo
       tau = klass.new(k)
       cusolver(:geqrf, buf, tau)
 
-      qr = buf.transpose.dup
-      if mode == 'raw'
-        release(buf)
-        return [qr, tau]
-      end
+      return [from_column_major(buf), tau] if mode == 'raw'
 
-      r = m > n && mode == 'economic' ? qr[0...n, true].triu : qr.triu!
-      release(qr) unless r.equal?(qr)
+      r = m > n && mode == 'economic' ? buf.transpose[0...n, true].triu : buf.transpose.dup.triu!
       if mode == 'r'
         release(buf)
         return r
@@ -809,9 +790,8 @@ module Cumo
           end
       cusolver(:orgqr, q, tau)
       release(buf) unless q.equal?(buf)
-      x = q.transpose.dup
-      release(q, tau)
-      [x, r]
+      release(tau)
+      [from_column_major(q), r]
     end
 
     # Computes the determinant of a square matrix from its LU factorization.
@@ -1176,7 +1156,11 @@ module Cumo
       rows, cols = tall ? [m, n] : [n, m]
       complex = [SComplex, DComplex].include?(klass)
       buf = tall ? to_column_major(klass, a) : klass.new(m, n).store(a)
-      buf = buf.conj if !tall && complex && job != 'N'
+      if !tall && complex && job != 'N'
+        conjugate = buf.conj
+        release(buf)
+        buf = conjugate
+      end
       s = ([SFloat, SComplex].include?(klass) ? SFloat : DFloat).new(cols)
       u = vt = nil
       unless job == 'N'
