@@ -883,8 +883,7 @@ module Cumo
     end
 
     def scaled_pade_expm(a)
-      even = even_powers(a)
-      norm, *norms = onenorms(a, even[1], even[2])
+      even, (norm, *norms) = even_powers(a, a)
       unless norm.finite?
         release(*even)
         return a.class.new(*a.shape).fill(Float::NAN) if norm.nan?
@@ -897,16 +896,16 @@ module Cumo
 
       prescale = Math.log2(norm / PADE_THETAS[13]).ceil
       scaled = a * (0.5**prescale)
-      even = even_powers(scaled)
-      x = adaptive_pade_expm(scaled, norm * (0.5**prescale), even, onenorms(even[1], even[2]))
+      x = adaptive_pade_expm(scaled, norm * (0.5**prescale), *even_powers(scaled))
       release(scaled)
       square_and_release(x, prescale)
     end
 
-    def even_powers(a)
+    def even_powers(a, *also)
       a2 = matmul(a, a)
       a4 = matmul(a2, a2)
-      [a2, a4, matmul(a4, a2)]
+      a6 = matmul(a4, a2)
+      [[a2, a4, a6], onenorms(*also, a4, a6)]
     end
 
     def adaptive_pade_expm(a, norm, even, norms)
