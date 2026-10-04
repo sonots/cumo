@@ -10,6 +10,7 @@ Cumo (pronounced "koomo") is a CUDA-aware, GPU-optimized numerical library that 
 * NVIDIA GPU Compute Capability 3.5 (Kepler) or later
 * CUDA 11.0 or later
 * cuDNN 8.0 or later (optional, for the cuDNN features)
+* cuSOLVER with its 64-bit API, which comes with the CUDA Toolkit (optional, for `Cumo::Linalg`)
 
 ## Preparation
 
@@ -281,6 +282,40 @@ q.dot(kt)
 
 All of this is about the two-dimensional case, where cuBLAS is given one matrix.
 A batched multiplication takes another path through the same flag.
+
+### Linear Algebra
+
+`require "cumo/linalg"` brings in `Cumo::Linalg`, the functions of `Numo::Linalg` from [numo-linalg-alt](https://github.com/yoshoku/numo-linalg-alt) on the GPU.
+They keep numo-linalg-alt's names, arguments, return values and errors, and run on cuSOLVER and cuBLAS.
+
+```ruby
+require "cumo/linalg"
+
+a = Cumo::DFloat.new(3, 3).rand + Cumo::DFloat.eye(3) * 3
+b = Cumo::DFloat.new(3).rand
+x = Cumo::Linalg.solve(a, b)
+w, v = Cumo::Linalg.eigh(a + a.transpose)
+```
+
+The functions are `blas_char`, `dot`, `matmul`, `matrix_power`, `solve`, `inv`, `det`, `slogdet`, `lu`, `lu_fact`, `lu_solve`, `lu_inv`, `cholesky`, `cho_fact`, `cho_solve`, `cho_inv`, `ldl`, `qr`, `eig`, `eigvals`, `eigh`, `eigvalsh`, `svd`, `svdvals`, `pinv`, `lstsq`, `matrix_rank`, `orth`, `null_space`, `norm`, `cond` and `expm`.
+They take `SFloat`, `DFloat`, `SComplex` and `DComplex`.
+An integer or `Bit` matrix is computed in `DFloat`, as numo-linalg-alt does, and `HFloat` and `BFloat` raise `TypeError`.
+
+Cumo looks for cuSOLVER when it is built.
+Without it, the functions that need it raise `NotImplementedError`, and `Cumo::CUDA::Cusolver.available?` answers whether it is there.
+`eig` and `eigvals` also need `cusolverDnXgeev`, which CUDA 11 does not have.
+`ldl` of a Hermitian complex matrix needs `cusolverDnXhetrf`, which CUDA 11 and 12 do not have.
+
+Cumo differs from numo-linalg-alt in a few places on purpose:
+
+* Where numo-linalg-alt answers wrong, Cumo answers as numpy does: a wide matrix in `orth` and `lstsq`, a zero matrix in `pinv`, a matrix of full rank in `null_space`, an integer matrix in `qr` and `svd`, and empty matrices.
+* `expm` scales and squares the way scipy does, after Al-Mohy and Higham, which stays accurate where the norm of the matrix is large. Passing the order of the Pade approximant, as in `expm(a, 3)`, keeps numo-linalg-alt's algorithm.
+* `norm` takes the 2-norm and the nuclear norm of matrices stacked along other axes, which numo-linalg-alt refuses.
+* `cond` checks `ord` before it inverts the matrix, so an invalid `ord` raises `ArgumentError` even for a singular matrix, where numo-linalg-alt raises `LapackError`.
+
+A function waits for the current stream when it answers a Ruby number, or when it reads back whether cuSOLVER could do its work.
+`solve`, `inv` and `det` read back whether the matrix was singular, `cho_fact` whether it was positive definite, and `eigh` and `svd` whether they converged.
+`matmul`, `dot` of two matrices, `matrix_power` to a positive power, `cholesky`, `cho_solve`, `qr` and `norm` along an axis wait for nothing, so a run of them is queued without the host waiting.
 
 ### Fused Operations
 
@@ -962,6 +997,7 @@ export CUMO_ALLOW_TF32=1
 Over the convolutions of a ResNet-18 forward pass at batch 16, with the ceiling raised to 256MB, the pass gets faster and the worst layer moves from 1.4e-05 to 2.4e-04 against a double precision reference.
 
 The same flag puts `SFloat` and `SComplex` `gemm` on the tensor cores as TF32, and `dot` where it goes through `gemm`.
+`Cumo::Linalg.matrix_power` and `Cumo::Linalg.expm` multiply through `gemm`, so the flag reaches them too.
 Off, the answer is the one cuBLAS gives at single precision, bit for bit.
 On, a large `SFloat` `gemm` runs faster, and its answer is then about 3e-04 from a double precision reference, where it was 4e-07.
 The double types are not affected either way.
