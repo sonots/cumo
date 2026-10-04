@@ -94,8 +94,6 @@ rb_cusolver_version(VALUE self)
 typedef struct {
     char *work;
     size_t size;
-    char *host_work;
-    size_t host_size;
     int *info;
     cudaEvent_t done;
 } cusolver_scratch_t;
@@ -202,31 +200,36 @@ typedef struct {
     char *d_work;
     char *loose_work;
     void *h_work;
-    cumo_cuda_stage_t h_stage;
-    bool h_used;
+    bool h_pinned;
     int *d_info;
     int info;
     int skip_info;
 } cusolver_call_t;
 
+static char *kept_host_work;
+static size_t kept_host_size;
+
 static void*
 cusolver_host_work(cusolver_call_t *c, size_t size)
 {
-    cusolver_scratch_t *s = c->ctx.scratch;
-
-    c->h_used = true;
-    if (size > CUSOLVER_KEPT_HOST_WORK_MAX) {
-        cumo_cuda_runtime_stage_alloc(&c->h_stage, size);
-        return c->h_stage.ptr;
+    if (size <= CUSOLVER_KEPT_HOST_WORK_MAX && kept_host_size < size) {
+        size_t grown = kept_host_size * 2 > size ? kept_host_size * 2 : size;
+        if (grown > CUSOLVER_KEPT_HOST_WORK_MAX) grown = CUSOLVER_KEPT_HOST_WORK_MAX;
+        cudaFreeHost(kept_host_work);
+        kept_host_work = NULL;
+        kept_host_size = 0;
+        if (cudaHostAlloc((void**)&kept_host_work, grown, cudaHostAllocPortable) == cudaSuccess) {
+            kept_host_size = grown;
+        } else {
+            kept_host_work = NULL;
+            cudaGetLastError();
+        }
     }
-    if (s->host_size < size) {
-        cudaFreeHost(s->host_work);
-        s->host_work = NULL;
-        s->host_size = 0;
-        cumo_cuda_runtime_check_status(cudaHostAlloc((void**)&s->host_work, size, cudaHostAllocPortable));
-        s->host_size = size;
+    if (size <= kept_host_size) {
+        c->h_pinned = true;
+        return kept_host_work;
     }
-    return s->host_work;
+    return ruby_xmalloc(size);
 }
 
 static char*
@@ -508,9 +511,11 @@ call_ensure(VALUE arg)
     cusolver_call_t *c = (cusolver_call_t*)arg;
     if (c->ctx.scratch != NULL) { cudaEventRecord(c->ctx.scratch->done, cumo_cuda_stream()); }
     cumo_cuda_runtime_return_scratch(c->loose_work, c->loose_work != NULL, NULL);
-    if (c->h_used) {
+    if (c->h_pinned) {
         cudaStreamSynchronize(cumo_cuda_stream());
-        cumo_cuda_runtime_stage_free(&c->h_stage);
+        cudaGetLastError();
+    } else {
+        ruby_xfree(c->h_work);
     }
     return Qnil;
 }
