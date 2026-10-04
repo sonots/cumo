@@ -181,7 +181,7 @@ module Cumo
 
       warn_singular_factor(info) if info.positive?
 
-      [lu.transpose.dup, Int32.cast(ipiv)]
+      [from_column_major(lu), Int32.cast(ipiv)]
     end
 
     # Solves A X = B, A^T X = B or A^H X = B from the LU factorization of A
@@ -203,7 +203,10 @@ module Cumo
       ipiv = pivots(ipiv, n)
       raise ArgumentError, 'input array b must be 1 or 2-dimensional' unless [1, 2].include?(b.ndim)
 
-      getrs(klass, to_column_major(klass, lu), ipiv, b, trans)
+      factors = to_column_major(klass, lu)
+      x = getrs(klass, factors, ipiv, b, trans)
+      release(factors)
+      x
     end
 
     # Computes the LU factorization of a matrix and returns its separate
@@ -218,13 +221,19 @@ module Cumo
       m, n = a.shape
       k = [m, n].min
       lu, piv = lu_fact(a)
-      l = lu.tril.tap { |x| x[x.diag_indices] = 1 }[true, 0...k].dup
-      u = lu.triu[0...k, 0...n].dup
+      l = lu[true, 0...k].tril.tap { |x| x[x.diag_indices] = 1 }
+      u = lu[0...k, true].triu
+      release(lu)
       columns = (0...m).to_a
       piv.to_a.each_with_index { |i, j| columns[i - 1], columns[j] = columns[j], columns[i - 1] }
-      perm = a.class.eye(m)[true, columns].dup
+      identity = a.class.eye(m)
+      perm = identity[true, columns].dup
+      release(identity)
+      return [perm, l, u] unless permute_l
 
-      permute_l ? [perm.dot(l), u] : [perm, l, u]
+      pl = perm.dot(l)
+      release(perm, l)
+      [pl, u]
     end
 
     # Computes the inverse of a matrix from the LU factorization lu_fact
@@ -248,7 +257,9 @@ module Cumo
       lu = to_column_major(klass, lu)
       raise LapackError, 'the matrix is singular and its inverse could not be computed' if singular?(lu)
 
-      invert(klass, lu, ipiv)
+      x = invert(klass, lu, ipiv)
+      release(lu)
+      x
     end
 
     # Solves A X = B for a square matrix A.
@@ -273,12 +284,15 @@ module Cumo
       raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
 
       if info.positive?
+        release(lu)
         warn('the factorization has been completed, but the factor is singular, ' \
              'so the solution could not be computed.')
         return klass.new(*b.shape).store(b)
       end
 
-      getrs(klass, lu, ipiv, b, 'N', check_pivots: false)
+      x = getrs(klass, lu, ipiv, b, 'N', check_pivots: false)
+      release(lu)
+      x
     end
 
     # Computes the inverse of a square matrix.
@@ -297,7 +311,9 @@ module Cumo
       raise LapackError, "the #{-info}-th argument of getrf had illegal value" if info.negative?
       raise LapackError, 'The matrix is singular, and the inverse matrix could not be computed.' if info.positive?
 
-      invert(klass, lu, ipiv, check_pivots: false)
+      x = invert(klass, lu, ipiv, check_pivots: false)
+      release(lu)
+      x
     end
 
     # Computes the Cholesky factorization of a Hermitian positive definite
@@ -314,8 +330,11 @@ module Cumo
       fill = lapack_uplo(uplo)
       raise ArgumentError, "invalid uplo: #{uplo}" unless %w[U L].include?(uplo)
 
-      c, = potrf(klass, a, fill, read_info: false)
-      fill == 'U' ? c.triu : c.tril
+      c, _info, transposed = potrf(klass, a, fill, read_info: false)
+      factor = transposed ? c.transpose : c
+      x = fill == 'U' ? factor.triu : factor.tril
+      release(c)
+      x
     end
 
     # Computes the Cholesky factorization of a Hermitian positive definite
@@ -340,7 +359,7 @@ module Cumo
               'and the factorization could not be completed.'
       end
 
-      transposed ? c.dup : c
+      transposed ? from_column_major(c) : c
     end
 
     # Computes the inverse of a Hermitian positive definite matrix from the
@@ -372,7 +391,7 @@ module Cumo
       info = cusolver(:potri, inv, fill)
       raise LapackError, "the #{info.abs}-th argument of #{bchr}potri had illegal value" if info.negative?
 
-      inv.transpose.dup
+      from_column_major(inv)
     end
 
     # Solves A X = B from the Cholesky factor of A that cho_fact answers.
@@ -391,7 +410,9 @@ module Cumo
       raise ArgumentError, 'input array b must be 1- or 2-dimensional' unless [1, 2].include?(b.ndim)
 
       x = to_column_major(klass, b)
-      cusolver(:potrs, to_column_major(klass, a), x, fill)
+      factor = to_column_major(klass, a)
+      cusolver(:potrs, factor, x, fill)
+      release(factor)
 
       from_column_major(x)
     end
@@ -425,20 +446,18 @@ module Cumo
       w = ([SFloat, SComplex].include?(klass) ? SFloat : DFloat).new(n).fill(Float::NAN)
       v = to_column_major(klass, a)
       meig, info = if b_given
-                     cusolver(:sygvd, v, to_column_major(klass, b), w, !vals_only, il, iu)
+                     metric = to_column_major(klass, b)
+                     cusolver(:sygvd, v, metric, w, !vals_only, il, iu).tap { release(metric) }
                    else
                      cusolver(:syevd, v, w, !vals_only, il, iu)
                    end
       raise LapackError, "the #{-info}-th argument of #{b_given ? 'sygvd' : 'syevd'} had illegal value" if info.negative?
 
       vals = il ? w[0...meig].dup : w
-      vecs = if vals_only
-               nil
-             elsif il
-               v.transpose[true, 0...meig].dup
-             else
-               v.transpose.dup
-             end
+      return [vals, from_column_major(v)] unless vals_only || il
+
+      vecs = vals_only ? nil : v.transpose[true, 0...meig].dup
+      release(v)
       [vals, vecs]
     end
 
@@ -754,11 +773,13 @@ module Cumo
       tau = klass.new(k)
       cusolver(:geqrf, buf, tau)
 
-      qr = buf.transpose.dup
-      return [qr, tau] if mode == 'raw'
+      return [from_column_major(buf), tau] if mode == 'raw'
 
-      r = m > n && mode == 'economic' ? qr[0...n, true].triu : qr.triu!
-      return r if mode == 'r'
+      r = m > n && mode == 'economic' ? buf.transpose[0...n, true].triu : buf.transpose.dup.triu!
+      if mode == 'r'
+        release(buf)
+        return r
+      end
 
       q = if m < n
             buf[0...m, true].dup
@@ -768,8 +789,9 @@ module Cumo
             klass.zeros(m, m).tap { |x| x[0...n, true] = buf }
           end
       cusolver(:orgqr, q, tau)
-
-      [q.transpose.dup, r]
+      release(buf) unless q.equal?(buf)
+      release(tau)
+      [from_column_major(q), r]
     end
 
     # Computes the determinant of a square matrix from its LU factorization.
@@ -1075,7 +1097,7 @@ module Cumo
       transposed = fill == uplo
       c = transposed ? to_column_major(klass, a) : klass.new(n, n).store(a)
       info = cusolver(:potrf, c, fill, read_info)
-      [transposed ? c.transpose : c, info, transposed]
+      [c, info, transposed]
     end
 
     def to_column_major(klass, x)
@@ -1083,7 +1105,11 @@ module Cumo
     end
 
     def from_column_major(x)
-      x.ndim == 1 ? x : x.transpose.dup
+      return x if x.ndim == 1
+
+      y = x.transpose.dup
+      release(x)
+      y
     end
 
     def empty_qr(klass, m, n, mode)
@@ -1130,7 +1156,11 @@ module Cumo
       rows, cols = tall ? [m, n] : [n, m]
       complex = [SComplex, DComplex].include?(klass)
       buf = tall ? to_column_major(klass, a) : klass.new(m, n).store(a)
-      buf = buf.conj if !tall && complex && job != 'N'
+      if !tall && complex && job != 'N'
+        conjugate = buf.conj
+        release(buf)
+        buf = conjugate
+      end
       s = ([SFloat, SComplex].include?(klass) ? SFloat : DFloat).new(cols)
       u = vt = nil
       unless job == 'N'
@@ -1139,13 +1169,15 @@ module Cumo
         vt = klass.new(cols, cols)
       end
       info = cusolver(:gesvd, buf, s, u, vt, job)
+      release(buf)
       return [s, nil, nil, info] if job == 'N'
+      return [s, from_column_major(u), from_column_major(vt), info] if tall
+      return [s, vt, u, info] unless complex
 
-      if tall
-        [s, u.transpose.dup, vt.transpose.dup, info]
-      else
-        [s, complex ? vt.conj : vt, complex ? u.conj : u, info]
-      end
+      vh = vt.conj
+      uh = u.conj
+      release(u, vt)
+      [s, vh, uh, info]
     end
 
     def numerical_rank(s, a, rcond)
@@ -1286,13 +1318,19 @@ module Cumo
       n = a.shape[0]
       w = (%w[s c].include?(bchr) ? SComplex : DComplex).new(n)
       vr = vectors ? klass.new(n, n) : nil
-      info = cusolver(:geev, to_column_major(klass, a), w, vr)
+      buf = to_column_major(klass, a)
+      info = cusolver(:geev, buf, w, vr)
+      release(buf)
       raise LapackError, "the #{info.abs}-th argument of #{bchr}geev had illegal value" if info.negative?
       raise LapackError, 'the QR algorithm failed to compute all the eigenvalues.' if info.positive?
       return [w, nil] unless vectors
 
       vr = from_column_major(vr)
-      [w, %w[s d].include?(bchr) ? unpack_eigenvectors(w, vr) : vr]
+      return [w, vr] unless %w[s d].include?(bchr)
+
+      vectors = unpack_eigenvectors(w, vr)
+      release(vr) unless vectors.equal?(vr)
+      [w, vectors]
     end
 
     def unpack_eigenvectors(w, v)
@@ -1404,7 +1442,7 @@ module Cumo
       x = klass.eye(n)
       cusolver(:getrs, lu, ipiv, x, 'N', check_pivots)
 
-      x.transpose.dup
+      from_column_major(x)
     end
 
     def warn_singular_factor(info)
