@@ -867,27 +867,33 @@ module Cumo
       return x if x
 
       prescale = Math.log2(norm / PADE_THETAS[13]).ceil
-      x = adaptive_pade_expm(a * (0.5**prescale), norm * (0.5**prescale))
-      prescale.times { x = matmul(x, x) }
-      x
+      scaled = a * (0.5**prescale)
+      x = adaptive_pade_expm(scaled, norm * (0.5**prescale))
+      release(scaled)
+      square_and_release(x, prescale)
     end
 
     def adaptive_pade_expm(a, norm)
       a2 = matmul(a, a)
       a4 = matmul(a2, a2)
       a6 = matmul(a4, a2)
+      temporaries = [a2, a4, a6]
       n4, n6 = onenorms(a4, a6)
       d4 = n4**0.25
       d6 = n6**(1.0 / 6)
       return unless d4.finite? && d6.finite?
 
-      abs_a = DFloat.cast(a.abs)
+      absolute = a.abs
+      abs_a = DFloat.cast(absolute)
+      release(absolute) unless abs_a.equal?(absolute)
       powers = [a.class.eye(a.shape[0]), a2, a4, a6]
+      temporaries.push(abs_a, powers[0])
       eta1 = [d4, d6].max
       return pade_quotient(a, powers, 3) if eta1 < PADE_THETAS[3] && pade_ell(abs_a, norm, 3).zero?
       return pade_quotient(a, powers, 5) if eta1 < PADE_THETAS[5] && pade_ell(abs_a, norm, 5).zero?
 
       a8 = matmul(a6, a2)
+      temporaries << a8
       d8 = onenorm(a8)**0.125
       return unless d8.finite?
 
@@ -901,18 +907,21 @@ module Cumo
 
       s += pade_ell(abs_a, norm, 13, s)
       x = pade13_quotient(a, powers, s)
-      s.times { x = matmul(x, x) }
-      x
+      release(*temporaries)
+      temporaries.clear
+      square_and_release(x, s)
+    ensure
+      release(*temporaries)
     end
 
     def pade_quotient(a, powers, m)
       b = PADE_COEFFICIENTS[m]
       terms = powers.first((m / 2) + 1).each_with_index
-      odd = terms.map { |x, i| b[(i * 2) + 1] * x }
-      even = terms.map { |x, i| b[i * 2] * x }
-      u = matmul(a, odd.reduce(:+))
-      v = even.reduce(:+)
-      solve(v - u, v + u)
+      odd = sum_and_release(terms.map { |x, i| b[(i * 2) + 1] * x })
+      u = matmul(a, odd)
+      release(odd)
+      v = sum_and_release(terms.map { |x, i| b[i * 2] * x })
+      quotient_and_release(u, v)
     end
 
     def pade13_quotient(a, powers, s)
@@ -922,20 +931,65 @@ module Cumo
       b2 = a2 * (0.5**(s * 2))
       b4 = a4 * (0.5**(s * 4))
       b6 = a6 * (0.5**(s * 6))
-      u2 = matmul(b6, (b[13] * b6) + (b[11] * b4) + (b[9] * b2))
-      u = matmul(b1, u2 + (b[7] * b6) + (b[5] * b4) + (b[3] * b2) + (b[1] * identity))
-      v2 = matmul(b6, (b[12] * b6) + (b[10] * b4) + (b[8] * b2))
-      v = v2 + (b[6] * b6) + (b[4] * b4) + (b[2] * b2) + (b[0] * identity)
-      solve(v - u, v + u)
+      u2 = product_and_release(b6, sum_and_release([b[13] * b6, b[11] * b4, b[9] * b2]))
+      u = product_and_release(b1, sum_and_release([u2, b[7] * b6, b[5] * b4, b[3] * b2, b[1] * identity]))
+      release(b1)
+      v2 = product_and_release(b6, sum_and_release([b[12] * b6, b[10] * b4, b[8] * b2]))
+      v = sum_and_release([v2, b[6] * b6, b[4] * b4, b[2] * b2, b[0] * identity])
+      release(b2, b4, b6)
+      quotient_and_release(u, v)
+    end
+
+    def quotient_and_release(u, v)
+      difference = v - u
+      total = v + u
+      release(u, v)
+      x = solve(difference, total)
+      release(difference, total)
+      x
+    end
+
+    def product_and_release(a, b)
+      x = matmul(a, b)
+      release(b)
+      x
+    end
+
+    def sum_and_release(terms)
+      terms.reduce do |sum, term|
+        total = sum + term
+        release(sum, term)
+        total
+      end
+    end
+
+    def square_and_release(x, times)
+      times.times do
+        y = matmul(x, x)
+        release(x)
+        x = y
+      end
+      x
+    end
+
+    def release(*arrays)
+      arrays.each(&:free)
     end
 
     def pade_ell(abs_a, norm, m, s = 0)
       power = (m * 2) + 1
-      log2_power_norm = power_norm_log2(abs_a, power) || (power_norm_log2(abs_a / norm, power) + (power * Math.log2(norm)))
+      log2_power_norm = power_norm_log2(abs_a, power) || scaled_power_norm_log2(abs_a, norm, power)
       return 0 if log2_power_norm.infinite?
 
       log2_alpha = log2_power_norm - (s * m * 2) - Math.log2(norm) - Math.log2(PADE_ERROR_COEFFICIENTS[m])
       ((log2_alpha + 53) / (m * 2)).ceil.clamp(0..)
+    end
+
+    def scaled_power_norm_log2(abs_a, norm, power)
+      scaled = abs_a / norm
+      log2_power_norm = power_norm_log2(scaled, power)
+      release(scaled)
+      log2_power_norm + (power * Math.log2(norm))
     end
 
     def power_norm_log2(abs_a, power)
@@ -972,7 +1026,9 @@ module Cumo
       s = squarings_for(d8)
       return s if d8 >= d6 || s == squarings_for(d6)
 
-      d10 = onenorm(matmul(a4, a6))**0.1
+      a10 = matmul(a4, a6)
+      d10 = onenorm(a10)**0.1
+      release(a10)
       squarings_for(d10.clamp(d8, d6)) if d10.finite?
     end
 
@@ -987,7 +1043,12 @@ module Cumo
     end
 
     def onenorms(*mats)
-      sums = mats.map { |a| a.abs.sum(axis: 0) }
+      sums = mats.map do |a|
+        absolute = a.abs
+        sum = absolute.sum(axis: 0)
+        release(absolute)
+        sum
+      end
       sums = sums.first.class.vstack(sums)
       totals, maxes = sums.class.vstack([sums.sum(axis: 1), sums.max(axis: 1)]).to_a
       totals.zip(maxes).map { |total, max| total.nan? ? Float::NAN : max }
@@ -1412,6 +1473,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :pade_ell, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
