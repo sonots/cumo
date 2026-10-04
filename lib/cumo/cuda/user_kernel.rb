@@ -122,7 +122,8 @@ module Cumo::CUDA
       nd = shapes.map(&:size).max
       Array.new(nd) do |d|
         sizes = shapes.map { |s| d < nd - s.size ? 1 : s[d - (nd - s.size)] }
-        m = sizes.reject { |x| x == 1 }.uniq
+        m = sizes.uniq
+        m.delete(1)
         raise ArgumentError, "shapes #{shapes.map(&:inspect).join(', ')} cannot be broadcast together" if m.size > 1
         m.first || 1
       end
@@ -193,7 +194,9 @@ module Cumo::CUDA
 
     # The #include lines the C types of a kernel need.
     def headers(ctypes)
-      ctypes.filter_map { |t| HEADERS[t] }.uniq.map { |h| "#include <#{h}>" }.join("\n")
+      headers = ctypes.filter_map { |t| HEADERS[t] }
+      headers.uniq!
+      headers.map! { |h| "#include <#{h}>" }.join("\n")
     end
 
     # A raw argument is indexed by the operation itself, so it has to be

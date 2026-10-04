@@ -22,6 +22,7 @@ module Cumo::CUDA
     # idle, and each chunk keeps this many elements per thread.
     WANT_BLOCKS = 256
     MIN_PER_THREAD = 16
+    OPERANDS = %w[a b].freeze
     DTYPE_OF_CTYPE = CTYPE.invert.freeze
 
     attr_reader :name
@@ -35,7 +36,7 @@ module Cumo::CUDA
         raise ArgumentError, "#{raw.name} is raw, and a reduction indexes every argument itself"
       end
       raise ArgumentError, "a reduction needs an output" if @out_params.empty?
-      if (taken = (@in_params + @out_params).find { |p| %w[a b].include?(p.name) })
+      if (taken = (@in_params + @out_params).find { |p| OPERANDS.include?(p.name) })
         raise ArgumentError, "#{taken.name} is what the reduce expression calls its operands"
       end
       @map_expr = map_expr
@@ -118,7 +119,7 @@ module Cumo::CUDA
       params = @in_params + @out_params
       arrays = ins + outs
       layouts = ins.map { |a| a.is_a?(Cumo::NArray) ? input_layout(a, in_shape, outs, false) : nil }
-      kinds = params.zip(arrays).map { |p, a| a.is_a?(Cumo::NArray) ? :array : :scalar }
+      kinds = arrays.map { |a| a.is_a?(Cumo::NArray) ? :array : :scalar }
       walked = ins.each_index.select { |k| layouts[k] }
       cshape, cstrides = collapse(order.map { |d| in_shape[d] }, walked.map { |k| order.map { |d| layouts[k][1][d] } })
       stride_of = walked.zip(cstrides).to_h
@@ -194,7 +195,8 @@ module Cumo::CUDA
 
     def source(types, kinds, nd)
       params = @in_params + @out_params
-      placeholders = params.map(&:type).uniq.reject { |t| TYPES.key?(t) }
+      placeholders = params.filter_map { |p| p.type unless TYPES.key?(p.type) }
+      placeholders.uniq!
       reduce_type = @reduce_type || CTYPE[types[@out_params[0].type]]
       decl = []
       read = []
@@ -276,7 +278,8 @@ module Cumo::CUDA
     # The second pass folds the chunks of every output and applies the post
     # expression, one thread per output.
     def final_source(types)
-      placeholders = (@in_params + @out_params).map(&:type).uniq.reject { |t| TYPES.key?(t) }
+      placeholders = (@in_params + @out_params).filter_map { |p| p.type unless TYPES.key?(p.type) }
+      placeholders.uniq!
       reduce_type = @reduce_type || CTYPE[types[@out_params[0].type]]
       decl = ["const _type_reduce* _partials"]
       write = @out_params.map do |p|

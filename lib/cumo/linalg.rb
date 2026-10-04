@@ -20,6 +20,8 @@ module Cumo
 
     BLAS_CLASSES = { s: SFloat, d: DFloat, c: SComplex, z: DComplex }.freeze
     INTEGER_CLASSES = [Bit, Int64, Int32, Int16, Int8, UInt64, UInt32, UInt16, UInt8].freeze
+    COMPLEX_CHARS = %w[c z].freeze
+    SINGLE_CHARS = %w[n s].freeze
     PADE_COEFFICIENTS = {
       3 => [
         120.0,
@@ -90,7 +92,7 @@ module Cumo
     }.freeze
     POTRF_UPPER_FILL_BELOW = 32
     DFLOAT_POTRF_UPPER_FILL_BELOW = 800
-    private_constant :BLAS_CLASSES, :INTEGER_CLASSES, :PADE_COEFFICIENTS, :PADE_THETAS, :PADE_ERROR_COEFFICIENTS
+    private_constant :BLAS_CLASSES, :INTEGER_CLASSES, :COMPLEX_CHARS, :SINGLE_CHARS, :PADE_COEFFICIENTS, :PADE_THETAS, :PADE_ERROR_COEFFICIENTS
     private_constant :POTRF_UPPER_FILL_BELOW, :DFLOAT_POTRF_UPPER_FILL_BELOW
 
     module_function
@@ -113,13 +115,13 @@ module Cumo
         if INTEGER_CLASSES.include?(klass)
           type = 'd' if type == 'n'
         elsif klass == DFloat
-          type = %w[c z].include?(type) ? 'z' : 'd'
+          type = COMPLEX_CHARS.include?(type) ? 'z' : 'd'
         elsif klass == SFloat
           type = 's' if type == 'n'
         elsif klass == DComplex
           type = 'z'
         elsif klass == SComplex
-          if %w[n s].include?(type)
+          if SINGLE_CHARS.include?(type)
             type = 'c'
           elsif type == 'd'
             type = 'z'
@@ -713,7 +715,7 @@ module Cumo
       rcond = s.class::EPSILON / 2 if rcond.nil? || rcond <= 0 || rcond >= 1
       rank = count_above(s, rcond)
       x = if rank.zero?
-            klass.zeros(*([n] + b.shape[1..]))
+            klass.zeros(n, *b.shape.drop(1))
           else
             c = u[true, 0...rank].conj.transpose.dot(b)
             c /= b.ndim == 1 ? s[0...rank] : s[0...rank][true, :new]
@@ -1051,7 +1053,7 @@ module Cumo
       end
       sums = sums.first.class.vstack(sums)
       totals, maxes = sums.class.vstack([sums.sum(axis: 1), sums.max(axis: 1)]).to_a
-      totals.zip(maxes).map { |total, max| total.nan? ? Float::NAN : max }
+      totals.map.with_index { |total, i| total.nan? ? Float::NAN : maxes[i] }
     end
 
     def getrf(klass, a)

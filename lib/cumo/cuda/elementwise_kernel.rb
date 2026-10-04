@@ -58,7 +58,7 @@ module Cumo::CUDA
 
     def broadcast_shape(ins, outs, size)
       shapes = @in_params.zip(ins).filter_map { |p, a| a.shape if a.is_a?(Cumo::NArray) && !p.raw }
-      shapes += outs.compact.map(&:shape)
+      shapes += outs.filter_map { |o| o&.shape }
       if shapes.empty?
         raise ArgumentError, "every argument is raw or a number, so size: has to say how many elements there are" if size.nil?
         return [Integer(size)]
@@ -71,15 +71,15 @@ module Cumo::CUDA
 
     def launch(ins, outs, types, shape, n)
       params = @in_params + @out_params
-      arrays = @in_params.zip(ins).map { |p, a| p.raw ? readable(a) : a } + outs
-      layouts = @in_params.zip(ins).map do |p, a|
-        a.is_a?(Cumo::NArray) && !p.raw ? input_layout(a, shape, outs, true) : nil
+      arrays = ins.map.with_index { |a, k| @in_params[k].raw ? readable(a) : a } + outs
+      layouts = ins.map.with_index do |a, k|
+        a.is_a?(Cumo::NArray) && !@in_params[k].raw ? input_layout(a, shape, outs, true) : nil
       end
       walked = params.each_index.select { |k| arrays[k].is_a?(Cumo::NArray) && !params[k].raw }
       cshape, cstrides = collapse(shape, walked.map { |k| layouts[k] ? layouts[k][1] : strides(arrays[k], shape) })
       simple = cshape.size <= 1 && cstrides.all? { |st| st.empty? || st == [1] }
       stride_of = walked.zip(cstrides).to_h
-      kinds = params.zip(arrays).map { |p, a| !a.is_a?(Cumo::NArray) ? :scalar : p.raw ? :raw : :array }
+      kinds = arrays.map.with_index { |a, k| !a.is_a?(Cumo::NArray) ? :scalar : params[k].raw ? :raw : :array }
       key = [params.map { |p| CTYPE[types[p.type]] }, kinds, simple ? :simple : cshape.size]
       fn = (@functions[key] ||= compile(source(types, kinds, simple, cshape.size)))
 
@@ -99,7 +99,8 @@ module Cumo::CUDA
 
     def source(types, kinds, simple, ndim)
       params = @in_params + @out_params
-      placeholders = params.map(&:type).uniq.reject { |t| TYPES.key?(t) }
+      placeholders = params.filter_map { |p| p.type unless TYPES.key?(p.type) }
+      placeholders.uniq!
       decl = []
       body = []
       params.zip(kinds).each do |p, kind|
