@@ -883,26 +883,36 @@ module Cumo
     end
 
     def scaled_pade_expm(a)
-      norm = onenorm(a)
-      return a.class.new(*a.shape).fill(Float::NAN) if norm.nan?
-      raise FloatDomainError, norm.to_s if norm.infinite?
+      even = even_powers(a)
+      norm, *norms = onenorms(a, even[1], even[2])
+      unless norm.finite?
+        release(*even)
+        return a.class.new(*a.shape).fill(Float::NAN) if norm.nan?
 
-      x = adaptive_pade_expm(a, norm)
+        raise FloatDomainError, norm.to_s
+      end
+
+      x = adaptive_pade_expm(a, norm, even, norms)
       return x if x
 
       prescale = Math.log2(norm / PADE_THETAS[13]).ceil
       scaled = a * (0.5**prescale)
-      x = adaptive_pade_expm(scaled, norm * (0.5**prescale))
+      even = even_powers(scaled)
+      x = adaptive_pade_expm(scaled, norm * (0.5**prescale), even, onenorms(even[1], even[2]))
       release(scaled)
       square_and_release(x, prescale)
     end
 
-    def adaptive_pade_expm(a, norm)
+    def even_powers(a)
       a2 = matmul(a, a)
       a4 = matmul(a2, a2)
-      a6 = matmul(a4, a2)
-      temporaries = [a2, a4, a6]
-      n4, n6 = onenorms(a4, a6)
+      [a2, a4, matmul(a4, a2)]
+    end
+
+    def adaptive_pade_expm(a, norm, even, norms)
+      a2, a4, a6 = even
+      temporaries = even.dup
+      n4, n6 = norms
       d4 = n4**0.25
       d6 = n6**(1.0 / 6)
       return unless d4.finite? && d6.finite?
@@ -1513,6 +1523,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
