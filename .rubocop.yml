@@ -15,3 +15,7 @@ Metrics:
 
 Style/Copyright:
   Enabled: false
+
+Performance:
+  Include:
+    - 'lib/**/*.rb'
