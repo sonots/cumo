@@ -139,6 +139,19 @@ class LinalgNormTest < Test::Unit::TestCase
     assert_close(Array.new(2) { |i| Cumo::Linalg.svdvals(s[i, true, true].dup).to_a.sum }, Cumo::Linalg.norm(s, 'nuc', axis: [1, 2]), 1e-4)
   end
 
+  test "stacked matrices up to 32 rows and columns and past them answer the singular values of each" do
+    omit_unless_cusolver
+    { Cumo::DFloat => [[3, 32, 7], [2, 33, 5]], Cumo::DComplex => [[3, 4, 5], [2, 5, 40]] }.each do |type, shapes|
+      shapes.each do |shape|
+        t = type.new(*shape).rand_norm
+        expected = Array.new(shape[0]) { |i| Cumo::Linalg.svdvals(t[i, true, true].dup).to_a }
+        assert_close(expected.map(&:max), Cumo::Linalg.norm(t, 2, axis: [1, 2]), 1e-12)
+        assert_close(expected.map(&:min), Cumo::Linalg.norm(t, -2, axis: [1, 2]), 1e-12)
+        assert_close(expected.map(&:sum), Cumo::Linalg.norm(t, 'nuc', axis: [1, 2]), 1e-12)
+      end
+    end
+  end
+
   test "the whole array is scaled so its squares do not overflow or underflow" do
     assert_in_delta(Math.sqrt(2) * 1e200, Cumo::Linalg.norm(Cumo::DFloat[1e200, 1e200]), 1e188)
     assert_in_delta(Math.sqrt(10) * 1e-200, Cumo::Linalg.norm(Cumo::DFloat[[1e-200, 3e-200]]), 1e-212)
