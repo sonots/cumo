@@ -525,7 +525,7 @@ module Cumo
       arrays.each do |a|
         a_shape = a.shape
         if nd != a_shape.size
-          a_shape = [1] * (nd - a_shape.size) + a_shape
+          a_shape = Array.new(nd - a_shape.size, 1) + a_shape
         end
         sum_size += a_shape.delete_at(axis)
         if new_shape
@@ -779,13 +779,13 @@ module Cumo
         div_axis, mod_axis = size_axis.divmod(indices_or_sections)
         refs = [true] * ndim
         beg_idx = 0
-        mod_axis.times.map do |i|
+        Array.new(mod_axis) do
           end_idx = beg_idx + div_axis + 1
           refs[axis] = beg_idx ... end_idx
           beg_idx = end_idx
           self[*refs]
         end +
-        (indices_or_sections - mod_axis).times.map do |i|
+        Array.new(indices_or_sections - mod_axis) do
           end_idx = beg_idx + div_axis
           refs[axis] = beg_idx ... end_idx
           beg_idx = end_idx
@@ -976,7 +976,7 @@ module Cumo
         if !arg.kind_of?(Integer) || arg < 1
           raise ArgumentError, "argument should be positive integer"
         end
-        idx = c.shape[axis].times.map { |i| [i] * arg }.flatten
+        idx = Array.new(c.shape[axis] * arg) { |k| k / arg }
       else
         arg = arg.to_a
         if arg.size != c.shape[axis]
@@ -987,7 +987,7 @@ module Cumo
             raise ArgumentError, "argument should be non-negative integer"
           end
         end
-        idx = arg.each_with_index.map { |a, i| [i] * a }.flatten
+        idx = arg.each_with_index.flat_map { |a, i| Array.new(a, i) }
       end
       ref = [true] * c.ndim
       ref[axis] = idx

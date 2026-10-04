@@ -36,7 +36,7 @@ module Cumo::CUDA
     def self.cuda_include_dir
       nvcc = ENV["PATH"].to_s.split(File::PATH_SEPARATOR).map { |d| File.join(d, "nvcc") }.find { |f| File.executable?(f) }
       roots = [ENV["CUDA_PATH"], nvcc && File.dirname(File.dirname(File.realpath(nvcc))), "/usr/local/cuda", "/opt/cuda"]
-      dir = roots.compact.map { |r| File.join(r, "include") }.find { |d| File.file?(File.join(d, "cuda_fp16.h")) }
+      dir = roots.filter_map { |r| File.join(r, "include") if r }.find { |d| File.file?(File.join(d, "cuda_fp16.h")) }
       raise "cannot find the CUDA headers; set CUDA_PATH to the CUDA toolkit" unless dir
       dir
     end
