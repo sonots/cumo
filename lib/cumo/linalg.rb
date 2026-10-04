@@ -872,7 +872,7 @@ module Cumo
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
       raise ArgumentError, "exponent n must be an integer: #{n}" unless n.is_a?(Integer)
 
-      return a.class.eye(a.shape[0]) if n.zero?
+      return identity(a.class, a.shape[0]) if n.zero?
       return a.dup if n == 1
 
       power(n.positive? ? BLAS_CLASSES[blas_char(a).to_sym].cast(a) : inv(a), n.abs)
@@ -1131,7 +1131,10 @@ module Cumo
     def identity(klass, n)
       return klass.new(0, 0) if n.zero?
 
-      klass == Bit ? Bit.cast(UInt8.eye(n)) : klass.eye(n)
+      return klass.eye(n) unless klass == Bit
+
+      bytes = UInt8.eye(n)
+      Bit.cast(bytes).tap { release(bytes) }
     end
 
     def empty_qr(klass, m, n, mode)
