@@ -1314,7 +1314,11 @@ module Cumo
 
       b = a.transpose(*((0...a.ndim).to_a - [r_axis, c_axis]), r_axis, c_axis)
       batch = b.shape[0...-2]
-      matrices = b.dup.reshape(batch.reduce(:*), *b.shape[-2..])
+      count = batch.reduce(:*)
+      rows, cols = b.shape[-2..]
+      return batched_svdvals(b, batch, count) if batched_svd?(count, rows, cols)
+
+      matrices = b.dup.reshape(count, rows, cols)
       s = nil
       matrices.shape[0].times do |i|
         vals = svdvals(matrices[i, true, true])
@@ -1322,6 +1326,31 @@ module Cumo
         s[i, true] = vals
       end
       s.reshape(*batch, s.shape[1])
+    end
+
+    def batched_svd?(count, rows, cols)
+      return false unless count.positive? && CUDA::Cusolver.available?
+
+      limit = CUDA::Cusolver::BATCHED_SVD_MAX
+      rows.between?(1, limit) && cols.between?(1, limit)
+    end
+
+    def batched_svdvals(b, batch, count)
+      bchr = blas_char(b)
+      rows, cols = b.shape[-2..]
+      matrices = BLAS_CLASSES[bchr.to_sym].new(*b.shape).store(b).reshape!(count, rows, cols)
+      zeros = matrices * 0
+      poison = zeros.sum(axis: [1, 2]).abs.reshape!(count, 1)
+      release(zeros)
+      s = (%w[s c].include?(bchr) ? SFloat : DFloat).new(count, [rows, cols].min)
+      info = cusolver(:gesvdj_batched, matrices, s)
+      release(matrices)
+      raise LapackError, "the #{info.abs}-th argument had illegal value" if info.negative?
+      raise LapackError, 'the decomposition did not converge' if info.positive?
+
+      checked = s + poison
+      release(s, poison)
+      checked.reshape!(*batch, checked.shape[1])
     end
 
     def magnitudes(x)
@@ -1539,6 +1568,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
