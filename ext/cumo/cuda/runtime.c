@@ -14,51 +14,43 @@ VALUE cumo_cuda_mRuntime;
 uint64_t cumo_cuda_sync_epoch = 0;
 uint64_t cumo_cuda_launch_epoch = 0;
 
-static __thread cudaStream_t current_stream = 0;
+static ID id_current_stream;
+
+static ID
+current_stream_id(void)
+{
+    if (!id_current_stream) { id_current_stream = rb_intern("__cumo_current_stream__"); }
+    return id_current_stream;
+}
+
 static cumo_cuda_handle_set_t streams;
 static cumo_cuda_handle_set_t events;
-// How many threads have each stream current, so that none of them can
-// destroy a stream another is launching on. The value is the count.
-static cumo_cuda_handle_set_t in_use;
 // Pinned host buffers this process allocated, each with its size as the value.
 static cumo_cuda_handle_set_t pinned;
 
-static void
-in_use_add(cudaStream_t stream, long delta)
-{
-    st_data_t n = 0;
-    if (stream == 0) { return; }
-    rb_nativethread_lock_lock(&in_use.lock);
-    st_lookup(in_use.table, (st_data_t)stream, &n);
-    n = (st_data_t)((long)n + delta);
-    if (n == 0) { st_data_t key = (st_data_t)stream; st_delete(in_use.table, &key, 0); }
-    else { st_insert(in_use.table, (st_data_t)stream, n); }
-    rb_nativethread_lock_unlock(&in_use.lock);
-}
-
 static int
-in_use_p(cudaStream_t stream)
+stream_in_use_p(cudaStream_t stream)
 {
-    int found;
-    rb_nativethread_lock_lock(&in_use.lock);
-    found = st_lookup(in_use.table, (st_data_t)stream, 0);
-    rb_nativethread_lock_unlock(&in_use.lock);
-    return found;
+    VALUE threads = rb_funcall(rb_cThread, rb_intern("list"), 0);
+    long i;
+    for (i = 0; i < RARRAY_LEN(threads); ++i) {
+        VALUE v = rb_ivar_get(RARRAY_AREF(threads, i), current_stream_id());
+        if (!NIL_P(v) && (cudaStream_t)NUM2SIZET(v) == stream) { return 1; }
+    }
+    return 0;
 }
 
 cudaStream_t
 cumo_cuda_stream(void)
 {
-    return current_stream;
+    VALUE v = rb_ivar_get(rb_thread_current(), current_stream_id());
+    return NIL_P(v) ? 0 : (cudaStream_t)NUM2SIZET(v);
 }
 
 void
 cumo_cuda_stream_set(cudaStream_t stream)
 {
-    if (stream == current_stream) { return; }
-    in_use_add(current_stream, -1);
-    in_use_add(stream, 1);
-    current_stream = stream;
+    rb_ivar_set(rb_thread_current(), current_stream_id(), stream ? SIZET2NUM((size_t)stream) : Qnil);
 }
 #define eRuntimeError cumo_cuda_eRuntimeError
 #define mRuntime cumo_cuda_mRuntime
@@ -452,7 +444,7 @@ rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
 static VALUE
 rb_cudaStreamDestroy(VALUE self, VALUE stream)
 {
-    if (in_use_p((cudaStream_t)NUM2SIZET(stream))) {
+    if (stream_in_use_p((cudaStream_t)NUM2SIZET(stream))) {
         rb_raise(rb_eArgError, "a stream that is current in a thread cannot be destroyed");
     }
     cumo_cuda_runtime_check_status(cudaStreamDestroy((cudaStream_t)cumo_cuda_handle_take(&streams, stream, "cudaStream_t")));
@@ -615,7 +607,7 @@ rb_cudaStreamSynchronize(VALUE self, VALUE stream)
 static VALUE
 rb_current_stream(VALUE self)
 {
-    return SIZET2NUM((size_t)current_stream);
+    return SIZET2NUM((size_t)cumo_cuda_stream());
 }
 
 /*
@@ -990,6 +982,5 @@ Init_cumo_cuda_runtime()
     rb_define_const(mRuntime, "CUDA_HOST_ALLOC_PORTABLE", UINT2NUM(cudaHostAllocPortable));
     rb_define_const(mRuntime, "CUDA_HOST_ALLOC_MAPPED", UINT2NUM(cudaHostAllocMapped));
     rb_define_const(mRuntime, "CUDA_HOST_ALLOC_WRITE_COMBINED", UINT2NUM(cudaHostAllocWriteCombined));
-    cumo_cuda_handle_set_init(&in_use);
     cumo_cuda_handle_set_init(&pinned);
 }

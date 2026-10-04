@@ -225,6 +225,44 @@ module Cumo::CUDA
       assert_raise(ArgumentError) { t.destroy }
     end
 
+    test "a stream left current in a thread that ended can be destroyed" do
+      s = Stream.new(non_blocking: true)
+      worker = Thread.new do
+        s.use
+        Cumo::SFloat.new(4).seq.sum.to_f
+      end
+      worker.join
+      assert_nothing_raised { s.destroy }
+      assert_nil(s.ptr)
+    end
+
+    test "a stream current in two threads can be destroyed once both have ended" do
+      s = Stream.new(non_blocking: true)
+      gates = Array.new(2) { Queue.new }
+      threads = gates.map do |gate|
+        Thread.new do
+          s.use
+          gate.pop
+        end
+      end
+      sleep 0.01 until threads.all? { |th| th.status == "sleep" }
+      gates[0] << nil
+      threads[0].join
+      assert_raise(ArgumentError) { s.destroy }
+      gates[1] << nil
+      threads[1].join
+      assert_nothing_raised { s.destroy }
+    end
+
+    test "a new thread starts on the null stream whatever an ended thread left current" do
+      s = Stream.new(non_blocking: true)
+      worker = Thread.new { s.use }
+      worker.join
+      fresh = Thread.new { Runtime.current_stream }
+      assert_equal(0, fresh.value)
+      s.destroy
+    end
+
     test "a destroyed stream or event refuses to be used, and a dropped one is reclaimed" do
       s = Stream.new
       e = Event.new
