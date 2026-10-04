@@ -233,9 +233,9 @@ module Cumo
       release(lu)
       columns = (0...m).to_a
       piv.to_a.each_with_index { |i, j| columns[i - 1], columns[j] = columns[j], columns[i - 1] }
-      identity = a.class.eye(m)
-      perm = identity[true, columns].dup
-      release(identity)
+      eye = identity(a.class, m)
+      perm = eye[true, columns].dup
+      release(eye)
       return [perm, l, u] unless permute_l
 
       pl = perm.dot(l)
@@ -872,7 +872,7 @@ module Cumo
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
       raise ArgumentError, "exponent n must be an integer: #{n}" unless n.is_a?(Integer)
 
-      return a.class.eye(a.shape[0]) if n.zero?
+      return identity(a.class, a.shape[0]) if n.zero?
       return a.dup if n == 1
 
       power(n.positive? ? BLAS_CLASSES[blas_char(a).to_sym].cast(a) : inv(a), n.abs)
@@ -1129,7 +1129,12 @@ module Cumo
     end
 
     def identity(klass, n)
-      n.zero? ? klass.new(0, 0) : klass.eye(n)
+      return klass.new(0, 0) if n.zero?
+
+      return klass.eye(n) unless klass == Bit
+
+      bytes = UInt8.eye(n)
+      Bit.cast(bytes).tap { release(bytes) }
     end
 
     def empty_qr(klass, m, n, mode)

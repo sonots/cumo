@@ -27,6 +27,11 @@ class LinalgMatrixPowerTest < Test::Unit::TestCase
     assert_kind_of(Cumo::DFloat, Cumo::Linalg.matrix_power(Cumo::Int32.cast(A), 2))
   end
 
+  test "the power of zero of a Bit matrix is a Bit identity" do
+    zero = Cumo::Linalg.matrix_power(Cumo::Bit[[0, 1], [1, 1]], 0)
+    assert_equal([Cumo::Bit, [[1, 0], [0, 1]]], [zero.class, zero.to_a])
+  end
+
   test "powers by squaring answer the repeated product" do
     a = Cumo::DFloat[[1, 1], [1, 0]]
     (2..8).each do |n|
