@@ -75,6 +75,19 @@ class LinalgExpmTest < Test::Unit::TestCase
     assert_relatively_close([[Math.exp(1), 2.7182818298181862e+50], [0, 2.7182818311773271]], e, 1e-13)
   end
 
+  test "a 1x1 matrix that needs squaring" do
+    assert_in_delta(1.0, Cumo::Linalg.expm(Cumo::DFloat[[50.0]]).to_a[0][0] / Math.exp(50), 1e-13)
+  end
+
+  test "a diagonal matrix whose exponential overflows keeps zeros off its diagonal" do
+    assert_equal([[Float::INFINITY, 0.0], [0.0, Math.exp(700)]], Cumo::Linalg.expm(Cumo::DFloat[[800.0, 0], [0, 700.0]]).to_a)
+  end
+
+  test "an off-diagonal element stays finite when the exponential of one diagonal element overflows" do
+    e = Cumo::Linalg.expm(Cumo::DFloat[[710, -1e-300], [0, 0]])
+    assert_in_delta(-1.0, e.to_a[0][1] / (1e-300 * Math.exp(355) / 710 * Math.exp(355)), 1e-12)
+  end
+
   def assert_relatively_close(expected, actual, tol)
     actual = actual.to_a.flatten
     expected.flatten.each_with_index do |x, i|
