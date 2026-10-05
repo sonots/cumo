@@ -40,7 +40,7 @@ list_type_rb = Dir.glob("#{__dir__}/narray/gen/def/*.rb")
 list_type_rb.each do |type_rb|
   type_name = File.basename(type_rb, ".rb")
   next if ENV['DTYPE'] and !type_name.downcase.include?(ENV['DTYPE'].downcase)
-  KERNEL_PARTS.each do |part|
+  kernel_parts_of(type_name).each do |part|
     list_type_cu << type_cu = "narray/types/" + kernel_part_basename(type_name, part) + ".cu"
 %>
 <%=type_cu%>: <%=type_rb%> $(CU_DEPENDS)

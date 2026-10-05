@@ -1,3 +1,3 @@
-<% children.each do |c|%>
+<% kernel_children.each do |c|%>
 <%= c.result %>
 <% end %>
