@@ -338,10 +338,12 @@ cumo_na_setup(VALUE self, int ndim, size_t *shape)
 
 /*
   @overload initialize(shape)
-  @overload initialize(size0, size1, ...)
     @param [Array] shape (array of sizes along each dimension)
+    @return [Cumo::NArray] unallocated narray.
+  @overload initialize(size0, size1, ...)
     @param [Integer] sizeN (size along Nth-dimension)
     @return [Cumo::NArray] unallocated narray.
+  @return [Cumo::NArray] unallocated narray.
 
   Constructs an instance of NArray class using the given
   and <i>shape</i> or <i>sizes</i>.
@@ -1905,7 +1907,7 @@ cumo_na_view_offset_reaches_bytes(VALUE self)
   Stores binary raw data from a string into NArray.
   @overload store_binary(string,[offset])
     @param [String] string  Binary raw data.
-    @param [Integer] (optional) offset  Byte offset in string.
+    @param [Integer] offset  Byte offset in string (optional).
     @return [Integer] stored length.
  */
 static VALUE
@@ -2100,7 +2102,7 @@ static VALUE cumo_na_inplace( VALUE self );
 /*
   Load marshal data.
   @overload marshal_load(data)
-    @param [Array] Array containing marshal data.
+    @param [Array] data  Array containing marshal data.
     @return [nil]
  */
 static VALUE
