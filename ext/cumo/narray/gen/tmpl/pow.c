@@ -188,8 +188,8 @@ static VALUE
 /*
   Binary power.
   @overload <%=op_map%> other
-  @param [Cumo::NArray,Numeric] other
-  @return [Cumo::NArray] self to the other-th power.
+    @param [Cumo::NArray,Numeric] other
+    @return [Cumo::NArray] self to the other-th power.
 */
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE other)

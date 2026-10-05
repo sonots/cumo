@@ -110,8 +110,8 @@ static VALUE
 /*
   Comparison <%=name%> other.
   @overload <%=op_map%> other
-  @param [Cumo::NArray,Numeric] other
-  @return [Cumo::Bit] result of self <%=name%> other.
+    @param [Cumo::NArray,Numeric] other
+    @return [Cumo::Bit] result of self <%=name%> other.
 */
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE other)

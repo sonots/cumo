@@ -72,10 +72,10 @@ static void
   Applicable classes: DFloat, SFloat, HFloat, BFloat, DComplex, SComplex, RObject.
 
   @overload logseq(beg,step,[base])
-  @param [Numeric] beg  The beginning of sequence.
-  @param [Numeric] step  The step of sequence.
-  @param [Numeric] base  The base of log space. (default=10)
-  @return [Cumo::<%=class_name%>] self.
+    @param [Numeric] beg  The beginning of sequence.
+    @param [Numeric] step  The step of sequence.
+    @param [Numeric] base  The base of log space. (default=10)
+    @return [Cumo::<%=class_name%>] self.
 
   @example
     Cumo::DFloat.new(5).logseq(4,-1,2)

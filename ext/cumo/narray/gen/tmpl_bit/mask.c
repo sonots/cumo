@@ -102,8 +102,8 @@ static void shape_error(void) {
 /*
   Return subarray of argument masked with self bit array.
   @overload <%=op_map%>(array)
-  @param [Cumo::NArray] array  narray to be masked.
-  @return [Cumo::NArray]  view of masked array.
+    @param [Cumo::NArray] array  narray to be masked.
+    @return [Cumo::NArray]  view of masked array.
 */
 static VALUE
 <%=c_func(1)%>(VALUE mask, VALUE val)

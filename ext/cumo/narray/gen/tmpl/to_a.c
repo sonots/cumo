@@ -29,7 +29,7 @@ static void
 /*
   Convert self to Array.
   @overload <%=name%>
-  @return [Array]
+    @return [Array]
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

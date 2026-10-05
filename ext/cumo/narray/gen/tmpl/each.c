@@ -32,7 +32,7 @@ static void
   Calls the given block once for each element in self,
   passing that element as a parameter.
   @overload <%=name%>
-  @return [Cumo::NArray] self
+    @return [Cumo::NArray] self
   For a block `{|x| ... }`,
   @yieldparam [Numeric] x  an element of NArray.
   @see #each_with_index

@@ -7,8 +7,8 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *pg, char *py, uint64_t 
   length. Unlike layer_norm the row is not centred first, which is what
   Llama and the models after it normalize with.
   @overload rms_norm(gamma, eps:1e-5)
-  @param [Cumo::<%=class_name%>] gamma  scale, one-dimensional and as long as the last axis.
-  @param [Float] eps  added to the mean square before the square root.
+    @param [Cumo::<%=class_name%>] gamma  scale, one-dimensional and as long as the last axis.
+    @param [Float] eps  added to the mean square before the square root.
   Answers a new array: inplace! is not honoured.
   @return [Cumo::<%=class_name%>] returns the normalized array, shaped like self.
 */

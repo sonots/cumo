@@ -5,8 +5,8 @@
 /*
   Store elements to Cumo::<%=class_name%> from other.
   @overload store(other)
-  @param [Object] other
-  @return [Cumo::<%=class_name%>] self
+    @param [Object] other
+    @return [Cumo::<%=class_name%>] self
 */
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE obj)

@@ -132,13 +132,13 @@ static VALUE
   Only Integer-types has this method.
 
   @overload <%=name%>([weight], minlength:nil)
-  @param [SFloat or DFloat or Array] weight (optional) Array of
-    float values. Its size along last axis should be same as that of self.
-  @param [Integer] minlength (keyword, optional) Minimum size along
-    last axis for the output array.
-  @return [UInt32 or UInt64 or SFloat or DFloat]
-    Returns Float NArray if weight array is supplied,
-    otherwise returns UInt32 or UInt64 depending on the size along last axis.
+    @param [SFloat or DFloat or Array] weight (optional) Array of
+      float values. Its size along last axis should be same as that of self.
+    @param [Integer] minlength (keyword, optional) Minimum size along
+      last axis for the output array.
+    @return [UInt32 or UInt64 or SFloat or DFloat]
+      Returns Float NArray if weight array is supplied,
+      otherwise returns UInt32 or UInt64 depending on the size along last axis.
   @example
     Cumo::Int32[0..4].bincount
     # => Cumo::UInt32#shape=[5]

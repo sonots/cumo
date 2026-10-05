@@ -1,9 +1,9 @@
 /*
   Array element(s) set.
   @overload []=(dim0,..,dimL,val)
-  @param [Numeric,Range,etc] dim0,..,dimL  Multi-dimensional Index.
-  @param [Numeric,Cumo::NArray,etc] val  Value(s) to be set to self.
-  @return [Numeric] returns val (last argument).
+    @param [Numeric,Range,etc] dim0,..,dimL  Multi-dimensional Index.
+    @param [Numeric,Cumo::NArray,etc] val  Value(s) to be set to self.
+    @return [Numeric] returns val (last argument).
 
   --- Replace element(s) at +dim0+, +dim1+, ... (index/range/array/true
   for each dimension). Broadcasting mechanism is applied.

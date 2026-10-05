@@ -40,12 +40,12 @@ static void
   <%=name%>. Returns an index array of sort result.
 <% if is_float %>
   @overload <%=name%>(axis:nil, nan:false)
-  @param [TrueClass] nan  A NaN sorts after every number whether this is true or false.
+    @param [TrueClass] nan  A NaN sorts after every number whether this is true or false.
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
-  @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
-  @return [Integer,Cumo::Int] returns result index of <%=name%>.
+    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
+    @return [Integer,Cumo::Int] returns result index of <%=name%>.
   @example
       Cumo::NArray[3,4,1,2].sort_index # => Cumo::Int32[2,3,0,1]
 */

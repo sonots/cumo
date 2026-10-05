@@ -63,8 +63,8 @@ static void
 /*
   Calculate <%=name%>(x).
   @overload <%=name%>(x)
-  @param [Cumo::NArray,Numeric] x  input value
-  @return [Cumo::<%=class_name%>] result of <%=name%>(x).
+    @param [Cumo::NArray,Numeric] x  input value
+    @return [Cumo::<%=class_name%>] result of <%=name%>(x).
 */
 static VALUE
 <%=c_func(1)%>(VALUE mod, VALUE a1)

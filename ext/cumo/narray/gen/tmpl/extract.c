@@ -4,7 +4,7 @@ static VALUE
 /*
   Returns self.
   @overload extract
-  @return [Cumo::NArray]
+    @return [Cumo::NArray]
   --- Note that Cumo::NArray always returns NArray and does not
   return a Ruby numeric object as Numo::NArray does to avoid
   synchronization between CPU and GPU for performance.

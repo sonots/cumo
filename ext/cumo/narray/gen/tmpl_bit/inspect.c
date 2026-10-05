@@ -9,7 +9,7 @@ static VALUE
 /*
   Returns a string containing a human-readable representation of NArray.
   @overload inspect
-  @return [String]
+    @return [String]
 */
 static VALUE
 <%=c_func(0)%>(VALUE ary)

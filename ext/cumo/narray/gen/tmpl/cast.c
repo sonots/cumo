@@ -6,9 +6,9 @@
   Cast object to Cumo::<%=class_name%>.
   @overload [](elements)
   @overload <%=name%>(array)
-  @param [Numeric,Array] elements
-  @param [Array] array
-  @return [Cumo::<%=class_name%>]
+    @param [Numeric,Array] elements
+    @param [Array] array
+    @return [Cumo::<%=class_name%>]
 */
 static VALUE
 <%=c_func(1)%>(VALUE type, VALUE obj)

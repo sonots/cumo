@@ -16,8 +16,8 @@ static void
   Returns [mantissa, exponent], where x = mantissa * 2**exponent.
 
   @overload <%=name%>(x)
-  @param [Cumo::NArray,Numeric]  x
-  @return [Cumo::<%=class_name%>,Cumo::Int32]  mantissa and exponent.
+    @param [Cumo::NArray,Numeric]  x
+    @return [Cumo::<%=class_name%>,Cumo::Int32]  mantissa and exponent.
 
 */
 static VALUE

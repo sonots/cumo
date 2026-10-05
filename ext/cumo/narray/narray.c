@@ -339,9 +339,9 @@ cumo_na_setup(VALUE self, int ndim, size_t *shape)
 /*
   @overload initialize(shape)
   @overload initialize(size0, size1, ...)
-  @param [Array] shape (array of sizes along each dimension)
-  @param [Integer] sizeN (size along Nth-dimension)
-  @return [Cumo::NArray] unallocated narray.
+    @param [Array] shape (array of sizes along each dimension)
+    @param [Integer] sizeN (size along Nth-dimension)
+    @return [Cumo::NArray] unallocated narray.
 
   Constructs an instance of NArray class using the given
   and <i>shape</i> or <i>sizes</i>.
@@ -458,8 +458,8 @@ cumo_na_view_new(VALUE klass, int ndim, size_t *shape)
   Replaces the contents of self with the contents of other narray.
   Used in dup and clone method.
   @overload initialize_copy(other)
-  @param [Cumo::NArray] other
-  @return [Cumo::NArray] self
+    @param [Cumo::NArray] other
+    @return [Cumo::NArray] self
  */
 static VALUE
 cumo_na_initialize_copy(VALUE self, VALUE orig)
@@ -528,10 +528,10 @@ cumo_na_s_ones(int argc, VALUE *argv, VALUE klass)
   but for typed NArray subclasses, e.g., DFloat, Int64.
 
   @overload linspace(x1, x2, [n])
-  @param [Numeric] x1   The start value
-  @param [Numeric] x2   The end value
-  @param [Integer] n    The number of elements. (default is 100).
-  @return [Cumo::NArray]  result array.
+    @param [Numeric] x1   The start value
+    @param [Numeric] x2   The end value
+    @param [Integer] n    The number of elements. (default is 100).
+    @return [Cumo::NArray]  result array.
 
   @example
     a = Cumo::DFloat.linspace(-5,5,7)
@@ -566,11 +566,11 @@ cumo_na_s_linspace(int argc, VALUE *argv, VALUE klass)
   i.e., DFloat, SFloat, DComplex, and SComplex.
 
   @overload logspace(a, b, [n, base])
-  @param [Numeric] a  The start value
-  @param [Numeric] b  The end value
-  @param [Integer] n  The number of elements. (default is 50)
-  @param [Numeric] base  The base of log space. (default is 10)
-  @return [Cumo::NArray]  result array.
+    @param [Numeric] a  The start value
+    @param [Numeric] b  The end value
+    @param [Integer] n  The number of elements. (default is 50)
+    @param [Numeric] base  The base of log space. (default is 10)
+    @return [Cumo::NArray]  result array.
 
   @example
     Cumo::DFloat.logspace(4,0,5,2)
@@ -609,8 +609,8 @@ cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
 /*
   Returns a NArray with shape=(n,n) whose diagonal elements are 1, otherwise 0.
   @overload  eye(n)
-  @param [Integer] n  Size of NArray. Creates 2-D NArray with shape=(n,n)
-  @return [Cumo::NArray]  created NArray.
+    @param [Integer] n  Size of NArray. Creates 2-D NArray with shape=(n,n)
+    @return [Cumo::NArray]  created NArray.
   @example
     a = Cumo::DFloat.eye(3)
     # => Cumo::DFloat#shape=[3,3]
@@ -1539,13 +1539,11 @@ cumo_na_expand_dims_alloc_stridx(VALUE n)
 }
 
 /*
- *  call-seq:
- *     narray.expand_dims(dim) => narray view
- *
  *  Expand the shape of an array. Insert a new axis with size=1
  *  at a given dimension.
- *  @param [Integer] dim  dimension at which new axis is inserted.
- *  @return [Cumo::NArray]  result narray view.
+ *  @overload expand_dims(dim)
+ *    @param [Integer] dim  dimension at which new axis is inserted.
+ *    @return [Cumo::NArray]  result narray view.
  */
 static VALUE
 cumo_na_expand_dims(VALUE self, VALUE vdim)
@@ -1745,8 +1743,8 @@ cumo_na_upcast(VALUE type1, VALUE type2)
   Note that NArray has distinct UPCAST mechanism.
   Coerce is used for operation between non-NArray and NArray.
   @overload coerce(other)
-  @param [Object] other  numeric object.
-  @return [Array]  NArray-casted [other,self]
+    @param [Object] other  numeric object.
+    @return [Array]  NArray-casted [other,self]
 */
 static VALUE
 cumo_na_coerce(VALUE x, VALUE y)
@@ -1795,9 +1793,9 @@ cumo_na_s_byte_size(VALUE type)
 /*
   Returns a new 1-D array initialized from binary raw data in a string.
   @overload from_binary(string,[shape])
-  @param [String] string  Binary raw data.
-  @param [Array] shape  array of integers representing array shape.
-  @return [Cumo::NArray] NArray containing binary data.
+    @param [String] string  Binary raw data.
+    @param [Array] shape  array of integers representing array shape.
+    @return [Cumo::NArray] NArray containing binary data.
  */
 static VALUE
 cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
@@ -1906,9 +1904,9 @@ cumo_na_view_offset_reaches_bytes(VALUE self)
 /*
   Stores binary raw data from a string into NArray.
   @overload store_binary(string,[offset])
-  @param [String] string  Binary raw data.
-  @param [Integer] (optional) offset  Byte offset in string.
-  @return [Integer] stored length.
+    @param [String] string  Binary raw data.
+    @param [Integer] (optional) offset  Byte offset in string.
+    @return [Integer] stored length.
  */
 static VALUE
 cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
@@ -1994,7 +1992,7 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
 /*
   Returns string containing the raw data bytes in NArray.
   @overload to_binary()
-  @return [String] String object containing binary raw data.
+    @return [String] String object containing binary raw data.
  */
 static VALUE
 cumo_na_to_binary(VALUE self)
@@ -2055,7 +2053,7 @@ cumo_na_to_binary(VALUE self)
 /*
   Dump marshal data.
   @overload marshal_dump()
-  @return [Array] Array containing marshal data.
+    @return [Array] Array containing marshal data.
  */
 static VALUE
 cumo_na_marshal_dump(VALUE self)
@@ -2102,8 +2100,8 @@ static VALUE cumo_na_inplace( VALUE self );
 /*
   Load marshal data.
   @overload marshal_load(data)
-  @param [Array] Array containing marshal data.
-  @return [nil]
+    @param [Array] Array containing marshal data.
+    @return [nil]
  */
 static VALUE
 cumo_na_marshal_load(VALUE self, VALUE a)
@@ -2177,8 +2175,8 @@ cumo_na_marshal_load(VALUE self, VALUE a)
 /*
   Cast self to another NArray datatype.
   @overload cast_to(datatype)
-  @param [Class] datatype NArray datatype.
-  @return [Cumo::NArray]
+    @param [Class] datatype NArray datatype.
+    @return [Cumo::NArray]
  */
 static VALUE
 cumo_na_cast_to(VALUE obj, VALUE type)
@@ -2577,7 +2575,7 @@ static VALUE cumo_na_profile_set(VALUE mod, VALUE val)
 /*
   Returns the number of rows used for NArray#inspect
   @overload inspect_rows
-  @return [Integer or nil]  the number of rows.
+    @return [Integer or nil]  the number of rows.
 */
 static VALUE cumo_na_inspect_rows(VALUE mod)
 {
@@ -2591,8 +2589,8 @@ static VALUE cumo_na_inspect_rows(VALUE mod)
 /*
   Set the number of rows used for NArray#inspect
   @overload inspect_rows=(rows)
-  @param [Integer or nil] rows  the number of rows
-  @return [nil]
+    @param [Integer or nil] rows  the number of rows
+    @return [nil]
 */
 static VALUE cumo_na_inspect_rows_set(VALUE mod, VALUE num)
 {
@@ -2607,7 +2605,7 @@ static VALUE cumo_na_inspect_rows_set(VALUE mod, VALUE num)
 /*
   Returns the number of cols used for NArray#inspect
   @overload inspect_cols
-  @return [Integer or nil]  the number of cols.
+    @return [Integer or nil]  the number of cols.
 */
 static VALUE cumo_na_inspect_cols(VALUE mod)
 {
@@ -2621,8 +2619,8 @@ static VALUE cumo_na_inspect_cols(VALUE mod)
 /*
   Set the number of cols used for NArray#inspect
   @overload inspect_cols=(cols)
-  @param [Integer or nil] cols  the number of cols
-  @return [nil]
+    @param [Integer or nil] cols  the number of cols
+    @return [nil]
 */
 static VALUE cumo_na_inspect_cols_set(VALUE mod, VALUE num)
 {
@@ -2639,8 +2637,8 @@ static VALUE cumo_na_inspect_cols_set(VALUE mod, VALUE num)
   Equality of self and other in view of numerical array.
   i.e., both arrays have same shape and corresponding elements are equal.
   @overload == other
-  @param [Object] other
-  @return [Boolean] true if self and other is equal.
+    @param [Object] other
+    @return [Boolean] true if self and other is equal.
 */
 static VALUE
 cumo_na_equal(VALUE self, volatile VALUE other)

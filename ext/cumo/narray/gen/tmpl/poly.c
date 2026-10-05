@@ -41,8 +41,8 @@ static void
   Calculate polynomial.
     `x.poly(a0,a1,a2,...,an) = a0 + a1*x + a2*x**2 + ... + an*x**n`
   @overload <%=name%> a0, a1, ..., an
-  @param [Cumo::NArray,Numeric] a0,a1,...,an
-  @return [Cumo::<%=class_name%>]
+    @param [Cumo::NArray,Numeric] a0,a1,...,an
+    @return [Cumo::<%=class_name%>]
 */
 static VALUE
 <%=c_func(-2)%>(VALUE self, VALUE args)

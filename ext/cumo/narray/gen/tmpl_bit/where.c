@@ -169,7 +169,7 @@ static void
 /*
   Returns the array of index where the bit is one (true).
   @overload <%=op_map%>
-  @return [Cumo::Int32,Cumo::Int64]
+    @return [Cumo::Int32,Cumo::Int64]
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

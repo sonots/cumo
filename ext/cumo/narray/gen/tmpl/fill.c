@@ -51,8 +51,8 @@ static void
 /*
   Fill elements with other.
   @overload <%=name%> other
-  @param [Numeric] other
-  @return [Cumo::<%=class_name%>] self.
+    @param [Numeric] other
+    @return [Cumo::<%=class_name%>] self.
 */
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE val)

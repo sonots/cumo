@@ -230,9 +230,9 @@ check_axis(int axis, int ndim)
 /*
   Interchange two axes.
   @overload  swapaxes(axis1,axis2)
-  @param [Integer] axis1
-  @param [Integer] axis2
-  @return [Cumo::NArray]  view of NArray.
+    @param [Integer] axis1
+    @param [Integer] axis2
+    @return [Cumo::NArray]  view of NArray.
   @example
     x = Cumo::Int32[[1,2,3]]
 
@@ -452,9 +452,8 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
   Raise exception if self is non-contiguous.
 
   @overload  reshape!(size0,size1,...)
-  @param sizeN [Integer] new shape
-  @return [Cumo::NArray] return self.
-  @example
+    @param sizeN [Integer] new shape
+    @return [Cumo::NArray] return self.
 */
 static VALUE
 cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
@@ -510,9 +509,8 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
   Returns a copied NArray.
 
   @overload  reshape(size0,size1,...)
-  @param sizeN [Integer] new shape
-  @return [Cumo::NArray] a copy carrying the new shape.
-  @example
+    @param sizeN [Integer] new shape
+    @return [Cumo::NArray] a copy carrying the new shape.
 */
 static VALUE
 cumo_na_reshape(int argc, VALUE *argv, VALUE self)
@@ -673,13 +671,13 @@ void cumo_na_diagonal_stride_index_kernel_launch(size_t *idx, ssize_t s0, size_t
 /*
   Returns a diagonal view of NArray
   @overload  diagonal([offset,axes])
-  @param [Integer] offset  Diagonal offset from the main diagonal.
-    The default is 0. k>0 for diagonals above the main diagonal,
-    and k<0 for diagonals below the main diagonal.
-  @param [Array] axes  Array of axes to be used as the 2-d sub-arrays
-    from which the diagonals should be taken. Defaults to last-two
-    axes ([-2,-1]).
-  @return [Cumo::NArray]  diagonal view of NArray.
+    @param [Integer] offset  Diagonal offset from the main diagonal.
+      The default is 0. k>0 for diagonals above the main diagonal,
+      and k<0 for diagonals below the main diagonal.
+    @param [Array] axes  Array of axes to be used as the 2-d sub-arrays
+      from which the diagonals should be taken. Defaults to last-two
+      axes ([-2,-1]).
+    @return [Cumo::NArray]  diagonal view of NArray.
   @example
     a = Cumo::DFloat.new(4,5).seq
     # => Cumo::DFloat#shape=[4,5]

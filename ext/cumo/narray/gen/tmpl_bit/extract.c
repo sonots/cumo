@@ -4,7 +4,7 @@ static VALUE
 /*
   Returns self.
   @overload extract
-  @return [Cumo::Bit]
+    @return [Cumo::Bit]
   --- Note that Cumo::Bit always returns Cumo::Bit and does not
   return a Ruby Integer as Numo::Bit does to avoid
   synchronization between CPU and GPU for performance.
