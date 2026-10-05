@@ -899,14 +899,19 @@ module Cumo
         raise FloatDomainError, "the 1-norm of the matrix overflows #{a.class}"
       end
 
-      x = adaptive_pade_expm(a, norm, even, norms)
+      parts = nil
+      triangle = lambda do
+        parts = triangle_parts(a) || false if parts.nil?
+        parts
+      end
+      x = adaptive_pade_expm(a, norm, even, norms, triangle)
       return x if x
 
       prescale = Math.log2(norm / PADE_THETAS[13]).ceil
       scaled = a * (0.5**prescale)
-      x = adaptive_pade_expm(scaled, norm * (0.5**prescale), *even_powers(scaled))
+      x = adaptive_pade_expm(scaled, norm * (0.5**prescale), *even_powers(scaled), triangle, prescale)
       release(scaled)
-      square_and_release(x, prescale)
+      square_exp(x, prescale, triangle)
     end
 
     def even_powers(a, *also)
@@ -916,7 +921,7 @@ module Cumo
       [[a2, a4, a6], onenorms(*also, a4, a6)]
     end
 
-    def adaptive_pade_expm(a, norm, even, norms)
+    def adaptive_pade_expm(a, norm, even, norms, triangle, prescale = 0)
       a2, a4, a6 = even
       temporaries = even.dup
       n4, n6 = norms
@@ -950,7 +955,7 @@ module Cumo
       x = pade13_quotient(a, powers, s)
       release(*temporaries)
       temporaries.clear
-      square_and_release(x, s)
+      square_exp(x, s, triangle, prescale)
     ensure
       release(*temporaries)
     end
@@ -1002,6 +1007,75 @@ module Cumo
         release(sum, term)
         total
       end
+    end
+
+    def square_exp(x, times, triangle, base = 0)
+      return x unless times.positive?
+
+      parts = triangle.call
+      return square_and_release(x, times) unless parts
+
+      parts.last.negative? ? x.tril! : x.triu!
+      fix_triangle(x, parts, times + base)
+      (times - 1).downto(0) do |i|
+        x = square_and_release(x, 1)
+        fix_triangle(x, parts, i + base)
+      end
+      x
+    end
+
+    def triangle_parts(a)
+      n = a.shape[0]
+      rows = Int64.new(n, 1).seq
+      columns = Int64.new(1, n).seq
+      nonzero = a.ne(0)
+      masks = [rows.lt(columns), rows.gt(columns)]
+      sides = masks.map { |mask| nonzero & mask }
+      counts = UInt64.vstack(sides.map { |side| side.count_true(axis: 1) }).to_a
+      release(rows, columns, nonzero, *masks, *sides)
+      upper, lower = counts.map(&:sum)
+      return if upper.nonzero? && lower.nonzero?
+
+      offset = upper.zero? ? -1 : 1
+      [a.diagonal.to_a, n > 1 ? a.diagonal(offset).to_a : [], offset]
+    end
+
+    def fix_triangle(x, (diagonal, off_diagonal, offset), k)
+      scale = 0.5**k
+      lambdas = diagonal.map { |d| d * scale }
+      x.diagonal.store(x.class.cast(lambdas.map { |l| scalar_exp(l) }))
+      return if off_diagonal.empty?
+
+      values = off_diagonal.each_with_index.map { |t, i| off_diagonal_exp(t * scale, lambdas[i], lambdas[i + 1]) }
+      x.diagonal(offset).store(x.class.cast(values))
+    end
+
+    def off_diagonal_exp(t, lambda1, lambda2)
+      return t if t.zero?
+
+      a = (lambda1 + lambda2) * 0.5
+      x = (lambda1 - lambda2) * 0.5
+      value = t * scalar_exp(a) * sinch(x)
+      return value if value.finite?
+
+      x = -x if x.real.negative?
+      log_sinch = x.abs < 0.0135 ? scalar_log(sinch(x)) : x + scalar_log((1 - scalar_exp(x * -2)) / (x * 2))
+      (t / t.abs) * scalar_exp(Math.log(t.abs) + a + log_sinch)
+    end
+
+    def sinch(x)
+      return (scalar_exp(x) - scalar_exp(-x)) / (x * 2) if x.abs >= 0.0135
+
+      x2 = x * x
+      1 + ((x2 / 6.0) * (1 + ((x2 / 20.0) * (1 + (x2 / 42.0)))))
+    end
+
+    def scalar_exp(z)
+      z.is_a?(Complex) ? Complex.polar(Math.exp(z.real), z.imag) : Math.exp(z)
+    end
+
+    def scalar_log(z)
+      z.is_a?(Complex) ? Complex(Math.log(z.abs), z.arg) : Math.log(z)
     end
 
     def square_and_release(x, times)
@@ -1574,6 +1648,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :reduce_abs, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_exp, :triangle_parts, :fix_triangle, :off_diagonal_exp, :sinch, :scalar_exp, :scalar_log, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :reduce_abs, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end

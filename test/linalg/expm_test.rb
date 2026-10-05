@@ -48,6 +48,50 @@ class LinalgExpmTest < Test::Unit::TestCase
         product = host_dot(Cumo::Linalg.expm(a).to_a, Cumo::Linalg.expm(-a).to_a)
         assert_close(Array.new(5) { |i| Array.new(5) { |j| i == j ? 1 : 0 } }, product, tol * 100)
       end
+
+      test "a triangular matrix with an off-diagonal element far larger than its diagonal" do
+        b = [Cumo::SFloat, Cumo::SComplex].include?(type) ? 1e30 : 1e300
+        e = Math.exp(1)
+        upper = [[e, b * ((e * e) - e)], [0, e * e]]
+        assert_relatively_close(upper, Cumo::Linalg.expm(type.cast([[1, b], [0, 2]])), tol)
+        assert_relatively_close(upper.transpose, Cumo::Linalg.expm(type.cast([[1, 0], [b, 2]])), tol)
+      end
+    end
+  end
+
+  test "a 3x3 upper triangular matrix with elements far larger than its diagonal" do
+    a = Cumo::DFloat[[1, 1e100, 3e99], [0, -0.5, -2e100], [0, 0, 0.25]]
+    expected = [
+      [2.7182818284590452, 1.4078341124976079e+100, -1.3453540529710146e+200],
+      [0, 0.60653065971263342, -1.8066526852669549e+100],
+      [0, 0, 1.2840254166877415]
+    ]
+    assert_relatively_close(expected, Cumo::Linalg.expm(a), 1e-13)
+    assert_relatively_close(expected.transpose, Cumo::Linalg.expm(a.transpose.dup), 1e-13)
+  end
+
+  test "a triangular matrix with nearly equal diagonal elements" do
+    e = Cumo::Linalg.expm(Cumo::DFloat[[1, 1e50], [0, 1 + 1e-9]])
+    assert_relatively_close([[Math.exp(1), 2.7182818298181862e+50], [0, 2.7182818311773271]], e, 1e-13)
+  end
+
+  test "a 1x1 matrix that needs squaring" do
+    assert_in_delta(1.0, Cumo::Linalg.expm(Cumo::DFloat[[50.0]]).to_a[0][0] / Math.exp(50), 1e-13)
+  end
+
+  test "a diagonal matrix whose exponential overflows keeps zeros off its diagonal" do
+    assert_equal([[Float::INFINITY, 0.0], [0.0, Math.exp(700)]], Cumo::Linalg.expm(Cumo::DFloat[[800.0, 0], [0, 700.0]]).to_a)
+  end
+
+  test "an off-diagonal element stays finite when the exponential of one diagonal element overflows" do
+    e = Cumo::Linalg.expm(Cumo::DFloat[[710, -1e-300], [0, 0]])
+    assert_in_delta(-1.0, e.to_a[0][1] / (1e-300 * Math.exp(355) / 710 * Math.exp(355)), 1e-12)
+  end
+
+  def assert_relatively_close(expected, actual, tol)
+    actual = actual.to_a.flatten
+    expected.flatten.each_with_index do |x, i|
+      assert_operator((actual[i] - x).abs, :<=, x.abs * tol, "element #{i}: #{actual[i]} for #{x}")
     end
   end
 
