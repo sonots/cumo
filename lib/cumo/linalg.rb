@@ -899,14 +899,16 @@ module Cumo
         raise FloatDomainError, "the 1-norm of the matrix overflows #{a.class}"
       end
 
-      x = adaptive_pade_expm(a, norm, even, norms)
+      parts = nil
+      triangle = -> { parts.nil? ? (parts = triangle_parts(a) || false) : parts }
+      x = adaptive_pade_expm(a, norm, even, norms, triangle)
       return x if x
 
       prescale = Math.log2(norm / PADE_THETAS[13]).ceil
       scaled = a * (0.5**prescale)
-      x = adaptive_pade_expm(scaled, norm * (0.5**prescale), *even_powers(scaled))
+      x = adaptive_pade_expm(scaled, norm * (0.5**prescale), *even_powers(scaled), triangle, prescale)
       release(scaled)
-      square_and_release(x, prescale)
+      square_exp(x, prescale, triangle)
     end
 
     def even_powers(a, *also)
@@ -916,7 +918,7 @@ module Cumo
       [[a2, a4, a6], onenorms(*also, a4, a6)]
     end
 
-    def adaptive_pade_expm(a, norm, even, norms)
+    def adaptive_pade_expm(a, norm, even, norms, triangle, prescale = 0)
       a2, a4, a6 = even
       temporaries = even.dup
       n4, n6 = norms
@@ -950,7 +952,7 @@ module Cumo
       x = pade13_quotient(a, powers, s)
       release(*temporaries)
       temporaries.clear
-      square_and_release(x, s)
+      square_exp(x, s, triangle, prescale)
     ensure
       release(*temporaries)
     end
@@ -1002,6 +1004,60 @@ module Cumo
         release(sum, term)
         total
       end
+    end
+
+    # For a triangular a, resets the diagonal and the first off-diagonal to
+    # their exact values after each squaring (Code Fragment 2.1 of Al-Mohy and
+    # Higham 2009). Otherwise the diagonal rounds to one once the elements off
+    # it are far larger.
+    def square_exp(x, times, triangle, base = 0)
+      return x unless times.positive?
+      return square_and_release(x, times) unless triangle.call
+
+      triangle.call.last.negative? ? x.tril! : x.triu!
+      fix_triangle(x, triangle.call, times + base)
+      (times - 1).downto(0) do |i|
+        x = square_and_release(x, 1)
+        fix_triangle(x, triangle.call, i + base)
+      end
+      x
+    end
+
+    def triangle_parts(a)
+      parts = [a.tril, a.triu]
+      differs = parts.map { |part| a.ne(part) }
+      counts = UInt64.vstack(differs.map { |mask| mask.count_true(axis: 1) }).to_a
+      release(*parts, *differs)
+      upper, lower = counts.map(&:sum)
+      return if upper.nonzero? && lower.nonzero?
+
+      offset = upper.zero? ? -1 : 1
+      [a.diagonal.to_a, a.diagonal(offset).to_a, offset]
+    end
+
+    def fix_triangle(x, (diagonal, off_diagonal, offset), k)
+      scale = 0.5**k
+      lambdas = diagonal.map { |d| d * scale }
+      x.diagonal.store(x.class.cast(lambdas.map { |l| scalar_exp(l) }))
+      return if off_diagonal.empty?
+
+      values = off_diagonal.each_with_index.map do |t, i|
+        t * scale * exp_sinch((lambdas[i] + lambdas[i + 1]) * 0.5, (lambdas[i] - lambdas[i + 1]) * 0.5)
+      end
+      x.diagonal(offset).store(x.class.cast(values))
+    end
+
+    # exp(a) * sinh(x) / x, by a Taylor series near x = 0 where the
+    # difference of exponentials would cancel, as scipy does.
+    def exp_sinch(a, x)
+      return (scalar_exp(a + x) - scalar_exp(a - x)) / (x * 2) if x.abs >= 0.0135
+
+      x2 = x * x
+      scalar_exp(a) * (1 + ((x2 / 6.0) * (1 + ((x2 / 20.0) * (1 + (x2 / 42.0))))))
+    end
+
+    def scalar_exp(z)
+      z.is_a?(Complex) ? Complex.polar(Math.exp(z.real), z.imag) : Math.exp(z)
     end
 
     def square_and_release(x, times)
@@ -1574,6 +1630,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :reduce_abs, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_exp, :triangle_parts, :fix_triangle, :exp_sinch, :scalar_exp, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :reduce_abs, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
