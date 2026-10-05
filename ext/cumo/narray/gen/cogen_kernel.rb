@@ -65,16 +65,22 @@ MATH_TEMPLATES = %w[unary_s binary_s ternary_s frexp].freeze
 COMMON_MATH = %w[sqrt log log2 log10 exp exp2 sin cos tan tanh erf gelu gelu_tanh silu sigmoid softplus].freeze
 
 abort "unknown kernel part: #{$kernel_part}" unless KERNEL_PARTS.include?($kernel_part)
+undeclared_math = COMMON_MATH - File.read(File.join(thisdir, "spec.rb")).scan(/^\s*math "(\w+)"/).flatten
+abort "COMMON_MATH names no math function in spec.rb: #{undeclared_math.join(', ')}" unless undeclared_math.empty?
 
 class ErbPP
   def kernel_parts
     erb_base = get(:erb_base)
     return TEMPLATE_KERNEL_PARTS[erb_base] if TEMPLATE_KERNEL_PARTS.key?(erb_base)
     return [COMMON_MATH.include?(@opts[:name]) ? "math" : "math_rare"] if MATH_TEMPLATES.include?(erb_base)
-    return @children.flat_map(&:kernel_parts).uniq if erb_base == "store"
+    return @children.flat_map(&:kernel_parts).uniq unless @children.empty?
     return [@opts[:type_name] == get(:class_name) ? "main" : "cast"] if %w[store_from store_bit].include?(erb_base)
 
     %w[main]
+  end
+
+  def kernel_children
+    @children.select { |c| c.kernel_parts.include?($kernel_part) }
   end
 
   def kernel_part?(nan: false, from: nil)
@@ -102,12 +108,8 @@ class ErbPP
 end
 
 class DefModule
-  def kernel_parts
-    @children.flat_map(&:kernel_parts).uniq
-  end
-
   def method_code
-    @children.select { |c| c.kernel_parts.include?($kernel_part) }.map { |c| c.result }.join("\n")
+    kernel_children.map { |c| c.result }.join("\n")
   end
 end
 

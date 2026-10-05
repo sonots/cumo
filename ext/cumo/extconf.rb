@@ -72,7 +72,7 @@ cuda/cusolver
 )
 %w[bit int8 int16 int32 int64 uint8 uint16 uint32 uint64 hfloat bfloat sfloat dfloat scomplex dcomplex robject].each do |type_name|
   srcs << "narray/types/#{type_name}"
-  srcs.concat(KERNEL_PARTS.map { |part| "narray/types/" + kernel_part_basename(type_name, part) })
+  srcs.concat(kernel_parts_of(type_name).map { |part| "narray/types/" + kernel_part_basename(type_name, part) })
 end
 
 $objs = srcs.map { |src| "#{src}.o" }

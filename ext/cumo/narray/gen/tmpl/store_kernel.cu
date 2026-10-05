@@ -1,3 +1,3 @@
-<% children.select { |c| c.kernel_parts.include?($kernel_part) }.each do |c|%>
+<% kernel_children.each do |c|%>
 <%= c.result %>
 <% end %>
