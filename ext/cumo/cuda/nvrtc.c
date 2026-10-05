@@ -4,7 +4,7 @@
 #include <limits.h>
 #include <cuda.h>
 #include <dlfcn.h>
-#include <stdbool.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <nvrtc.h>
 #include "cumo/cuda/nvrtc.h"
@@ -27,37 +27,52 @@ static struct {
     NVRTC_FUNCTIONS(NVRTC_POINTER)
 #undef NVRTC_POINTER
 } nvrtc_functions;
-static bool nvrtc_loaded;
+static pthread_once_t nvrtc_once = PTHREAD_ONCE_INIT;
+static char nvrtc_error[256];
 
-static const __typeof__(nvrtc_functions)*
-nvrtc(void)
+static const char*
+dl_error(void)
+{
+    const char *e = dlerror();
+    return e ? e : "unknown error";
+}
+
+static void
+load_nvrtc(void)
 {
     char soname[32];
     void *lib;
 
-    if (nvrtc_loaded) {
-        return &nvrtc_functions;
-    }
     if (CUDA_VERSION >= 12000) {
         snprintf(soname, sizeof(soname), "libnvrtc.so.%d", CUDA_VERSION / 1000);
-    } else {
+    } else if (CUDA_VERSION >= 11020) {
         snprintf(soname, sizeof(soname), "libnvrtc.so.11.2");
+    } else {
+        snprintf(soname, sizeof(soname), "libnvrtc.so.%d.%d", CUDA_VERSION / 1000, CUDA_VERSION % 1000 / 10);
     }
     lib = dlopen(soname, RTLD_NOW | RTLD_LOCAL);
     if (lib == NULL) {
-        lib = dlopen("libnvrtc.so", RTLD_NOW | RTLD_LOCAL);
+        snprintf(nvrtc_error, sizeof(nvrtc_error), "cannot load %s: %s", soname, dl_error());
+        return;
     }
-    if (lib == NULL) {
-        rb_raise(cumo_cuda_eNVRTCError, "cannot load %s: %s", soname, dlerror());
-    }
-#define NVRTC_RESOLVE(f)                                                        \
-    nvrtc_functions.f = (__typeof__(&f))dlsym(lib, #f);                          \
-    if (nvrtc_functions.f == NULL) {                                             \
-        rb_raise(cumo_cuda_eNVRTCError, "%s has no %s", soname, #f);             \
+#define NVRTC_RESOLVE(f)                                                                      \
+    nvrtc_functions.f = (__typeof__(&f))dlsym(lib, #f);                                        \
+    if (nvrtc_functions.f == NULL) {                                                           \
+        snprintf(nvrtc_error, sizeof(nvrtc_error), "%s has no %s: %s", soname, #f, dl_error()); \
+        dlclose(lib);                                                                          \
+        return;                                                                                \
     }
     NVRTC_FUNCTIONS(NVRTC_RESOLVE)
 #undef NVRTC_RESOLVE
-    nvrtc_loaded = true;
+}
+
+static const __typeof__(nvrtc_functions)*
+nvrtc(void)
+{
+    pthread_once(&nvrtc_once, load_nvrtc);
+    if (nvrtc_error[0] != '\0') {
+        rb_raise(cumo_cuda_eNVRTCError, "%s", nvrtc_error);
+    }
     return &nvrtc_functions;
 }
 
@@ -174,6 +189,7 @@ rb_nvrtcCreateProgram(
     const char** _includeNames = NULL;
     VALUE strings;
 
+    nvrtc();
     // nvrtcCreateProgram reads numHeaders entries out of includeNames as well,
     // so a shorter array would be read past its end.
     if (ary_len(includeNames, "include_names") != _numHeaders) {
@@ -197,7 +213,6 @@ rb_nvrtcCreateProgram(
 
     {
         struct nvrtcCreateProgramParam param = {&_prog, _src, _name, _numHeaders, _headers, _includeNames};
-        nvrtc();
         status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcCreateProgram_without_gvl_cb, &param, NULL, NULL);
     }
 
@@ -259,6 +274,7 @@ rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
     const char** _options = NULL;
     VALUE strings;
 
+    nvrtc();
     strings = rb_ary_new_capa(_numOptions);
     push_strings(strings, options, _numOptions);
 
@@ -269,7 +285,6 @@ rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
 
     {
         struct nvrtcCompileProgramParam param = {_prog, _numOptions, _options};
-        nvrtc();
         status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcCompileProgram_without_gvl_cb, &param, NULL, NULL);
     }
 

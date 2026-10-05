@@ -74,7 +74,7 @@ class CumoTest < Test::Unit::TestCase
     print loaded.inspect
   RUBY
 
-  test "NVRTC is loaded the first time a kernel is compiled, not on require" do
+  test "NVRTC is loaded the first time a user kernel is built, not on require" do
     assert_equal([false, true].inspect, run_child(NVRTC_SCRIPT).lines.last)
   end
 
@@ -231,6 +231,6 @@ class CumoTest < Test::Unit::TestCase
     omit("ldd -r is Linux only") unless RUBY_PLATFORM.include?("linux")
     so = $LOADED_FEATURES.grep(%r{/cumo\.so\z}).first
     report = IO.popen(["ldd", "-r", so], err: [:child, :out], &:read)
-    assert_equal([], report.scan(/undefined symbol: (cumo_\w+)/).flatten)
+    assert_equal([], report.scan(/undefined symbol: ((?:cumo|nvrtc)\w+)/).flatten)
   end
 end
