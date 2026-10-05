@@ -74,7 +74,16 @@ class CumoTest < Test::Unit::TestCase
     print loaded.inspect
   RUBY
 
+  CUBLAS_NVRTC_SCRIPT = <<~'RUBY'
+    require "fiddle"
+    Fiddle.dlopen(ENV.fetch("CUMO_TEST_CUBLAS"))
+    print File.read("/proc/self/maps").include?("libnvrtc")
+  RUBY
+
   test "NVRTC is loaded the first time a user kernel is built, not on require" do
+    so = $LOADED_FEATURES.grep(%r{/cumo\.so\z}).first
+    cublas = IO.popen(["ldd", so], &:read)[%r{=> (\S*/libcublas\.so\S*)}, 1]
+    omit("cuBLAS loads NVRTC on its own") if run_child(CUBLAS_NVRTC_SCRIPT, env: { "CUMO_TEST_CUBLAS" => cublas }).lines.last == "true"
     assert_equal([false, true].inspect, run_child(NVRTC_SCRIPT).lines.last)
   end
 
