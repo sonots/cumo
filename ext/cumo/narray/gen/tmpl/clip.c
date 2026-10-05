@@ -168,9 +168,9 @@ static void
   Clip array elements by [min,max].
   If either of min or max is nil, one side is clipped.
   @overload <%=name%>(min,max)
-  @param [Cumo::NArray,Numeric] min
-  @param [Cumo::NArray,Numeric] max
-  @return [Cumo::NArray] result of clip.
+    @param [Cumo::NArray,Numeric] min
+    @param [Cumo::NArray,Numeric] max
+    @return [Cumo::NArray] result of clip.
 
   @example
       a = Cumo::Int32.new(10).seq

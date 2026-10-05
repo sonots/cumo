@@ -4,8 +4,8 @@ static VALUE
 /*
   Array element referenece or slice view.
   @overload [](dim0,...,dimL)
-  @param [Numeric,Range,etc] dim0,...,dimL  Multi-dimensional Index.
-  @return [NArray::<%=class_name%>] NArray view.
+    @param [Numeric,Range,etc] dim0,...,dimL  Multi-dimensional Index.
+    @return [NArray::<%=class_name%>] NArray view.
 
   --- Returns the element at +dim0+, +dim1+, ... are Numeric indices
   for each dimension, or returns a NArray View as a sliced subarray if

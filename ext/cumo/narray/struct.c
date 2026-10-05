@@ -718,8 +718,8 @@ cumo_na_struct_store_array(VALUE self, VALUE obj)
 /*
   Store elements to Cumo::Struct from other.
   @overload store(other)
-  @param [Object] other
-  @return [Cumo::Struct] self
+    @param [Object] other
+    @return [Cumo::Struct] self
 */
 static VALUE
 cumo_na_struct_store(VALUE self, VALUE obj)
@@ -780,7 +780,7 @@ iter_struct_inspect(char *ptr, size_t pos, VALUE opt)
 /*
   Returns a string containing a human-readable representation of NArray.
   @overload inspect
-  @return [String]
+    @return [String]
 */
 static VALUE
 cumo_na_struct_inspect(VALUE ary)

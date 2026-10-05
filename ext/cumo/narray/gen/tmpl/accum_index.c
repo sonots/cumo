@@ -39,12 +39,12 @@ static void
   <%=name%>. Return an index of result.
 <% if is_float %>
   @overload <%=name%>(axis:nil, nan:false)
-  @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN position if exist).
+    @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN position if exist).
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
-  @param [Numeric,Array,Range] axis  Affected dimensions.
-  @return [Integer,Cumo::Int] returns result index of <%=name%>.
+    @param [Numeric,Array,Range] axis  Affected dimensions.
+    @return [Integer,Cumo::Int] returns result index of <%=name%>.
   @example
       Cumo::NArray[3,4,1,2].min_index => 3
  */

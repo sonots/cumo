@@ -144,9 +144,9 @@ static void
 /*
   Generate uniformly distributed random numbers on self narray.
   @overload rand([[low],high])
-  @param [Numeric] low  lower inclusive boundary of random numbers. (default=0)
-  @param [Numeric] high  upper exclusive boundary of random numbers. (default=1 or 1+1i for complex types)
-  @return [Cumo::<%=class_name%>] self.
+    @param [Numeric] low  lower inclusive boundary of random numbers. (default=0)
+    @param [Numeric] high  upper exclusive boundary of random numbers. (default=1 or 1+1i for complex types)
+    @return [Cumo::<%=class_name%>] self.
   @example
     Cumo::DFloat.new(6).rand
     # => Cumo::DFloat#shape=[6]

@@ -52,8 +52,8 @@ static void
 /*
   Format elements into strings.
   @overload <%=name%> format
-  @param [String] format
-  @return [Cumo::RObject] array of formatted strings.
+    @param [String] format
+    @return [Cumo::RObject] array of formatted strings.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

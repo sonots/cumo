@@ -28,14 +28,14 @@ static void
   <%=name%> of self.
 <% if is_float %>
   @overload <%=name%>(axis:nil, keepdims:false, nan:false)
-  @param [TrueClass] nan (keyword) If true, propagate NaN. If false, ignore NaN.
+    @param [TrueClass] nan (keyword) If true, propagate NaN. If false, ignore NaN.
 <% else %>
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-  @param [Numeric,Array,Range] axis  Finds <%=name%> along the axis. A
-    [:sum, true] mark on the receiver names the axes the same way.
-  @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
-  @return [Cumo::<%=class_name%>] returns <%=name%> of self.
+    @param [Numeric,Array,Range] axis  Finds <%=name%> along the axis. A
+      [:sum, true] mark on the receiver names the axes the same way.
+    @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
+    @return [Cumo::<%=class_name%>] returns <%=name%> of self.
 */
 
 static VALUE

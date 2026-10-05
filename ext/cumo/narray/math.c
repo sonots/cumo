@@ -77,9 +77,9 @@ static VALUE cumo_na_mathcast(int argc, VALUE *argv)
   Dispatches method to Math module of upcasted type,
   eg, Cumo::DFloat::Math.
   @overload method_missing(name,x,...)
-  @param [Symbol] name  method name.
-  @param [NArray,Numeric] x  input array.
-  @return [NArray] result.
+    @param [Symbol] name  method name.
+    @param [NArray,Numeric] x  input array.
+    @return [NArray] result.
 */
 static VALUE cumo_na_math_method_missing(int argc, VALUE *argv, VALUE mod)
 {
@@ -114,9 +114,9 @@ static VALUE cumo_na_math_method_missing(int argc, VALUE *argv, VALUE mod)
   given one, so this asks the module that a call can reach with the widest set
   of methods. Every other module a call can reach defines a subset of those.
   @overload respond_to_missing?(name,include_private)
-  @param [Symbol] name  method name.
-  @param [Boolean] include_private  whether to look at private methods too.
-  @return [Boolean]
+    @param [Symbol] name  method name.
+    @param [Boolean] include_private  whether to look at private methods too.
+    @return [Boolean]
 */
 static VALUE
 cumo_na_math_respond_to_missing_p(VALUE mod, VALUE name, VALUE include_private)

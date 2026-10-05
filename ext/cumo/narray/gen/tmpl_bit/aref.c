@@ -4,8 +4,8 @@ static VALUE
 /*
   Array indexing.
   @overload [](dim0,...,dimL)
-  @param [Numeric,Range,Array,Cumo::Bit,Cumo::Int32,Cumo::Int64] dim0,...,dimL  Multi-dimensional Index.
-  @return [Cumo::Bit,Numeric] Element value or NArray view.
+    @param [Numeric,Range,Array,Cumo::Bit,Cumo::Int32,Cumo::Int64] dim0,...,dimL  Multi-dimensional Index.
+    @return [Cumo::Bit,Numeric] Element value or NArray view.
 
   --- Returns an element at `dim0`, `dim1`, ... are Numeric indices for each dimension, or returns a NArray View as a sliced array if `dim0`, `dim1`, ... includes other than Numeric index, e.g., Range or Array or true.
 

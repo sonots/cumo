@@ -342,11 +342,11 @@ static void
    mat("c","optional",:inplace),
    opt("alpha"),
    opt("beta"),
- ].select{|x| x}.join("\n  ")
+ ].select{|x| x}.join("\n    ")
 %>
   @overload <%=name%>(<%=args_v%>)
-  <%=params%>
-  @return [<%=class_name%>] returns c = alpha\*op( A )\*op( B ) + beta\*C.
+    <%=params%>
+    @return [<%=class_name%>] returns c = alpha\*op( A )\*op( B ) + beta\*C.
 <%=description%>
 */
 static VALUE

@@ -449,8 +449,8 @@ cumo_na_s_array_shape(VALUE mod, VALUE ary)
   Cumo::DFloat.new_like(obj) returns DFloat instance.
 
   @overload new_like(obj)
-  @param [Numeric,Array,Cumo::NArray] obj
-  @return [Cumo::NArray]
+    @param [Numeric,Array,Cumo::NArray] obj
+    @return [Cumo::NArray]
   @example
     Cumo::NArray.new_like([[1,2,3],[4,5,6]])
     # => Cumo::Int32#shape=[2,3](empty)
@@ -490,8 +490,8 @@ cumo_na_s_array_type(VALUE mod, VALUE ary)
 /*
   Generate NArray object. NArray datatype is automatically selected.
   @overload [](elements)
-  @param [Numeric,Array] elements
-  @return [NArray]
+    @param [Numeric,Array] elements
+    @return [NArray]
 */
 static VALUE
 cumo_na_s_bracket(VALUE klass, VALUE ary)

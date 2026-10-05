@@ -769,13 +769,14 @@ check_square_matrix(VALUE a, const char *name)
   Factorizes a Hermitian positive definite matrix in place as A = U^H U or
   A = L L^H with cusolverDnXpotrf.
 
-  @param a [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
-    contiguous, of shape [n, n]: the column-major matrix, whose uplo
-    triangle is overwritten with the factor
-  @param uplo [String] "U" or "L"
-  @param want_info [Boolean] whether to wait for the info cuSOLVER reports,
-    true by default
-  @return [Integer, nil] the info cuSOLVER reports, or nil if it is not read
+  @overload potrf(a, uplo, want_info = true)
+    @param a [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+      contiguous, of shape [n, n]: the column-major matrix, whose uplo
+      triangle is overwritten with the factor
+    @param uplo [String] "U" or "L"
+    @param want_info [Boolean] whether to wait for the info cuSOLVER reports,
+      true by default
+    @return [Integer, nil] the info cuSOLVER reports, or nil if it is not read
  */
 static VALUE
 rb_cusolver_potrf(int argc, VALUE *argv, VALUE self)

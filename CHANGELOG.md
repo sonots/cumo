@@ -503,7 +503,7 @@ Fixes:
 * Remove unnecessary debug code
 * Fix capability list
 * Build only with supported capabilities to reduce compilation time
-* Fix SEGV when calling {mean, var, stddev, rms} on a single-element array (#154)
+* Fix SEGV when calling `mean`, `var`, `stddev` or `rms` on a single-element array (#154)
 * Suppress warning message for deprecated declarations
 * Fix variable typo in complex log2 and log10 functions (#152)
 
@@ -545,7 +545,7 @@ Fixes:
 * Backport: fix macro: STORE_BIT STORE_BIT_STEP: requires mask to leave the lowest bit
 * Backport: fix NArray::Bit#any?,all?: empty array should return false
 * Backport: fix NArray::Bit#count_true/false: empty array should return zero
-* Backport: bug in NArray::Bit; fix bit operation in tmpl_bit/{store_bit,unary,binary}.c
+* Backport: bug in NArray::Bit; fix bit operation in `tmpl_bit/{store_bit,unary,binary}.c`
 * Fix typo
 * Backport 135: Make all empty arrays equal
 * Backport: minor fixes in na_get_result_dimension(), check_index_count()

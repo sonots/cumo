@@ -52,13 +52,13 @@ static void
   <%=name%> of self.
 <% if nan_forms %>
   @overload <%=name%>(axis:nil, keepdims:false, nan:false)
-  @param [TrueClass] nan  If true, apply NaN-aware algorithm (avoid NaN for sum/mean etc, or, return NaN for min/max etc).
+    @param [TrueClass] nan  If true, apply NaN-aware algorithm (avoid NaN for sum/mean etc, or, return NaN for min/max etc).
 <% else %>
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-  @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
-  @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
-  @return [Cumo::<%=class_name%>] returns result of <%=name%>.
+    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
+    @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
+    @return [Cumo::<%=class_name%>] returns result of <%=name%>.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

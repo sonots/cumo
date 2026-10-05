@@ -38,12 +38,12 @@ static void
   <%=name%>. Returns an index of the <%=name[3..5]%>imum value along the axis. See also `<%=name[3..5]%>_index`.
 <% if is_float %>
   @overload <%=name%>(axis:nil, nan:false)
-  @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN position if exist).
+    @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN position if exist).
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
-  @param [Numeric,Array,Range] axis  Finds <%=name[3..5]%>imum values along the axis and returns indices along the axis.
-  @return [Integer,Cumo::Int] returns result indices.
+    @param [Numeric,Array,Range] axis  Finds <%=name[3..5]%>imum values along the axis and returns indices along the axis.
+    @return [Integer,Cumo::Int] returns result indices.
   @example
       Cumo::NArray[3,4,1,2].<%=name%> => <% if name == 'argmin' %>2<% else %>1<% end %>
  */

@@ -40,13 +40,13 @@ static void
   <%=name%> of self.
 <% if is_float %>
   @overload <%=name%>(axis:nil, keepdims:false, nan:false)
-  @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN if exist).
+    @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN if exist).
 <% else %>
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-  @param [Numeric,Array,Range] axis  Finds min-max along the axis.
-  @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-  @return [Cumo::<%=class_name%>,Cumo::<%=class_name%>] min and max of self.
+    @param [Numeric,Array,Range] axis  Finds min-max along the axis.
+    @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
+    @return [Cumo::<%=class_name%>,Cumo::<%=class_name%>] min and max of self.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

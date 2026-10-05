@@ -85,7 +85,7 @@ static void
   The first array contains index where the bit is one (true).
   The second array contains index where the bit is zero (false).
   @overload <%=op_map%>
-  @return [Cumo::Int32,Cumo::Int64]*2
+    @return [Cumo::Int32,Cumo::Int64]*2
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

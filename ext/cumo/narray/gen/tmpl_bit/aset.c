@@ -1,9 +1,9 @@
 /*
   Array element(s) assignment.
   @overload []=(dim0,..,dimL,val)
-  @param [Numeric,Range,Array,Cumo::Bit,Cumo::Int32,Cumo::Int64] dim0,..,dimL  Multi-dimensional Index.
-  @param [Numeric,Cumo::NArray,etc] val  Value(s) to be set to self.
-  @return [Numeric] returns `val` (last argument).
+    @param [Numeric,Range,Array,Cumo::Bit,Cumo::Int32,Cumo::Int64] dim0,..,dimL  Multi-dimensional Index.
+    @param [Numeric,Cumo::NArray,etc] val  Value(s) to be set to self.
+    @return [Numeric] returns `val` (last argument).
 
   Replaces element(s) at `dim0`, `dim1`, ... . Broadcasting mechanism is applied.
 

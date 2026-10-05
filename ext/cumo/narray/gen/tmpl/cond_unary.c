@@ -51,7 +51,7 @@ static void
 /*
   Condition of <%=name%>.
   @overload <%=name%>
-  @return [Cumo::Bit] Condition of <%=name%>.
+    @return [Cumo::Bit] Condition of <%=name%>.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

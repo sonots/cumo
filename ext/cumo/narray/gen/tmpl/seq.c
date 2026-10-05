@@ -79,9 +79,9 @@ static void
      beg+i*step
   where i is 1-dimensional index.
   @overload seq([beg,[step]])
-  @param [Numeric] beg  beginning of sequence. (default=0)
-  @param [Numeric] step  step of sequence. (default=1)
-  @return [Cumo::<%=class_name%>] self.
+    @param [Numeric] beg  beginning of sequence. (default=0)
+    @param [Numeric] step  step of sequence. (default=1)
+    @return [Cumo::<%=class_name%>] self.
   @example
     Cumo::DFloat.new(6).seq(1,-0.2)
     # => Cumo::DFloat#shape=[6]

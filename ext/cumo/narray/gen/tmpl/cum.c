@@ -88,9 +88,9 @@ static void
 /*
   <%=name%> of self.
   @overload <%=name%>(axis:nil, nan:false)
-  @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
-  @param [TrueClass] nan  If true, apply NaN-aware algorithm (avoid NaN if exists).
-  @return [Cumo::<%=class_name%>] <%=name%> of self.
+    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
+    @param [TrueClass] nan  If true, apply NaN-aware algorithm (avoid NaN if exists).
+    @return [Cumo::<%=class_name%>] <%=name%> of self.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

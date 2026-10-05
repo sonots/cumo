@@ -115,7 +115,7 @@ static void
 /*
   Unary <%=name%>.
   @overload <%=op_map%>
-  @return [Cumo::<%=class_name%>] <%=name%> of self.
+    @return [Cumo::<%=class_name%>] <%=name%> of self.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

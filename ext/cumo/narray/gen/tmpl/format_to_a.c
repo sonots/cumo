@@ -32,8 +32,8 @@ static void
 /*
   Format elements into strings.
   @overload <%=name%> format
-  @param [String] format
-  @return [Array] array of formatted strings.
+    @param [String] format
+    @return [Array] array of formatted strings.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

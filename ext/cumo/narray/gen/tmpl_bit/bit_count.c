@@ -17,9 +17,9 @@ static VALUE
   Returns the number of bits.
   If argument is supplied, return Int-array counted along the axes.
   @overload <%=op_map%>(axis:nil, keepdims:false)
-  @param [Integer,Array,Range] axis (keyword) axes to be counted.
-  @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-  @return [Cumo::UInt64]
+    @param [Integer,Array,Range] axis (keyword) axes to be counted.
+    @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
+    @return [Cumo::UInt64]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

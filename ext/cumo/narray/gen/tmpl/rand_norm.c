@@ -28,9 +28,9 @@ static void
   Generates random numbers from the normal distribution on self narray
   using Box-Muller Transformation.
   @overload rand_norm([mu,[sigma]])
-  @param [Numeric] mu  mean of normal distribution. (default=0)
-  @param [Numeric] sigma  standard deviation of normal distribution. (default=1)
-  @return [Cumo::<%=class_name%>] self.
+    @param [Numeric] mu  mean of normal distribution. (default=0)
+    @param [Numeric] sigma  standard deviation of normal distribution. (default=1)
+    @return [Cumo::<%=class_name%>] self.
   @example
     Cumo::DFloat.new(5,5).rand_norm
     # => Cumo::DFloat#shape=[5,5]

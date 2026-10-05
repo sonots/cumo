@@ -46,11 +46,11 @@ static void
 /*
   Eye: Set a value to diagonal components, set 0 to non-diagonal components.
   @overload <%=name%>([element,offset])
-  @param [Numeric] element  Diagonal element to be stored. Default is 1.
-  @param [Integer] offset Diagonal offset from the main diagonal.  The
-      default is 0. k>0 for diagonals above the main diagonal, and k<0
-      for diagonals below the main diagonal.
-  @return [Cumo::<%=class_name%>] <%=name%> of self.
+    @param [Numeric] element  Diagonal element to be stored. Default is 1.
+    @param [Integer] offset Diagonal offset from the main diagonal.  The
+        default is 0. k>0 for diagonals above the main diagonal, and k<0
+        for diagonals below the main diagonal.
+    @return [Cumo::<%=class_name%>] <%=name%> of self.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

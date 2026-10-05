@@ -38,13 +38,13 @@ static void
   <%=name%> of self.
 <% if is_float %>
   @overload <%=name%>(axis:nil, nan:false)
-  @param [TrueClass] nan  A NaN sorts after every number whether this is true or false.
+    @param [TrueClass] nan  A NaN sorts after every number whether this is true or false.
 <% else %>
   @overload <%=name%>(axis:nil)
 <% end %>
-  @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis. A
-    [:sum, true] mark on the receiver names the axes the same way.
-  @return [Cumo::<%=class_name%>] returns result of <%=name%>.
+    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis. A
+      [:sum, true] mark on the receiver names the axes the same way.
+    @return [Cumo::<%=class_name%>] returns result of <%=name%>.
   @example
       Cumo::DFloat[3,4,1,2].sort # => Cumo::DFloat[1,2,3,4]
 */

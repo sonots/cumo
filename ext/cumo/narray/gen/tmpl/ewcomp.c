@@ -3,14 +3,15 @@
 
 <% if is_float %>
   @overload <%=name%>(a1, a2, nan:false)
-  @param [Cumo::NArray,Numeric] a1  The array to be compared.
-  @param [Cumo::NArray,Numeric] a2  The array to be compared.
-  @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN if exist).
+    @param [Cumo::NArray,Numeric] a1  The array to be compared.
+    @param [Cumo::NArray,Numeric] a2  The array to be compared.
+    @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN if exist).
 <% else %>
   @overload <%=name%>(a1, a2)
-  @param [Cumo::NArray,Numeric] a1,a2  The arrays holding the elements to be compared.
+    @param [Cumo::NArray,Numeric] a1  The array to be compared.
+    @param [Cumo::NArray,Numeric] a2  The array to be compared.
 <% end %>
-  @return [Cumo::<%=class_name%>]
+    @return [Cumo::<%=class_name%>]
 */
 
 <% (is_float ? ["","_nan"] : [""]).each do |nan| %>
