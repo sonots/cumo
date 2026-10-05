@@ -2,6 +2,10 @@
 #include <ruby/thread.h>
 #include <assert.h>
 #include <limits.h>
+#include <cuda.h>
+#include <dlfcn.h>
+#include <pthread.h>
+#include <stdio.h>
 #include <nvrtc.h>
 #include "cumo/cuda/nvrtc.h"
 #include "cumo/cuda/handle.h"
@@ -13,11 +17,70 @@ VALUE cumo_cuda_mNVRTC;
 
 static cumo_cuda_handle_set_t programs;
 
+#define NVRTC_FUNCTIONS(X) \
+    X(nvrtcGetErrorString) X(nvrtcVersion) X(nvrtcCreateProgram) X(nvrtcDestroyProgram) \
+    X(nvrtcCompileProgram) X(nvrtcGetPTXSize) X(nvrtcGetPTX) X(nvrtcAddNameExpression) \
+    X(nvrtcGetLoweredName) X(nvrtcGetProgramLogSize) X(nvrtcGetProgramLog)
+
+static struct {
+#define NVRTC_POINTER(f) __typeof__(&f) f;
+    NVRTC_FUNCTIONS(NVRTC_POINTER)
+#undef NVRTC_POINTER
+} nvrtc_functions;
+static pthread_once_t nvrtc_once = PTHREAD_ONCE_INIT;
+static char nvrtc_error[256];
+
+static const char*
+dl_error(void)
+{
+    const char *e = dlerror();
+    return e ? e : "unknown error";
+}
+
+static void
+load_nvrtc(void)
+{
+    char soname[32];
+    void *lib;
+
+    if (CUDA_VERSION >= 12000) {
+        snprintf(soname, sizeof(soname), "libnvrtc.so.%d", CUDA_VERSION / 1000);
+    } else if (CUDA_VERSION >= 11020) {
+        snprintf(soname, sizeof(soname), "libnvrtc.so.11.2");
+    } else {
+        snprintf(soname, sizeof(soname), "libnvrtc.so.%d.%d", CUDA_VERSION / 1000, CUDA_VERSION % 1000 / 10);
+    }
+    lib = dlopen(soname, RTLD_NOW | RTLD_LOCAL);
+    if (lib == NULL) {
+        snprintf(nvrtc_error, sizeof(nvrtc_error), "cannot load %s: %s", soname, dl_error());
+        return;
+    }
+#define NVRTC_RESOLVE(f)                                                                      \
+    nvrtc_functions.f = (__typeof__(&f))dlsym(lib, #f);                                        \
+    if (nvrtc_functions.f == NULL) {                                                           \
+        snprintf(nvrtc_error, sizeof(nvrtc_error), "%s has no %s: %s", soname, #f, dl_error()); \
+        dlclose(lib);                                                                          \
+        return;                                                                                \
+    }
+    NVRTC_FUNCTIONS(NVRTC_RESOLVE)
+#undef NVRTC_RESOLVE
+}
+
+static const __typeof__(nvrtc_functions)*
+nvrtc(void)
+{
+    pthread_once(&nvrtc_once, load_nvrtc);
+    if (nvrtc_error[0] != '\0') {
+        rb_raise(cumo_cuda_eNVRTCError, "%s", nvrtc_error);
+    }
+    return &nvrtc_functions;
+}
+
 static void
 check_status(nvrtcResult status)
 {
     if (status != 0) {
-        rb_raise(cumo_cuda_eNVRTCError, "%s (error=%d)", nvrtcGetErrorString(status), status);
+        rb_raise(cumo_cuda_eNVRTCError, "%s (error=%d)", nvrtc()->nvrtcGetErrorString(status), status);
     }
 }
 
@@ -28,7 +91,7 @@ rb_nvrtcVersion(VALUE self)
     nvrtcResult status;
     VALUE major, minor;
 
-    status = nvrtcVersion(&_major, &_minor);
+    status = nvrtc()->nvrtcVersion(&_major, &_minor);
 
     check_status(status);
     major = INT2NUM(_major);
@@ -105,7 +168,7 @@ nvrtcCreateProgram_without_gvl_cb(void *param)
 {
     struct nvrtcCreateProgramParam *p = param;
     nvrtcResult status;
-    status = nvrtcCreateProgram(p->prog, p->src, p->name, p->numHeaders, p->headers, p->includeNames);
+    status = nvrtc_functions.nvrtcCreateProgram(p->prog, p->src, p->name, p->numHeaders, p->headers, p->includeNames);
     return (void *)status;
 }
 
@@ -126,6 +189,7 @@ rb_nvrtcCreateProgram(
     const char** _includeNames = NULL;
     VALUE strings;
 
+    nvrtc();
     // nvrtcCreateProgram reads numHeaders entries out of includeNames as well,
     // so a shorter array would be read past its end.
     if (ary_len(includeNames, "include_names") != _numHeaders) {
@@ -168,7 +232,7 @@ nvrtcDestroyProgram_without_gvl_cb(void *param)
 {
     struct nvrtcDestroyProgramParam *p = param;
     nvrtcResult status;
-    status = nvrtcDestroyProgram(p->prog);
+    status = nvrtc_functions.nvrtcDestroyProgram(p->prog);
     return (void *)status;
 }
 
@@ -179,6 +243,7 @@ rb_nvrtcDestroyProgram(VALUE self, VALUE prog)
     nvrtcProgram _prog = (nvrtcProgram)cumo_cuda_handle_take(&programs, prog, "nvrtcProgram");
 
     struct nvrtcDestroyProgramParam param = {&_prog};
+    nvrtc();
     status = (nvrtcResult)rb_thread_call_without_gvl(nvrtcDestroyProgram_without_gvl_cb, &param, NULL, NULL);
 
     check_status(status);
@@ -196,7 +261,7 @@ nvrtcCompileProgram_without_gvl_cb(void *param)
 {
     struct nvrtcCompileProgramParam *p = param;
     nvrtcResult status;
-    status = nvrtcCompileProgram(p->prog, p->numOptions, p->options);
+    status = nvrtc_functions.nvrtcCompileProgram(p->prog, p->numOptions, p->options);
     return (void *)status;
 }
 
@@ -209,6 +274,7 @@ rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
     const char** _options = NULL;
     VALUE strings;
 
+    nvrtc();
     strings = rb_ary_new_capa(_numOptions);
     push_strings(strings, options, _numOptions);
 
@@ -237,12 +303,12 @@ rb_nvrtcGetPTX(VALUE self, VALUE prog)
     char *_ptx;
     VALUE ptx;
 
-    status = nvrtcGetPTXSize(_prog, &_ptxSizeRet);
+    status = nvrtc()->nvrtcGetPTXSize(_prog, &_ptxSizeRet);
     check_status(status);
 
     ptx = rb_str_new(NULL, _ptxSizeRet);
     _ptx = RSTRING_PTR(ptx);
-    status = nvrtcGetPTX(_prog, _ptx);
+    status = nvrtc()->nvrtcGetPTX(_prog, _ptx);
     check_status(status);
 
     return ptx;
@@ -262,7 +328,7 @@ rb_nvrtcAddNameExpression(VALUE self, VALUE prog, VALUE name_expression)
     nvrtcProgram _prog;
     StringValueCStr(name_expression);
     _prog = (nvrtcProgram)cumo_cuda_handle_get(&programs, prog, "nvrtcProgram");
-    check_status(nvrtcAddNameExpression(_prog, RSTRING_PTR(name_expression)));
+    check_status(nvrtc()->nvrtcAddNameExpression(_prog, RSTRING_PTR(name_expression)));
     RB_GC_GUARD(name_expression);
     return Qnil;
 }
@@ -283,7 +349,7 @@ rb_nvrtcGetLoweredName(VALUE self, VALUE prog, VALUE name_expression)
     const char *lowered = NULL;
     StringValueCStr(name_expression);
     _prog = (nvrtcProgram)cumo_cuda_handle_get(&programs, prog, "nvrtcProgram");
-    check_status(nvrtcGetLoweredName(_prog, RSTRING_PTR(name_expression), &lowered));
+    check_status(nvrtc()->nvrtcGetLoweredName(_prog, RSTRING_PTR(name_expression), &lowered));
     RB_GC_GUARD(name_expression);
     return rb_str_new_cstr(lowered);
 }
@@ -297,12 +363,12 @@ rb_nvrtcGetProgramLog(VALUE self, VALUE prog)
     char *_log;
     VALUE log;
 
-    status = nvrtcGetProgramLogSize(_prog, &_logSizeRet);
+    status = nvrtc()->nvrtcGetProgramLogSize(_prog, &_logSizeRet);
     check_status(status);
 
     log = rb_str_new(NULL, _logSizeRet);
     _log = RSTRING_PTR(log);
-    status = nvrtcGetProgramLog(_prog, _log);
+    status = nvrtc()->nvrtcGetProgramLog(_prog, _log);
     check_status(status);
 
     return log;
