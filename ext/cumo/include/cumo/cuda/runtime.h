@@ -2,6 +2,7 @@
 #define CUMO_CUDA_RUNTIME_H
 
 #include "cumo/narray.h"
+#include "ruby/atomic.h"
 #include <pthread.h>
 #include <cuda_runtime.h>
 
@@ -25,17 +26,17 @@ cudaStream_t cumo_cuda_stream_get(VALUE stream);
 // the moment the count has moved on. cumo_cuda_runtime_device_synchronize
 // advances it, and so does a host read under a stream of the caller's, and a
 // count that is behind costs a wait rather than correctness.
-extern uint64_t cumo_cuda_sync_epoch;
+extern size_t cumo_cuda_sync_epoch;
 
 // How many times device memory was written from here: every kernel launch,
 // copy into it and library call counts. A host loop reads a staged copy,
 // and reads again once the count moves.
-extern uint64_t cumo_cuda_launch_epoch;
+extern size_t cumo_cuda_launch_epoch;
 
 static inline void
 cumo_cuda_runtime_note_device_write(void)
 {
-    cumo_cuda_launch_epoch++;
+    RUBY_ATOMIC_SIZE_INC(cumo_cuda_launch_epoch);
 }
 
 // A pinned host buffer for reading device memory back: a copy into pinned
@@ -67,11 +68,27 @@ cumo_cuda_runtime_check_status(cudaError_t status)
 
 void cumo_cuda_runtime_return_scratch(char *ptr, int wait_for_stream, cudaError_t *status);
 
+// The counts move before the wait, not after it. A view that records the
+// count while another thread is already waiting then waits itself, where
+// recording the count the wait left behind would have let it skip a wait
+// that never covered its fill.
 static inline void
 cumo_cuda_runtime_device_synchronize(void)
 {
+    RUBY_ATOMIC_SIZE_INC(cumo_cuda_sync_epoch);
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
-    cumo_cuda_sync_epoch++;
+}
+
+static inline size_t
+cumo_cuda_sync_epoch_now(void)
+{
+    return RUBY_ATOMIC_SIZE_FETCH_ADD(cumo_cuda_sync_epoch, 0);
+}
+
+static inline size_t
+cumo_cuda_launch_epoch_now(void)
+{
+    return RUBY_ATOMIC_SIZE_FETCH_ADD(cumo_cuda_launch_epoch, 0);
 }
 
 // Asking costs less than half of waiting, and there is nothing to wait for
@@ -114,9 +131,9 @@ cumo_cuda_runtime_memcpy_to_pinned(void *dst, const void *src, size_t bytes)
 {
     cudaError_t status;
     if (cumo_cuda_stream() != 0 && !cumo_cuda_runtime_streams_idle()) {
+        RUBY_ATOMIC_SIZE_INC(cumo_cuda_sync_epoch);
         status = cudaDeviceSynchronize();
         if (status != cudaSuccess) { return status; }
-        cumo_cuda_sync_epoch++;
     }
     status = cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cumo_cuda_stream());
     if (status != cudaSuccess) { return status; }

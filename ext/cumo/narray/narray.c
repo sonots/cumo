@@ -222,7 +222,7 @@ cumo_na_s_allocate_view(VALUE klass)
     na->offset = 0;
     na->stridx = NULL;
     na->reach_end = 0;
-    na->index_sync_epoch = UINT64_MAX;
+    na->index_sync_epoch = SIZE_MAX;
     na->index_owner = Qnil;
     na->index_owned = 0;
     return TypedData_Wrap_Struct(klass, &cumo_na_data_type_view, (void*)na);

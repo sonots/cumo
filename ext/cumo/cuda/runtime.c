@@ -11,8 +11,8 @@
 
 VALUE cumo_cuda_eRuntimeError;
 VALUE cumo_cuda_mRuntime;
-uint64_t cumo_cuda_sync_epoch = 0;
-uint64_t cumo_cuda_launch_epoch = 0;
+size_t cumo_cuda_sync_epoch = 0;
+size_t cumo_cuda_launch_epoch = 0;
 
 static ID id_current_stream;
 
@@ -63,7 +63,7 @@ cumo_cuda_stream_set(cudaStream_t stream)
 void
 cumo_cuda_runtime_check_kernel_launch(void)
 {
-    cumo_cuda_launch_epoch++;
+    RUBY_ATOMIC_SIZE_INC(cumo_cuda_launch_epoch);
     check_status(cudaGetLastError());
 }
 
@@ -215,7 +215,7 @@ cumo_cuda_runtime_check_taken_status_holding(int status, char *p0, char *p1, cha
 void
 cumo_cuda_runtime_check_kernel_launch_holding(char *p0, char *p1, char *p2, char *p3, char *p4)
 {
-    cumo_cuda_launch_epoch++;
+    RUBY_ATOMIC_SIZE_INC(cumo_cuda_launch_epoch);
     cumo_cuda_runtime_check_taken_status_holding((int)cudaGetLastError(), p0, p1, p2, p3, p4);
 }
 

@@ -5,6 +5,22 @@ require_relative "test_helper"
 class CUDNNTest < Test::Unit::TestCase
   include CumoChildProcess
 
+  CONCURRENT_CONV_SCRIPT = <<~RUBY
+    require "cumo"
+    ractors = 2.times.map do |k|
+      Ractor.new(k) do |kk|
+        2.times.map do
+          8.times.map do |j|
+            x = Cumo::SFloat.new(1 + kk, 3, 8 + j, 9 + kk + j).fill(1.0)
+            w = Cumo::SFloat.new(2 + kk, 3, 3, 3).fill(0.5)
+            x.conv(w).to_a.flatten.all? { |v| (v - 13.5).abs < 1e-4 }
+          end
+        end
+      end
+    end
+    print ractors.map { |r| r.respond_to?(:take) ? r.take : r.value }.flatten.all?
+  RUBY
+
   float_types = [
     Cumo::HFloat,
     Cumo::BFloat,
@@ -1003,6 +1019,13 @@ class CUDNNTest < Test::Unit::TestCase
       allowed = worst_conv_error(true)
       omit("this card does not put single precision on tensor cores") if allowed < 1e-4
       assert_operator worst_conv_error(false), :<, 5e-5
+    end
+  end
+
+  sub_test_case "Ractor" do
+    test "two Ractors searching algorithms for new shapes at once share the cache" do
+      omit("no Ractor") unless defined?(Ractor)
+      assert_equal("true", run_child(CONCURRENT_CONV_SCRIPT, timeout: 120).lines.last)
     end
   end
 end
