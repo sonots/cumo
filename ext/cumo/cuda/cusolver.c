@@ -94,6 +94,8 @@ rb_cusolver_version(VALUE self)
 typedef struct {
     char *work;
     size_t size;
+    char *host_work;
+    size_t host_size;
     int *info;
     cudaEvent_t done;
 } cusolver_scratch_t;
@@ -107,16 +109,12 @@ typedef struct {
 #define CUSOLVER_KEPT_WORK_MAX ((size_t)32 << 20)
 #define CUSOLVER_KEPT_HOST_WORK_MAX ((size_t)256 << 20)
 
+static cumo_cuda_thread_local_t scratches;
+
 static cusolver_scratch_t*
 cusolver_scratch(void)
 {
-    static cusolver_scratch_t *scratch = 0;
-    cusolver_scratch_t *s;
-
-    if (scratch == 0) {
-        scratch = ZALLOC_N(cusolver_scratch_t, cumo_cuda_runtime_get_device_count());
-    }
-    s = &scratch[cumo_cuda_runtime_get_device()];
+    cusolver_scratch_t *s = (cusolver_scratch_t*)cumo_cuda_thread_local_get(&scratches);
     if (s->info == NULL) {
         cumo_cuda_runtime_check_status(cudaEventCreateWithFlags(&s->done, cudaEventDisableTiming));
         s->info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
@@ -207,28 +205,27 @@ typedef struct {
     int skip_info;
 } cusolver_call_t;
 
-static char *kept_host_work;
-static size_t kept_host_size;
-
 static void*
 cusolver_host_work(cusolver_call_t *c, size_t size)
 {
-    if (size <= CUSOLVER_KEPT_HOST_WORK_MAX && kept_host_size < size) {
-        size_t grown = kept_host_size * 2 > size ? kept_host_size * 2 : size;
+    cusolver_scratch_t *s = c->ctx.scratch;
+
+    if (size <= CUSOLVER_KEPT_HOST_WORK_MAX && s->host_size < size) {
+        size_t grown = s->host_size * 2 > size ? s->host_size * 2 : size;
         if (grown > CUSOLVER_KEPT_HOST_WORK_MAX) grown = CUSOLVER_KEPT_HOST_WORK_MAX;
-        cudaFreeHost(kept_host_work);
-        kept_host_work = NULL;
-        kept_host_size = 0;
-        if (cudaHostAlloc((void**)&kept_host_work, grown, cudaHostAllocPortable) == cudaSuccess) {
-            kept_host_size = grown;
+        cudaFreeHost(s->host_work);
+        s->host_work = NULL;
+        s->host_size = 0;
+        if (cudaHostAlloc((void**)&s->host_work, grown, cudaHostAllocPortable) == cudaSuccess) {
+            s->host_size = grown;
         } else {
-            kept_host_work = NULL;
+            s->host_work = NULL;
             cudaGetLastError();
         }
     }
-    if (size <= kept_host_size) {
+    if (size <= s->host_size) {
         c->h_pinned = true;
-        return kept_host_work;
+        return s->host_work;
     }
     return ruby_xmalloc(size);
 }
@@ -1362,6 +1359,7 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "available?", rb_cusolver_available_p, 0);
 #ifdef CUSOLVER_FOUND
     cumo_cuda_thread_local_init(&contexts, sizeof(cusolver_context_t));
+    cumo_cuda_thread_local_init(&scratches, sizeof(cusolver_scratch_t));
     rb_define_singleton_method(mCusolver, "version", rb_cusolver_version, 0);
     rb_define_singleton_method(mCusolver, "getrf", rb_cusolver_getrf, 1);
     rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, -1);
