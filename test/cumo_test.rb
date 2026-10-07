@@ -240,6 +240,6 @@ class CumoTest < Test::Unit::TestCase
     omit("ldd -r is Linux only") unless RUBY_PLATFORM.include?("linux")
     so = $LOADED_FEATURES.grep(%r{/cumo\.so\z}).first
     report = IO.popen(["ldd", "-r", so], err: [:child, :out], &:read)
-    assert_equal([], report.scan(/undefined symbol: ((?:cumo|nvrtc)\w+)/).flatten)
+    assert_equal([], report.scan(/undefined symbol: (\w+)/).flatten)
   end
 end

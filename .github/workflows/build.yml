@@ -120,6 +120,14 @@ jobs:
           bundle exec rake compile
           bundle exec rake build_ctest
 
+          # A C call to a function no header declares still links into a
+          # shared object and only fails when Ruby loads it, which no job
+          # here does. The driver's stub stands in for the libcuda.so.1 a
+          # machine without a GPU has not got.
+          stubs=$(mktemp -d)
+          ln -s /usr/local/cuda/lib64/stubs/libcuda.so "$stubs/libcuda.so.1"
+          if LD_LIBRARY_PATH="/usr/local/cuda/lib64:$stubs" ldd -r lib/cumo.so | grep "undefined symbol"; then exit 1; fi
+
           ccache -c
           ccache -s
 

@@ -2,7 +2,7 @@
 #define CUMO_CUDA_RUNTIME_H
 
 #include "cumo/narray.h"
-#include "ruby/atomic.h"
+#include "cumo/atomic.h"
 #include <pthread.h>
 #include <cuda_runtime.h>
 
@@ -36,7 +36,7 @@ extern size_t cumo_cuda_launch_epoch;
 static inline void
 cumo_cuda_runtime_note_device_write(void)
 {
-    RUBY_ATOMIC_SIZE_INC(cumo_cuda_launch_epoch);
+    cumo_atomic_size_fetch_add(&cumo_cuda_launch_epoch, 1);
 }
 
 // A pinned host buffer for reading device memory back: a copy into pinned
@@ -75,20 +75,20 @@ void cumo_cuda_runtime_return_scratch(char *ptr, int wait_for_stream, cudaError_
 static inline void
 cumo_cuda_runtime_device_synchronize(void)
 {
-    RUBY_ATOMIC_SIZE_INC(cumo_cuda_sync_epoch);
+    cumo_atomic_size_fetch_add(&cumo_cuda_sync_epoch, 1);
     cumo_cuda_runtime_check_status(cudaDeviceSynchronize());
 }
 
 static inline size_t
 cumo_cuda_sync_epoch_now(void)
 {
-    return RUBY_ATOMIC_SIZE_FETCH_ADD(cumo_cuda_sync_epoch, 0);
+    return cumo_atomic_size_load(&cumo_cuda_sync_epoch);
 }
 
 static inline size_t
 cumo_cuda_launch_epoch_now(void)
 {
-    return RUBY_ATOMIC_SIZE_FETCH_ADD(cumo_cuda_launch_epoch, 0);
+    return cumo_atomic_size_load(&cumo_cuda_launch_epoch);
 }
 
 // Asking costs less than half of waiting, and there is nothing to wait for
@@ -131,7 +131,7 @@ cumo_cuda_runtime_memcpy_to_pinned(void *dst, const void *src, size_t bytes)
 {
     cudaError_t status;
     if (cumo_cuda_stream() != 0 && !cumo_cuda_runtime_streams_idle()) {
-        RUBY_ATOMIC_SIZE_INC(cumo_cuda_sync_epoch);
+        cumo_atomic_size_fetch_add(&cumo_cuda_sync_epoch, 1);
         status = cudaDeviceSynchronize();
         if (status != cudaSuccess) { return status; }
     }

@@ -1,5 +1,5 @@
 #include "ruby.h"
-#include "ruby/atomic.h"
+#include "cumo/atomic.h"
 #include "cumo/narray.h"
 #include "SFMT.h"
 
@@ -36,7 +36,7 @@ cumo_cuda_rand_seed(void)
 u_int64_t
 cumo_cuda_rand_reserve_offset(u_int64_t n)
 {
-    return RUBY_ATOMIC_SIZE_FETCH_ADD(cumo_cuda_rand_offset_value, (size_t)n);
+    return cumo_atomic_size_fetch_add(&cumo_cuda_rand_offset_value, (size_t)n);
 }
 
 static void
@@ -44,7 +44,7 @@ cumo_na_seed(u_int64_t seed)
 {
     init_gen_rand(seed);
     cumo_cuda_rand_seed_value = (size_t)seed;
-    RUBY_ATOMIC_SIZE_EXCHANGE(cumo_cuda_rand_offset_value, 0);
+    cumo_atomic_size_store(&cumo_cuda_rand_offset_value, 0);
 }
 
 static VALUE

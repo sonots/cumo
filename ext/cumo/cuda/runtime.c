@@ -63,7 +63,7 @@ cumo_cuda_stream_set(cudaStream_t stream)
 void
 cumo_cuda_runtime_check_kernel_launch(void)
 {
-    RUBY_ATOMIC_SIZE_INC(cumo_cuda_launch_epoch);
+    cumo_atomic_size_fetch_add(&cumo_cuda_launch_epoch, 1);
     check_status(cudaGetLastError());
 }
 
@@ -215,7 +215,7 @@ cumo_cuda_runtime_check_taken_status_holding(int status, char *p0, char *p1, cha
 void
 cumo_cuda_runtime_check_kernel_launch_holding(char *p0, char *p1, char *p2, char *p3, char *p4)
 {
-    RUBY_ATOMIC_SIZE_INC(cumo_cuda_launch_epoch);
+    cumo_atomic_size_fetch_add(&cumo_cuda_launch_epoch, 1);
     cumo_cuda_runtime_check_taken_status_holding((int)cudaGetLastError(), p0, p1, p2, p3, p4);
 }
 
