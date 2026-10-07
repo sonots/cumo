@@ -75,7 +75,6 @@ typedef struct {
     dtype low;
     <%=rand_type%> max;
     u_int64_t seed;
-    u_int64_t offset;
 } rand_opt_t;
 
 <% unless is_object %>
@@ -128,14 +127,15 @@ static void
         shift_arg = shift;
         <% end %>
 
+        uint64_t offset = cumo_cuda_rand_reserve_offset(indexer.total_size);
+
         if (cumo_na_loop_has_index(lp)) {
             cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
-            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,g->seed,g->offset,low,max,shift_arg);
+            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,g->seed,offset,low,max,shift_arg);
         } else {
             cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
-            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,g->seed,g->offset,low,max,shift_arg);
+            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,g->seed,offset,low,max,shift_arg);
         }
-        g->offset += indexer.total_size;
     }
     <% end %>
 }
@@ -216,8 +216,6 @@ static VALUE
     }
     <% end %>
     g.seed = cumo_cuda_rand_seed();
-    g.offset = cumo_cuda_rand_offset();
     cumo_na_ndloop3(&ndf, &g, 1, self);
-    cumo_cuda_rand_set_offset(g.offset);
     return self;
 }

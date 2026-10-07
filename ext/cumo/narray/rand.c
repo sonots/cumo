@@ -1,4 +1,5 @@
 #include "ruby.h"
+#include "ruby/atomic.h"
 #include "cumo/narray.h"
 #include "SFMT.h"
 
@@ -23,8 +24,8 @@ random_seed()
 // The kernels draw from Philox keyed by this seed, giving every element its own
 // subsequence. The offset advances by the number of elements drawn so that two
 // calls under one seed do not repeat the same stream.
-static u_int64_t cumo_cuda_rand_seed_value;
-static u_int64_t cumo_cuda_rand_offset_value;
+static size_t cumo_cuda_rand_seed_value;
+static size_t cumo_cuda_rand_offset_value;
 
 u_int64_t
 cumo_cuda_rand_seed(void)
@@ -33,23 +34,17 @@ cumo_cuda_rand_seed(void)
 }
 
 u_int64_t
-cumo_cuda_rand_offset(void)
+cumo_cuda_rand_reserve_offset(u_int64_t n)
 {
-    return cumo_cuda_rand_offset_value;
-}
-
-void
-cumo_cuda_rand_set_offset(u_int64_t offset)
-{
-    cumo_cuda_rand_offset_value = offset;
+    return RUBY_ATOMIC_SIZE_FETCH_ADD(cumo_cuda_rand_offset_value, (size_t)n);
 }
 
 static void
 cumo_na_seed(u_int64_t seed)
 {
     init_gen_rand(seed);
-    cumo_cuda_rand_seed_value = seed;
-    cumo_cuda_rand_offset_value = 0;
+    cumo_cuda_rand_seed_value = (size_t)seed;
+    RUBY_ATOMIC_SIZE_EXCHANGE(cumo_cuda_rand_offset_value, 0);
 }
 
 static VALUE

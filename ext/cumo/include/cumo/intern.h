@@ -113,8 +113,7 @@ VALUE cumo_na_ary_composition_dtype(VALUE ary);
 
 // defined in rand, used by the generated rand and rand_norm
 u_int64_t cumo_cuda_rand_seed(void);
-u_int64_t cumo_cuda_rand_offset(void);
-void cumo_cuda_rand_set_offset(u_int64_t offset);
+u_int64_t cumo_cuda_rand_reserve_offset(u_int64_t n);
 
 #include "ruby/version.h"
 

@@ -2492,6 +2492,15 @@ class NArrayTest < Test::Unit::TestCase
         assert_equal(a, dtype.new(64).rand(*args).to_a)
       end
 
+      test "#{dtype}#rand continues the same sequence under the same seed" do
+        Cumo::NArray.srand(7)
+        dtype.new(64).rand(*args)
+        a = dtype.new(64).rand(*args).to_a
+        Cumo::NArray.srand(7)
+        dtype.new(64).rand(*args)
+        assert_equal(a, dtype.new(64).rand(*args).to_a)
+      end
+
       test "#{dtype}#rand moves on between calls" do
         Cumo::NArray.srand(7)
         a = dtype.new(64).rand(*args).to_a

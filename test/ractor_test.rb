@@ -1,10 +1,18 @@
 # frozen_string_literal: true
 
+require "timeout"
 require_relative "test_helper"
 
 class NArrayRactorTest < CumoTestBase
   if respond_to?(:ractor)
     ractor keep: true
+
+    def test_rand_in_two_ractors
+      rs = 2.times.map { Ractor.new { 20.times.map { Cumo::DFloat.new(1000).rand.to_a } } }
+      a, b = Timeout.timeout(60) { rs.map { |r| r.respond_to?(:take) ? r.take : r.value } }
+      assert_empty(a & b)
+    end
+
     data(:dtype, TYPES, keep: true)
     def test_non_frozen(data)
       dtype = data.fetch(:dtype)
