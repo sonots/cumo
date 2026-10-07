@@ -115,13 +115,30 @@ static cusolver_scratch_t*
 cusolver_scratch(void)
 {
     cusolver_scratch_t *s = (cusolver_scratch_t*)cumo_cuda_thread_local_get(&scratches);
-    if (s->info == NULL) {
+    if (s->done == NULL) {
         cumo_cuda_runtime_check_status(cudaEventCreateWithFlags(&s->done, cudaEventDisableTiming));
+    }
+    if (s->info == NULL) {
         s->info = (int*)cumo_cuda_runtime_malloc(sizeof(int));
     } else {
         cumo_cuda_runtime_check_status(cudaStreamWaitEvent(cumo_cuda_stream(), s->done, 0));
     }
     return s;
+}
+
+static void
+cusolver_scratch_release(void *entry)
+{
+    cusolver_scratch_t *s = (cusolver_scratch_t*)entry;
+    if (s->done != NULL) {
+        cudaEventSynchronize(s->done);
+        cudaEventDestroy(s->done);
+    }
+    if (s->host_work != NULL) { cudaFreeHost(s->host_work); }
+    if (s->work != NULL) { cumo_cuda_runtime_free_no_raise(s->work); }
+    if (s->info != NULL) { cumo_cuda_runtime_free_no_raise((char*)s->info); }
+    cudaGetLastError();
+    memset(s, 0, sizeof(*s));
 }
 
 static cumo_cuda_thread_local_t contexts;
@@ -1360,6 +1377,7 @@ Init_cumo_cuda_cusolver(void)
 #ifdef CUSOLVER_FOUND
     cumo_cuda_thread_local_init(&contexts, sizeof(cusolver_context_t));
     cumo_cuda_thread_local_init(&scratches, sizeof(cusolver_scratch_t));
+    cumo_cuda_thread_local_on_exit(&scratches, cusolver_scratch_release);
     rb_define_singleton_method(mCusolver, "version", rb_cusolver_version, 0);
     rb_define_singleton_method(mCusolver, "getrf", rb_cusolver_getrf, 1);
     rb_define_singleton_method(mCusolver, "getrs", rb_cusolver_getrs, -1);
