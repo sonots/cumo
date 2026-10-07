@@ -253,8 +253,8 @@ typedef struct {
     // until it has been worked out. What a view reaches never changes, so it
     // is worked out once, and it stays right even after the base has moved on.
     size_t   reach_end;
-    uint64_t index_sync_epoch; // synchronizes counted when the index fills were
-                               // issued; UINT64_MAX when that is not known
+    size_t index_sync_epoch;   // synchronizes counted when the index fills were
+                               // issued; SIZE_MAX when that is not known
     // A view made from another one can point at the index arrays it already
     // has rather than copy them. index_owner keeps that view alive for as long
     // as this one borrows from it, and index_owned says which dimensions are

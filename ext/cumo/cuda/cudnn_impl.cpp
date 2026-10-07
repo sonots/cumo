@@ -11,6 +11,7 @@
 #include "cumo/cuda/runtime.h"
 #include "cumo/cuda/memory_pool.h"
 
+#include <mutex>
 #include <unordered_map>
 
 #if defined(__cplusplus)
@@ -387,12 +388,31 @@ struct AlgoCacheEntry {
 // Nothing may reach the C caller: it has no handler, so an escaping exception
 // is std::terminate. The cache only saves a later search, so one that cannot
 // grow leaves the answer this call already has.
+static std::mutex algo_cache_mutex_;
+
 template <typename Map>
 void StoreAlgoCache(Map& map, const AlgoCacheKey& key, const typename Map::mapped_type& entry) {
+    std::lock_guard<std::mutex> lock{algo_cache_mutex_};
     try {
         map[key] = entry;
     } catch (...) {
     }
+}
+
+template <typename Map, typename Perf>
+bool LookupAlgoCache(Map& map, const AlgoCacheKey& key, Perf* perf_result) {
+    std::lock_guard<std::mutex> lock{algo_cache_mutex_};
+    auto it = map.find(key);
+    if (it == map.end()) {
+        return false;
+    }
+    auto entry = it->second;
+    // clear the fields the search would have filled but the cache drops
+    *perf_result = {};
+    perf_result->algo = entry.algo;
+    perf_result->memory = entry.memory;
+    perf_result->mathType = entry.math_type;
+    return true;
 }
 }
 
@@ -456,15 +476,7 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
                                 cudnn_dtype, max_workspace_size);
 
     auto& algo_cache_map = fwd_algo_cache_map_;
-    // TODO: thread-safe
-    auto it = algo_cache_map.find(key);
-    if (it != algo_cache_map.end()) {
-        auto entry = it->second;
-        // clear the fields the search would have filled but the cache drops
-        *perf_result = {};
-        perf_result->algo = entry.algo;
-        perf_result->memory = entry.memory;
-        perf_result->mathType = entry.math_type;
+    if (LookupAlgoCache(algo_cache_map, key, perf_result)) {
         return CUDNN_STATUS_SUCCESS;
     }
 
@@ -495,7 +507,6 @@ cumo_cuda_cudnn_FindConvolutionForwardAlgorithm(
     if (returned_algo_count < 1) return CUDNN_STATUS_NOT_SUPPORTED;
     if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
-    // TODO: thread-safe
     StoreAlgoCache(algo_cache_map, key, {perf_result->algo, perf_result->memory, perf_result->mathType});
     return status;
 }
@@ -527,15 +538,7 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
                                 cudnn_dtype, max_workspace_size);
 
     auto& algo_cache_map = bwd_data_algo_cache_map_;
-    // TODO: thread-safe
-    auto it = algo_cache_map.find(key);
-    if (it != algo_cache_map.end()) {
-        auto entry = it->second;
-        // clear the fields the search would have filled but the cache drops
-        *perf_result = {};
-        perf_result->algo = entry.algo;
-        perf_result->memory = entry.memory;
-        perf_result->mathType = entry.math_type;
+    if (LookupAlgoCache(algo_cache_map, key, perf_result)) {
         return CUDNN_STATUS_SUCCESS;
     }
 
@@ -566,7 +569,6 @@ cumo_cuda_cudnn_FindConvolutionBackwardDataAlgorithm(
     if (returned_algo_count < 1) return CUDNN_STATUS_NOT_SUPPORTED;
     if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
-    // TODO: thread-safe
     StoreAlgoCache(algo_cache_map, key, {perf_result->algo, perf_result->memory, perf_result->mathType});
     return status;
 }
@@ -598,15 +600,7 @@ cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
                                 cudnn_dtype, max_workspace_size);
 
     auto& algo_cache_map = bwd_filter_algo_cache_map_;
-    // TODO: thread-safe
-    auto it = algo_cache_map.find(key);
-    if (it != algo_cache_map.end()) {
-        auto entry = it->second;
-        // clear the fields the search would have filled but the cache drops
-        *perf_result = {};
-        perf_result->algo = entry.algo;
-        perf_result->memory = entry.memory;
-        perf_result->mathType = entry.math_type;
+    if (LookupAlgoCache(algo_cache_map, key, perf_result)) {
         return CUDNN_STATUS_SUCCESS;
     }
 
@@ -637,7 +631,6 @@ cumo_cuda_cudnn_FindConvolutionBackwardFilterAlgorithm(
     if (returned_algo_count < 1) return CUDNN_STATUS_NOT_SUPPORTED;
     if (perf_result->status != CUDNN_STATUS_SUCCESS) return perf_result->status;
 
-    // TODO: thread-safe
     StoreAlgoCache(algo_cache_map, key, {perf_result->algo, perf_result->memory, perf_result->mathType});
     return status;
 }

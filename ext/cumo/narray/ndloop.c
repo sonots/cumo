@@ -77,8 +77,8 @@ typedef struct CUMO_NA_HOST_STAGE {
     size_t **idx;        // per (dim, arg): the device index array LITER held
     size_t **host_idx;   // per (dim, arg): its host copy
     cumo_cuda_stage_t stage;
-    uint64_t epoch;      // the launch count when the whole range was copied
-    uint64_t row_epoch;  // the launch count when the current row was copied
+    size_t epoch;        // the launch count when the whole range was copied
+    size_t row_epoch;    // the launch count when the current row was copied
 } cumo_na_host_stage_t;
 
 #define LARG(lp,iarg) ((lp)->user.args[iarg])
@@ -1910,7 +1910,7 @@ ndloop_stage_row(cumo_na_md_loop_t *lp)
         ndloop_stage_bytes(lp, j, lo, hi, &min, &len);
         ndloop_stage_dma(lp, j, min, len);
     }
-    hs->row_epoch = cumo_cuda_launch_epoch;
+    hs->row_epoch = cumo_cuda_launch_epoch_now();
 }
 
 // Reads the inputs of a host loop into pinned memory and points the
@@ -2010,7 +2010,7 @@ ndloop_stage_host_reads(cumo_na_md_loop_t *lp)
         ndloop_stage_dma(lp, j, hs->min[j], hs->len[j]);
         total += (hs->len[j] + 7) & ~(size_t)7;
     }
-    hs->epoch = hs->row_epoch = cumo_cuda_launch_epoch;
+    hs->epoch = hs->row_epoch = cumo_cuda_launch_epoch_now();
 }
 
 // Before each row: a row that is only copied as reached, or one that
@@ -2021,7 +2021,7 @@ ndloop_stage_before_row(cumo_na_md_loop_t *lp)
     cumo_na_host_stage_t *hs = lp->hs;
     if (hs == NULL) return;
     if (hs->direct) cumo_cuda_runtime_sync_if_busy();
-    if (hs->stage.ptr && (hs->rows_only || hs->epoch != cumo_cuda_launch_epoch)) {
+    if (hs->stage.ptr && (hs->rows_only || hs->epoch != cumo_cuda_launch_epoch_now())) {
         ndloop_stage_row(lp);
     }
 }
@@ -2038,7 +2038,7 @@ cumo_na_ndloop_refresh_next(cumo_na_loop_t *user, const void *next, size_t bytes
 
     if (hs == NULL) return;
     if (hs->direct) cumo_cuda_runtime_sync_if_busy();
-    if (hs->stage.ptr == NULL || hs->row_epoch == cumo_cuda_launch_epoch) return;
+    if (hs->stage.ptr == NULL || hs->row_epoch == cumo_cuda_launch_epoch_now()) return;
     for (j=0; j<hs->narg; j++) {
         char *base = hs->stage.ptr + hs->off[j];
         if (hs->ptr[j] == NULL) continue;
