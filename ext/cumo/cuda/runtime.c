@@ -866,6 +866,10 @@ thread_table_free(void *ptr)
         char *entry = t->entries + i * local->entry_size;
         spare_entry_t *spare;
         if (!entry_filled(entry, local->entry_size)) { continue; }
+        if (local->release != NULL) {
+            local->release(entry);
+            if (!entry_filled(entry, local->entry_size)) { continue; }
+        }
         spare = (spare_entry_t*)malloc(sizeof(spare_entry_t) + local->entry_size);
         if (spare == NULL) { continue; }
         spare->device = i;
@@ -883,9 +887,16 @@ cumo_cuda_thread_local_init(cumo_cuda_thread_local_t *local, size_t entry_size)
 {
     local->entry_size = entry_size;
     local->spare = NULL;
+    local->release = NULL;
     if (pthread_mutex_init(&local->lock, NULL) != 0 || pthread_key_create(&local->key, thread_table_free) != 0) {
         rb_raise(rb_eRuntimeError, "cannot set up a per-thread table");
     }
+}
+
+void
+cumo_cuda_thread_local_on_exit(cumo_cuda_thread_local_t *local, void (*release)(void *entry))
+{
+    local->release = release;
 }
 
 static int

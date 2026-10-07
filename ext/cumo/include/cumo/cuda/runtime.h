@@ -131,9 +131,13 @@ typedef struct {
     size_t entry_size;
     pthread_mutex_t lock;
     void *spare;
+    void (*release)(void *entry);
 } cumo_cuda_thread_local_t;
 
 void cumo_cuda_thread_local_init(cumo_cuda_thread_local_t *local, size_t entry_size);
+// Called on each filled entry of a thread that ends, without the GVL. An
+// entry it empties is dropped instead of being kept for the next thread.
+void cumo_cuda_thread_local_on_exit(cumo_cuda_thread_local_t *local, void (*release)(void *entry));
 void *cumo_cuda_thread_local_get(cumo_cuda_thread_local_t *local);
 
 static inline int
