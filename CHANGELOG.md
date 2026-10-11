@@ -1,3 +1,34 @@
+# 0.13.0 (2026/10/12)
+
+Breaking changes:
+
+* An integer array raised to a negative integer power raises `Cumo::NArray::ValueError`, where it answered 0 even for a base of 1 or -1. numo-narray-alt now raises here too, as NumPy does. A signed integer exponent held in an array is checked on the device, so such a `**` now waits for its kernel, as integer division by an array does. An exponent array that holds `2**31` or more is no longer narrowed to 32 bits, so `Cumo::Int64[1] ** Cumo::Int64[2**31]` answers `[1]` where it answered `[0]` (PR #614)
+
+Fixes:
+
+* Fix `inspect` printing `(empty)` for a scalar cast to an array, such as `Cumo::DFloat.cast(5.0)`, and for its views, which it did since 0.5.10. Its value and the operators on it were right. Fix such an array that is frozen, as `Ractor.make_shareable` leaves it, raising `FrozenError` when read, and then answering 0 to some operators and its value to others (PR #616)
+* Fix a crash, or a read of the wrong memory, when a 0-dimensional array is indexed with nothing but `false`, `:rest` or `:~`, such as `Cumo::DFloat.cast(5.0)[false]` (PR #615)
+* Fix the cuDNN algorithm caches and the counters that deferred host reads and index fills wait on, which two Ractors could update at once. They now take a lock or advance atomically (PR #613)
+* Fix two Ractors calling `rand` or `rand_norm` at the same time drawing the same numbers. A single thread draws what it drew before, so `srand` still reproduces a sequence (PR #612)
+* Fix wrong results, an illegal memory access, or a process stuck at full GPU load when two Ractors call cuSOLVER at once, as `Cumo::Linalg.svdvals` and `eigvals` do. Each thread keeps its own workspace and frees it when it ends (PR #611)
+* Fix `Cumo::Linalg.expm` of a triangular matrix whose elements off the diagonal are far larger than those on it answering 1 on the diagonal. The diagonal and the first off-diagonal are now reset to their exact values after each squaring, as scipy does (PR #609)
+* Fix `Cumo::Linalg.expm` raising `FloatDomainError: Infinity` for a finite matrix whose 1-norm overflows. It still refuses such a matrix, and now says that its 1-norm overflowed (PR #603)
+* Fix `Cumo::Linalg.lu` and `matrix_power(a, 0)` raising `NoMethodError` for a Bit matrix. `P` and the identity are Bit matrices (PR #602)
+* Fix `Cumo::Linalg.lu` raising `ShapeError` for an empty matrix. It answers `P`, `L` and `U` of m x m, m x 0 and 0 x n, the shapes a nonempty matrix gets. numo-linalg-alt raises here (PR #601)
+
+Changes:
+
+* The first elementwise call on a type loads the kernels of one family rather than every elementwise kernel of the type. The families are arithmetic, common math functions, rare math functions, comparisons, stores from other types, and random numbers with polynomials. A first SFloat add takes 28 MB of host memory where it took 86 MB (PR #610)
+* `require "cumo"` no longer loads NVRTC. It is loaded from the CUDA that cumo was built against the first time `ElementwiseKernel`, `ReductionKernel` or `RawKernel` builds a kernel, which takes about 34 MB off the RSS after `require` (PR #607, PR #606)
+* `Cumo::Linalg.norm` of ord 1, -1, Infinity and -Infinity takes the magnitudes as it reduces rather than through `abs`, which makes it about 2.4 times faster on a 4096 x 4096 DFloat (PR #605)
+* `Cumo::Linalg.norm` of ord 2, -2 and `"nuc"` over stacked matrices of up to 32 rows and columns computes them in one batched call, about 7 times faster for 1000 DFloat matrices of 8 x 8. A stacked matrix that holds NaN or Infinity answers NaN, as the matrices past 32 do (PR #604)
+* `Cumo::Linalg.expm` of a small matrix reads its three norms in one wait, which makes it about 3% faster on a 64 x 64 DFloat (PR #600)
+* The factorizations in `Cumo::Linalg` free their column-major copies once used, so a small call reuses memory the GPU has touched: `lu_solve` of a 256 x 256 SFloat is about 8% faster (PR #599)
+* `repeat` builds its index in one Array: `repeat(2)` of a million elements is 3.4 times faster, and `repeat` with an Array of counts 2.2 times. The development setup checks `lib` with rubocop-performance (PR #598, PR #597)
+* `Cumo::Linalg.eig` and `svd` give cuSOLVER pinned host memory to work in, kept for the process up to 256 MiB: `eig` of a 4096 x 4096 SFloat is about 8% faster, and `svd` of an 8192 x 2048 SFloat about 5% (PR #596)
+* `Cumo::Linalg.expm` frees its temporary matrices as it goes rather than leaving about 40 a call to the garbage collector, which makes it about 15% faster on a 1024 x 1024 SFloat of large norm (PR #595)
+* The API docs show the parameters of overloaded methods such as `cast`, `store_binary` and `layer_norm`, where YARD warned 1,419 times (PR #608)
+
 # 0.12.0 (2026/10/04)
 
 Fixes:
