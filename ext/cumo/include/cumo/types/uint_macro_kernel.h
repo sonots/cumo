@@ -18,7 +18,7 @@ __host__ __device__ static inline dtype int_reciprocal(dtype x) {
     }
 }
 
-__device__ static dtype pow_int(dtype x, int p)
+__device__ static dtype pow_int(dtype x, uint64_t p)
 {
     dtype r = m_one;
     switch(p) {
@@ -27,7 +27,6 @@ __device__ static dtype pow_int(dtype x, int p)
     case 2: return x*x;
     case 3: return x*x*x;
     }
-    if (p<0) return 0;
     while (p) {
         if (p&1) r *= x;
         x *= x;
