@@ -3,6 +3,7 @@
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
+# Requiring version.rb here would fix Cumo::REVISION to nil under bundle exec.
 cumo_version = File.read(File.join(__dir__, "lib/cumo/version.rb"))[/VERSION = "([^"]+)"/, 1]
 
 Gem::Specification.new do |spec|
