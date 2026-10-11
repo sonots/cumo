@@ -3,7 +3,7 @@
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
-cumo_version = File.read(File.join(__dir__, "ext/cumo/include/cumo.h")).match(/CUMO_VERSION "([^"]+)"/)[1]
+cumo_version = File.read(File.join(__dir__, "lib/cumo/version.rb"))[/VERSION = "([^"]+)"/, 1]
 
 Gem::Specification.new do |spec|
   spec.name          = "cumo"
@@ -29,11 +29,12 @@ Gem::Specification.new do |spec|
     f.start_with?(*%w[.github/ test/ examples/ bin/ bench/ docker- Dockerfile Gemfile .gitignore .rubocop])
   end
 
-  revision = `git -C #{__dir__} describe --tags --match "v[0-9]*" --dirty --always 2>/dev/null`.strip
-  unless revision.empty?
-    File.write(File.join(__dir__, "lib/cumo/REVISION"), "#{revision}\n")
-    spec.files << "lib/cumo/REVISION"
+  revision = begin
+    IO.popen(%W[git -C #{__dir__} describe --tags --match v[0-9]* --dirty --always], err: File::NULL, &:read).strip
+  rescue SystemCallError
+    ""
   end
+  spec.metadata["cumo_revision"] = revision unless revision.empty?
 
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }

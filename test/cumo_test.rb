@@ -243,11 +243,14 @@ class CumoTest < Test::Unit::TestCase
   end
 
   def test_version
-    assert_nothing_raised { Cumo::VERSION }
+    assert_match(/\A\d+\.\d+\.\d+\z/, Cumo::VERSION)
+    assert_equal(Cumo::VERSION, Cumo::NArray::VERSION)
   end
 
   test "REVISION names the commit the library was built from" do
+    omit("cumo is not loaded as a gem") unless Gem.loaded_specs["cumo"]
     assert_match(/\A(v\d+\.\d+\.\d+(-\d+-g\h+)?|\h+)(-dirty)?\z/, Cumo::REVISION)
+    assert_predicate(Cumo::REVISION, :frozen?)
   end
 
   test "every cumo function the extension calls is defined in it" do

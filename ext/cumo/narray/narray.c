@@ -2738,8 +2738,6 @@ Init_cumo_narray()
     rb_cArithSeq = rb_path2class("Enumerator::ArithmeticSequence");
 #endif
 
-    rb_define_const(cNArray, "VERSION", rb_str_new2(CUMO_VERSION));
-
     cumo_na_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
     cumo_na_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);
     cumo_na_eOperationError = rb_define_class_under(cNArray, "OperationError", rb_eStandardError);
