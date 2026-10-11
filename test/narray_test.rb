@@ -6929,40 +6929,49 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal(fm.atan2(b, Cumo::DFloat.new(*([2] * 9)).fill(1.5)).to_a.flatten, got, "atan2 9-d, numeric right")
   end
 
-  test "an unsigned array raised to a negative power answers instead of spinning" do
-    # The unsigned pow_int had no p < 0 guard, and p >>= 1 sticks at -1, so the
-    # kernel never finished. Every negative power runs in a child: without the
-    # guard the device spins and the process stops only for SIGKILL, which
-    # would hang the suite here rather than fail it.
+  test "an integer array raised to a negative integer power raises ValueError" do
+    # Each case runs in a child: pow_int sticks at p = -1 without its guard, and
+    # the device spins until SIGKILL instead of failing the test.
     script = <<~'RUBY'
       require "cumo/narray"
-      unsigned = [Cumo::UInt8[1, 2, 3, 4]**-2,
-                  Cumo::UInt16[1, 2, 3, 4]**-1,
-                  Cumo::UInt32[1, 2, 3, 4]**-3,
-                  Cumo::UInt64[1, 2, 3, 4]**(-2**31)]
-      signed = [Cumo::Int8[1, 2, 3, 4]**-2,
-                Cumo::Int16[1, 2, 3, 4]**-1,
-                Cumo::Int32[1, 2, 3, 4]**-3,
-                Cumo::Int64[1, 2, 3, 4]**(-2**31)]
-      print (unsigned + signed).map { |v| v.to_a.join(",") }.join("|")
-    RUBY
-    lib = File.expand_path("../lib", __dir__)
-    r, w = IO.pipe
-    pid = Process.spawn(RbConfig.ruby, "-I#{lib}", "-e", script, out: w, err: File::NULL)
-    w.close
-    reader = Thread.new { r.read }
-    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
-    until Process.waitpid(pid, Process::WNOHANG)
-      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-        Process.kill("KILL", pid)
-        Process.waitpid(pid)
-        reader.kill
-        flunk("a negative power of an unsigned array did not finish in 60 seconds")
+      cases = {
+        "UInt8 ** -2" => -> { Cumo::UInt8[1, 2, 3, 4]**-2 },
+        "UInt16 ** -1" => -> { Cumo::UInt16[1, 2, 3, 4]**-1 },
+        "UInt32 ** -3" => -> { Cumo::UInt32[1, 2, 3, 4]**-3 },
+        "UInt64 ** -2**31" => -> { Cumo::UInt64[1, 2, 3, 4]**(-2**31) },
+        "Int8 ** -2" => -> { Cumo::Int8[1, 2, 3, 4]**-2 },
+        "Int16 ** -1" => -> { Cumo::Int16[1, 2, 3, 4]**-1 },
+        "Int32 ** -3" => -> { Cumo::Int32[1, -1, 3, 4]**-3 },
+        "Int64 ** -2**31" => -> { Cumo::Int64[1, 2, 3, 4]**(-2**31) },
+        "Int64 ** -2**63" => -> { Cumo::Int64[1, 2, 3, 4]**(-2**63) },
+        "Int8 ** Int8" => -> { Cumo::Int8[1, 2, 3, 4]**Cumo::Int8[2, -1, 2, 2] },
+        "Int64 ** Int64" => -> { Cumo::Int64[1, 2, 3, 4]**Cumo::Int64[2, 2, 2, -1] },
+        "Int32 ** Int32" => -> { Cumo::Int32[1, 2, 3, 4]**Cumo::Int32[2, -1, 2, 2] },
+        "UInt8 ** Int32" => -> { Cumo::UInt8[1, 2, 3, 4]**Cumo::Int32[2, -1, 2, 2] },
+        "2 ** Int8" => -> { 2**Cumo::Int8[1, -1] },
+        "2 ** Int32" => -> { 2**Cumo::Int32[1, -1] }
+      }
+      results = cases.map do |name, f|
+        f.call
+        "#{name}: no error"
+      rescue Cumo::NArray::ValueError => e
+        "#{name}: #{e.message}"
       end
-      sleep 0.05
+      results << (Cumo::Int8[2, 3]**Cumo::Int8[3, 2]).to_a.inspect
+      print results.join("\n")
+    RUBY
+    lines = run_child(script, timeout: 60).lines(chomp: true)
+    lines[0...-1].each do |line|
+      assert_match(/: integers to negative integer powers are not allowed\z/, line)
     end
-    # unsigned now answers what signed has always answered
-    assert_equal((["0,0,0,0"] * 8).join("|"), reader.value)
+    assert_equal(15, lines.size - 1)
+    assert_equal("[8, 9]", lines.last)
+  end
+
+  test "a negative float power of an integer array goes to DFloat" do
+    b = Cumo::Int32[1, 2, 3, 4]**-0.5
+    assert_kind_of(Cumo::DFloat, b)
+    assert_equal((Cumo::DFloat[1, 2, 3, 4]**-0.5).to_a, b.to_a)
   end
 
   test "the exponents around the negative-power guard are unchanged" do
@@ -6973,9 +6982,6 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([1, 8, 27, 64], (u**3).to_a, "#{name} ** 3")
       assert_equal([1, 16, 81, 256 % (1 << 8)], (Cumo::UInt8[1, 2, 3, 4]**4).to_a) if name == "UInt8"
     end
-    # an Int32 array operand upcasts, so a negative exponent there took the
-    # signed path all along
-    assert_equal([0, 0, 9, 64], (Cumo::UInt8[1, 2, 3, 4]**Cumo::Int32[-2, -1, 2, 3]).to_a)
   end
 
   test "a float or complex array raised to the INT_MIN power answers instead of spinning" do
