@@ -246,6 +246,10 @@ class CumoTest < Test::Unit::TestCase
     assert_nothing_raised { Cumo::VERSION }
   end
 
+  test "REVISION names the commit the library was built from" do
+    assert_match(/\A(v\d+\.\d+\.\d+(-\d+-g\h+)?|\h+)(-dirty)?\z/, Cumo::REVISION)
+  end
+
   test "every cumo function the extension calls is defined in it" do
     omit("ldd -r is Linux only") unless RUBY_PLATFORM.include?("linux")
     so = $LOADED_FEATURES.grep(%r{/cumo\.so\z}).first

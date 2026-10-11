@@ -28,6 +28,13 @@ Gem::Specification.new do |spec|
   spec.files = `git ls-files -z`.split("\x0").reject do |f|
     f.start_with?(*%w[.github/ test/ examples/ bin/ bench/ docker- Dockerfile Gemfile .gitignore .rubocop])
   end
+
+  revision = `git -C #{__dir__} describe --tags --match "v[0-9]*" --dirty --always 2>/dev/null`.strip
+  unless revision.empty?
+    File.write(File.join(__dir__, "lib/cumo/REVISION"), "#{revision}\n")
+    spec.files << "lib/cumo/REVISION"
+  end
+
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]

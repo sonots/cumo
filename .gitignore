@@ -21,6 +21,7 @@ ext/cumo/depend
 ext/cumo/compile_commands.json
 ext/cumo/.cache/clangd
 lib/include/cumo/extconf.h
+lib/cumo/REVISION
 TAGS
 t.rb
 .ruby-version
