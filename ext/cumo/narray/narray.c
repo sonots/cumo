@@ -900,6 +900,17 @@ cumo_na_get_pointer(VALUE self)
     return cumo_na_get_pointer_for_rw(self, 0);
 }
 
+int
+cumo_na_has_pending_scalar(VALUE self)
+{
+    cumo_narray_t *na;
+    CumoGetNArray(self,na);
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        self = CUMO_NA_VIEW_DATA(na);
+    }
+    return !NIL_P(rb_attr_get(self, cumo_id_pending_scalar));
+}
+
 
 void
 cumo_na_release_lock(VALUE self)
