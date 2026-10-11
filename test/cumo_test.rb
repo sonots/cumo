@@ -137,6 +137,12 @@ class CumoTest < Test::Unit::TestCase
     assert { !Cumo.compatible_mode_enabled? }
   end
 
+  def test_compatible_mode_reads_a_rest_subscript_on_a_zero_dimensional_array
+    Cumo.enable_compatible_mode
+    assert_equal(5.0, Cumo::DFloat.cast(5.0)[false])
+    assert_equal(1, Cumo::Bit.cast(1)[false])
+  end
+
   def test_compatible_mode_extracts_zero_dimensional_reduction_results
     Cumo.enable_compatible_mode
     a = Cumo::DFloat[3, 1, 7]
