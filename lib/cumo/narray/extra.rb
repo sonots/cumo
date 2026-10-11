@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
+require_relative '../version'
+
 module Cumo
   class NArray
+    VERSION = Cumo::VERSION
+
     # Copies a host buffer into this array. A Cumo::CUDA::PinnedMemory is
     # copied asynchronously on the current stream, or on stream:, and a
     # String of bytes synchronously.
