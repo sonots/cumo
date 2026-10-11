@@ -811,10 +811,11 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
         if (CUMO_NA_SIZE(na) > 0 && ptr == NULL) {
             // A scalar cast lazily holds its value on the Ruby side, so it can
             // still be read: allocating it is what puts the value on the device.
-            if ((flag & READ) && NIL_P(rb_attr_get(self, cumo_id_pending_scalar))) {
+            VALUE pending = rb_attr_get(self, cumo_id_pending_scalar);
+            if ((flag & READ) && NIL_P(pending)) {
                 rb_raise(rb_eRuntimeError,"cannot read unallocated NArray");
             }
-            if (flag & (READ|WRITE)) {
+            if ((flag & (READ|WRITE)) || (!NIL_P(pending) && !OBJ_FROZEN(self))) {
                 rb_funcall(self, cumo_id_allocate, 0);
                 ptr = CUMO_NA_DATA_PTR(na);
                 // allocate is a Ruby method, so it is free to return without
@@ -853,11 +854,12 @@ cumo_na_get_pointer_for_rw(VALUE self, int flag)
                          "longer fits in it");
             }
             ptr = CUMO_NA_DATA_PTR(na);
-            if (flag & (READ|WRITE)) {
-                if (CUMO_NA_SIZE(na) > 0 && ptr == NULL) {
-                    if (NIL_P(rb_attr_get(obj, cumo_id_pending_scalar))) {
-                        rb_raise(rb_eRuntimeError,"cannot read/write unallocated NArray");
-                    }
+            if (CUMO_NA_SIZE(na) > 0 && ptr == NULL) {
+                VALUE pending = rb_attr_get(obj, cumo_id_pending_scalar);
+                if ((flag & (READ|WRITE)) && NIL_P(pending)) {
+                    rb_raise(rb_eRuntimeError,"cannot read/write unallocated NArray");
+                }
+                if (!NIL_P(pending) && ((flag & (READ|WRITE)) || !OBJ_FROZEN(obj))) {
                     rb_funcall(obj, cumo_id_allocate, 0);
                     ptr = CUMO_NA_DATA_PTR(na);
                     if (ptr == NULL) {

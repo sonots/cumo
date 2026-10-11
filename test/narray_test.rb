@@ -2392,6 +2392,24 @@ class NArrayTest < Test::Unit::TestCase
     assert { c.to_a == [7] }
   end
 
+  test "inspect shows the value of a scalar cast to an array" do
+    assert_equal("Cumo::DFloat#shape=[]\n5", Cumo::DFloat.cast(5.0).inspect)
+    assert_equal("Cumo::DFloat(view)#shape=[1]\n[5]", Cumo::DFloat.cast(5.0)[true].inspect)
+    assert_equal("Cumo::Int32(view)#shape=[1]\n[7]", Cumo::Int32.cast(7)[nil].inspect)
+    assert_equal("Cumo::SComplex#shape=[]\n1+2i", Cumo::SComplex.cast(1 + 2i).inspect)
+    assert_equal("Cumo::DFloat#shape=[2](empty)", Cumo::DFloat.new(2).inspect)
+    assert_equal("Cumo::DFloat(view)#shape=[1](empty)", Cumo::DFloat.new(2)[0..0].inspect)
+    assert_nothing_raised { Cumo::DFloat.cast(5.0).freeze.inspect }
+
+    x = Cumo::DFloat.cast(5.0)
+    x.inspect
+    x.fill(2)
+    assert { (x + Cumo::DFloat[1]).to_a == [3] }
+    y = Cumo::DFloat.cast(5.0)
+    y[true].inspect
+    assert { (y - Cumo::DFloat[1, 2]).to_a == [4, 3] }
+  end
+
   test "adding a new axis to a narray-view" do
     # cumo_na_index_aref_naview read na1->stridx[q[i].orig_dim] before checking
     # orig_dim against na1->base.ndim. A trailing :new keeps orig_dim == ndim,
