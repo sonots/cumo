@@ -138,9 +138,13 @@ class CumoTest < Test::Unit::TestCase
   end
 
   def test_compatible_mode_reads_a_rest_subscript_on_a_zero_dimensional_array
+    view = Cumo::DFloat[1, 2, 3, 4][2]
+    bit_view = Cumo::Bit[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0][10]
     Cumo.enable_compatible_mode
     assert_equal(5.0, Cumo::DFloat.cast(5.0)[false])
     assert_equal(1, Cumo::Bit.cast(1)[false])
+    assert_equal(3.0, view[false])
+    assert_equal(1, bit_view[false])
   end
 
   def test_compatible_mode_extracts_zero_dimensional_reduction_results

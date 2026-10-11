@@ -2372,7 +2372,7 @@ class NArrayTest < Test::Unit::TestCase
   test "a rest subscript on a 0-dimensional array reads its element" do
     [Cumo::DFloat, Cumo::Int32, Cumo::Bit].each do |dtype|
       a = dtype.cast(1)
-      [a[false], a[false], a[:rest], a[:~]].each do |v|
+      [a[false], a[false], a.slice(false), a[:rest], a[:~]].each do |v|
         assert { v.shape == [] }
         assert { v.to_a == [1] }
       end
@@ -2382,6 +2382,7 @@ class NArrayTest < Test::Unit::TestCase
     assert { v[false].to_a == [3] }
     assert { v[false][false].to_a == [3] }
     assert { (Cumo::DFloat.new(2, 3).seq[1, 2][false] + 1).to_a == [6] }
+    assert { Cumo::Bit[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0][10][false].to_a == [1] }
 
     b = Cumo::DFloat[1, 2, 3]
     b[1][false] = 9
