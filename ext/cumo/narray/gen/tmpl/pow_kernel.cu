@@ -81,13 +81,13 @@ void <%="cumo_#{c_iter}_int32_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iar
     <%="cumo_#{c_iter}_int32_kernel_dispatch"%>(a1,a2,a3,indexer,0,0,sv_base,negexp);
 }
 
-void <%="cumo_#{c_iter}_int32_s_kernel_launch"%>(cumo_na_iarray_t* a1, int32_t sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer)
+void <%="cumo_#{c_iter}_int32_s_kernel_launch"%>(cumo_na_iarray_t* a1, int32_t sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* negexp)
 {
     cumo_na_iarray_t unused;
     dtype sv_base;
     memset(&unused, 0, sizeof(cumo_na_iarray_t));
     memset(&sv_base, 0, sizeof(dtype));
-    <%="cumo_#{c_iter}_int32_kernel_dispatch"%>(a1,&unused,a3,indexer,sv,1,sv_base,NULL);
+    <%="cumo_#{c_iter}_int32_kernel_dispatch"%>(a1,&unused,a3,indexer,sv,1,sv_base,negexp);
 }
 
 // The base is the numeric one when it came in through coerce, and the exponent

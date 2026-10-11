@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require_relative "test_helper"
 
 class NArrayTest < Test::Unit::TestCase
@@ -6934,6 +6935,7 @@ class NArrayTest < Test::Unit::TestCase
     # the device spins until SIGKILL instead of failing the test.
     script = <<~'RUBY'
       require "cumo/narray"
+      require "json"
       cases = {
         "UInt8 ** -2" => -> { Cumo::UInt8[1, 2, 3, 4]**-2 },
         "UInt16 ** -1" => -> { Cumo::UInt16[1, 2, 3, 4]**-1 },
@@ -6943,7 +6945,10 @@ class NArrayTest < Test::Unit::TestCase
         "Int16 ** -1" => -> { Cumo::Int16[1, 2, 3, 4]**-1 },
         "Int32 ** -3" => -> { Cumo::Int32[1, -1, 3, 4]**-3 },
         "Int64 ** -2**31" => -> { Cumo::Int64[1, 2, 3, 4]**(-2**31) },
+        "Int64 ** -2**40" => -> { Cumo::Int64[1, 2, 3, 4]**(-2**40) },
         "Int64 ** -2**63" => -> { Cumo::Int64[1, 2, 3, 4]**(-2**63) },
+        "Int8 ** -2**63" => -> { Cumo::Int8[1, 2, 3, 4]**(-2**63) },
+        "UInt64 ** -2**63" => -> { Cumo::UInt64[1, 2, 3, 4]**(-2**63) },
         "Int8 ** Int8" => -> { Cumo::Int8[1, 2, 3, 4]**Cumo::Int8[2, -1, 2, 2] },
         "Int64 ** Int64" => -> { Cumo::Int64[1, 2, 3, 4]**Cumo::Int64[2, 2, 2, -1] },
         "Int32 ** Int32" => -> { Cumo::Int32[1, 2, 3, 4]**Cumo::Int32[2, -1, 2, 2] },
@@ -6951,21 +6956,29 @@ class NArrayTest < Test::Unit::TestCase
         "2 ** Int8" => -> { 2**Cumo::Int8[1, -1] },
         "2 ** Int32" => -> { 2**Cumo::Int32[1, -1] }
       }
-      results = cases.map do |name, f|
+      results = cases.to_h do |name, f|
         f.call
-        "#{name}: no error"
-      rescue Cumo::NArray::ValueError => e
-        "#{name}: #{e.message}"
+        [name, "no error"]
+      rescue StandardError => e
+        [name, "#{e.class}: #{e.message}"]
       end
-      results << (Cumo::Int8[2, 3]**Cumo::Int8[3, 2]).to_a.inspect
-      print results.join("\n")
+      results["after"] = (Cumo::Int8[2, 3]**Cumo::Int8[3, 2]).to_a
+      print "\n", JSON.generate(results)
     RUBY
-    lines = run_child(script, timeout: 60).lines(chomp: true)
-    lines[0...-1].each do |line|
-      assert_match(/: integers to negative integer powers are not allowed\z/, line)
+    results = JSON.parse(run_child(script, timeout: 60).lines.last)
+    assert_equal([8, 9], results.delete("after"))
+    assert_equal(18, results.size)
+    results.each do |name, got|
+      assert_equal("Cumo::NArray::ValueError: integers to negative integer powers are not allowed", got, name)
     end
-    assert_equal(15, lines.size - 1)
-    assert_equal("[8, 9]", lines.last)
+  end
+
+  test "an integer exponent of 2**31 or more is not narrowed to int" do
+    assert_equal([1, 0, 1], (Cumo::Int64[1, 2, -1]**Cumo::Int64[2**31, 2**32, 2**40]).to_a)
+    assert_equal([1, 0], (Cumo::Int64[1, 2]**((2**63) - 1)).to_a)
+    assert_equal([1, 3.pow(2**31, 2**32)], (Cumo::UInt32[1, 3]**Cumo::UInt32[2**31, 2**31]).to_a)
+    assert_equal([1, 3.pow((2**64) - 1, 2**64)], (Cumo::UInt64[1, 3]**Cumo::UInt64[(2**64) - 1, (2**64) - 1]).to_a)
+    assert_equal([1, 0], (Cumo::UInt64[1, 2]**(2**63)).to_a)
   end
 
   test "a negative float power of an integer array goes to DFloat" do

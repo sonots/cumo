@@ -43,7 +43,7 @@ __host__ __device__ static inline dtype int_reciprocal(dtype x) {
     }
 }
 
-__device__ static dtype pow_int(dtype x, int p)
+__device__ static dtype pow_int(dtype x, int64_t p)
 {
     dtype r = m_one;
     switch(p) {

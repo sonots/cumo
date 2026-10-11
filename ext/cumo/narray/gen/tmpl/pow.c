@@ -3,7 +3,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t*
 void <%="cumo_#{c_iter}_int32_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* negexp);
 void <%="cumo_#{c_iter}_s_kernel_launch"%>(cumo_na_iarray_t* a1, dtype sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int scalar_is_left, int* negexp);
 void <%="cumo_#{c_iter}_int32_s_left_kernel_launch"%>(dtype sv_base, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* negexp);
-void <%="cumo_#{c_iter}_int32_s_kernel_launch"%>(cumo_na_iarray_t* a1, int32_t sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer);
+void <%="cumo_#{c_iter}_int32_s_kernel_launch"%>(cumo_na_iarray_t* a1, int32_t sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* negexp);
 <% end %>
 <% if is_int && !is_object %>
 
@@ -13,7 +13,6 @@ static void
     rb_raise(cumo_na_eValueError, "integers to negative integer powers are not allowed");
 }
 
-// The kernel flags a negative exponent it read from the device.
 static void
 <%=c_iter%>_check_negexp(int *negexp)
 {
@@ -53,12 +52,10 @@ static void
         cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[2]);
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-        //<% if is_int && !is_unsigned %>
         int *negexp = cumo_cuda_runtime_error_flag_new();
         <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer,negexp);
+        //<% if is_int && !is_unsigned %>
         <%=c_iter%>_check_negexp(negexp);
-        //<% else %>
-        <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&a2,&a3,&indexer,NULL);
         //<% end %>
     }
     <% end %>
@@ -94,12 +91,10 @@ static void
         cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[2]);
         cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-        //<% if is_int %>
         int *negexp = cumo_cuda_runtime_error_flag_new();
         <%="cumo_#{c_iter}_int32_kernel_launch"%>(&a1,&a2,&a3,&indexer,negexp);
+        //<% if is_int %>
         <%=c_iter%>_check_negexp(negexp);
-        //<% else %>
-        <%="cumo_#{c_iter}_int32_kernel_launch"%>(&a1,&a2,&a3,&indexer,NULL);
         //<% end %>
     }
     <% end %>
@@ -117,7 +112,7 @@ static void
     cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,sv,&a3,&indexer,0,NULL);
+    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,sv,&a3,&indexer,0,cumo_cuda_runtime_error_flag_new());
 }
 
 // The base is the numeric one when it came in through coerce.
@@ -129,12 +124,10 @@ static void
     cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    //<% if is_int && !is_unsigned %>
     int *negexp = cumo_cuda_runtime_error_flag_new();
     <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,sv,&a3,&indexer,1,negexp);
+    //<% if is_int && !is_unsigned %>
     <%=c_iter%>_check_negexp(negexp);
-    //<% else %>
-    <%="cumo_#{c_iter}_s_kernel_launch"%>(&a1,sv,&a3,&indexer,1,NULL);
     //<% end %>
 }
 
@@ -146,12 +139,10 @@ static void
     cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    //<% if is_int %>
     int *negexp = cumo_cuda_runtime_error_flag_new();
     <%="cumo_#{c_iter}_int32_s_left_kernel_launch"%>(sv,&a2,&a3,&indexer,negexp);
+    //<% if is_int %>
     <%=c_iter%>_check_negexp(negexp);
-    //<% else %>
-    <%="cumo_#{c_iter}_int32_s_left_kernel_launch"%>(sv,&a2,&a3,&indexer,NULL);
     //<% end %>
 }
 
@@ -163,7 +154,7 @@ static void
     cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[1]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    <%="cumo_#{c_iter}_int32_s_kernel_launch"%>(&a1,sv,&a3,&indexer);
+    <%="cumo_#{c_iter}_int32_s_kernel_launch"%>(&a1,sv,&a3,&indexer,cumo_cuda_runtime_error_flag_new());
 }
 <% end %>
 
@@ -208,22 +199,24 @@ static VALUE
             }
         }
         if (FIXNUM_P(other)) {
-            int32_t sv = NUM2INT32(other);
+            int32_t sv;
             //<% if is_int %>
-            if (sv < 0) {
+            if (FIX2LONG(other) < 0) {
                 <%=c_iter%>_negative_exponent();
             }
             //<% end %>
+            sv = NUM2INT32(other);
             cumo_ndfunc_t ndf_i_s = { <%=c_iter%>_int32_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_s, aout };
             return cumo_na_ndloop3(&ndf_i_s, &sv, 1, self);
         }
         if (rb_obj_is_kind_of(other, rb_cNumeric)) {
-            dtype sv = m_num_to_data(other);
-            //<% if is_int && !is_unsigned %>
-            if (sv < 0) {
+            dtype sv;
+            //<% if is_int %>
+            if (RTEST(rb_funcall(other, '<', 1, INT2FIX(0)))) {
                 <%=c_iter%>_negative_exponent();
             }
             //<% end %>
+            sv = m_num_to_data(other);
             cumo_ndfunc_t ndf_s = { <%=c_iter%>_s, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 1, 1, ain_s, aout };
             return cumo_na_ndloop3(&ndf_s, &sv, 1, self);
         }
