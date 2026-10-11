@@ -2399,7 +2399,8 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal("Cumo::SComplex#shape=[]\n1+2i", Cumo::SComplex.cast(1 + 2i).inspect)
     assert_equal("Cumo::DFloat#shape=[2](empty)", Cumo::DFloat.new(2).inspect)
     assert_equal("Cumo::DFloat(view)#shape=[1](empty)", Cumo::DFloat.new(2)[0..0].inspect)
-    assert_nothing_raised { Cumo::DFloat.cast(5.0).freeze.inspect }
+    assert_equal("Cumo::DFloat#shape=[]\n5", Cumo::DFloat.cast(5.0).freeze.inspect)
+    assert_equal("Cumo::DFloat(view)#shape=[1]\n[5]", Cumo::DFloat.cast(5.0).freeze[true].inspect)
 
     x = Cumo::DFloat.cast(5.0)
     x.inspect
@@ -2408,6 +2409,23 @@ class NArrayTest < Test::Unit::TestCase
     y = Cumo::DFloat.cast(5.0)
     y[true].inspect
     assert { (y - Cumo::DFloat[1, 2]).to_a == [4, 3] }
+  end
+
+  test "a frozen scalar cast to an array can be read" do
+    x = Cumo::DFloat.cast(5.0).freeze
+    assert { x.to_a == [5] }
+    assert { (x + 1).to_a == [6] }
+    assert { x.sum.to_a == [5] }
+    assert { (x + Cumo::DFloat[1]).to_a == [6] }
+    assert_raise(RuntimeError) { x.fill(1) }
+
+    d = x.dup
+    d.fill(9)
+    assert { (d + Cumo::DFloat[1]).to_a == [10] }
+    assert { (x + Cumo::DFloat[1]).to_a == [6] }
+
+    s = Ractor.make_shareable(Cumo::DFloat.cast(5.0))
+    assert { (s * Cumo::DFloat[1, 2]).to_a == [5, 10] }
   end
 
   test "adding a new axis to a narray-view" do

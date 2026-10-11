@@ -2386,7 +2386,7 @@ cumo_na_ndloop_inspect(VALUE nary, cumo_na_text_func_t func, VALUE opt)
 
     buf = cumo_na_info_str(nary);
 
-    if (cumo_na_get_pointer(nary)==NULL) {
+    if (cumo_na_get_pointer(nary)==NULL && !cumo_na_has_pending_scalar(nary)) {
         return rb_str_cat(buf,"(empty)",7);
     }
 

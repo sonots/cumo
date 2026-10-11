@@ -22,6 +22,7 @@ unsigned int cumo_na_element_stride(VALUE nary);
 size_t cumo_na_dtype_element_stride(VALUE klass);
 
 char *cumo_na_get_pointer(VALUE);
+int cumo_na_has_pending_scalar(VALUE);
 char *cumo_na_get_pointer_for_write(VALUE);
 char *cumo_na_get_pointer_for_read(VALUE);
 char *cumo_na_get_pointer_for_read_write(VALUE);

@@ -42,7 +42,9 @@ static VALUE
         {
             VALUE num = rb_attr_get(self, cumo_id_pending_scalar);
             if (!NIL_P(num)) {
-                rb_ivar_set(self, cumo_id_pending_scalar, Qnil);
+                if (!OBJ_FROZEN(self)) {
+                    rb_ivar_set(self, cumo_id_pending_scalar, Qnil);
+                }
                 cumo_<%=type_name%>_new_dim0_kernel_launch((dtype*)CUMO_NA_DATA_PTR(na), m_num_to_data(num));
                 // Callers that read on the host synchronize before they ask for
                 // the pointer, which is before this fill was even launched.
