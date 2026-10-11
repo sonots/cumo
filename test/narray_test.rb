@@ -2369,6 +2369,29 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  test "a rest subscript on a 0-dimensional array reads its element" do
+    [Cumo::DFloat, Cumo::Int32, Cumo::Bit].each do |dtype|
+      a = dtype.cast(1)
+      [a[false], a[false], a.slice(false), a[:rest], a[:~]].each do |v|
+        assert { v.shape == [] }
+        assert { v.to_a == [1] }
+      end
+    end
+
+    v = Cumo::DFloat[1, 2, 3, 4][2]
+    assert { v[false].to_a == [3] }
+    assert { v[false][false].to_a == [3] }
+    assert { (Cumo::DFloat.new(2, 3).seq[1, 2][false] + 1).to_a == [6] }
+    assert { Cumo::Bit[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0][10][false].to_a == [1] }
+
+    b = Cumo::DFloat[1, 2, 3]
+    b[1][false] = 9
+    assert { b.to_a == [1, 9, 3] }
+    c = Cumo::DFloat.cast(5.0)
+    c[false] = 7
+    assert { c.to_a == [7] }
+  end
+
   test "adding a new axis to a narray-view" do
     # cumo_na_index_aref_naview read na1->stridx[q[i].orig_dim] before checking
     # orig_dim against na1->base.ndim. A trailing :new keeps orig_dim == ndim,
