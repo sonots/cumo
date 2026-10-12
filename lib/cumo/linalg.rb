@@ -899,7 +899,8 @@ module Cumo
         raise FloatDomainError, "the 1-norm of the matrix overflows #{a.class}"
       end
 
-      parts = corner_values.empty? || corner_values.any?(&:zero?) ? nil : false
+      parts = nil
+      parts = false if corner_values.size == 2 && corner_values.none?(&:zero?)
       triangle = lambda do
         parts = triangle_parts(a) || false if parts.nil?
         parts
@@ -922,11 +923,9 @@ module Cumo
     end
 
     def corners(a)
-      n = a.shape[0]
-      return [] if n < 2
+      return [] if a.shape[0] < 2
 
-      views = [a[0, (n - 1)..(n - 1)], a[n - 1, 0..0]]
-      a.is_a?(SComplex) || a.is_a?(DComplex) ? views.map(&:abs) : views
+      [a[0, -1..], a[-1, 0..0]].map { |corner| magnitudes(corner) }
     end
 
     def adaptive_pade_expm(a, norm, even, norms, triangle, prescale = 0)
@@ -1173,7 +1172,9 @@ module Cumo
         sum
       end
       sums = sums.first.class.vstack(sums)
-      values = sums.class.hstack([sums.sum(axis: 1), sums.max(axis: 1), *probes]).to_a
+      stats = sums.class.hstack([sums.sum(axis: 1), sums.max(axis: 1), *probes])
+      values = stats.to_a
+      release(stats)
       totals = values.shift(mats.size)
       maxes = values.shift(mats.size)
       totals.map.with_index { |total, i| total.nan? ? Float::NAN : maxes[i] } + values
