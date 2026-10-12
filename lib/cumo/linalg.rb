@@ -890,7 +890,7 @@ module Cumo
     end
 
     def scaled_pade_expm(a)
-      even, (norm, *norms) = even_powers(a, a)
+      even, (norm, n4, n6, *corner_values) = even_powers(a, a, probes: corners(a))
       unless norm.finite?
         release(*even)
         return a.class.new(*a.shape).fill(Float::NAN) if norm.nan?
@@ -899,12 +899,12 @@ module Cumo
         raise FloatDomainError, "the 1-norm of the matrix overflows #{a.class}"
       end
 
-      parts = nil
+      parts = corner_values.empty? || corner_values.any?(&:zero?) ? nil : false
       triangle = lambda do
         parts = triangle_parts(a) || false if parts.nil?
         parts
       end
-      x = adaptive_pade_expm(a, norm, even, norms, triangle)
+      x = adaptive_pade_expm(a, norm, even, [n4, n6], triangle)
       return x if x
 
       prescale = Math.log2(norm / PADE_THETAS[13]).ceil
@@ -914,11 +914,19 @@ module Cumo
       square_exp(x, prescale, triangle)
     end
 
-    def even_powers(a, *also)
+    def even_powers(a, *also, probes: [])
       a2 = matmul(a, a)
       a4 = matmul(a2, a2)
       a6 = matmul(a4, a2)
-      [[a2, a4, a6], onenorms(*also, a4, a6)]
+      [[a2, a4, a6], onenorms(*also, a4, a6, probes: probes)]
+    end
+
+    def corners(a)
+      n = a.shape[0]
+      return [] if n < 2
+
+      views = [a[0, (n - 1)..(n - 1)], a[n - 1, 0..0]]
+      a.is_a?(SComplex) || a.is_a?(DComplex) ? views.map(&:abs) : views
     end
 
     def adaptive_pade_expm(a, norm, even, norms, triangle, prescale = 0)
@@ -1157,7 +1165,7 @@ module Cumo
       onenorms(a).first
     end
 
-    def onenorms(*mats)
+    def onenorms(*mats, probes: [])
       sums = mats.map do |a|
         absolute = a.abs
         sum = absolute.sum(axis: 0)
@@ -1165,8 +1173,10 @@ module Cumo
         sum
       end
       sums = sums.first.class.vstack(sums)
-      totals, maxes = sums.class.vstack([sums.sum(axis: 1), sums.max(axis: 1)]).to_a
-      totals.map.with_index { |total, i| total.nan? ? Float::NAN : maxes[i] }
+      values = sums.class.hstack([sums.sum(axis: 1), sums.max(axis: 1), *probes]).to_a
+      totals = values.shift(mats.size)
+      maxes = values.shift(mats.size)
+      totals.map.with_index { |total, i| total.nan? ? Float::NAN : maxes[i] } + values
     end
 
     def getrf(klass, a)
@@ -1648,6 +1658,6 @@ module Cumo
       raise NArray::ShapeError, "shape1[1](=#{a.shape[1]}) != shape2[0](=#{b.shape[0]})" if a.shape[1] != b.shape[0]
     end
 
-    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_exp, :triangle_parts, :fix_triangle, :off_diagonal_exp, :sinch, :scalar_exp, :scalar_log, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :reduce_abs, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
+    private_class_method :scaled_pade_expm, :even_powers, :adaptive_pade_expm, :pade_quotient, :pade13_quotient, :quotient_and_release, :product_and_release, :sum_and_release, :square_exp, :triangle_parts, :corners, :fix_triangle, :off_diagonal_exp, :sinch, :scalar_exp, :scalar_log, :square_and_release, :release, :pade_ell, :scaled_power_norm_log2, :power_norm_log2, :fixed_pade_expm, :pade13_squarings, :squarings_for, :onenorm, :onenorms, :ldl_factors, :geev, :unpack_eigenvectors, :left_eigenvectors, :match_eigenvalues, :whole_norm, :frobenius, :norm_axes, :vector_norm, :norm_ord, :matrix_ord?, :matrix_norm, :stacked_svdvals, :reduce_abs, :batched_svd?, :batched_svdvals, :magnitudes, :to_float, :to_scalar, :identity, :empty_qr, :svd_call, :count_above, :svd_job, :gesvd, :numerical_rank, :eigen_range, :potrf, :to_column_major, :from_column_major, :lapack_uplo, :warn_singular_factor, :one, :lu_diagonal, :power, :getrf, :getrs, :invert, :pivots, :singular?, :cusolver, :to_ruby, :cast_to_blas_class, :check_dot, :check_gemv, :check_gemm
   end
 end
