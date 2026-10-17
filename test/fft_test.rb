@@ -197,6 +197,7 @@ class FFTTest < CumoTestBase
     assert_raise(TypeError) { Cumo::FFT.rfft(Cumo::DComplex[1, 2]) }
     assert_raise(ArgumentError) { Cumo::FFT.fft(a, norm: "bad") }
     assert_raise(ArgumentError) { Cumo::FFT.fft(a, n: 0) }
+    assert_raise(ArgumentError) { Cumo::FFT.fft(a, n: -1) }
     assert_raise(ArgumentError) { Cumo::FFT.fft(Cumo::DFloat.new(4, 0)) }
     assert_raise(ArgumentError) { Cumo::FFT.irfft(Cumo::DComplex[1]) }
     assert_raise(Cumo::NArray::DimensionError) { Cumo::FFT.fft(a, axis: 1) }
@@ -317,6 +318,16 @@ class FFTTest < CumoTestBase
     assert_close(Cumo::NArray.to_numo(real), Cumo::FFT.irfftn(Cumo::FFT.rfftn(real), s: [4, 6, 7]), 1e-12)
   end
 
+  test "irfftn to one point along the last axis, which a multi-dimensional plan reads wrong" do
+    src = numo_input(Cumo::DComplex, 3, 1)
+    assert_close(irfftn_ref(src, [0, 1], 1), Cumo::FFT.irfftn(Cumo::NArray.from_numo(src), s: [3, 1]), 1e-12)
+    src = numo_input(Cumo::DComplex, 5, 2, 3)
+    expected = irfftn_ref(src[true, true, 0...1], [0, 2], 1)
+    assert_close(expected, Cumo::FFT.irfftn(Cumo::NArray.from_numo(src), s: [5, 1], axes: [0, 2]), 1e-12)
+    src = numo_input(Cumo::DComplex, 2, 3, 2, 2, 1)
+    assert_close(irfftn_ref(src, [0, 1, 2, 3, 4], 1), Cumo::FFT.irfftn(Cumo::NArray.from_numo(src), s: [2, 3, 2, 2, 1]), 1e-12)
+  end
+
   test "irfftn leaves its input as it was, which a multi-dimensional plan would overwrite" do
     a = Cumo::DComplex.new(4, 3).rand + (Complex::I * Cumo::DComplex.new(4, 3).rand)
     before = a.to_a
@@ -351,6 +362,7 @@ class FFTTest < CumoTestBase
     assert_raise(ArgumentError) { Cumo::FFT.irfftn(a, axes: []) }
     assert_raise(TypeError) { Cumo::FFT.rfftn(Cumo::DComplex.new(2, 2).seq) }
     assert_raise(TypeError) { Cumo::FFT.fftn(a, s: 4) }
+    assert_raise(TypeError) { Cumo::FFT.fftn(a, axes: 1) }
     assert_same(a, Cumo::FFT.fftn(a, axes: []))
     assert_equal([0, 3, 4], Cumo::FFT.fftn(Cumo::DFloat.new(0, 3, 4), axes: [1, 2]).shape)
   end
