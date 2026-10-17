@@ -184,6 +184,26 @@ module Cumo
       roll_half(x, axes, -1)
     end
 
+    # Convolves two N-dimensional arrays through the discrete Fourier
+    # transform, answering their full discrete linear convolution, as
+    # scipy.signal.fftconvolve does in its "full" mode.
+    # @param a [Cumo::NArray] first input
+    # @param b [Cumo::NArray] second input, with as many dimensions as a
+    # @return [Cumo::NArray] real if both inputs are real, and single precision if both are
+    def fftconvolve(a, b)
+      check_array(a)
+      check_array(b)
+      return a * b if a.ndim.zero? && b.ndim.zero?
+      raise ArgumentError, 'in1 and in2 should have the same dimensionality' if a.ndim != b.ndim
+      return DFloat.new(0) if a.empty? || b.empty?
+
+      s = a.shape.zip(b.shape).map! { |m, n| m + n - 1 }
+      axes = (0...a.ndim).to_a
+      return irfftn(rfftn(a, s: s, axes: axes) * rfftn(b, s: s, axes: axes), s: s, axes: axes) unless complex?(a) || complex?(b)
+
+      ifftn(fftn(a, s: s, axes: axes) * fftn(b, s: s, axes: axes), axes: axes)
+    end
+
     def c2cn(a, s, axes, norm, inverse)
       check_array(a)
       norm = check_norm(norm)
@@ -335,6 +355,10 @@ module Cumo
       n.nil? ? nil : [check_length(n)]
     end
 
+    def complex?(a)
+      a.is_a?(SComplex) || a.is_a?(DComplex)
+    end
+
     def complex_type(a)
       case a
       when SComplex, SFloat, HFloat, BFloat then SComplex
@@ -410,7 +434,7 @@ module Cumo
 
     private_class_method :c2cn, :r2cn, :c2rn, :check_array, :check_narray, :check_norm, :swap_norm, :freq_scale, :roll_half,
                          :check_axis, :check_axes,
-                         :check_length, :one_length, :complex_type, :real_type, :fit, :across, :trailing,
+                         :check_length, :one_length, :complex?, :complex_type, :real_type, :fit, :across, :trailing,
                          :c2c_axes, :r2c_trailing, :c2r_trailing, :scale
   end
 end

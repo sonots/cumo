@@ -154,6 +154,8 @@ typedef struct {
     cufft_plan_t plans[CUFFT_PLAN_CACHE_SIZE];
     int count;
     unsigned long long clock;
+    unsigned long long hits;
+    unsigned long long misses;
 } cufft_plan_cache_t;
 
 static cumo_cuda_thread_local_t caches;
@@ -212,10 +214,12 @@ take_plan(cufft_plan_cache_t *cache, cufftType type, int rank, const long long *
             memcmp(q->n, n, sizeof(long long) * rank) == 0) {
             p = *q;
             *q = cache->plans[--cache->count];
+            cache->hits++;
             return p;
         }
     }
 
+    cache->misses++;
     memset(&p, 0, sizeof(p));
     p.type = type;
     p.rank = rank;
@@ -474,6 +478,38 @@ transform(VALUE x, VALUE vrank, cufft_kind_t kind, int direction, VALUE vn, int 
     return c.y;
 }
 
+/*
+  Returns how the cuFFT plan cache of the current thread and device has
+  been used since it was last emptied.
+
+  @return [Hash] size (plans held), capacity, hits and misses
+ */
+static VALUE
+rb_cufft_plan_cache_info(VALUE self)
+{
+    cufft_plan_cache_t *cache = (cufft_plan_cache_t*)cumo_cuda_thread_local_get(&caches);
+    VALUE info = rb_hash_new();
+
+    rb_hash_aset(info, ID2SYM(rb_intern("size")), INT2NUM(cache->count));
+    rb_hash_aset(info, ID2SYM(rb_intern("capacity")), INT2NUM(CUFFT_PLAN_CACHE_SIZE));
+    rb_hash_aset(info, ID2SYM(rb_intern("hits")), ULL2NUM(cache->hits));
+    rb_hash_aset(info, ID2SYM(rb_intern("misses")), ULL2NUM(cache->misses));
+    return info;
+}
+
+/*
+  Destroys the cuFFT plans the current thread holds on the current device,
+  and sets the counts of plan_cache_info back to zero.
+
+  @return [nil]
+ */
+static VALUE
+rb_cufft_clear_plan_cache(VALUE self)
+{
+    cumo_cuda_cufft_drop_plans();
+    return Qnil;
+}
+
 static VALUE
 rb_cufft_c2c(VALUE self, VALUE x, VALUE rank, VALUE inverse)
 {
@@ -537,6 +573,8 @@ Init_cumo_cuda_cufft(void)
     cumo_cuda_thread_local_init(&caches, sizeof(cufft_plan_cache_t));
     cumo_cuda_thread_local_on_exit(&caches, cufft_plan_cache_release);
     rb_define_singleton_method(mCufft, "version", rb_cufft_version, 0);
+    rb_define_singleton_method(mCufft, "plan_cache_info", rb_cufft_plan_cache_info, 0);
+    rb_define_singleton_method(mCufft, "clear_plan_cache", rb_cufft_clear_plan_cache, 0);
     rb_define_singleton_method(mCufft, "c2c", rb_cufft_c2c, 3);
     rb_define_singleton_method(mCufft, "r2c", rb_cufft_r2c, 2);
     rb_define_singleton_method(mCufft, "c2r", rb_cufft_c2r, 4);

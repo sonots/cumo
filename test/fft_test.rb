@@ -463,6 +463,73 @@ class FFTTest < CumoTestBase
     assert_raise(TypeError) { Cumo::FFT.fftshift([1, 2, 3]) }
   end
 
+  def convolve_ref(a, b)
+    a = Numo::DComplex.cast(a)
+    b = Numo::DComplex.cast(b)
+    out = Numo::DComplex.zeros(*a.shape.zip(b.shape).map { |m, n| m + n - 1 })
+    b.shape.map { |n| (0...n).to_a }.reduce { |acc, elem| acc.product(elem).map(&:flatten) }.each do |j|
+      j = [j].flatten
+      out[*a.shape.each_with_index.map { |m, i| j[i]...(j[i] + m) }] += a * b[*j]
+    end
+    out
+  end
+
+  test "fftconvolve answers the full linear convolution" do
+    [
+      [[Cumo::DFloat, [3]], [Cumo::DFloat, [2]]],
+      [[Cumo::DFloat, [5]], [Cumo::DFloat, [4]]],
+      [[Cumo::SFloat, [9]], [Cumo::SFloat, [6]]],
+      [[Cumo::DComplex, [6]], [Cumo::DFloat, [5]]],
+      [[Cumo::SComplex, [3, 4]], [Cumo::SComplex, [2, 5]]],
+      [[Cumo::DFloat, [3, 4, 5]], [Cumo::DFloat, [2, 3, 2]]],
+      [[Cumo::Int32, [7]], [Cumo::Int32, [1]]]
+    ].each do |(ta, sa), (tb, sb)|
+      a = ta.cast(Cumo::NArray.from_numo(numo_input(ta, *sa)))
+      b = tb.cast(Cumo::NArray.from_numo(numo_input(tb, *sb)))
+      expected = convolve_ref(Cumo::NArray.to_numo(a), Cumo::NArray.to_numo(b))
+      expected = expected.real unless [ta, tb].include?(Cumo::DComplex) || [ta, tb].include?(Cumo::SComplex)
+      tol = [ta, tb].all? { |t| [Cumo::SFloat, Cumo::SComplex].include?(t) } ? 1e-5 : 1e-12
+      assert_close(expected, Cumo::FFT.fftconvolve(a, b), tol, "#{ta} #{sa} #{tb} #{sb}")
+    end
+  end
+
+  test "fftconvolve keeps single precision single and real real" do
+    {
+      [Cumo::SFloat, Cumo::SFloat] => Cumo::SFloat,
+      [Cumo::SFloat, Cumo::SComplex] => Cumo::SComplex,
+      [Cumo::HFloat, Cumo::SFloat] => Cumo::SFloat,
+      [Cumo::SFloat, Cumo::DFloat] => Cumo::DFloat,
+      [Cumo::Int32, Cumo::Int32] => Cumo::DFloat,
+      [Cumo::DComplex, Cumo::Int32] => Cumo::DComplex
+    }.each do |(ta, tb), out|
+      assert_equal(out, Cumo::FFT.fftconvolve(ta.new(4).seq, tb.new(3).seq).class, "#{ta} #{tb}")
+    end
+    assert_equal(6, Integer(Cumo::FFT.fftconvolve(Cumo::Int32.cast(2), Cumo::Int32.cast(3))))
+    assert_equal([0], Cumo::FFT.fftconvolve(Cumo::DFloat.new(0), Cumo::DFloat[1, 2]).shape)
+    assert_raise(ArgumentError) { Cumo::FFT.fftconvolve(Cumo::DFloat[1, 2], Cumo::DFloat[[1]]) }
+    assert_raise(TypeError) { Cumo::FFT.fftconvolve([1, 2], Cumo::DFloat[1]) }
+  end
+
+  test "plan_cache_info counts the plans built and reused on this thread" do
+    a = Cumo::DComplex.new(37).rand
+    Cumo::CUDA::Cufft.clear_plan_cache
+    assert_equal({ size: 0, capacity: 16, hits: 0, misses: 0 }, Cumo::CUDA::Cufft.plan_cache_info)
+    Cumo::FFT.fft(a)
+    Cumo::FFT.fft(a)
+    Cumo::FFT.ifft(a)
+    assert_equal({ size: 1, capacity: 16, hits: 2, misses: 1 }, Cumo::CUDA::Cufft.plan_cache_info)
+    thread = Thread.new do
+      Cumo::CUDA::Cufft.clear_plan_cache
+      Cumo::FFT.fft(a)
+      Cumo::CUDA::Cufft.plan_cache_info
+    end
+    other = thread.value
+    assert_equal({ size: 1, capacity: 16, hits: 0, misses: 1 }, other)
+    assert_equal({ size: 1, capacity: 16, hits: 2, misses: 1 }, Cumo::CUDA::Cufft.plan_cache_info)
+    Cumo::CUDA::Cufft.clear_plan_cache
+    assert_equal({ size: 0, capacity: 16, hits: 0, misses: 0 }, Cumo::CUDA::Cufft.plan_cache_info)
+  end
+
   test "the result is a fresh array that later operations do not write into" do
     a = Cumo::DComplex[1, 2, 3, 4]
     b = Cumo::FFT.ifft(a)
