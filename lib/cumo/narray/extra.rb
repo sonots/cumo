@@ -174,22 +174,24 @@ module Cumo
     # @param a [Numo::NArray]
     # @return [Cumo::NArray]
     def self.from_numo(a)
-      name = NUMO_TYPE_NAMES.find { |n| a.is_a?(Numo.const_get(n)) } if defined?(Numo::NArray)
-      raise TypeError, "can't convert #{a.class} into Cumo::NArray" unless name
+      type = NUMO_TYPE_NAMES.find { |n| a.is_a?(Numo.const_get(n)) } if defined?(Numo::NArray)
+      klass = Cumo.const_get(type) if type
+      raise TypeError, "can't convert #{a.class} into #{self}" unless klass && klass <= self
+      return klass.new(*a.shape) if a.empty?
 
-      a = a.dup if name == "Bit" && a.size > 0
-      Cumo.const_get(name).from_binary(a.to_binary, a.shape)
+      host = type == "Bit" ? a.dup : a.to_host
+      klass.from_binary(host.to_binary, a.shape)
     end
 
     # Copies a Cumo::NArray to the host as the Numo type of the same name.
     # @param a [Cumo::NArray]
     # @return [Numo::NArray]
     def self.to_numo(a)
-      name = NUMO_TYPE_NAMES.find { |n| a.is_a?(Cumo.const_get(n)) }
-      raise TypeError, "can't convert #{a.class} into Numo::NArray" unless name
+      type = NUMO_TYPE_NAMES.find { |n| a.is_a?(Cumo.const_get(n)) }
+      raise TypeError, "can't convert #{a.class} into #{name.sub('Cumo', 'Numo')}" unless type && a.is_a?(self)
 
       require "numo/narray"
-      Numo.const_get(name).from_binary(a.to_binary, a.shape)
+      Numo.const_get(type).from_binary(a.to_host.to_binary, a.shape)
     end
 
     # parse matrix like matlab, octave

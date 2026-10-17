@@ -101,7 +101,8 @@ a = xm::DFloat.new(3,5).seq
 
 `Cumo::NArray.from_numo` copies a Numo array to the GPU, and `Cumo::NArray.to_numo` copies a Cumo array back to the host.
 The type keeps its name, so a `Numo::Int32` becomes a `Cumo::Int32` and back.
-Both copy the bytes as they are, where `Cumo::NArray.cast` would read the elements one by one through a Ruby Array.
+Both copy the bytes, where `Cumo::NArray.cast` would read the elements one by one through a Ruby Array.
+A byte-swapped array arrives in host order.
 
 ```ruby
 require 'numo/narray'

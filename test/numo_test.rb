@@ -55,6 +55,36 @@ class NumoConversionTest < CumoTestBase
     end
   end
 
+  test "empty views on either side are copied with their shape" do
+    TYPE_NAMES.each do |name|
+      src = numo_array(name, 3, 4)
+      a = Cumo::NArray.from_numo(src)
+      [[[], true], [[], 1..2]].each do |index|
+        assert_equal(src[*index].shape, Cumo::NArray.from_numo(src[*index]).shape, "#{name} #{index}")
+        assert_equal(a[*index].shape, Cumo::NArray.to_numo(a[*index]).shape, "#{name} #{index}")
+      end
+    end
+  end
+
+  test "byte-swapped arrays are copied as their values in host order" do
+    (TYPE_NAMES - ["Bit"]).each do |name|
+      src = numo_array(name, 3, 5)
+      a = Cumo::NArray.from_numo(src.to_network)
+      assert_false(a.byte_swapped?, name)
+      assert_equal(src.to_a, a.to_a, name)
+      b = Cumo::NArray.to_numo(a.to_network)
+      assert_false(b.byte_swapped?, name)
+      assert_equal(src.to_a, b.to_a, name)
+    end
+  end
+
+  test "a typed class takes and gives only its own type" do
+    assert_equal(Cumo::DFloat, Cumo::DFloat.from_numo(Numo::DFloat[1, 2]).class)
+    assert_equal(Numo::DFloat, Cumo::DFloat.to_numo(Cumo::DFloat[1, 2]).class)
+    assert_raise(TypeError) { Cumo::DFloat.from_numo(Numo::Int32[1, 2]) }
+    assert_raise(TypeError) { Cumo::DFloat.to_numo(Cumo::Int32[1, 2]) }
+  end
+
   test "from_numo raises TypeError for what is not a Numo array of a shared type" do
     [Numo::RObject[1], Cumo::DFloat[1], [1, 2], 1].each do |x|
       assert_raise(TypeError) { Cumo::NArray.from_numo(x) }
