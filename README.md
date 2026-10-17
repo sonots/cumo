@@ -352,7 +352,7 @@ freqs = Cumo::FFT.fftfreq(1024, d: 0.01)
 ```
 
 The functions are `fft`, `ifft`, `rfft`, `irfft`, `hfft`, `ihfft`, `fft2`, `ifft2`, `rfft2`, `irfft2`, `fftn`, `ifftn`, `rfftn`, `irfftn`, `fftfreq`, `rfftfreq`, `fftshift` and `ifftshift`, as in numpy.
-`fftconvolve(a, b)` answers the full linear convolution, as `scipy.signal.fftconvolve` does in its `"full"` mode.
+`fftconvolve(a, b)` answers the full linear convolution, as `scipy.signal.fftconvolve` does in its `"full"` mode, and pads each axis to a length cuFFT computes fast on the way.
 Single precision stays single: `SFloat`, `SComplex`, `HFloat` and `BFloat` give `SComplex`, or `SFloat` for a real result, and every other type gives `DComplex` or `DFloat`, as in numpy 2 and CuPy.
 Errors follow numpy: an axis out of range raises `Cumo::NArray::DimensionError`, a transform of no points `ArgumentError`, and a complex input to `rfft` `TypeError`.
 
@@ -362,10 +362,11 @@ Cumo looks for the cuFFT header when it is built, and loads the library the firs
 
 A thread keeps up to 16 cuFFT plans for each device, and reuses one when a transform of the same type and shape comes again.
 `Cumo::CUDA::Cufft.plan_cache_info` answers how many plans it holds and how often they were reused, and `Cumo::CUDA::Cufft.clear_plan_cache` lets them go.
-The plans also go when their thread ends, and when the memory pool runs out of memory.
+A thread's plans also go when it ends, and when an allocation it makes from the memory pool runs out of memory.
 
 `require "cumo/pocketfft"` brings in `Cumo::Pocketfft`, the functions of `Numo::Pocketfft` from [numo-pocketfft](https://github.com/yoshoku/numo-pocketfft).
-They keep its single positional argument, its double precision results and its errors, so code written for numo-pocketfft runs on the GPU after the replacement of `Numo` with `Cumo` above.
+They keep its single positional argument, its double precision results and the `ArgumentError`s it raises, so code written for numo-pocketfft runs on the GPU after the replacement of `Numo` with `Cumo` above.
+A 0-dimensional array raises `Cumo::NArray::DimensionError`, where numo-pocketfft fails on it in a different way in each function.
 
 ### Fused Operations
 

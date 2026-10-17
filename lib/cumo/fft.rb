@@ -189,19 +189,26 @@ module Cumo
     # scipy.signal.fftconvolve does in its "full" mode.
     # @param a [Cumo::NArray] first input
     # @param b [Cumo::NArray] second input, with as many dimensions as a
-    # @return [Cumo::NArray] real if both inputs are real, and single precision if both are
+    # @return [Cumo::NArray] real if both inputs are real, and single precision if both are;
+    #   a * b for two 0-dimensional inputs, and an empty 1-dimensional array if either is empty, as in scipy
     def fftconvolve(a, b)
       check_array(a)
       check_array(b)
       return a * b if a.ndim.zero? && b.ndim.zero?
       raise ArgumentError, 'in1 and in2 should have the same dimensionality' if a.ndim != b.ndim
-      return DFloat.new(0) if a.empty? || b.empty?
+
+      complex = complex?(a) || complex?(b)
+      return convolution_type(a, b, complex).new(0) if a.empty? || b.empty?
 
       s = a.shape.zip(b.shape).map! { |m, n| m + n - 1 }
+      fast = s.map { |n| fast_length(n) }
       axes = (0...a.ndim).to_a
-      return irfftn(rfftn(a, s: s, axes: axes) * rfftn(b, s: s, axes: axes), s: s, axes: axes) unless complex?(a) || complex?(b)
-
-      ifftn(fftn(a, s: s, axes: axes) * fftn(b, s: s, axes: axes), axes: axes)
+      out = if complex
+              ifftn(spectrum_product(fftn(a, s: fast, axes: axes), fftn(b, s: fast, axes: axes)), axes: axes)
+            else
+              c2rn(spectrum_product(rfftn(a, s: fast, axes: axes), rfftn(b, s: fast, axes: axes)), fast, axes, 'backward', true)
+            end
+      fast == s ? out : out[*s.map { |n| 0...n }].dup
     end
 
     def c2cn(a, s, axes, norm, inverse)
@@ -220,7 +227,7 @@ module Cumo
 
     def r2cn(a, s, axes, norm)
       check_array(a)
-      raise TypeError, "expected a real array, got a #{a.class}" if a.is_a?(SComplex) || a.is_a?(DComplex)
+      raise TypeError, "expected a real array, got a #{a.class}" if complex?(a)
 
       norm = check_norm(norm)
       axes, s = check_axes(a, s, axes, false)
@@ -359,6 +366,41 @@ module Cumo
       a.is_a?(SComplex) || a.is_a?(DComplex)
     end
 
+    def convolution_type(a, b, complex)
+      single = [a, b].all? { |x| x.is_a?(SFloat) || x.is_a?(SComplex) || x.is_a?(HFloat) || x.is_a?(BFloat) }
+      if complex
+        single ? SComplex : DComplex
+      else
+        single ? SFloat : DFloat
+      end
+    end
+
+    def spectrum_product(x, y)
+      same = x.instance_of?(y.class)
+      x.inplace * y if same
+      same ? x : x * y
+    end
+
+    def fast_length(n)
+      best = 1 << (n - 1).bit_length
+      p7 = 1
+      while p7 < best
+        p5 = p7
+        while p5 < best
+          p3 = p5
+          while p3 < best
+            m = p3
+            m *= 2 while m < n
+            best = m if m < best
+            p3 *= 3
+          end
+          p5 *= 5
+        end
+        p7 *= 7
+      end
+      best
+    end
+
     def complex_type(a)
       case a
       when SComplex, SFloat, HFloat, BFloat then SComplex
@@ -434,7 +476,7 @@ module Cumo
 
     private_class_method :c2cn, :r2cn, :c2rn, :check_array, :check_narray, :check_norm, :swap_norm, :freq_scale, :roll_half,
                          :check_axis, :check_axes,
-                         :check_length, :one_length, :complex?, :complex_type, :real_type, :fit, :across, :trailing,
+                         :check_length, :one_length, :complex?, :convolution_type, :spectrum_product, :fast_length, :complex_type, :real_type, :fit, :across, :trailing,
                          :c2c_axes, :r2c_trailing, :c2r_trailing, :scale
   end
 end

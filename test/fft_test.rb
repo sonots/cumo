@@ -482,7 +482,11 @@ class FFTTest < CumoTestBase
       [[Cumo::DComplex, [6]], [Cumo::DFloat, [5]]],
       [[Cumo::SComplex, [3, 4]], [Cumo::SComplex, [2, 5]]],
       [[Cumo::DFloat, [3, 4, 5]], [Cumo::DFloat, [2, 3, 2]]],
-      [[Cumo::Int32, [7]], [Cumo::Int32, [1]]]
+      [[Cumo::Int32, [7]], [Cumo::Int32, [1]]],
+      [[Cumo::DFloat, [997]], [Cumo::DFloat, [3]]],
+      [[Cumo::DFloat, [8190]], [Cumo::DFloat, [2]]],
+      [[Cumo::DComplex, [11]], [Cumo::DComplex, [3]]],
+      [[Cumo::DFloat, [6, 7]], [Cumo::DFloat, [2, 7]]]
     ].each do |(ta, sa), (tb, sb)|
       a = ta.cast(Cumo::NArray.from_numo(numo_input(ta, *sa)))
       b = tb.cast(Cumo::NArray.from_numo(numo_input(tb, *sb)))
@@ -506,6 +510,9 @@ class FFTTest < CumoTestBase
     end
     assert_equal(6, Integer(Cumo::FFT.fftconvolve(Cumo::Int32.cast(2), Cumo::Int32.cast(3))))
     assert_equal([0], Cumo::FFT.fftconvolve(Cumo::DFloat.new(0), Cumo::DFloat[1, 2]).shape)
+    assert_equal(Cumo::SFloat, Cumo::FFT.fftconvolve(Cumo::SFloat.new(0), Cumo::SFloat[1, 2]).class)
+    assert_equal(Cumo::DComplex, Cumo::FFT.fftconvolve(Cumo::DComplex.new(0), Cumo::Int32[1]).class)
+    assert_equal([1, 7, 12, 14, 1000, 8192], [1, 7, 11, 13, 997, 8191].map { |n| Cumo::FFT.__send__(:fast_length, n) })
     assert_raise(ArgumentError) { Cumo::FFT.fftconvolve(Cumo::DFloat[1, 2], Cumo::DFloat[[1]]) }
     assert_raise(TypeError) { Cumo::FFT.fftconvolve([1, 2], Cumo::DFloat[1]) }
   end

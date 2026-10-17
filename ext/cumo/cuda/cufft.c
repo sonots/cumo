@@ -169,16 +169,22 @@ destroy_plan(const cufft_plan_t *p)
 }
 
 static void
-cufft_plan_cache_release(void *entry)
+drop_plans(cufft_plan_cache_t *cache)
 {
-    cufft_plan_cache_t *cache = (cufft_plan_cache_t*)entry;
     int i;
 
     for (i = 0; i < cache->count; i++) {
         destroy_plan(&cache->plans[i]);
     }
     cudaGetLastError();
-    memset(cache, 0, sizeof(*cache));
+    cache->count = 0;
+}
+
+static void
+cufft_plan_cache_release(void *entry)
+{
+    drop_plans((cufft_plan_cache_t*)entry);
+    memset(entry, 0, sizeof(cufft_plan_cache_t));
 }
 
 static cufftResult
@@ -227,7 +233,7 @@ take_plan(cufft_plan_cache_t *cache, cufftType type, int rank, const long long *
     p.batch = batch;
     status = make_plan(api, &p);
     if (status == CUFFT_ALLOC_FAILED || status == CUFFT_INTERNAL_ERROR) {
-        cufft_plan_cache_release(cache);
+        drop_plans(cache);
         rb_funcall(rb_define_module("GC"), rb_intern("start"), 0);
         rb_funcall(rb_path2class("Cumo::CUDA::MemoryPool"), rb_intern("free_all_blocks"), 0);
         status = make_plan(api, &p);
@@ -478,38 +484,6 @@ transform(VALUE x, VALUE vrank, cufft_kind_t kind, int direction, VALUE vn, int 
     return c.y;
 }
 
-/*
-  Returns how the cuFFT plan cache of the current thread and device has
-  been used since it was last emptied.
-
-  @return [Hash] size (plans held), capacity, hits and misses
- */
-static VALUE
-rb_cufft_plan_cache_info(VALUE self)
-{
-    cufft_plan_cache_t *cache = (cufft_plan_cache_t*)cumo_cuda_thread_local_get(&caches);
-    VALUE info = rb_hash_new();
-
-    rb_hash_aset(info, ID2SYM(rb_intern("size")), INT2NUM(cache->count));
-    rb_hash_aset(info, ID2SYM(rb_intern("capacity")), INT2NUM(CUFFT_PLAN_CACHE_SIZE));
-    rb_hash_aset(info, ID2SYM(rb_intern("hits")), ULL2NUM(cache->hits));
-    rb_hash_aset(info, ID2SYM(rb_intern("misses")), ULL2NUM(cache->misses));
-    return info;
-}
-
-/*
-  Destroys the cuFFT plans the current thread holds on the current device,
-  and sets the counts of plan_cache_info back to zero.
-
-  @return [nil]
- */
-static VALUE
-rb_cufft_clear_plan_cache(VALUE self)
-{
-    cumo_cuda_cufft_drop_plans();
-    return Qnil;
-}
-
 static VALUE
 rb_cufft_c2c(VALUE self, VALUE x, VALUE rank, VALUE inverse)
 {
@@ -551,9 +525,56 @@ cumo_cuda_cufft_drop_plans(void)
 {
 #ifdef CUFFT_FOUND
     if (cufft_functions.cufftDestroy != NULL) {
-        cufft_plan_cache_release(cumo_cuda_thread_local_get(&caches));
+        drop_plans((cufft_plan_cache_t*)cumo_cuda_thread_local_get(&caches));
     }
 #endif // CUFFT_FOUND
+}
+
+/*
+  Returns how the cuFFT plan cache of the current thread and device has
+  been used since clear_plan_cache last emptied it.
+
+  @return [Hash] size (plans held), capacity, hits and misses
+ */
+static VALUE
+rb_cufft_plan_cache_info(VALUE self)
+{
+    VALUE info = rb_hash_new();
+#ifdef CUFFT_FOUND
+    cufft_plan_cache_t *cache = (cufft_plan_cache_t*)cumo_cuda_thread_local_get(&caches);
+
+    rb_hash_aset(info, ID2SYM(rb_intern("size")), INT2NUM(cache->count));
+    rb_hash_aset(info, ID2SYM(rb_intern("capacity")), INT2NUM(CUFFT_PLAN_CACHE_SIZE));
+    rb_hash_aset(info, ID2SYM(rb_intern("hits")), ULL2NUM(cache->hits));
+    rb_hash_aset(info, ID2SYM(rb_intern("misses")), ULL2NUM(cache->misses));
+#else
+    rb_hash_aset(info, ID2SYM(rb_intern("size")), INT2FIX(0));
+    rb_hash_aset(info, ID2SYM(rb_intern("capacity")), INT2FIX(0));
+    rb_hash_aset(info, ID2SYM(rb_intern("hits")), INT2FIX(0));
+    rb_hash_aset(info, ID2SYM(rb_intern("misses")), INT2FIX(0));
+#endif // CUFFT_FOUND
+    return info;
+}
+
+/*
+  Destroys the cuFFT plans the current thread holds on the current device,
+  and sets the counts of plan_cache_info back to zero.
+
+  @return [nil]
+ */
+static VALUE
+rb_cufft_clear_plan_cache(VALUE self)
+{
+#ifdef CUFFT_FOUND
+    cufft_plan_cache_t *cache = (cufft_plan_cache_t*)cumo_cuda_thread_local_get(&caches);
+
+    if (cache->count > 0) {
+        drop_plans(cache);
+    }
+    cache->hits = 0;
+    cache->misses = 0;
+#endif // CUFFT_FOUND
+    return Qnil;
 }
 
 void
@@ -569,12 +590,12 @@ Init_cumo_cuda_cufft(void)
     eCufftError = rb_define_class_under(mCUDA, "CufftError", rb_eStandardError);
 
     rb_define_singleton_method(mCufft, "available?", rb_cufft_available_p, 0);
+    rb_define_singleton_method(mCufft, "plan_cache_info", rb_cufft_plan_cache_info, 0);
+    rb_define_singleton_method(mCufft, "clear_plan_cache", rb_cufft_clear_plan_cache, 0);
 #ifdef CUFFT_FOUND
     cumo_cuda_thread_local_init(&caches, sizeof(cufft_plan_cache_t));
     cumo_cuda_thread_local_on_exit(&caches, cufft_plan_cache_release);
     rb_define_singleton_method(mCufft, "version", rb_cufft_version, 0);
-    rb_define_singleton_method(mCufft, "plan_cache_info", rb_cufft_plan_cache_info, 0);
-    rb_define_singleton_method(mCufft, "clear_plan_cache", rb_cufft_clear_plan_cache, 0);
     rb_define_singleton_method(mCufft, "c2c", rb_cufft_c2c, 3);
     rb_define_singleton_method(mCufft, "r2c", rb_cufft_r2c, 2);
     rb_define_singleton_method(mCufft, "c2r", rb_cufft_c2r, 4);

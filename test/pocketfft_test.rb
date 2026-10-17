@@ -83,6 +83,14 @@ class PocketfftTest < CumoTestBase
     end
   end
 
+  test "a 0-dimensional array raises DimensionError, where numo-pocketfft fails in a different way each time" do
+    %i[fftn ifftn rfftn irfftn].each do |name|
+      [Cumo::DFloat.cast(1.5), Cumo::DComplex.cast(Complex(1, 2))].each do |x|
+        assert_raise(Cumo::NArray::DimensionError, "#{name} #{x.class}") { Cumo::Pocketfft.public_send(name, x) }
+      end
+    end
+  end
+
   test "fftconvolve answers what numo-pocketfft answers, edges included" do
     [
       [[Numo::DFloat, [3]], [Numo::DFloat, [2]]],

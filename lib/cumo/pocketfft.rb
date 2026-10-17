@@ -7,7 +7,8 @@ module Cumo
   # by Cumo::FFT. As there, they take one array and nothing else, the 1- and
   # 2-dimensional ones take only 1- and 2-dimensional arrays, the input is
   # cast to double precision, and what numo-pocketfft refuses raises the same
-  # ArgumentError.
+  # ArgumentError. A 0-dimensional array raises DimensionError, where
+  # numo-pocketfft fails on it in a different way in each function.
   module Pocketfft
     DIMENSIONS = { 1 => 'one', 2 => 'two' }.freeze
     private_constant :DIMENSIONS
@@ -117,6 +118,7 @@ module Cumo
       raise ArgumentError, 'Expect class of input array to be Cumo::NArray.' unless a.is_a?(NArray)
       raise ArgumentError, 'Expect input array to be non-empty.' if a.empty?
       raise ArgumentError, "Expect input array to be #{DIMENSIONS[ndim]}-dimensional." if ndim && a.ndim != ndim
+      raise NArray::DimensionError, 'invalid axis (0 for 0-dimension)' if a.ndim.zero?
 
       a
     end
