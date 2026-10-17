@@ -72,6 +72,7 @@ void Init_cumo_cuda_nvrtc();
 void Init_cumo_cuda_cublas();
 void Init_cumo_cuda_cudnn();
 void Init_cumo_cuda_cusolver();
+void Init_cumo_cuda_cufft();
 
 void
 cumo_debug_breakpoint(void)
@@ -245,4 +246,5 @@ Init_cumo()
     Init_cumo_cuda_cublas();
     Init_cumo_cuda_cudnn();
     Init_cumo_cuda_cusolver();
+    Init_cumo_cuda_cufft();
 }

@@ -69,6 +69,7 @@ cuda/nvrtc
 cuda/cudnn
 cuda/cudnn_impl
 cuda/cusolver
+cuda/cufft
 )
 %w[bit int8 int16 int32 int64 uint8 uint16 uint32 uint64 hfloat bfloat sfloat dfloat scomplex dcomplex robject].each do |type_name|
   srcs << "narray/types/#{type_name}"
@@ -203,6 +204,13 @@ if have_cusolver?
   have_func('cusolverDnXgeev', 'cusolverDn.h')
   have_func('cusolverDnXsytrf', 'cusolverDn.h')
   have_func('cusolverDnXhetrf', 'cusolverDn.h')
+end
+
+if have_header('cufft.h')
+  $CFLAGS << " -DCUFFT_FOUND"
+  $CXXFLAGS << " -DCUFFT_FOUND"
+else
+  message("cuFFT header not found; building without Cumo::FFT\n")
 end
 
 have_library('stdc++')
