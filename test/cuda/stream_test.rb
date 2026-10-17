@@ -151,9 +151,9 @@ module Cumo::CUDA
 
       s1 = Stream.new(non_blocking: true)
       s2 = Stream.new(non_blocking: true)
-      x = Cumo::SFloat.new(2048, 2048).fill(1)
       y = nil
       s1.use
+      x = Cumo::SFloat.new(2048, 2048).fill(1)
       y = x.gemm(x)
       done = s1.record
       s2.use
@@ -181,6 +181,7 @@ module Cumo::CUDA
       x = Cumo::SFloat.new(1000).seq
       y = Cumo::SFloat.zeros(1000)
       f = mod.get_function("twice")
+      s.wait_event(Stream.null.record)
       f.launch([y, x, [1000].pack("l")], grid: 4, block: 256, stream: s)
       s.synchronize
       assert_equal((x * 2).to_a, y.to_a)

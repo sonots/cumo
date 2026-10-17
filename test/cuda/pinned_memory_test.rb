@@ -71,6 +71,7 @@ module Cumo::CUDA
       a = Cumo::SFloat.new(1 << 22).seq
       dst = PinnedMemory.new(a.byte_size)
       s = Stream.new(non_blocking: true)
+      s.wait_event(Stream.null.record)
       a.get(dst, stream: s)
       assert_equal(a[-4..-1].to_a, dst.read(16, a.byte_size - 16).unpack("f*"))
       assert_same(a, dst.instance_variable_get(:@busy_with)) if dst.instance_variable_get(:@state)[1]
