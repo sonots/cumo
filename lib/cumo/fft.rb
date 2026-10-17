@@ -122,8 +122,8 @@ module Cumo
       c2rn(a, s, axes, norm, false)
     end
 
-    # Computes the discrete Fourier transform of a signal whose spectrum is
-    # Hermitian, from the half of it, answering a real array.
+    # Computes the discrete Fourier transform of a signal with Hermitian
+    # symmetry, from the half of it, answering its spectrum, which is real.
     # @param a [Cumo::NArray] input array, the half of a Hermitian signal
     # @param n [Integer, nil] length of the output along the axis; 2 * (m - 1) for an input of m points by default
     # @param axis [Integer] axis to transform
@@ -131,7 +131,11 @@ module Cumo
     # @return [Cumo::SFloat, Cumo::DFloat]
     def hfft(a, n: nil, axis: -1, norm: nil)
       check_array(a)
-      c2rn(complex_type(a).cast(a).conj, one_length(n), [axis], swap_norm(norm), true)
+      norm = swap_norm(norm)
+      x = complex_type(a).cast(a)
+      x = x.dup if x.equal?(a)
+      x.inplace.conj
+      c2rn(x, one_length(n), [axis], norm, true)
     end
 
     # Computes the inverse of hfft from a real input.
@@ -233,6 +237,11 @@ module Cumo
 
     def check_array(a)
       raise NotImplementedError, 'Cumo is built without cuFFT' unless CUDA::Cufft.available?
+
+      check_narray(a)
+    end
+
+    def check_narray(a)
       raise TypeError, "expected a Cumo::NArray, got a #{a.class}" unless a.is_a?(NArray)
     end
 
@@ -258,13 +267,15 @@ module Cumo
     def freq_scale(n, d)
       raise ArgumentError, 'n should be an integer' unless n.is_a?(Integer)
       raise ArgumentError, 'n should not be negative' if n.negative?
-      raise ZeroDivisionError, 'float division by zero' if (n * d).zero?
 
-      1.0 / (n * d)
+      spacing = n * Float(d)
+      raise ZeroDivisionError, 'float division by zero' if spacing.zero?
+
+      1.0 / spacing
     end
 
     def roll_half(x, axes, sign)
-      raise TypeError, "expected a Cumo::NArray, got a #{x.class}" unless x.is_a?(NArray)
+      check_narray(x)
 
       axes = (0...x.ndim).to_a if axes.nil?
       axes = [axes] if axes.is_a?(Integer)
@@ -275,12 +286,19 @@ module Cumo
         i = check_axis(x, ax)
         shifts[i] += sign * (x.shape[i] / 2)
       end
-      index = Array.new(x.ndim, true)
-      shifts.each do |i, k|
-        n = x.shape[i]
-        index[i] = (Int64.new(n).seq + (n - (k % n))) % n if n.nonzero? && (k % n).nonzero?
+      return x.dup if x.empty?
+
+      blocks = x.shape.each_with_index.map do |n, i|
+        k = shifts[i] % n
+        k.zero? ? [[true, true]] : [[(n - k)...n, 0...k], [0...(n - k), k...n]]
       end
-      index.all?(true) ? x.dup : x[*index].dup
+      return x.dup if blocks.all? { |b| b.size == 1 }
+
+      out = x.class.new(*x.shape).allocate
+      blocks.reduce([[]]) { |acc, elem| acc.product(elem).map! { |prefix, pair| prefix + [pair] } }.each do |pairs|
+        out[*pairs.map(&:last)] = x[*pairs.map(&:first)]
+      end
+      out
     end
 
     def check_axis(a, axis)
@@ -390,7 +408,7 @@ module Cumo
       out
     end
 
-    private_class_method :c2cn, :r2cn, :c2rn, :check_array, :check_norm, :swap_norm, :freq_scale, :roll_half,
+    private_class_method :c2cn, :r2cn, :c2rn, :check_array, :check_narray, :check_norm, :swap_norm, :freq_scale, :roll_half,
                          :check_axis, :check_axes,
                          :check_length, :one_length, :complex_type, :real_type, :fit, :across, :trailing,
                          :c2c_axes, :r2c_trailing, :c2r_trailing, :scale

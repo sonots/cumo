@@ -395,8 +395,18 @@ class FFTTest < CumoTestBase
       assert_close(expected / 9, Cumo::FFT.ihfft(a), tol(type), "ihfft #{type}")
       assert_close(expected, Cumo::FFT.ihfft(a, norm: "forward"), tol(type), "ihfft forward #{type}")
     end
+    src = numo_input(Cumo::DComplex, 6, 4)
+    a = Cumo::NArray.from_numo(src)
+    assert_close(irfft_along(src.conj, 0, 7) * 7, Cumo::FFT.hfft(a, n: 7, axis: 0), 1e-12)
+    real = Cumo::NArray.from_numo(numo_input(Cumo::DFloat, 3, 9))
+    assert_close(dft(Cumo::NArray.to_numo(real))[true, 0..4].conj / 3, Cumo::FFT.ihfft(real, norm: "ortho"), 1e-12)
     real = Cumo::DFloat.new(10).rand
     assert_close(Cumo::NArray.to_numo(real), Cumo::FFT.hfft(Cumo::FFT.ihfft(real), n: 10), 1e-12)
+    flagged = Cumo::DComplex[1, Complex(2, 1), Complex(3, -1), 4]
+    before = flagged.to_a
+    Cumo::FFT.hfft(flagged.inplace)
+    Cumo::FFT.hfft(flagged)
+    assert_equal(before, flagged.to_a)
     assert_equal(Cumo::SFloat, Cumo::FFT.hfft(Cumo::SComplex[1, 2, 3]).class)
     assert_equal(Cumo::SComplex, Cumo::FFT.ihfft(Cumo::SFloat[1, 2, 3]).class)
     assert_raise(TypeError) { Cumo::FFT.ihfft(Cumo::DComplex[1, 2]) }
@@ -412,6 +422,8 @@ class FFTTest < CumoTestBase
       end
     end
     assert_equal(Cumo::DFloat, Cumo::FFT.fftfreq(4).class)
+    assert_equal(Cumo::FFT.fftfreq(4, d: 0.5).to_a, Cumo::FFT.fftfreq(4, d: Cumo::DFloat.cast(0.5)).to_a)
+    assert_equal(Cumo::FFT.rfftfreq(6, d: 0.25).to_a, Cumo::FFT.rfftfreq(6, d: Rational(1, 4)).to_a)
     assert_raise(ArgumentError) { Cumo::FFT.fftfreq(4.0) }
     assert_raise(ArgumentError) { Cumo::FFT.rfftfreq(-1) }
     assert_raise(ZeroDivisionError) { Cumo::FFT.fftfreq(0) }
@@ -438,6 +450,14 @@ class FFTTest < CumoTestBase
     assert_equal([1, Complex(2, 3), 4, 5], c.to_a)
     scalar = Cumo::FFT.fftshift(Cumo::Int32.cast(7))
     assert_equal([[], 7], [scalar.shape, Integer(scalar)])
+    [[0, 4], [4, 0], [3, 0, 4]].each do |shape|
+      assert_equal(shape, Cumo::FFT.fftshift(Cumo::DFloat.new(*shape)).shape, shape.inspect)
+      assert_equal(shape, Cumo::FFT.ifftshift(Cumo::DFloat.new(*shape), axes: -1).shape, shape.inspect)
+    end
+    flagged = Cumo::DFloat[1, 2, 3, 4, 5]
+    shifted = Cumo::FFT.fftshift(flagged.inplace)
+    assert_equal([[1, 2, 3, 4, 5], [4, 5, 1, 2, 3]], [flagged.to_a, shifted.to_a])
+    assert_not_same(shifted, shifted * 2)
     assert_raise(Cumo::NArray::DimensionError) { Cumo::FFT.fftshift(a, axes: 3) }
     assert_raise(TypeError) { Cumo::FFT.fftshift(a, axes: 1.0) }
     assert_raise(TypeError) { Cumo::FFT.fftshift([1, 2, 3]) }
