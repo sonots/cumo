@@ -97,6 +97,23 @@ end
 a = xm::DFloat.new(3,5).seq
 ```
 
+### Moving Arrays Between Numo And Cumo
+
+`Cumo::NArray.from_numo` copies a Numo array to the GPU, and `Cumo::NArray.to_numo` copies a Cumo array back to the host.
+The type keeps its name, so a `Numo::Int32` becomes a `Cumo::Int32` and back.
+Both copy the bytes as they are, where `Cumo::NArray.cast` would read the elements one by one through a Ruby Array.
+
+```ruby
+require 'numo/narray'
+require 'cumo/narray'
+
+a = Cumo::NArray.from_numo(Numo::SFloat.new(3,5).seq)  #=> Cumo::SFloat
+b = Cumo::NArray.to_numo(a * 2)                         #=> Numo::SFloat
+```
+
+Cumo does not depend on Numo. `to_numo` requires `numo/narray` when it is called, so Numo has to be installed for it.
+`HFloat`, `BFloat` and `RObject` raise `TypeError`, since Numo has no half-precision types and an `RObject` holds Ruby objects rather than bytes.
+
 ### Incompatibility With Numo
 
 Numo returns a Ruby numeric object wherever a result is 0-dimensional, while Cumo returns the 0-dimensional NArray itself.
