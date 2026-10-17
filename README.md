@@ -336,6 +336,38 @@ A function waits for the current stream when it answers a Ruby number, or when i
 `solve`, `inv` and `det` read back whether the matrix was singular, `cho_fact` whether it was positive definite, and `eigh` and `svd` whether they converged.
 `matmul`, `dot` of two matrices, `matrix_power` to a positive power, `cholesky`, `cho_solve`, `qr` and `norm` along an axis wait for nothing, so a run of them is queued without the host waiting.
 
+### Fourier Transforms
+
+`require "cumo/fft"` brings in `Cumo::FFT`, the functions of `numpy.fft` on the GPU through cuFFT.
+They take numpy's arguments as keywords: `n:`, `axis:` and `norm:` for the one-dimensional transforms, and `s:`, `axes:` and `norm:` for the others.
+
+```ruby
+require "cumo/fft"
+
+x = Cumo::SFloat.new(1024).rand
+spectrum = Cumo::FFT.rfft(x)
+back = Cumo::FFT.irfft(spectrum, n: 1024)
+image = Cumo::FFT.fft2(Cumo::DComplex.new(256, 256).rand, norm: "ortho")
+freqs = Cumo::FFT.fftfreq(1024, d: 0.01)
+```
+
+The functions are `fft`, `ifft`, `rfft`, `irfft`, `hfft`, `ihfft`, `fft2`, `ifft2`, `rfft2`, `irfft2`, `fftn`, `ifftn`, `rfftn`, `irfftn`, `fftfreq`, `rfftfreq`, `fftshift` and `ifftshift`, as in numpy.
+`fftconvolve(a, b)` answers the full linear convolution, as `scipy.signal.fftconvolve` does in its `"full"` mode, and pads each axis to a length cuFFT computes fast on the way.
+Single precision stays single: `SFloat`, `SComplex`, `HFloat` and `BFloat` give `SComplex`, or `SFloat` for a real result, and every other type gives `DComplex` or `DFloat`, as in numpy 2 and CuPy.
+Errors follow numpy: an axis out of range raises `Cumo::NArray::DimensionError`, a transform of no points `ArgumentError`, and a complex input to `rfft` `TypeError`.
+
+Cumo looks for the cuFFT header when it is built, and loads the library the first time a transform runs, so `require "cumo"` does not pay for it.
+`Cumo::CUDA::Cufft.available?` answers whether it can be loaded.
+`fftfreq`, `rfftfreq`, `fftshift` and `ifftshift` work without it.
+
+A thread keeps up to 16 cuFFT plans for each device, and reuses one when a transform of the same type and shape comes again.
+`Cumo::CUDA::Cufft.plan_cache_info` answers how many plans it holds and how often they were reused, and `Cumo::CUDA::Cufft.clear_plan_cache` lets them go.
+A thread's plans also go when it ends, and when an allocation it makes from the memory pool runs out of memory.
+
+`require "cumo/pocketfft"` brings in `Cumo::Pocketfft`, the functions of `Numo::Pocketfft` from [numo-pocketfft](https://github.com/yoshoku/numo-pocketfft).
+They keep its single positional argument, its double precision results and the `ArgumentError`s it raises, so code written for numo-pocketfft runs on the GPU after the replacement of `Numo` with `Cumo` above.
+A 0-dimensional array raises `Cumo::NArray::DimensionError`, where numo-pocketfft fails on it in a different way in each function.
+
 ### Fused Operations
 
 `layer_norm`, `rms_norm` and `softmax` normalize along the last axis in one kernel each, and `quantize_symmetric` takes it to 8-bit integers in one more.
