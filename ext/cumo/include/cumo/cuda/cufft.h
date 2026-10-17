@@ -18,6 +18,9 @@ extern "C" {
 
 extern VALUE cumo_cuda_eCufftError;
 
+void
+cumo_cuda_cufft_drop_plans(void);
+
 #ifdef CUFFT_FOUND
 
 void

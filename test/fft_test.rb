@@ -142,6 +142,18 @@ class FFTTest < CumoTestBase
     assert_close(dft(src, axis: 0)[0..2, true], Cumo::FFT.rfft(Cumo::NArray.from_numo(src), axis: 0), 1e-12)
   end
 
+  test "rfft reads real views that start between two complex elements" do
+    [Cumo::DFloat, Cumo::SFloat].each do |type|
+      a = type.cast(Cumo::NArray.from_numo(numo_input(Cumo::DFloat, 3, 9)))
+      ref = Cumo::NArray.to_numo(a)
+      [[1, true], [2, 3..8], [1, 1..-1], [true, 1..7]].each do |index|
+        view = ref[*index]
+        expected = dft(view)[false, 0..(view.shape[-1] / 2)]
+        assert_close(expected, Cumo::FFT.rfft(a[*index]), tol(type), "#{type} #{index}")
+      end
+    end
+  end
+
   test "irfft inverts rfft and drops the imaginary part of the DC and Nyquist terms" do
     [Cumo::DComplex, Cumo::SComplex].each do |type|
       [2, 7, 8, 31, 32].each do |n|

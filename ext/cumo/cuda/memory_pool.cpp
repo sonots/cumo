@@ -2,6 +2,7 @@
 #include <cuda_runtime.h>
 #include "memory_pool_impl.hpp"
 #include "cumo.h"
+#include "cumo/cuda/cufft.h"
 #include "cumo/cuda/memory_pool.h"
 #include "cumo/cuda/runtime.h"
 
@@ -74,6 +75,7 @@ cumo_cuda_runtime_malloc(size_t size)
 
     outcome = pool_malloc(size, &ptr, &err);
     if (outcome == POOL_OUT_OF_MEMORY) {
+        cumo_cuda_cufft_drop_plans();
         // retry after GC
         rb_funcall(rb_define_module("GC"), rb_intern("start"), 0);
         outcome = pool_malloc(size, &ptr, &err);

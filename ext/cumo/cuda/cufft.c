@@ -159,23 +159,11 @@ typedef struct {
 static cumo_cuda_thread_local_t caches;
 
 static void
-evict_oldest_plan(cufft_plan_cache_t *cache)
+destroy_plan(const cufft_plan_t *p)
 {
-    int i, oldest = 0;
-    cufft_plan_t old;
-    cudaError_t wait;
-
-    for (i = 1; i < cache->count; i++) {
-        if (cache->plans[i].used < cache->plans[oldest].used) {
-            oldest = i;
-        }
-    }
-    old = cache->plans[oldest];
-    cache->plans[oldest] = cache->plans[--cache->count];
-    wait = cudaEventSynchronize(old.done);
-    cufft_functions.cufftDestroy(old.handle);
-    cudaEventDestroy(old.done);
-    cumo_cuda_runtime_check_status(wait);
+    cudaEventSynchronize(p->done);
+    cufft_functions.cufftDestroy(p->handle);
+    cudaEventDestroy(p->done);
 }
 
 static void
@@ -185,9 +173,7 @@ cufft_plan_cache_release(void *entry)
     int i;
 
     for (i = 0; i < cache->count; i++) {
-        cudaEventSynchronize(cache->plans[i].done);
-        cufft_functions.cufftDestroy(cache->plans[i].handle);
-        cudaEventDestroy(cache->plans[i].done);
+        destroy_plan(&cache->plans[i]);
     }
     cudaGetLastError();
     memset(cache, 0, sizeof(*cache));
@@ -212,10 +198,9 @@ make_plan(const __typeof__(cufft_functions) *api, cufft_plan_t *p)
 }
 
 static cufft_plan_t
-cufft_plan(cufftType type, int rank, const long long *n, long long batch)
+take_plan(cufft_plan_cache_t *cache, cufftType type, int rank, const long long *n, long long batch)
 {
     const __typeof__(cufft_functions) *api = cufft_api();
-    cufft_plan_cache_t *cache = (cufft_plan_cache_t*)cumo_cuda_thread_local_get(&caches);
     cufft_plan_t p;
     cufftResult status;
     cudaError_t event_status;
@@ -225,14 +210,12 @@ cufft_plan(cufftType type, int rank, const long long *n, long long batch)
         cufft_plan_t *q = &cache->plans[i];
         if (q->type == type && q->rank == rank && q->batch == batch &&
             memcmp(q->n, n, sizeof(long long) * rank) == 0) {
-            q->used = ++cache->clock;
-            return *q;
+            p = *q;
+            *q = cache->plans[--cache->count];
+            return p;
         }
     }
 
-    if (cache->count == CUFFT_PLAN_CACHE_SIZE) {
-        evict_oldest_plan(cache);
-    }
     memset(&p, 0, sizeof(p));
     p.type = type;
     p.rank = rank;
@@ -253,12 +236,26 @@ cufft_plan(cufftType type, int rank, const long long *n, long long batch)
         api->cufftDestroy(p.handle);
         cumo_cuda_runtime_check_status(event_status);
     }
-    if (cache->count == CUFFT_PLAN_CACHE_SIZE) {
-        evict_oldest_plan(cache);
-    }
-    p.used = ++cache->clock;
-    cache->plans[cache->count++] = p;
     return p;
+}
+
+static void
+put_back_plan(cufft_plan_cache_t *cache, cufft_plan_t *p)
+{
+    int i, oldest = 0;
+
+    if (cache->count == CUFFT_PLAN_CACHE_SIZE) {
+        for (i = 1; i < cache->count; i++) {
+            if (cache->plans[i].used < cache->plans[oldest].used) {
+                oldest = i;
+            }
+        }
+        destroy_plan(&cache->plans[oldest]);
+        cudaGetLastError();
+        cache->plans[oldest] = cache->plans[--cache->count];
+    }
+    p->used = ++cache->clock;
+    cache->plans[cache->count++] = *p;
 }
 
 typedef enum {
@@ -268,54 +265,85 @@ typedef enum {
 } cufft_kind_t;
 
 typedef struct {
-    cufft_plan_t plan;
+    VALUE x;
+    VALUE y;
+    int ndim;
+    const size_t *shape;
+    const size_t *out_shape;
+    cufftType type;
+    int rank;
+    long long n[CUFFT_MAX_RANK];
+    long long batch;
     int direction;
-    void *in;
-    void *out;
     size_t in_bytes;
     int copy_in;
+    cufft_plan_cache_t *cache;
+    cufft_plan_t plan;
+    int have_plan;
     char *in_copy;
     char *work;
 } cufft_call_t;
+
+static int
+same_shape(VALUE a, int ndim, const size_t *shape)
+{
+    cumo_narray_t *na;
+
+    CumoGetNArray(a, na);
+    return CUMO_NA_NDIM(na) == ndim && memcmp(CUMO_NA_SHAPE(na), shape, sizeof(size_t) * ndim) == 0;
+}
 
 static VALUE
 exec_body(VALUE arg)
 {
     cufft_call_t *c = (cufft_call_t*)arg;
     const __typeof__(cufft_functions) *api = cufft_api();
-    cufftHandle h = c->plan.handle;
-    void *in = c->in;
+    void *in, *out;
+    cufftHandle h;
     cufftResult status;
 
-    if (c->copy_in) {
-        c->in_copy = cumo_cuda_runtime_malloc(c->in_bytes);
-        cumo_cuda_runtime_check_status(
-                cudaMemcpyAsync(c->in_copy, c->in, c->in_bytes, cudaMemcpyDeviceToDevice, cumo_cuda_stream()));
-        in = c->in_copy;
-    }
+    c->cache = (cufft_plan_cache_t*)cumo_cuda_thread_local_get(&caches);
+    c->plan = take_plan(c->cache, c->type, c->rank, c->n, c->batch);
+    c->have_plan = 1;
     if (c->plan.work_size > 0) {
         c->work = cumo_cuda_runtime_malloc(c->plan.work_size);
     }
+    if (c->copy_in) {
+        c->in_copy = cumo_cuda_runtime_malloc(c->in_bytes);
+    }
+    out = cumo_na_get_pointer_for_write(c->y);
+    in = cumo_na_get_offset_pointer_for_read(c->x);
+    if (!same_shape(c->x, c->ndim, c->shape) || cumo_na_check_contiguous(c->x) != Qtrue ||
+        !same_shape(c->y, c->ndim, c->out_shape)) {
+        rb_raise(rb_eRuntimeError, "NArray changed while preparing the transform");
+    }
+    if (c->copy_in) {
+        cumo_cuda_runtime_check_status(
+                cudaMemcpyAsync(c->in_copy, in, c->in_bytes, cudaMemcpyDeviceToDevice, cumo_cuda_stream()));
+        in = c->in_copy;
+    }
+
+    h = c->plan.handle;
     check_call(api->cufftSetWorkArea(h, c->work));
     check_call(api->cufftSetStream(h, cumo_cuda_stream()));
-    switch (c->plan.type) {
+    switch (c->type) {
     case CUFFT_C2C:
-        status = api->cufftExecC2C(h, (cufftComplex*)in, (cufftComplex*)c->out, c->direction);
+        status = api->cufftExecC2C(h, (cufftComplex*)in, (cufftComplex*)out, c->direction);
         break;
     case CUFFT_Z2Z:
-        status = api->cufftExecZ2Z(h, (cufftDoubleComplex*)in, (cufftDoubleComplex*)c->out, c->direction);
+        status = api->cufftExecZ2Z(h, (cufftDoubleComplex*)in, (cufftDoubleComplex*)out, c->direction);
         break;
     case CUFFT_R2C:
-        status = api->cufftExecR2C(h, (cufftReal*)in, (cufftComplex*)c->out);
+        status = api->cufftExecR2C(h, (cufftReal*)in, (cufftComplex*)out);
         break;
     case CUFFT_D2Z:
-        status = api->cufftExecD2Z(h, (cufftDoubleReal*)in, (cufftDoubleComplex*)c->out);
+        status = api->cufftExecD2Z(h, (cufftDoubleReal*)in, (cufftDoubleComplex*)out);
         break;
     case CUFFT_C2R:
-        status = api->cufftExecC2R(h, (cufftComplex*)in, (cufftReal*)c->out);
+        status = api->cufftExecC2R(h, (cufftComplex*)in, (cufftReal*)out);
         break;
     case CUFFT_Z2D:
-        status = api->cufftExecZ2D(h, (cufftDoubleComplex*)in, (cufftDoubleReal*)c->out);
+        status = api->cufftExecZ2D(h, (cufftDoubleComplex*)in, (cufftDoubleReal*)out);
         break;
     default:
         status = CUFFT_INVALID_TYPE;
@@ -329,6 +357,9 @@ static VALUE
 exec_ensure(VALUE arg)
 {
     cufft_call_t *c = (cufft_call_t*)arg;
+    if (c->have_plan) {
+        put_back_plan(c->cache, &c->plan);
+    }
     cumo_cuda_runtime_return_scratch(c->work, 0, NULL);
     cumo_cuda_runtime_return_scratch(c->in_copy, 0, NULL);
     return Qnil;
@@ -340,15 +371,12 @@ transform(VALUE x, VALUE vrank, cufft_kind_t kind, int direction, VALUE vn, int 
     VALUE in_class = rb_obj_class(x);
     VALUE out_class;
     cumo_narray_t *na;
-    cufftType type;
     size_t *shape, *out_shape;
     size_t in_elmsz;
-    long long n[CUFFT_MAX_RANK];
-    long long batch = 1;
-    int single, rank, ndim, i;
-    VALUE y;
+    int single, i;
     cufft_call_t c;
 
+    memset(&c, 0, sizeof(c));
     if (kind == CUFFT_KIND_R2C) {
         if (in_class == cumo_cSFloat) {
             single = 1;
@@ -366,88 +394,84 @@ transform(VALUE x, VALUE vrank, cufft_kind_t kind, int direction, VALUE vn, int 
     }
     switch (kind) {
     case CUFFT_KIND_C2C:
-        type = single ? CUFFT_C2C : CUFFT_Z2Z;
+        c.type = single ? CUFFT_C2C : CUFFT_Z2Z;
         out_class = in_class;
         in_elmsz = single ? sizeof(cufftComplex) : sizeof(cufftDoubleComplex);
         break;
     case CUFFT_KIND_R2C:
-        type = single ? CUFFT_R2C : CUFFT_D2Z;
+        c.type = single ? CUFFT_R2C : CUFFT_D2Z;
         out_class = single ? cumo_cSComplex : cumo_cDComplex;
         in_elmsz = single ? sizeof(cufftReal) : sizeof(cufftDoubleReal);
         break;
     default:
-        type = single ? CUFFT_C2R : CUFFT_Z2D;
+        c.type = single ? CUFFT_C2R : CUFFT_Z2D;
         out_class = single ? cumo_cSFloat : cumo_cDFloat;
         in_elmsz = single ? sizeof(cufftComplex) : sizeof(cufftDoubleComplex);
         break;
     }
 
-    rank = NUM2INT(vrank);
-    if (rank < 1 || rank > CUFFT_MAX_RANK) {
+    c.rank = NUM2INT(vrank);
+    if (c.rank < 1 || c.rank > CUFFT_MAX_RANK) {
         rb_raise(rb_eArgError, "rank must be 1 to %d", CUFFT_MAX_RANK);
     }
+    if (kind == CUFFT_KIND_C2R) {
+        c.n[c.rank - 1] = NUM2LL(vn);
+    }
     CumoGetNArray(x, na);
-    ndim = CUMO_NA_NDIM(na);
-    if (ndim < rank) {
-        rb_raise(cumo_na_eDimensionError, "a %d-dimensional array has no %d axes to transform", ndim, rank);
+    c.ndim = CUMO_NA_NDIM(na);
+    if (c.ndim < c.rank) {
+        rb_raise(cumo_na_eDimensionError, "a %d-dimensional array has no %d axes to transform", c.ndim, c.rank);
     }
     if (cumo_na_check_contiguous(x) != Qtrue) {
         rb_raise(rb_eArgError, "array must be contiguous");
     }
-    shape = ALLOCA_N(size_t, ndim);
-    out_shape = ALLOCA_N(size_t, ndim);
-    for (i = 0; i < ndim; i++) {
+    shape = ALLOCA_N(size_t, c.ndim);
+    out_shape = ALLOCA_N(size_t, c.ndim);
+    for (i = 0; i < c.ndim; i++) {
         shape[i] = out_shape[i] = CUMO_NA_SHAPE(na)[i];
     }
-    for (i = 0; i < rank; i++) {
-        n[i] = (long long)shape[ndim - rank + i];
+    for (i = 0; i < c.rank; i++) {
+        if (kind != CUFFT_KIND_C2R || i < c.rank - 1) {
+            c.n[i] = (long long)shape[c.ndim - c.rank + i];
+        }
     }
     if (kind == CUFFT_KIND_R2C) {
-        out_shape[ndim - 1] = shape[ndim - 1] / 2 + 1;
+        out_shape[c.ndim - 1] = shape[c.ndim - 1] / 2 + 1;
     } else if (kind == CUFFT_KIND_C2R) {
-        n[rank - 1] = NUM2LL(vn);
-        if (n[rank - 1] < 1 || shape[ndim - 1] != (size_t)(n[rank - 1] / 2 + 1)) {
+        long long last = c.n[c.rank - 1];
+        if (last < 1 || shape[c.ndim - 1] != (size_t)(last / 2 + 1)) {
             rb_raise(rb_eArgError, "a last axis of %"SZF"u does not hold the half spectrum of %lld points",
-                     shape[ndim - 1], n[rank - 1]);
+                     shape[c.ndim - 1], last);
         }
-        out_shape[ndim - 1] = (size_t)n[rank - 1];
+        out_shape[c.ndim - 1] = (size_t)last;
     }
-    for (i = 0; i < rank; i++) {
-        if (n[i] < 1) {
-            rb_raise(rb_eArgError, "Invalid number of FFT data points (%lld) specified.", n[i]);
+    for (i = 0; i < c.rank; i++) {
+        if (c.n[i] < 1) {
+            rb_raise(rb_eArgError, "Invalid number of FFT data points (%lld) specified.", c.n[i]);
         }
     }
-    for (i = 0; i < ndim - rank; i++) {
-        batch *= (long long)shape[i];
+    c.batch = 1;
+    for (i = 0; i < c.ndim - c.rank; i++) {
+        c.batch *= (long long)shape[i];
     }
 
-    y = cumo_na_new(out_class, ndim, out_shape);
-    if (batch == 0) {
-        return y;
+    c.y = cumo_na_new(out_class, c.ndim, out_shape);
+    if (c.batch == 0) {
+        return c.y;
     }
-
-    memset(&c, 0, sizeof(c));
-    c.out = cumo_na_get_pointer_for_write(y);
-    c.in = cumo_na_get_offset_pointer_for_read(x);
-    CumoGetNArray(x, na);
-    if (CUMO_NA_NDIM(na) != ndim || memcmp(CUMO_NA_SHAPE(na), shape, sizeof(size_t) * ndim) != 0 ||
-        cumo_na_check_contiguous(x) != Qtrue) {
-        rb_raise(rb_eRuntimeError, "NArray changed while taking its pointer");
-    }
-    CumoGetNArray(y, na);
-    if (CUMO_NA_NDIM(na) != ndim || memcmp(CUMO_NA_SHAPE(na), out_shape, sizeof(size_t) * ndim) != 0) {
-        rb_raise(rb_eRuntimeError, "NArray changed while taking its pointer");
-    }
-    c.in_bytes = in_elmsz * (size_t)batch;
-    for (i = ndim - rank; i < ndim; i++) {
+    c.x = x;
+    c.shape = shape;
+    c.out_shape = out_shape;
+    c.direction = direction;
+    c.in_bytes = in_elmsz * (size_t)c.batch;
+    for (i = c.ndim - c.rank; i < c.ndim; i++) {
         c.in_bytes *= shape[i];
     }
-    c.copy_in = (kind == CUFFT_KIND_C2R) && !overwrite;
-    c.direction = direction;
-    c.plan = cufft_plan(type, rank, n, batch);
+    c.copy_in = (kind == CUFFT_KIND_C2R && !overwrite) ||
+        (kind == CUFFT_KIND_R2C && cumo_na_get_offset(x) % (2 * in_elmsz) != 0);
     rb_ensure(exec_body, (VALUE)&c, exec_ensure, (VALUE)&c);
     RB_GC_GUARD(x);
-    return y;
+    return c.y;
 }
 
 static VALUE
@@ -479,10 +503,21 @@ static VALUE
 rb_cufft_available_p(VALUE self)
 {
 #ifdef CUFFT_FOUND
-    return Qtrue;
+    pthread_once(&cufft_once, load_cufft);
+    return cufft_error[0] == '\0' ? Qtrue : Qfalse;
 #else
     return Qfalse;
 #endif
+}
+
+void
+cumo_cuda_cufft_drop_plans(void)
+{
+#ifdef CUFFT_FOUND
+    if (cufft_functions.cufftDestroy != NULL) {
+        cufft_plan_cache_release(cumo_cuda_thread_local_get(&caches));
+    }
+#endif // CUFFT_FOUND
 }
 
 void
