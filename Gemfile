@@ -6,6 +6,7 @@ gemspec
 
 gem 'extconf_compile_commands_json'
 gem 'fiddle'
+gem 'numo-narray-alt'
 gem 'rake-compiler'
 gem 'test-unit'
 gem 'yard'
