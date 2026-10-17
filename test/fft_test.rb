@@ -197,11 +197,174 @@ class FFTTest < CumoTestBase
     assert_raise(TypeError) { Cumo::FFT.rfft(Cumo::DComplex[1, 2]) }
     assert_raise(ArgumentError) { Cumo::FFT.fft(a, norm: "bad") }
     assert_raise(ArgumentError) { Cumo::FFT.fft(a, n: 0) }
+    assert_raise(ArgumentError) { Cumo::FFT.fft(a, n: -1) }
     assert_raise(ArgumentError) { Cumo::FFT.fft(Cumo::DFloat.new(4, 0)) }
     assert_raise(ArgumentError) { Cumo::FFT.irfft(Cumo::DComplex[1]) }
     assert_raise(Cumo::NArray::DimensionError) { Cumo::FFT.fft(a, axis: 1) }
     assert_raise(Cumo::NArray::DimensionError) { Cumo::FFT.fft(a, axis: -2) }
     assert_raise(Cumo::NArray::DimensionError) { Cumo::FFT.fft(Cumo::DFloat.cast(1.5)) }
+  end
+
+  def dftn(x, axes, inverse: false)
+    axes.reduce(Numo::DComplex.cast(x)) { |acc, elem| dft(acc, axis: elem, inverse: inverse) }
+  end
+
+  def irfft_along(x, axis, n)
+    last = x.ndim - 1
+    axis += x.ndim if axis.negative?
+    y = dft(hermitian(x.swapaxes(axis, last).dup, n), inverse: true).real
+    y.swapaxes(axis, last).dup
+  end
+
+  def irfftn_ref(x, axes, n)
+    irfft_along(dftn(x, axes[0...-1], inverse: true), axes[-1], n)
+  end
+
+  def half(x, axis)
+    index = Array.new(x.ndim, true)
+    index[axis] = 0..(x.shape[axis] / 2)
+    x[*index]
+  end
+
+  test "fft2 and ifft2 transform the last two axes" do
+    [Cumo::DComplex, Cumo::SComplex, Cumo::DFloat, Cumo::SFloat].each do |type|
+      [[6, 10], [3, 5, 7]].each do |shape|
+        a = type.cast(Cumo::NArray.from_numo(numo_input(type, *shape)))
+        ref = Cumo::NArray.to_numo(a)
+        assert_close(dftn(ref, [-2, -1]), Cumo::FFT.fft2(a), tol(type), "fft2 #{type} #{shape}")
+        assert_close(dftn(ref, [-2, -1], inverse: true), Cumo::FFT.ifft2(a), tol(type), "ifft2 #{type} #{shape}")
+      end
+    end
+  end
+
+  test "fftn and ifftn transform every axis or any set of them" do
+    {
+      [7] => [nil, [0]],
+      [4, 6] => [nil, [0], [1, 0]],
+      [3, 4, 5] => [nil, [0], [1], [2], [0, 1], [1, 2], [0, 2], [2, 0], [-1, 0, 1]],
+      [2, 3, 4, 5] => [nil, [0, 2, 3], [1, 3], [3, 0, 1, 2]],
+      [2, 2, 3, 2, 3] => [nil, [0, 1, 2, 4]]
+    }.each do |shape, axes_list|
+      src = numo_input(Cumo::DComplex, *shape)
+      a = Cumo::NArray.from_numo(src)
+      axes_list.each do |axes|
+        all = axes || (0...shape.size).to_a
+        assert_close(dftn(src, all), Cumo::FFT.fftn(a, axes: axes), 1e-12, "fftn #{shape} #{axes}")
+        assert_close(dftn(src, all, inverse: true), Cumo::FFT.ifftn(a, axes: axes), 1e-12, "ifftn #{shape} #{axes}")
+      end
+    end
+  end
+
+  test "s crops, pads or keeps each axis, and alone picks the last axes" do
+    src = numo_input(Cumo::DComplex, 3, 5, 6)
+    a = Cumo::NArray.from_numo(src)
+    padded = Numo::DComplex.zeros(2, 5, 8)
+    padded[true, true, 0...6] = src[0...2, true, true]
+    assert_close(dftn(padded, [0, 2]), Cumo::FFT.fftn(a, s: [2, 8], axes: [0, 2]), 1e-12)
+    assert_close(dftn(src[true, true, 0...4], [0, 2]), Cumo::FFT.fftn(a, s: [-1, 4], axes: [0, 2]), 1e-12)
+    assert_close(dftn(src[true, 0...4, true], [1, 2]), Cumo::FFT.fftn(a, s: [4, 6]), 1e-12)
+    assert_close(dftn(src[true, 0...4, true], [1, 2]), Cumo::FFT.fft2(a, s: [4, 6]), 1e-12)
+  end
+
+  test "a repeated axis is transformed once for each time it is named" do
+    src = numo_input(Cumo::DComplex, 3, 4)
+    a = Cumo::NArray.from_numo(src)
+    assert_close(dftn(src, [1, 1]), Cumo::FFT.fftn(a, axes: [1, 1]), 1e-12)
+    assert_close(dftn(src, [1, 1], inverse: true), Cumo::FFT.ifftn(a, axes: [1, 1]), 1e-12)
+  end
+
+  test "rfftn halves the last of the axes" do
+    [Cumo::DFloat, Cumo::SFloat].each do |type|
+      {
+        [6, 9] => [nil, [1, 0], [0]],
+        [3, 4, 7] => [nil, [0, 1], [2, 0], [1, 2]],
+        [2, 3, 4, 5] => [nil, [3, 1, 0, 2]]
+      }.each do |shape, axes_list|
+        a = type.cast(Cumo::NArray.from_numo(numo_input(Cumo::DFloat, *shape)))
+        ref = Cumo::NArray.to_numo(a)
+        axes_list.each do |axes|
+          all = axes || (0...shape.size).to_a
+          expected = half(dftn(ref, all), all[-1] % shape.size)
+          assert_close(expected, Cumo::FFT.rfftn(a, axes: axes), tol(type), "rfftn #{type} #{shape} #{axes}")
+        end
+      end
+    end
+    src = numo_input(Cumo::DFloat, 4, 6)
+    assert_close(half(dftn(src, [0, 1]), 1), Cumo::FFT.rfft2(Cumo::NArray.from_numo(src)), 1e-12)
+  end
+
+  test "irfftn matches numpy for any input, Hermitian or not" do
+    [Cumo::DComplex, Cumo::SComplex].each do |type|
+      {
+        [6, 5] => [nil, [1, 0]],
+        [3, 4, 5] => [nil, [0, 1], [2, 0], [1, 2]],
+        [2, 3, 4, 5] => [nil, [3, 1, 0, 2]]
+      }.each do |shape, axes_list|
+        a = type.cast(Cumo::NArray.from_numo(numo_input(Cumo::DComplex, *shape)))
+        ref = Cumo::NArray.to_numo(a)
+        axes_list.each do |axes|
+          all = axes || (0...shape.size).to_a
+          n = 2 * (shape[all[-1]] - 1)
+          assert_close(irfftn_ref(ref, all, n), Cumo::FFT.irfftn(a, axes: axes), tol(type), "irfftn #{type} #{shape} #{axes}")
+        end
+      end
+    end
+    src = numo_input(Cumo::DComplex, 3, 4, 5)
+    a = Cumo::NArray.from_numo(src)
+    assert_close(irfftn_ref(src, [1, 2], 9), Cumo::FFT.irfftn(a, s: [4, 9], axes: [1, 2]), 1e-12)
+    assert_close(irfftn_ref(src, [1, 2], 9), Cumo::FFT.irfft2(a, s: [4, 9]), 1e-12)
+    assert_close(irfftn_ref(src, [1, 2], 5), Cumo::FFT.irfftn(a, s: [-1, -1], axes: [1, 2]), 1e-12)
+    real = Cumo::DFloat.new(4, 6, 7).rand
+    assert_close(Cumo::NArray.to_numo(real), Cumo::FFT.irfftn(Cumo::FFT.rfftn(real), s: [4, 6, 7]), 1e-12)
+  end
+
+  test "irfftn to one point along the last axis, which a multi-dimensional plan reads wrong" do
+    src = numo_input(Cumo::DComplex, 3, 1)
+    assert_close(irfftn_ref(src, [0, 1], 1), Cumo::FFT.irfftn(Cumo::NArray.from_numo(src), s: [3, 1]), 1e-12)
+    src = numo_input(Cumo::DComplex, 5, 2, 3)
+    expected = irfftn_ref(src[true, true, 0...1], [0, 2], 1)
+    assert_close(expected, Cumo::FFT.irfftn(Cumo::NArray.from_numo(src), s: [5, 1], axes: [0, 2]), 1e-12)
+    src = numo_input(Cumo::DComplex, 2, 3, 2, 2, 1)
+    assert_close(irfftn_ref(src, [0, 1, 2, 3, 4], 1), Cumo::FFT.irfftn(Cumo::NArray.from_numo(src), s: [2, 3, 2, 2, 1]), 1e-12)
+  end
+
+  test "irfftn leaves its input as it was, which a multi-dimensional plan would overwrite" do
+    a = Cumo::DComplex.new(4, 3).rand + (Complex::I * Cumo::DComplex.new(4, 3).rand)
+    before = a.to_a
+    Cumo::FFT.irfftn(a)
+    Cumo::FFT.irfft2(a)
+    assert_equal(before, a.to_a)
+  end
+
+  test "norm scales the N-dimensional transforms by every transformed length" do
+    src = numo_input(Cumo::DComplex, 4, 6)
+    a = Cumo::NArray.from_numo(src)
+    assert_close(dftn(src, [0, 1]) / Math.sqrt(24), Cumo::FFT.fftn(a, norm: "ortho"), 1e-12)
+    assert_close(dftn(src, [0, 1]) / 24, Cumo::FFT.fft2(a, norm: :forward), 1e-12)
+    assert_close(dftn(src, [0, 1], inverse: true) * 24, Cumo::FFT.ifftn(a, norm: "forward"), 1e-12)
+    assert_close(irfftn_ref(src, [0, 1], 10) * Math.sqrt(40), Cumo::FFT.irfftn(a, norm: "ortho"), 1e-12)
+  end
+
+  test "the N-dimensional transforms keep single precision single" do
+    assert_equal(Cumo::SComplex, Cumo::FFT.fft2(Cumo::SFloat.new(2, 2).seq).class)
+    assert_equal(Cumo::SComplex, Cumo::FFT.rfftn(Cumo::HFloat.new(2, 2).seq).class)
+    assert_equal(Cumo::SFloat, Cumo::FFT.irfftn(Cumo::SComplex.new(2, 2).seq).class)
+    assert_equal(Cumo::DComplex, Cumo::FFT.fftn(Cumo::Int32.new(2, 2).seq).class)
+  end
+
+  test "N-dimensional errors follow numpy" do
+    a = Cumo::DFloat.new(3, 4).seq
+    assert_raise(Cumo::NArray::DimensionError) { Cumo::FFT.fft2(Cumo::DFloat[1, 2, 3]) }
+    assert_raise(Cumo::NArray::DimensionError) { Cumo::FFT.fftn(a, axes: [0, 2]) }
+    assert_raise(ArgumentError) { Cumo::FFT.fftn(a, s: [3], axes: [0, 1]) }
+    assert_raise(ArgumentError) { Cumo::FFT.fftn(a, s: [0, 4]) }
+    assert_raise(ArgumentError) { Cumo::FFT.rfftn(a, axes: []) }
+    assert_raise(ArgumentError) { Cumo::FFT.irfftn(a, axes: []) }
+    assert_raise(TypeError) { Cumo::FFT.rfftn(Cumo::DComplex.new(2, 2).seq) }
+    assert_raise(TypeError) { Cumo::FFT.fftn(a, s: 4) }
+    assert_raise(TypeError) { Cumo::FFT.fftn(a, axes: 1) }
+    assert_same(a, Cumo::FFT.fftn(a, axes: []))
+    assert_equal([0, 3, 4], Cumo::FFT.fftn(Cumo::DFloat.new(0, 3, 4), axes: [1, 2]).shape)
   end
 
   test "the result is a fresh array that later operations do not write into" do
