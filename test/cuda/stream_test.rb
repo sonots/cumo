@@ -4,6 +4,10 @@ require_relative "../test_helper"
 
 module Cumo::CUDA
   class StreamTest < Test::Unit::TestCase
+    teardown do
+      Stream.null.use
+    end
+
     # Every launch, copy and library call goes to the current stream. Under a
     # non-blocking stream nothing orders itself after stream 0 any more, so
     # the results only agree if every one of them was moved.
@@ -151,7 +155,6 @@ module Cumo::CUDA
 
       s1 = Stream.new(non_blocking: true)
       s2 = Stream.new(non_blocking: true)
-      y = nil
       s1.use
       x = Cumo::SFloat.new(2048, 2048).fill(1)
       y = x.gemm(x)
@@ -181,7 +184,7 @@ module Cumo::CUDA
       x = Cumo::SFloat.new(1000).seq
       y = Cumo::SFloat.zeros(1000)
       f = mod.get_function("twice")
-      s.wait_event(Stream.null.record)
+      s.wait_event(Stream.null.record(Event.new(timing: false)))
       f.launch([y, x, [1000].pack("l")], grid: 4, block: 256, stream: s)
       s.synchronize
       assert_equal((x * 2).to_a, y.to_a)

@@ -4,6 +4,10 @@ require_relative "../test_helper"
 
 module Cumo::CUDA
   class PinnedMemoryTest < Test::Unit::TestCase
+    teardown do
+      Stream.null.use
+    end
+
     test "a buffer holds bytes that are read and written within its size" do
       p = PinnedMemory.new(16)
       assert_equal(16, p.bytesize)
@@ -71,7 +75,7 @@ module Cumo::CUDA
       a = Cumo::SFloat.new(1 << 22).seq
       dst = PinnedMemory.new(a.byte_size)
       s = Stream.new(non_blocking: true)
-      s.wait_event(Stream.null.record)
+      s.wait_event(Stream.null.record(Event.new(timing: false)))
       a.get(dst, stream: s)
       assert_equal(a[-4..-1].to_a, dst.read(16, a.byte_size - 16).unpack("f*"))
       assert_same(a, dst.instance_variable_get(:@busy_with)) if dst.instance_variable_get(:@state)[1]
