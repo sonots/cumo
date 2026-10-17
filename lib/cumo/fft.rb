@@ -122,6 +122,64 @@ module Cumo
       c2rn(a, s, axes, norm, false)
     end
 
+    # Computes the discrete Fourier transform of a signal whose spectrum is
+    # Hermitian, from the half of it, answering a real array.
+    # @param a [Cumo::NArray] input array, the half of a Hermitian signal
+    # @param n [Integer, nil] length of the output along the axis; 2 * (m - 1) for an input of m points by default
+    # @param axis [Integer] axis to transform
+    # @param norm [String, Symbol, nil] "backward" (the default), "ortho" or "forward"
+    # @return [Cumo::SFloat, Cumo::DFloat]
+    def hfft(a, n: nil, axis: -1, norm: nil)
+      check_array(a)
+      c2rn(complex_type(a).cast(a).conj, one_length(n), [axis], swap_norm(norm), true)
+    end
+
+    # Computes the inverse of hfft from a real input.
+    # @param (see .fft)
+    # @return [Cumo::SComplex, Cumo::DComplex]
+    # @raise [TypeError] if the input is complex
+    def ihfft(a, n: nil, axis: -1, norm: nil)
+      out = r2cn(a, one_length(n), [axis], swap_norm(norm))
+      out.inplace.conj
+      out
+    end
+
+    # Answers the sample frequencies of an n-point discrete Fourier
+    # transform, in cycles per unit of the sample spacing d.
+    # @param n [Integer] window length
+    # @param d [Numeric] sample spacing
+    # @return [Cumo::DFloat]
+    def fftfreq(n, d: 1.0)
+      scale = freq_scale(n, d)
+      k = DFloat.new(n).seq
+      half = ((n - 1) / 2) + 1
+      k[half..] -= n if n > half
+      k * scale
+    end
+
+    # Answers the sample frequencies of an n-point rfft.
+    # @param (see .fftfreq)
+    # @return [Cumo::DFloat]
+    def rfftfreq(n, d: 1.0)
+      scale = freq_scale(n, d)
+      DFloat.new((n / 2) + 1).seq * scale
+    end
+
+    # Moves the zero-frequency term to the middle of the spectrum.
+    # @param x [Cumo::NArray] input array
+    # @param axes [Integer, Array<Integer>, nil] axes to shift, every axis by default
+    # @return [Cumo::NArray] a new array of the type of the input
+    def fftshift(x, axes: nil)
+      roll_half(x, axes, 1)
+    end
+
+    # Undoes fftshift.
+    # @param (see .fftshift)
+    # @return (see .fftshift)
+    def ifftshift(x, axes: nil)
+      roll_half(x, axes, -1)
+    end
+
     def c2cn(a, s, axes, norm, inverse)
       check_array(a)
       norm = check_norm(norm)
@@ -187,6 +245,42 @@ module Cumo
       end
 
       name
+    end
+
+    def swap_norm(norm)
+      case check_norm(norm)
+      when 'backward' then 'forward'
+      when 'forward' then 'backward'
+      else 'ortho'
+      end
+    end
+
+    def freq_scale(n, d)
+      raise ArgumentError, 'n should be an integer' unless n.is_a?(Integer)
+      raise ArgumentError, 'n should not be negative' if n.negative?
+      raise ZeroDivisionError, 'float division by zero' if (n * d).zero?
+
+      1.0 / (n * d)
+    end
+
+    def roll_half(x, axes, sign)
+      raise TypeError, "expected a Cumo::NArray, got a #{x.class}" unless x.is_a?(NArray)
+
+      axes = (0...x.ndim).to_a if axes.nil?
+      axes = [axes] if axes.is_a?(Integer)
+      raise TypeError, "axes must be an Integer or an Array, got a #{axes.class}" unless axes.is_a?(Array)
+
+      shifts = Hash.new(0)
+      axes.each do |ax|
+        i = check_axis(x, ax)
+        shifts[i] += sign * (x.shape[i] / 2)
+      end
+      index = Array.new(x.ndim, true)
+      shifts.each do |i, k|
+        n = x.shape[i]
+        index[i] = (Int64.new(n).seq + (n - (k % n))) % n if n.nonzero? && (k % n).nonzero?
+      end
+      index.all?(true) ? x.dup : x[*index].dup
     end
 
     def check_axis(a, axis)
@@ -296,7 +390,8 @@ module Cumo
       out
     end
 
-    private_class_method :c2cn, :r2cn, :c2rn, :check_array, :check_norm, :check_axis, :check_axes,
+    private_class_method :c2cn, :r2cn, :c2rn, :check_array, :check_norm, :swap_norm, :freq_scale, :roll_half,
+                         :check_axis, :check_axes,
                          :check_length, :one_length, :complex_type, :real_type, :fit, :across, :trailing,
                          :c2c_axes, :r2c_trailing, :c2r_trailing, :scale
   end
