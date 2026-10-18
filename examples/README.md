@@ -46,7 +46,7 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 | `stream/thrust.rb` | Ported | |
 | `stream/cufft.rb` | Ported | `Cumo::FFT` needs Cumo 0.14.0 or later, built with cuFFT |
 | `stream/curand.rb` | Ported | `RandomState` and `lognormal` written in the example, over `rand_norm` |
-| `stream/cusolver.rb` | Ported | `Cumo::Linalg` needs Cumo 0.12.0 or later, built with cuSOLVER. `eigh` reads the upper triangle whatever `uplo:` says, as numo-linalg-alt does |
+| `stream/cusolver.rb` | Ported | `Cumo::Linalg` needs Cumo 0.12.0 or later, built with cuSOLVER |
 | `stream/cusparse.rb` | Not ported | No sparse matrix or cuSPARSE binding in Cumo |
 | `cufft/callback/*.rb` | Not ported | No cuFFT callbacks in `Cumo::FFT` |
 | `cutensor/*.rb` | Not ported | No cuTENSOR binding in Cumo |
@@ -62,3 +62,4 @@ A file marked "Not ported" is a stub. Running it prints which CuPy API the origi
 * Reductions in Cumo return 0-dimensional arrays rather than Ruby numbers, so a scalar that steers control flow is read back with `Float(...)` or `Integer(...)`, which reads a Numo scalar too.
 * `numpy.random.choice(n, k, replace=False)` is `(0...n).to_a.sample(k)`, and `numpy.where(cond, a, b)` is written as arithmetic on a 0/1 mask, since neither library has a direct counterpart.
 * Assertions from `cupy.testing` are written inline.
+* `Cumo::Linalg.eigh` reads the upper triangle whatever `uplo:` says, as numo-linalg-alt does, where `cupy.linalg.eigh` reads the triangle that `UPLO` names.
