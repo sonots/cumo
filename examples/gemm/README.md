@@ -3,7 +3,7 @@
 This example contains implementation of single-precision general matrix-multiplication  (SGEMM).
 The implementation is based on the one in [MAGMA](http://icl.cs.utk.edu/magma/).
 
-**Status: not ported.** `sgemm.rb` stops with a message. The kernel in `sgemm.cu` is kept unchanged, and `utils.rb` is ported, but Cumo has no way to launch a kernel: `cuLaunchKernel` is not bound and there is no `RawKernel`. See `../MISSING_FEATURES.md`.
+`sgemm.rb` compiles the kernel in `sgemm.cu`, kept unchanged, and launches it with `Cumo::CUDA::Function#launch`. `utils.rb` times it and cuBLAS with CUDA events.
 
 
 ### How to demo
@@ -20,7 +20,7 @@ ruby sgemm.rb [--gpu GPU_ID] [--m m] [--n n] [--k k]
 In this example, we work on a SGEMM kernel that requires a complete interface to `cuLaunchKernel` (e.g. grid size and size of shared memory), which is not provided by `cupy.ElementwiseKernel`.
 CuPy arrays work regardless of the underlying memory layouts thanks to `ndarray` abstraction.
 As is the case for this example, `ndarray` abstraction does not need to be used if the underlying memory layouts of arrays match the ones expected by a kernel.
-The SGEMM kernel expects input and output arrays to be in Fortran contiguous memory layout, and this layout is enforced by `cupy.asfortranarray`.
+The SGEMM kernel expects input and output arrays to be in Fortran contiguous memory layout, and this layout is enforced by `cupy.asfortranarray`. Cumo has no Fortran order, so `as_fortran` in `sgemm.rb` makes a transposed copy instead.
 
 #### How to dynamically compile and launch a kernel function written in CUDA C
 
@@ -40,4 +40,4 @@ Cumo has the compile half of this: `Cumo::CUDA::Compiler#compile_with_cache` run
 In other words, you have control over grid size, block size, shared memory size and stream.
 At this level of interface, it becomes straightforward to replace host `.cu` that calls CUDA kernels with Python code.
 
-This is the half Cumo lacks.
+Cumo has this half too: `Function#launch(args, grid:, block:, shared_mem:, stream:)` takes the same four, and `sgemm.rb` passes the grid, the block and the shared memory size.

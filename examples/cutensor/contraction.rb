@@ -5,7 +5,5 @@ abort(<<~MSG)
 
   It benchmarks cupyx.cutensor.contraction (a mode-labelled tensor
   contraction) with cupyx.time.repeat, which measures with CUDA Events. Cumo
-  has no cuTENSOR binding and no Event class.
-
-  See MISSING_FEATURES.md for the Cumo features this needs.
+  has CUDA events but no cuTENSOR binding.
 MSG
