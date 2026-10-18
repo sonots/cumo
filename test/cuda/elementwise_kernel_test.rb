@@ -44,6 +44,17 @@ module Cumo::CUDA
       assert_raise(ArgumentError) { SQUARED_DIFF.call(x, y, z, z) }
     end
 
+    test "each reads what the kernel wrote from its block" do
+      y = Cumo::SFloat.new(8).seq
+      z = Cumo::SFloat.new(8).fill(-1)
+      seen = []
+      z.each_with_index do |v, i|
+        SQUARED_DIFF.call(y, 1, z) if i.zero?
+        seen << v
+      end
+      assert_equal([-1.0, 0.0, 1.0, 4.0, 9.0, 16.0, 25.0, 36.0], seen)
+    end
+
     test "the output decides a type before the inputs do" do
       k = ElementwiseKernel.new("T x", "S y", "y = x * 2", "double_it")
       y = Cumo::DFloat.new(3)
