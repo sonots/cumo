@@ -24,7 +24,7 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 
 ## Status
 
-22 of the 34 CuPy examples are ported and run. The 12 that are not need a CUDA library Cumo has no binding for, a cuFFT feature Cumo does not expose, or a Python library with no Ruby counterpart.
+23 of the 34 CuPy examples are ported and run. The 11 that are not need a CUDA library Cumo has no binding for, a cuFFT feature Cumo does not expose, or a Python library with no Ruby counterpart.
 
 | Example | Status | Notes |
 | --- | --- | --- |
@@ -46,7 +46,7 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 | `stream/thrust.rb` | Ported | |
 | `stream/cufft.rb` | Ported | `Cumo::FFT` needs Cumo 0.14.0 or later, built with cuFFT |
 | `stream/curand.rb` | Ported | `RandomState` and `lognormal` written in the example, over `rand_norm` |
-| `stream/cusolver.rb` | Not ported | No cuSOLVER binding in Cumo |
+| `stream/cusolver.rb` | Ported | `Cumo::Linalg` needs Cumo 0.12.0 or later, built with cuSOLVER. `eigh` reads the upper triangle whatever `uplo:` says, as numo-linalg-alt does |
 | `stream/cusparse.rb` | Not ported | No sparse matrix or cuSPARSE binding in Cumo |
 | `cufft/callback/*.rb` | Not ported | No cuFFT callbacks in `Cumo::FFT` |
 | `cutensor/*.rb` | Not ported | No cuTENSOR binding in Cumo |
