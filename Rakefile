@@ -3,6 +3,9 @@
 require "bundler/gem_tasks"
 require "rake/testtask"
 
+Rake::Task["release"].clear_prerequisites
+Rake::Task["release"].enhance(%w[release:guard_clean release:source_control_push build release:rubygem_push])
+
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
   t.libs << "lib"
