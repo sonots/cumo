@@ -64,10 +64,10 @@ module Cumo::CUDA
 
     test "each reads what a kernel launched from its block wrote" do
       x = Cumo::SFloat.new(8).seq
-      y = Cumo::SFloat.new(8).fill(1)
+      y = Cumo::SFloat.new(2, 4).fill(1)
       seen = []
-      y.each_with_index do |v, i|
-        fn("axpy").launch([y, x, [1.0].pack("f"), [8].pack("l")], grid: 1, block: 32) if i.zero?
+      y.each_with_index do |v, i, j|
+        fn("axpy").launch([y, x, [1.0].pack("f"), [8].pack("l")], grid: 1, block: 32) if i.zero? && j.zero?
         seen << v
       end
       assert_equal([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], seen)

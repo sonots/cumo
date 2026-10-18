@@ -21,6 +21,17 @@ module Cumo::CUDA
       assert_equal([], L2NORM.call(x).shape)
     end
 
+    test "each reads what the kernel wrote from its block" do
+      x = Cumo::SFloat.new(3, 4).seq
+      z = Cumo::SFloat.new(4).fill(-1)
+      seen = []
+      z.each_with_index do |v, i|
+        SUM.call(x, z, axis: 0) if i.zero?
+        seen << v
+      end
+      assert_equal([-1.0, 15.0, 18.0, 21.0], seen)
+    end
+
     test "axis takes a negative, a list or nothing, and keepdims keeps the axes" do
       x = Cumo::DFloat.new(3, 4, 5).seq
       assert { close(SUM.call(x, axis: 0), x.sum(axis: 0)) }
