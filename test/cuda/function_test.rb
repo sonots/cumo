@@ -62,6 +62,17 @@ module Cumo::CUDA
       assert { y == want }
     end
 
+    test "each reads what a kernel launched from its block wrote" do
+      x = Cumo::SFloat.new(8).seq
+      y = Cumo::SFloat.new(2, 4).fill(1)
+      seen = []
+      y.each_with_index do |v, i, j|
+        fn("axpy").launch([y, x, [1.0].pack("f"), [8].pack("l")], grid: 1, block: 32) if i.zero? && j.zero?
+        seen << v
+      end
+      assert_equal([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], seen)
+    end
+
     test "an Integer goes as a long long and a Float as a double" do
       out = Cumo::DFloat.zeros(2)
       fn("wide").launch([out, 2**40 + 3, 0.25], grid: 1, block: 1)

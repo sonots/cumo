@@ -617,6 +617,7 @@ rb_cuLaunchKernel(VALUE self, VALUE hfunc,
     ALLOCV_END(slots_buf);
     RB_GC_GUARD(args);
     check_status(status);
+    cumo_cuda_runtime_note_device_write();
     return Qnil;
 }
 
