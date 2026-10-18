@@ -1,3 +1,20 @@
+# 0.14.0 (2026/10/18)
+
+Breaking changes:
+
+* `cumo.h` no longer defines `CUMO_VERSION` or `CUMO_VERSION_CODE`. `Cumo::VERSION` and `Cumo::NArray::VERSION` are defined in Ruby, and the new `Cumo::REVISION` tells a release gem from one built from a checkout: it gives `"v0.14.0"` for this release and something like `"v0.14.0-3-g1a2b3c4"` for a gem built at a later commit (PR #617)
+
+Fixes:
+
+* Fix a host loop such as `each_with_index` yielding the old values of an array after a kernel launched from its block through `Function#launch`, `ElementwiseKernel` or `ReductionKernel` wrote the array (PR #625)
+
+Changes:
+
+* Add `Cumo::FFT`, the functions of `numpy.fft` on cuFFT with numpy's arguments as keywords: `fft`, `ifft`, `rfft`, `irfft`, `hfft`, `ihfft`, `fft2`, `ifft2`, `rfft2`, `irfft2`, `fftn`, `ifftn`, `rfftn`, `irfftn`, `fftfreq`, `rfftfreq`, `fftshift` and `ifftshift`, and `fftconvolve`, which answers the full linear convolution as `scipy.signal.fftconvolve` does. Load it with `require "cumo/fft"`. Single precision stays single, as in CuPy. cuFFT is loaded the first time a transform runs, and `Cumo::CUDA::Cufft.available?` says whether it can be. A thread keeps up to 16 plans for each device, which `Cumo::CUDA::Cufft.plan_cache_info` and `clear_plan_cache` show and let go (PR #623, PR #622, PR #621, PR #620)
+* Add `Cumo::Pocketfft`, the functions of `Numo::Pocketfft` from numo-pocketfft on `Cumo::FFT`, with the same arguments, return types and errors. Load it with `require "cumo/pocketfft"`. A 0-dimensional array raises `Cumo::NArray::DimensionError`, where numo-pocketfft fails on it in a different way in each function (PR #623)
+* Add `Cumo::NArray.from_numo` and `Cumo::NArray.to_numo`, which copy an array between Numo and Cumo and keep its type, where `Cumo::NArray.cast` read the elements one by one through a Ruby Array and turned an SFloat into a DFloat (closes issue #87, PR #619)
+* `Cumo::Linalg.expm` of a dense matrix that needs squaring skips the check for a triangular matrix that 0.13.0 added, which makes a 64 x 64 expm about 8% faster in SFloat and 6% in DFloat (PR #618)
+
 # 0.13.0 (2026/10/12)
 
 Breaking changes:
