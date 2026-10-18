@@ -8,7 +8,7 @@ Every file keeps the directory and name of its CuPy original, with `.py` replace
 
 * Ruby 3.0 or later
 * `numo-narray` or `numo-narray-alt`, for the CPU side of the comparisons
-* `cumo`, for the GPU side (only loaded with `GPU=1`). Everything that launches a kernel, uses a stream or passes a struct needs a Cumo newer than 0.9.0, and `stream/cusolver.rb` and `stream/cufft.rb` need the versions in the status table
+* `cumo` 0.10.0 or later, for the GPU side (only loaded with `GPU=1`). `stream/cusolver.rb` needs 0.12.0 or later built with cuSOLVER, and `stream/cufft.rb` needs 0.14.0 or later built with cuFFT
 * `numo-linalg` or `numo-linalg-alt`, optional, for BLAS `dot` in `cg` and `gmm` (without it their CPU side is about ten times slower)
 
 ## Running
@@ -29,8 +29,8 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 | Example | Status | Notes |
 | --- | --- | --- |
 | `cg/cg.rb` | Ported | Conjugate gradient, CPU on Numo and GPU on Cumo |
-| `kmeans/kmeans.rb` | Ported | Including `--use-custom-kernel`; `--output-image` stops with a notice |
-| `gmm/gmm.rb` | Ported | `--output-image` stops with a notice |
+| `kmeans/kmeans.rb` | Ported | Including `--use-custom-kernel`; `--output-image` prints a notice instead of drawing |
+| `gmm/gmm.rb` | Ported | `--output-image` prints a notice instead of drawing |
 | `finance/black_scholes.rb` | Ported | Naive and `ElementwiseKernel` arms |
 | `finance/monte_carlo.rb` | Ported | `ElementwiseKernel` with its own xorshift128+ in the preamble |
 | `finance/monte_carlo_multigpu.rb` | Ported | `--gpus` takes a comma separated list |
@@ -44,9 +44,9 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 | `stream/cupy_memcpy.rb` | Ported | Pinned host memory |
 | `stream/map_reduce.rb` | Ported | Ten streams mapped, one reduce stream waiting on their events |
 | `stream/thrust.rb` | Ported | |
-| `stream/cufft.rb` | Ported | `Cumo::FFT` needs Cumo 0.14.0 or later, built with cuFFT |
+| `stream/cufft.rb` | Ported | `Cumo::FFT` |
 | `stream/curand.rb` | Ported | `RandomState` and `lognormal` written in the example, over `rand_norm` |
-| `stream/cusolver.rb` | Ported | `Cumo::Linalg` needs Cumo 0.12.0 or later, built with cuSOLVER |
+| `stream/cusolver.rb` | Ported | `Cumo::Linalg` |
 | `stream/cusparse.rb` | Not ported | No sparse matrix or cuSPARSE binding in Cumo |
 | `cufft/callback/*.rb` | Not ported | No cuFFT callbacks in `Cumo::FFT` |
 | `cutensor/*.rb` | Not ported | No cuTENSOR binding in Cumo |
