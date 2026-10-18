@@ -2,7 +2,7 @@
 
 Breaking changes:
 
-* `cumo.h` no longer defines `CUMO_VERSION` or `CUMO_VERSION_CODE`. `Cumo::VERSION` and `Cumo::NArray::VERSION` are defined in Ruby, and the new `Cumo::REVISION` tells a release gem from one built from a checkout: it gives the tag of a release, and something like `"v0.14.0-3-g1a2b3c4"` for a gem built at a later commit. The 0.14.0 gem was built before its tag was made, so its `Cumo::REVISION` is `"v0.13.0-11-gafd8ead9"` (PR #617)
+* `cumo.h` no longer defines `CUMO_VERSION` or `CUMO_VERSION_CODE`. `Cumo::VERSION` and `Cumo::NArray::VERSION` are defined in Ruby. The new `Cumo::REVISION` tells a release gem from one built from a checkout. A release gives its tag, and a gem built at a later commit gives something like `"v0.14.0-3-g1a2b3c4d"`. The 0.14.0 gem was built before its tag was made, so it gives `"v0.13.0-11-gafd8ead9"`. `rake release` makes the tag before the gem from the next release on (PR #617, PR #626)
 
 Fixes:
 
