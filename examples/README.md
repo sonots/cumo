@@ -44,7 +44,7 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 | `stream/cupy_memcpy.rb` | Ported | Pinned host memory |
 | `stream/map_reduce.rb` | Ported | Ten streams mapped, one reduce stream waiting on their events |
 | `stream/thrust.rb` | Ported | |
-| `stream/cufft.rb` | Ported | `Cumo::FFT` needs Cumo 0.14.0 or later |
+| `stream/cufft.rb` | Ported | `Cumo::FFT` needs Cumo 0.14.0 or later, built with cuFFT |
 | `stream/curand.rb` | Ported | `RandomState` and `lognormal` written in the example, over `rand_norm` |
 | `stream/cusolver.rb` | Not ported | No cuSOLVER binding in Cumo |
 | `stream/cusparse.rb` | Not ported | No sparse matrix or cuSPARSE binding in Cumo |

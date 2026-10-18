@@ -2,7 +2,6 @@
 
 # nsys profile --trace=cuda ruby stream/cufft.rb
 require 'cumo/fft'
-require 'cumo/narray'
 
 def assert_array_equal(actual, desired)
   raise 'arrays are not equal' if Integer(actual.eq(desired).count_false).nonzero?
