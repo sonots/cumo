@@ -24,7 +24,7 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 
 ## Status
 
-22 of the 32 CuPy examples are ported and run. The 10 that are not need a CUDA library Cumo has no binding for, or a Python library with no Ruby counterpart.
+22 of the 34 CuPy examples are ported and run. The 12 that are not need a CUDA library Cumo has no binding for, a cuFFT feature Cumo does not expose, or a Python library with no Ruby counterpart.
 
 | Example | Status | Notes |
 | --- | --- | --- |
@@ -44,11 +44,11 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 | `stream/cupy_memcpy.rb` | Ported | Pinned host memory |
 | `stream/map_reduce.rb` | Ported | Ten streams mapped, one reduce stream waiting on their events |
 | `stream/thrust.rb` | Ported | |
-| `stream/cufft.rb` | Not ported | No FFT in Cumo |
+| `stream/cufft.rb` | Ported | `Cumo::FFT` needs Cumo 0.14.0 or later |
 | `stream/curand.rb` | Ported | `RandomState` and `lognormal` written in the example, over `rand_norm` |
 | `stream/cusolver.rb` | Not ported | No cuSOLVER binding in Cumo |
 | `stream/cusparse.rb` | Not ported | No sparse matrix or cuSPARSE binding in Cumo |
-| `cufft/callback/*.rb` | Not ported | No FFT in Cumo |
+| `cufft/callback/*.rb` | Not ported | No cuFFT callbacks in `Cumo::FFT` |
 | `cutensor/*.rb` | Not ported | No cuTENSOR binding in Cumo |
 | `cusparselt/matmul.rb` | Not ported | No cuSPARSELt binding in Cumo |
 | `interoperability/mpi4py_multiple_devices.rb` | Not ported | No CUDA-aware MPI for Ruby |
