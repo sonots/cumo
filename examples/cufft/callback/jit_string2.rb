@@ -7,6 +7,4 @@ abort(<<~MSG)
   cupy.fft.config.set_cufft_callbacks and inspects the plan cache. Cumo::FFT
   has fft, and Cumo::CUDA::Cufft.plan_cache_info counts the cached plans,
   but there is no way to attach a cuFFT callback to a plan.
-
-  See MISSING_FEATURES.md for the Cumo features this needs.
 MSG

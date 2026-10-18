@@ -8,7 +8,7 @@ Every file keeps the directory and name of its CuPy original, with `.py` replace
 
 * Ruby 3.0 or later
 * `numo-narray` or `numo-narray-alt`, for the CPU side of the comparisons
-* `cumo`, for the GPU side (only loaded with `GPU=1`). Everything that launches a kernel, uses a stream or passes a struct needs a Cumo newer than 0.9.0
+* `cumo`, for the GPU side (only loaded with `GPU=1`). Everything that launches a kernel, uses a stream or passes a struct needs a Cumo newer than 0.9.0, and `stream/cusolver.rb` and `stream/cufft.rb` need the versions in the status table
 * `numo-linalg` or `numo-linalg-alt`, optional, for BLAS `dot` in `cg` and `gmm` (without it their CPU side is about ten times slower)
 
 ## Running
@@ -58,7 +58,7 @@ A file marked "Not ported" is a stub. Running it prints which CuPy API the origi
 ## Differences from the CuPy originals
 
 * The GPU arm is opt-in through `GPU=1`; the CuPy originals always run it.
-* Timing uses `cudaDeviceSynchronize` around a monotonic clock, since Cumo has no `Stream.null.synchronize` or CUDA events.
+* Where the CuPy originals synchronize the null stream around `time.time()`, the ports call `cudaDeviceSynchronize` around a monotonic clock.
 * Reductions in Cumo return 0-dimensional arrays rather than Ruby numbers, so a scalar that steers control flow is read back with `Float(...)` or `Integer(...)`, which reads a Numo scalar too.
 * `numpy.random.choice(n, k, replace=False)` is `(0...n).to_a.sample(k)`, and `numpy.where(cond, a, b)` is written as arithmetic on a 0/1 mask, since neither library has a direct counterpart.
 * Assertions from `cupy.testing` are written inline.
