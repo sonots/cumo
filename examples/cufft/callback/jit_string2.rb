@@ -4,9 +4,9 @@ abort(<<~MSG)
   Not ported: cupy/examples/cufft/callback/jit_string2.py
 
   It runs cupy.fft.fft with a load callback compiled through
-  cupy.fft.config.set_cufft_callbacks and inspects the plan cache. Cumo has
-  no FFT at all (no cuFFT binding), no plan cache, and cuFFT callbacks
-  additionally need a static cuFFT link step through nvcc.
+  cupy.fft.config.set_cufft_callbacks and inspects the plan cache. Cumo::FFT
+  has fft, and Cumo::CUDA::Cufft.plan_cache_info counts the cached plans,
+  but there is no way to attach a cuFFT callback to a plan.
 
   See MISSING_FEATURES.md for the Cumo features this needs.
 MSG

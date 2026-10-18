@@ -3,10 +3,9 @@
 abort(<<~MSG)
   Not ported: cupy/examples/cufft/callback/jit_r2c_c2r_string.py
 
-  It runs cupy.fft.rfft and irfft with load and store callbacks compiled
-  through cupy.fft.config.set_cufft_callbacks. Cumo has no FFT at all (no
-  cuFFT binding), and cuFFT callbacks additionally need a static cuFFT link
-  step through nvcc.
+  It runs cupy.fft.irfft with a load callback compiled through
+  cupy.fft.config.set_cufft_callbacks. Cumo::FFT has rfft and irfft, but no
+  way to attach a cuFFT callback to a plan.
 
   See MISSING_FEATURES.md for the Cumo features this needs.
 MSG
