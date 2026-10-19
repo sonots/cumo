@@ -1997,6 +1997,7 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_store_binary", "any");
         cumo_cuda_runtime_device_synchronize();
         memcpy(ptr+cumo_na_get_offset(self), RSTRING_PTR(vstr)+offset, byte_size);
+        cumo_cuda_runtime_note_device_write();
     }
 
     return SIZET2NUM(byte_size);

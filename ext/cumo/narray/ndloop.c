@@ -476,6 +476,18 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
 
 static void ndloop_unstage_host_reads(cumo_na_md_loop_t *lp);
 
+static int
+ndloop_writes(cumo_ndfunc_t *nf)
+{
+    int j;
+
+    if (nf->nout > 0) return 1;
+    for (j=0; j<nf->nin; j++) {
+        if (nf->ain[j].type == CUMO_OVERWRITE) return 1;
+    }
+    return 0;
+}
+
 static VALUE
 ndloop_release(VALUE vlp)
 {
@@ -483,6 +495,13 @@ ndloop_release(VALUE vlp)
     VALUE v;
     cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)(vlp);
 
+    // A host loop, and a library call such as the scan of cumsum, writes
+    // device memory without a launch to count it, and a host loop reading a
+    // staged copy of that memory reads it again only once the count moves.
+    // Counted here so that a loop left by a raise counts too.
+    if (ndloop_writes(lp->ndfunc)) {
+        cumo_cuda_runtime_note_device_write();
+    }
     ndloop_unstage_host_reads(lp);
     for (j=0; j < lp->narg; j++) {
         v = LARG(lp,j).value;

@@ -6007,6 +6007,61 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal((0...n).map(&:to_f), r.to_a)
   end
 
+  # A host loop reads its staged copy again only once a write to device memory
+  # is counted, and none of these launches a kernel to count it.
+  sub_test_case "a block sees what it wrote without launching a kernel" do
+    def walk(a)
+      seen = []
+      a.each_with_index do |x, *i|
+        yield if i.all?(&:zero?)
+        seen << x
+      end
+      seen
+    end
+
+    test "store_binary" do
+      bin = Cumo::SFloat.new(8).seq.to_binary
+      y = Cumo::SFloat.new(8).fill(-1)
+      assert_equal([-1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0], walk(y) { y.store_binary(bin) })
+    end
+
+    test "an in-place cumsum" do
+      y = Cumo::SFloat.new(8).fill(1)
+      assert_equal([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], walk(y) { y.inplace.cumsum })
+    end
+
+    test "an in-place cumsum along each row" do
+      y = Cumo::DFloat.new(2, 4).fill(1)
+      assert_equal([1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0], walk(y) { y.inplace.cumsum(1) })
+    end
+
+    test "an in-place cumprod" do
+      y = Cumo::SFloat[1, 2, 2, 2, 2, 2, 2, 2]
+      assert_equal([1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0], walk(y) { y.inplace.cumprod })
+    end
+
+    test "an in-place map" do
+      y = Cumo::SFloat.new(8).fill(-1)
+      assert_equal([-1.0] + ([9.0] * 7), walk(y) { y.inplace.map { |x| x + 10 } })
+    end
+
+    test "an in-place map_with_index" do
+      y = Cumo::SFloat.new(8).fill(-1)
+      assert_equal([-1.0] + ([9.0] * 7), walk(y) { y.inplace.map_with_index { |x, _i| x + 10 } })
+    end
+
+    test "an in-place map left by a raise" do
+      y = Cumo::SFloat.new(8).fill(-1)
+      seen = walk(y) do
+        n = 0
+        y.inplace.map { |x| (n += 1) == 4 ? raise(StopIteration) : x + 10 }
+      rescue StopIteration
+        nil
+      end
+      assert_equal([-1.0, 9.0, 9.0, -1.0, -1.0, -1.0, -1.0, -1.0], seen)
+    end
+  end
+
   sub_test_case "a block sees what it wrote into the array it walks" do
     def walk(a, meth)
       seen = []
