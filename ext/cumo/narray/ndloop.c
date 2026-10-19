@@ -476,14 +476,18 @@ ndloop_alloc(cumo_na_md_loop_t *lp, cumo_ndfunc_t *nf, VALUE args,
 
 static void ndloop_unstage_host_reads(cumo_na_md_loop_t *lp);
 
+// Whether the loop wrote an array that was there before it: an input it
+// overwrites, or an output it took over from an input. A new output is
+// nothing anyone has staged.
 static int
-ndloop_writes(cumo_ndfunc_t *nf)
+ndloop_writes_existing(cumo_na_md_loop_t *lp)
 {
     int j;
 
-    if (nf->nout > 0) return 1;
-    for (j=0; j<nf->nin; j++) {
-        if (nf->ain[j].type == CUMO_OVERWRITE) return 1;
+    for (j=0; j<lp->narg; j++) {
+        if (j < lp->nin ? (lp->xargs[j].flag & CUMO_NDL_WRITE) : lp->xargs[j].flag == CUMO_NDL_READ_WRITE) {
+            return 1;
+        }
     }
     return 0;
 }
@@ -499,7 +503,7 @@ ndloop_release(VALUE vlp)
     // device memory without a launch to count it, and a host loop reading a
     // staged copy of that memory reads it again only once the count moves.
     // Counted here so that a loop left by a raise counts too.
-    if (ndloop_writes(lp->ndfunc)) {
+    if (ndloop_writes_existing(lp)) {
         cumo_cuda_runtime_note_device_write();
     }
     ndloop_unstage_host_reads(lp);
@@ -840,6 +844,7 @@ ndloop_set_output_narray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int k,
     }
 
     j = lp->nin + k;
+    lp->xargs[j].flag = flag;
     LARG(lp,j).ndim = nd = nf->aout[k].dim;
     ndloop_set_stepidx(lp, j, v, dim_map, flag);
     if (nd > 0) {
