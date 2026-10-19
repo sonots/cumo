@@ -6114,7 +6114,8 @@ class NArrayTest < Test::Unit::TestCase
           x = rk.new(8, 5).rand + 0.5
           [[z, x.transpose], [z[(0..).step(2), true], x[true, (0..).step(2)].transpose.reverse(0)],
            [z, x[0, true].reshape(5, 1)], [z, x[true, 1]], [z[1, true], x[true, 2]],
-           [z[[4, 0, 4], true], x.transpose[[4, 0, 4], true]], [z, rk.cast(2.5)]].each do |a, b|
+           [z[[4, 0, 4], true], x.transpose[[4, 0, 4], true]], [z, rk.cast(2.5)],
+           [z[0, true], x.transpose], [z.sum, x]].each do |a, b|
             assert { same(a.send(op, b), a.send(op, ck.cast(b))) }
             assert { same(b.send(op, a), ck.cast(b).send(op, a)) }
           end
@@ -6122,6 +6123,12 @@ class NArrayTest < Test::Unit::TestCase
           w = z.dup
           y.inplace.send(op, x.transpose)
           w.inplace.send(op, ck.cast(x.transpose))
+          assert { same(y, w) }
+          y = z.dup
+          w = z.dup
+          v = y.inplace
+          assert_same(v, x.transpose.send(op, v))
+          ck.cast(x.transpose).send(op, w.inplace)
           assert { same(y, w) }
         end
       end
@@ -6137,8 +6144,16 @@ class NArrayTest < Test::Unit::TestCase
           [z + x, z - x, z * x, z / x, x + z, x - z, x * z, x / z]
           print casts
         RUBY
-        lib = File.expand_path("../lib", __dir__)
-        assert_equal("0", IO.popen([RbConfig.ruby, "-I#{lib}", "-e", script], &:read))
+        assert_equal("0", run_child(script))
+      end
+
+      test "#{ck} and #{rk} of other shapes name them in the order written" do
+        z = ck.new(3).seq
+        x = rk.new(4).seq
+        want = assert_raise(Cumo::NArray::ShapeError) { ck.cast(x) + z }.message
+        assert_equal(want, assert_raise(Cumo::NArray::ShapeError) { x + z }.message)
+        want = assert_raise(Cumo::NArray::ShapeError) { z + ck.cast(x) }.message
+        assert_equal(want, assert_raise(Cumo::NArray::ShapeError) { z + x }.message)
       end
     end
   end

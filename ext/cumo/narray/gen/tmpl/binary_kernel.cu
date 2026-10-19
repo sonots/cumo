@@ -216,9 +216,9 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t*
 //<% end %>
 
 //<% if is_complex && %w[add sub mul div].include?(name) %>
-<% indexer_dims(true).each do |idim| %>
 // A real operand of the same precision is made complex as it is read, which is
 // what casting it first did, without the array the cast wrote.
+<% indexer_dims(true).each do |idim| %>
 __global__ void <%="cumo_#{c_iter}_r_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_iarray_t a3, cumo_na_indexer_t indexer, int real_is_left)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {

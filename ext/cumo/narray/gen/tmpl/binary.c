@@ -15,7 +15,7 @@ void <%="cumo_#{c_iter}_r_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_
 //<% end %>
 //<% complex_of = {'sfloat' => ['scomplex', 'cumo_cSComplex'], 'dfloat' => ['dcomplex', 'cumo_cDComplex']}[type_name] if %w[add sub mul div].include?(name) %>
 //<% if complex_of %>
-VALUE <%="cumo_#{complex_of[0]}_#{name}_real_left"%>(VALUE self, VALUE real);
+VALUE <%="cumo_#{complex_of[0]}_#{name}_real_left"%>(VALUE real, VALUE complex);
 //<% end %>
 //<% if %w[add sub mul div mod bit_and bit_or bit_xor left_shift right_shift copysign].include?(name) %>
 void <%="cumo_#{c_iter}_s_kernel_launch"%>(cumo_na_iarray_t* a1, dtype sv, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int* divzero, int scalar_is_left);
@@ -179,33 +179,36 @@ static void
 #undef check_intdivzero
 
 //<% if is_complex && %w[add sub mul div].include?(name) %>
+// The operands stay in the order they were written in, so that a shape
+// mismatch names them as it always did.
 static void
 <%=c_iter%>_r(cumo_na_loop_t *const lp)
 {
-    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
-    cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[1]);
+    int real_is_left = *(int*)(lp->opt_ptr);
+    cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[real_is_left ? 1 : 0]);
+    cumo_na_iarray_t a2 = cumo_na_make_iarray(&lp->args[real_is_left ? 0 : 1]);
     cumo_na_iarray_t a3 = cumo_na_make_iarray(&lp->args[2]);
     cumo_na_indexer_t indexer = cumo_na_make_indexer(&lp->args[0]);
 
-    <%="cumo_#{c_iter}_r_kernel_launch"%>(&a1,&a2,&a3,&indexer,*(int*)(lp->opt_ptr));
+    <%="cumo_#{c_iter}_r_kernel_launch"%>(&a1,&a2,&a3,&indexer,real_is_left);
 }
 
 // A real operand of this precision is read as it is rather than cast to a
-// complex array first. real_is_left puts it on the left of self.
+// complex array first.
 static VALUE
-<%=c_func%>_real(VALUE self, VALUE real, int real_is_left)
+<%=c_func%>_real(VALUE lhs, VALUE rhs, int real_is_left)
 {
-    cumo_ndfunc_arg_in_t ain[2] = {{cT,0},{cRT,0}};
+    cumo_ndfunc_arg_in_t ain[2] = {{real_is_left ? cRT : cT,0},{real_is_left ? cT : cRT,0}};
     cumo_ndfunc_arg_out_t aout[1] = {{cT,0}};
     cumo_ndfunc_t ndf = { <%=c_iter%>_r, CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ANY_ORDER, 2, 1, ain, aout };
 
-    return cumo_na_ndloop3(&ndf, &real_is_left, 2, self, real);
+    return cumo_na_ndloop3(&ndf, &real_is_left, 2, lhs, rhs);
 }
 
 VALUE
-<%="cumo_#{type_name}_#{name}_real_left"%>(VALUE self, VALUE real)
+<%="cumo_#{type_name}_#{name}_real_left"%>(VALUE real, VALUE self)
 {
-    return <%=c_func%>_real(self, real, 1);
+    return <%=c_func%>_real(real, self, 1);
 }
 //<% end %>
 
@@ -274,8 +277,8 @@ static VALUE
     if (klass==cT) {
         return <%=c_func%>_self(self, other);
     //<% if complex_of %>
-    } else if (klass == <%=complex_of[1]%> && rb_obj_class(other) == klass && rb_obj_class(self) == cT) {
-        return <%="cumo_#{complex_of[0]}_#{name}_real_left"%>(other, self);
+    } else if (rb_obj_class(other) == <%=complex_of[1]%> && rb_obj_class(self) == cT) {
+        return <%="cumo_#{complex_of[0]}_#{name}_real_left"%>(self, other);
     //<% end %>
     } else {
         v = rb_funcall(klass, cumo_id_cast, 1, self);
