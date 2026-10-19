@@ -214,5 +214,29 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t*
     cumo_cuda_runtime_check_kernel_launch();
 }
 //<% end %>
+
+//<% if is_complex && %w[add sub mul div].include?(name) %>
+// A real operand of the same precision is made complex as it is read, which is
+// what casting it first did, without the array the cast wrote.
+<% indexer_dims(true).each do |idim| %>
+__global__ void <%="cumo_#{c_iter}_r_kernel_dim#{idim}"%>(cumo_na_iarray_t a1, cumo_na_iarray_t a2, cumo_na_iarray_t a3, cumo_na_indexer_t indexer, int real_is_left)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
+        cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
+        dtype x = *(dtype*)(cumo_na_iarray_at_dim<%=idim%>(&a1, &indexer));
+        dtype y = m_from_real(*(rtype*)(cumo_na_iarray_at_dim<%=idim%>(&a2, &indexer)));
+        *(dtype*)(cumo_na_iarray_at_dim<%=idim%>(&a3, &indexer)) = real_is_left ? m_<%=name%>(y, x) : m_<%=name%>(x, y);
+    }
+}
+<% end %>
+
+void <%="cumo_#{c_iter}_r_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_iarray_t* a2, cumo_na_iarray_t* a3, cumo_na_indexer_t* indexer, int real_is_left)
+{
+    size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
+    size_t block_dim = cumo_get_block_dim(indexer->total_size);
+    <%= indexer_switch("cumo_#{c_iter}_r_kernel", "*a1,*a2,*a3,*indexer,real_is_left", narrow: %w[a1 a2 a3]) %>
+    cumo_cuda_runtime_check_kernel_launch();
+}
+//<% end %>
 #undef cumo_check_intdivzero
 <% end %>

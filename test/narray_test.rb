@@ -6084,6 +6084,80 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # A real operand of the complex type's precision is made complex as it is
+  # read. The answer is the one casting it first gives, but for which bits a
+  # NaN carries, which IEEE leaves open.
+  sub_test_case "a complex and a real operand" do
+    def same(a, b)
+      floats, words = a.is_a?(Cumo::DComplex) ? ["D*", "q*"] : ["e*", "l*"]
+      fa = a.to_binary.unpack(floats)
+      fb = b.to_binary.unpack(floats)
+      wa = a.to_binary.unpack(words)
+      wb = b.to_binary.unpack(words)
+      a.class == b.class && a.shape == b.shape && wa.each_index.all? { |i| wa[i] == wb[i] || (fa[i].nan? && fb[i].nan?) }
+    end
+
+    special = [0.0, -0.0, 1.0, -1.0, Float::INFINITY, -Float::INFINITY, Float::NAN, 1e-40, 1e-310, 3.0e38, 0.5, -7.25]
+
+    [[Cumo::SComplex, Cumo::SFloat], [Cumo::DComplex, Cumo::DFloat]].each do |ck, rk|
+      %w[+ - * /].each do |op|
+        test "#{ck} #{op} #{rk} and back, over special values" do
+          zs = special.product(special).map { |a, b| Complex(a, b) }
+          z = ck.cast(zs).reshape(zs.size, 1)
+          x = rk.cast(special).reshape(1, special.size)
+          assert { same(z.send(op, x), z.send(op, ck.cast(x))) }
+          assert { same(x.send(op, z), ck.cast(x).send(op, z)) }
+        end
+
+        test "#{ck} #{op} #{rk} over views, broadcasts and in place" do
+          z = ck.new(5, 8).rand - Complex(0.5, 0.5)
+          x = rk.new(8, 5).rand + 0.5
+          [[z, x.transpose], [z[(0..).step(2), true], x[true, (0..).step(2)].transpose.reverse(0)],
+           [z, x[0, true].reshape(5, 1)], [z, x[true, 1]], [z[1, true], x[true, 2]],
+           [z[[4, 0, 4], true], x.transpose[[4, 0, 4], true]], [z, rk.cast(2.5)],
+           [z[0, true], x.transpose], [z.sum, x]].each do |a, b|
+            assert { same(a.send(op, b), a.send(op, ck.cast(b))) }
+            assert { same(b.send(op, a), ck.cast(b).send(op, a)) }
+          end
+          y = z.dup
+          w = z.dup
+          y.inplace.send(op, x.transpose)
+          w.inplace.send(op, ck.cast(x.transpose))
+          assert { same(y, w) }
+          y = z.dup
+          w = z.dup
+          v = y.inplace
+          assert_same(v, x.transpose.send(op, v))
+          ck.cast(x.transpose).send(op, w.inplace)
+          assert { same(y, w) }
+        end
+      end
+
+      # In a fresh interpreter, so that the counting cast stays out of the suite.
+      test "#{ck} and #{rk} cast neither operand" do
+        script = <<~RUBY
+          require "cumo/narray"
+          casts = 0
+          #{ck}.singleton_class.prepend(Module.new { define_method(:cast) { |*a| casts += 1; super(*a) } })
+          z = #{ck}.new(4).seq
+          x = #{rk}.new(4).seq + 1
+          [z + x, z - x, z * x, z / x, x + z, x - z, x * z, x / z]
+          print casts
+        RUBY
+        assert_equal("0", run_child(script))
+      end
+
+      test "#{ck} and #{rk} of other shapes name them in the order written" do
+        z = ck.new(3).seq
+        x = rk.new(4).seq
+        want = assert_raise(Cumo::NArray::ShapeError) { ck.cast(x) + z }.message
+        assert_equal(want, assert_raise(Cumo::NArray::ShapeError) { x + z }.message)
+        want = assert_raise(Cumo::NArray::ShapeError) { z + ck.cast(x) }.message
+        assert_equal(want, assert_raise(Cumo::NArray::ShapeError) { z + x }.message)
+      end
+    end
+  end
+
   sub_test_case "a host loop writing in place" do
     [:map, :map_with_index].each do |meth|
       test "#{meth} over a view that visits an element twice reads its own write" do
