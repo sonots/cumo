@@ -6084,6 +6084,36 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  sub_test_case "a host loop writing in place" do
+    [:map, :map_with_index].each do |meth|
+      test "#{meth} over a view that visits an element twice reads its own write" do
+        y = Cumo::DFloat[0, 10]
+        view = y[[0, 1, 0, 1, 0]]
+        meth == :map ? view.inplace.map { |x| x + 1 } : view.inplace.map_with_index { |x, _i| x + 1 }
+        assert_equal([3.0, 12.0], y.to_a)
+      end
+
+      # The writes are counted as they are made, not when the loop ends, which
+      # an Enumerator does not reach here.
+      test "#{meth} paused by an Enumerator shows what it wrote to each" do
+        y = Cumo::SFloat.new(4).fill(-1)
+        e = y.inplace.to_enum(meth)
+        seen = []
+        y.each_with_index do |x, i|
+          if i.zero?
+            e.next
+            [100, 101, 102].each do |v|
+              e.feed(v)
+              e.next
+            end
+          end
+          seen << x
+        end
+        assert_equal([-1, 101, 102, -1], seen)
+      end
+    end
+  end
+
   # Elements copied one at a time after a write give way to copying the rest
   # of the row, or of the array, at once.
   sub_test_case "a block sees what it wrote ahead of the element it is at" do

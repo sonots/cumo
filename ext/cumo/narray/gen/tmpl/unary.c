@@ -19,6 +19,7 @@ static void
         size_t i;
         dtype x;
         <% if name == 'map' %>
+        int counts = cumo_na_ndloop_writes_existing(lp);
         if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
         <% else %>
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
@@ -30,6 +31,7 @@ static void
                     x = m_<%=name%>(x);
                     <% if name == 'map' %>if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }<% end %>
                     CUMO_SET_DATA_INDEX(p2,idx2,dtype,x);
+                    <% if name == 'map' %>if (counts) cumo_na_ndloop_wrote(lp);<% end %>
                 }
             } else {
                 for (i=0; i<n; i++) {
@@ -37,6 +39,7 @@ static void
                     x = m_<%=name%>(x);
                     <% if name == 'map' %>if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }<% end %>
                     CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
+                    <% if name == 'map' %>if (counts) cumo_na_ndloop_wrote(lp);<% end %>
                 }
             }
         } else {
@@ -46,6 +49,7 @@ static void
                     x = m_<%=name%>(x);
                     <% if name == 'map' %>if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }<% end %>
                     CUMO_SET_DATA_INDEX(p2,idx2,dtype,x);
+                    <% if name == 'map' %>if (counts) cumo_na_ndloop_wrote(lp);<% end %>
                 }
             } else {
                 //<% if need_align %>
@@ -58,6 +62,7 @@ static void
                             x = m_<%=name%>(((dtype*)p1)[i]);
                             if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                             ((dtype*)p2)[i] = x;
+                            if (counts) cumo_na_ndloop_wrote(lp);
                             <% else %>
                             ((dtype*)p2)[i] = m_<%=name%>(((dtype*)p1)[i]);
                             <% end %>
@@ -72,6 +77,7 @@ static void
                             x = m_<%=name%>(*(dtype*)p1);
                             if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
                             *(dtype*)p2 = x;
+                            if (counts) cumo_na_ndloop_wrote(lp);
                             <% else %>
                             *(dtype*)p2 = m_<%=name%>(*(dtype*)p1);
                             <% end %>
@@ -87,6 +93,7 @@ static void
                     x = m_<%=name%>(x);
                     <% if name == 'map' %>if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }<% end %>
                     CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
+                    <% if name == 'map' %>if (counts) cumo_na_ndloop_wrote(lp);<% end %>
                 }
                 //<% end %>
             }

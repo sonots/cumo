@@ -2146,6 +2146,27 @@ cumo_na_ndloop_refresh_next(cumo_na_loop_t *user, const void *next, size_t bytes
     }
 }
 
+int
+cumo_na_ndloop_writes_existing(cumo_na_loop_t *user)
+{
+    return ndloop_writes_existing((cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user)));
+}
+
+void
+cumo_na_ndloop_wrote(cumo_na_loop_t *user)
+{
+    cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user));
+    cumo_na_host_stage_t *hs = lp->hs;
+    size_t before;
+
+    before = cumo_atomic_size_fetch_add(&cumo_cuda_launch_epoch, 1);
+    if (hs == NULL) return;
+    // The copy holds the element, so the count it adds leaves it current.
+    if (hs->seen_epoch == before) hs->seen_epoch = before + 1;
+    if (hs->row_epoch == before) hs->row_epoch = before + 1;
+    if (hs->epoch == before) hs->epoch = before + 1;
+}
+
 static void
 ndloop_unstage_host_reads(cumo_na_md_loop_t *lp)
 {

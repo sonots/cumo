@@ -16,6 +16,12 @@ static void
     size_t *c;
     int nd, md;
 
+    // In place, a view that visits an element twice reads what it wrote the
+    // first time, so the copy the elements are read from takes the write too,
+    // after the element read next was copied again.
+    int own = lp->args[0].value == lp->args[1].value;
+    int counts = cumo_na_ndloop_writes_existing(lp);
+
     c = (size_t*)(lp->opt_ptr);
     cumo_na_with_index_dims(lp->ndim, &nd, &md);
     a = ALLOCA_N(VALUE,md);
@@ -30,40 +36,52 @@ static void
     if (idx1) {
         if (idx2) {
             for (; i--;) {
+                char *q = p1 + *idx1;
                 CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
                 if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
+                if (own) *(dtype*)q = x;
                 CUMO_SET_DATA_INDEX(p2,idx2,dtype,x);
+                if (counts) cumo_na_ndloop_wrote(lp);
                 c[nd]++;
             }
         } else {
             for (; i--;) {
+                char *q = p1 + *idx1;
                 CUMO_GET_DATA_INDEX(p1,idx1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
                 if (i) cumo_na_ndloop_refresh_next(lp, p1 + *idx1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
+                if (own) *(dtype*)q = x;
                 CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
+                if (counts) cumo_na_ndloop_wrote(lp);
                 c[nd]++;
             }
         }
     } else {
         if (idx2) {
             for (; i--;) {
+                char *q = p1;
                 CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
                 if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
+                if (own) *(dtype*)q = x;
                 CUMO_SET_DATA_INDEX(p2,idx2,dtype,x);
+                if (counts) cumo_na_ndloop_wrote(lp);
                 c[nd]++;
             }
         } else {
             for (; i--;) {
+                char *q = p1;
                 CUMO_GET_DATA_STRIDE(p1,s1,dtype,x);
                 x = yield_map_with_index(x,c,a,nd,md);
                 if (i) cumo_na_ndloop_refresh_next(lp, p1, sizeof(dtype));
                 if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
+                if (own) *(dtype*)q = x;
                 CUMO_SET_DATA_STRIDE(p2,s2,dtype,x);
+                if (counts) cumo_na_ndloop_wrote(lp);
                 c[nd]++;
             }
         }
