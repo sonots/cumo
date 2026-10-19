@@ -1933,6 +1933,8 @@ static void
 ndloop_stage_row(cumo_na_md_loop_t *lp)
 {
     cumo_na_host_stage_t *hs = lp->hs;
+    // Read before the copy: a write counted while it runs leaves it behind.
+    size_t now = cumo_cuda_launch_epoch_now();
     int j;
 
     for (j=0; j<hs->narg; j++) {
@@ -1943,7 +1945,7 @@ ndloop_stage_row(cumo_na_md_loop_t *lp)
         ndloop_stage_bytes(lp, j, lo, hi, &min, &len);
         ndloop_stage_dma(lp, j, min, len);
     }
-    hs->row_epoch = cumo_cuda_launch_epoch_now();
+    hs->row_epoch = now;
     hs->row_debt = 0;
 }
 
@@ -1952,13 +1954,14 @@ static void
 ndloop_stage_range(cumo_na_md_loop_t *lp)
 {
     cumo_na_host_stage_t *hs = lp->hs;
+    size_t now = cumo_cuda_launch_epoch_now();
     int j;
 
     for (j=0; j<hs->narg; j++) {
         if (hs->ptr[j] == NULL) continue;
         ndloop_stage_dma(lp, j, hs->min[j], hs->len[j]);
     }
-    hs->epoch = hs->row_epoch = cumo_cuda_launch_epoch_now();
+    hs->epoch = hs->row_epoch = now;
     hs->row_debt = hs->range_debt = 0;
 }
 
@@ -2077,7 +2080,7 @@ ndloop_stage_host_reads(cumo_na_md_loop_t *lp)
 // Before each row: a row that is only copied as reached, or one that
 // device memory was written since the copy. Once the rows copied since a
 // write have cost as much as the whole range, and nothing was written while
-// the block ran last, the rest of the range is copied in one go instead.
+// the block ran last, the whole range is copied again instead.
 static inline void
 ndloop_stage_before_row(cumo_na_md_loop_t *lp)
 {
@@ -2100,9 +2103,13 @@ ndloop_stage_before_row(cumo_na_md_loop_t *lp)
             ndloop_stage_row(lp);
             hs->range_debt += hs->row_cost;
         }
-    } else {
-        hs->row_epoch = now;
     }
+}
+
+static inline cumo_na_md_loop_t *
+ndloop_of_user(cumo_na_loop_t *user)
+{
+    return (cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user));
 }
 
 // After a yield: the block may have written the element the user function
@@ -2111,12 +2118,10 @@ ndloop_stage_before_row(cumo_na_md_loop_t *lp)
 void
 cumo_na_ndloop_refresh_next(cumo_na_loop_t *user, const void *next, size_t bytes)
 {
-    cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user));
+    cumo_na_md_loop_t *lp = ndloop_of_user(user);
     cumo_na_host_stage_t *hs = lp->hs;
-    int j;
-
     size_t now;
-    int quiet;
+    int quiet, j;
 
     if (hs == NULL) return;
     if (hs->direct) cumo_cuda_runtime_sync_if_busy();
@@ -2126,8 +2131,8 @@ cumo_na_ndloop_refresh_next(cumo_na_loop_t *user, const void *next, size_t bytes
     hs->seen_epoch = now;
     if (hs->row_epoch == now) return;
     // Elements copied one at a time since a write have cost as much as the
-    // row, and the block did not write this time: the rest of the row is
-    // copied at once. A block that writes at every element keeps to one.
+    // row, and the block did not write this time: the row is copied again at
+    // once. A block that writes at every element keeps to one.
     if (quiet && hs->row_debt >= hs->row_cost) {
         ndloop_stage_row(lp);
         hs->range_debt += hs->row_cost;
@@ -2149,17 +2154,16 @@ cumo_na_ndloop_refresh_next(cumo_na_loop_t *user, const void *next, size_t bytes
 int
 cumo_na_ndloop_writes_existing(cumo_na_loop_t *user)
 {
-    return ndloop_writes_existing((cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user)));
+    return ndloop_writes_existing(ndloop_of_user(user));
 }
 
 void
 cumo_na_ndloop_wrote(cumo_na_loop_t *user)
 {
-    cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user));
+    cumo_na_md_loop_t *lp = ndloop_of_user(user);
     cumo_na_host_stage_t *hs = lp->hs;
-    size_t before;
+    size_t before = cumo_cuda_runtime_note_device_write();
 
-    before = cumo_atomic_size_fetch_add(&cumo_cuda_launch_epoch, 1);
     if (hs == NULL) return;
     // The copy holds the element, so the count it adds leaves it current.
     if (hs->seen_epoch == before) hs->seen_epoch = before + 1;

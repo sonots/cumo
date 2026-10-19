@@ -6109,6 +6109,11 @@ class NArrayTest < Test::Unit::TestCase
           end
           seen << x
         end
+        # Left paused, the loop would keep its staging until the process ends.
+        loop do
+          e.feed(0)
+          e.next
+        end
         assert_equal([-1, 101, 102, -1], seen)
       end
     end

@@ -19,7 +19,8 @@ static void
         size_t i;
         dtype x;
         <% if name == 'map' %>
-        int counts = cumo_na_ndloop_writes_existing(lp);
+        // RObject data is host memory, which no loop stages.
+        int counts = <%= type_name == 'robject' ? '0' : 'cumo_na_ndloop_writes_existing(lp)' %>;
         if (cumo_cuda_runtime_sync_if_busy()) { CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>"); }
         <% else %>
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
