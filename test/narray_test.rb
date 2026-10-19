@@ -6084,6 +6084,74 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  sub_test_case "a host loop writing in place" do
+    [:map, :map_with_index].each do |meth|
+      test "#{meth} over a view that visits an element twice reads its own write" do
+        y = Cumo::DFloat[0, 10]
+        view = y[[0, 1, 0, 1, 0]]
+        meth == :map ? view.inplace.map { |x| x + 1 } : view.inplace.map_with_index { |x, _i| x + 1 }
+        assert_equal([3.0, 12.0], y.to_a)
+      end
+
+      # The writes are counted as they are made, not when the loop ends, which
+      # an Enumerator does not reach here.
+      test "#{meth} paused by an Enumerator shows what it wrote to each" do
+        y = Cumo::SFloat.new(4).fill(-1)
+        e = y.inplace.to_enum(meth)
+        seen = []
+        y.each_with_index do |x, i|
+          if i.zero?
+            e.next
+            [100, 101, 102].each do |v|
+              e.feed(v)
+              e.next
+            end
+          end
+          seen << x
+        end
+        # Left paused, the loop would keep its staging until the process ends.
+        loop do
+          e.feed(0)
+          e.next
+        end
+        assert_equal([-1, 101, 102, -1], seen)
+      end
+    end
+  end
+
+  # Elements copied one at a time after a write give way to copying the rest
+  # of the row, or of the array, at once.
+  sub_test_case "a block sees what it wrote ahead of the element it is at" do
+    def walk(shape, writes_at)
+      y = Cumo::DFloat.new(*shape).seq
+      want = (0...y.size).map(&:to_f)
+      seen = []
+      k = 0
+      y.each_with_index do |x, *|
+        if writes_at.call(k) && k + 1 < y.size
+          y[(k + 1)..] = -k - 1
+          ((k + 1)...y.size).each { |m| want[m] = -k - 1.0 }
+        end
+        seen << x
+        k += 1
+      end
+      [want, seen]
+    end
+
+    [[1000], [1000, 1], [20, 50]].each do |shape|
+      {
+        "once" => ->(k) { k.zero? }, "twice" => ->(k) { [0, 500].include?(k) },
+        "every 100" => ->(k) { (k % 100).zero? }, "every other" => ->(k) { k.even? },
+        "every" => ->(_k) { true }
+      }.each do |name, writes_at|
+        test "#{shape}, #{name}" do
+          want, seen = walk(shape, writes_at)
+          assert_equal(want, seen)
+        end
+      end
+    end
+  end
+
   sub_test_case "a block sees what it wrote into the array it walks" do
     def walk(a, meth)
       seen = []

@@ -33,10 +33,11 @@ extern size_t cumo_cuda_sync_epoch;
 // and reads again once the count moves.
 extern size_t cumo_cuda_launch_epoch;
 
-static inline void
+// Answers the count before the write.
+static inline size_t
 cumo_cuda_runtime_note_device_write(void)
 {
-    cumo_atomic_size_fetch_add(&cumo_cuda_launch_epoch, 1);
+    return cumo_atomic_size_fetch_add(&cumo_cuda_launch_epoch, 1);
 }
 
 // A pinned host buffer for reading device memory back: a copy into pinned

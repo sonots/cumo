@@ -79,7 +79,16 @@ typedef struct CUMO_NA_HOST_STAGE {
     cumo_cuda_stage_t stage;
     size_t epoch;        // the launch count when the whole range was copied
     size_t row_epoch;    // the launch count when the current row was copied
+    size_t seen_epoch;   // the launch count when the loop last looked
+    size_t row_cost;     // what copying a row costs, see CUMO_NA_STAGE_COPY_COST
+    size_t range_cost;   // what copying the whole range costs
+    size_t row_debt;     // spent on single elements since the row was copied
+    size_t range_debt;   // spent on rows and elements since the range was copied
 } cumo_na_host_stage_t;
+
+// A copy into pinned memory costs a wait before its bytes, about as long as
+// moving this many bytes takes, so a copy of n bytes costs this plus n.
+#define CUMO_NA_STAGE_COPY_COST (64u << 10)
 
 #define LARG(lp,iarg) ((lp)->user.args[iarg])
 #define LITER(lp,idim,iarg) ((lp)->xargs[iarg].iter[idim])
@@ -1924,6 +1933,8 @@ static void
 ndloop_stage_row(cumo_na_md_loop_t *lp)
 {
     cumo_na_host_stage_t *hs = lp->hs;
+    // Read before the copy: a write counted while it runs leaves it behind.
+    size_t now = cumo_cuda_launch_epoch_now();
     int j;
 
     for (j=0; j<hs->narg; j++) {
@@ -1934,7 +1945,38 @@ ndloop_stage_row(cumo_na_md_loop_t *lp)
         ndloop_stage_bytes(lp, j, lo, hi, &min, &len);
         ndloop_stage_dma(lp, j, min, len);
     }
-    hs->row_epoch = cumo_cuda_launch_epoch_now();
+    hs->row_epoch = now;
+    hs->row_debt = 0;
+}
+
+// Copies the whole range of every staged input again.
+static void
+ndloop_stage_range(cumo_na_md_loop_t *lp)
+{
+    cumo_na_host_stage_t *hs = lp->hs;
+    size_t now = cumo_cuda_launch_epoch_now();
+    int j;
+
+    for (j=0; j<hs->narg; j++) {
+        if (hs->ptr[j] == NULL) continue;
+        ndloop_stage_dma(lp, j, hs->min[j], hs->len[j]);
+    }
+    hs->epoch = hs->row_epoch = now;
+    hs->row_debt = hs->range_debt = 0;
+}
+
+// The bytes a row of argument j spans, wherever the row starts. Bit rows
+// cover one word more than their bits when they start mid-word.
+static size_t
+ndloop_stage_row_len(cumo_na_md_loop_t *lp, int j)
+{
+    ssize_t lo, hi;
+
+    ndloop_stage_extent(lp, j, lp->ndim, lp->hs->ndim, 0, &lo, &hi);
+    if (rb_obj_is_kind_of(LARG(lp,j).value, cumo_cBit)) {
+        return ((size_t)(hi - lo) / CUMO_NB + 2) * sizeof(CUMO_BIT_DIGIT);
+    }
+    return (size_t)(hi - lo) + LARG(lp,j).elmsz;
 }
 
 // Reads the inputs of a host loop into pinned memory and points the
@@ -1998,16 +2040,9 @@ ndloop_stage_host_reads(cumo_na_md_loop_t *lp)
         hs->rows_only = 1;
         total = 0;
         for (j=0; j<narg; j++) {
-            ssize_t lo, hi;
             size_t len;
             if (hs->ptr[j] == NULL) continue;
-            ndloop_stage_extent(lp, j, lp->ndim, nd, 0, &lo, &hi);
-            if (rb_obj_is_kind_of(LARG(lp,j).value, cumo_cBit)) {
-                // Which words a row covers depends on where it starts.
-                len = ((size_t)(hi - lo) / CUMO_NB + 2) * sizeof(CUMO_BIT_DIGIT);
-            } else {
-                len = (size_t)(hi - lo) + LARG(lp,j).elmsz;
-            }
+            len = ndloop_stage_row_len(lp, j);
             if (len > CUMO_CUDA_STAGE_CACHE_MAX) {
                 hs->ptr[j] = NULL;
                 hs->direct++;
@@ -2021,33 +2056,60 @@ ndloop_stage_host_reads(cumo_na_md_loop_t *lp)
         if (hs->direct) cumo_cuda_runtime_device_synchronize();
         if (rows == 0) return;
         cumo_cuda_runtime_stage_alloc(&hs->stage, total);
+        hs->row_cost = CUMO_NA_STAGE_COPY_COST + total;
+        hs->seen_epoch = cumo_cuda_launch_epoch_now();
         return;
     }
     if (hs->direct) cumo_cuda_runtime_device_synchronize();
     if (total == 0) return;
     cumo_cuda_runtime_stage_alloc(&hs->stage, total);
+    hs->range_cost = CUMO_NA_STAGE_COPY_COST + total;
+    hs->row_cost = CUMO_NA_STAGE_COPY_COST;
     total = 0;
     for (j=0; j<narg; j++) {
         if (hs->ptr[j] == NULL) continue;
         hs->off[j] = total;
         LARG(lp,j).ptr = hs->stage.ptr + total - hs->min[j];
-        ndloop_stage_dma(lp, j, hs->min[j], hs->len[j]);
+        hs->row_cost += ndloop_stage_row_len(lp, j);
         total += (hs->len[j] + 7) & ~(size_t)7;
     }
-    hs->epoch = hs->row_epoch = cumo_cuda_launch_epoch_now();
+    ndloop_stage_range(lp);
+    hs->seen_epoch = hs->epoch;
 }
 
 // Before each row: a row that is only copied as reached, or one that
-// device memory was written since the copy.
+// device memory was written since the copy. Once the rows copied since a
+// write have cost as much as the whole range, and nothing was written while
+// the block ran last, the whole range is copied again instead.
 static inline void
 ndloop_stage_before_row(cumo_na_md_loop_t *lp)
 {
     cumo_na_host_stage_t *hs = lp->hs;
+    size_t now;
+    int quiet;
+
     if (hs == NULL) return;
     if (hs->direct) cumo_cuda_runtime_sync_if_busy();
-    if (hs->stage.ptr && (hs->rows_only || hs->epoch != cumo_cuda_launch_epoch_now())) {
+    if (hs->stage.ptr == NULL) return;
+    now = cumo_cuda_launch_epoch_now();
+    quiet = hs->seen_epoch == now;
+    hs->seen_epoch = now;
+    if (hs->rows_only) {
         ndloop_stage_row(lp);
+    } else if (hs->epoch != now) {
+        if (quiet && hs->range_debt >= hs->range_cost) {
+            ndloop_stage_range(lp);
+        } else {
+            ndloop_stage_row(lp);
+            hs->range_debt += hs->row_cost;
+        }
     }
+}
+
+static inline cumo_na_md_loop_t *
+ndloop_of_user(cumo_na_loop_t *user)
+{
+    return (cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user));
 }
 
 // After a yield: the block may have written the element the user function
@@ -2056,22 +2118,57 @@ ndloop_stage_before_row(cumo_na_md_loop_t *lp)
 void
 cumo_na_ndloop_refresh_next(cumo_na_loop_t *user, const void *next, size_t bytes)
 {
-    cumo_na_md_loop_t *lp = (cumo_na_md_loop_t*)((char*)user - offsetof(cumo_na_md_loop_t, user));
+    cumo_na_md_loop_t *lp = ndloop_of_user(user);
     cumo_na_host_stage_t *hs = lp->hs;
-    int j;
+    size_t now;
+    int quiet, j;
 
     if (hs == NULL) return;
     if (hs->direct) cumo_cuda_runtime_sync_if_busy();
-    if (hs->stage.ptr == NULL || hs->row_epoch == cumo_cuda_launch_epoch_now()) return;
+    if (hs->stage.ptr == NULL) return;
+    now = cumo_cuda_launch_epoch_now();
+    quiet = hs->seen_epoch == now;
+    hs->seen_epoch = now;
+    if (hs->row_epoch == now) return;
+    // Elements copied one at a time since a write have cost as much as the
+    // row, and the block did not write this time: the row is copied again at
+    // once. A block that writes at every element keeps to one.
+    if (quiet && hs->row_debt >= hs->row_cost) {
+        ndloop_stage_row(lp);
+        hs->range_debt += hs->row_cost;
+        return;
+    }
     for (j=0; j<hs->narg; j++) {
         char *base = hs->stage.ptr + hs->off[j];
         if (hs->ptr[j] == NULL) continue;
         if ((const char*)next >= base && (const char*)next + bytes <= base + hs->len[j]) {
             cumo_cuda_runtime_check_status(cumo_cuda_runtime_memcpy_to_pinned(
                 (void*)next, hs->ptr[j] + ((const char*)next - LARG(lp,j).ptr), bytes));
+            hs->row_debt += CUMO_NA_STAGE_COPY_COST + bytes;
+            hs->range_debt += CUMO_NA_STAGE_COPY_COST + bytes;
             return;
         }
     }
+}
+
+int
+cumo_na_ndloop_writes_existing(cumo_na_loop_t *user)
+{
+    return ndloop_writes_existing(ndloop_of_user(user));
+}
+
+void
+cumo_na_ndloop_wrote(cumo_na_loop_t *user)
+{
+    cumo_na_md_loop_t *lp = ndloop_of_user(user);
+    cumo_na_host_stage_t *hs = lp->hs;
+    size_t before = cumo_cuda_runtime_note_device_write();
+
+    if (hs == NULL) return;
+    // The copy holds the element, so the count it adds leaves it current.
+    if (hs->seen_epoch == before) hs->seen_epoch = before + 1;
+    if (hs->row_epoch == before) hs->row_epoch = before + 1;
+    if (hs->epoch == before) hs->epoch = before + 1;
 }
 
 static void

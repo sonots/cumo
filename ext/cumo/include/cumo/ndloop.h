@@ -104,6 +104,13 @@ typedef struct {
 // it will read next again if device memory was written since it was staged.
 void cumo_na_ndloop_refresh_next(cumo_na_loop_t *lp, const void *next, size_t bytes);
 
+// For a function that yields to Ruby and writes an array that was there
+// before it, which cumo_na_ndloop_writes_existing answers: counts the element
+// it just wrote, so that a loop it yields to before it ends reads it. A staged
+// copy of its own has to hold the element already.
+int cumo_na_ndloop_writes_existing(cumo_na_loop_t *lp);
+void cumo_na_ndloop_wrote(cumo_na_loop_t *lp);
+
 // spec of user function
 typedef struct {
     cumo_na_iter_func_t func;    // user function
