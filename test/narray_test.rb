@@ -6084,6 +6084,39 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # Elements copied one at a time after a write give way to copying the rest
+  # of the row, or of the array, at once.
+  sub_test_case "a block sees what it wrote ahead of the element it is at" do
+    def walk(shape, writes_at)
+      y = Cumo::DFloat.new(*shape).seq
+      want = (0...y.size).map(&:to_f)
+      seen = []
+      k = 0
+      y.each_with_index do |x, *|
+        if writes_at.call(k) && k + 1 < y.size
+          y[(k + 1)..] = -k - 1
+          ((k + 1)...y.size).each { |m| want[m] = -k - 1.0 }
+        end
+        seen << x
+        k += 1
+      end
+      [want, seen]
+    end
+
+    [[1000], [1000, 1], [20, 50]].each do |shape|
+      {
+        "once" => ->(k) { k.zero? }, "twice" => ->(k) { [0, 500].include?(k) },
+        "every 100" => ->(k) { (k % 100).zero? }, "every other" => ->(k) { k.even? },
+        "every" => ->(_k) { true }
+      }.each do |name, writes_at|
+        test "#{shape}, #{name}" do
+          want, seen = walk(shape, writes_at)
+          assert_equal(want, seen)
+        end
+      end
+    end
+  end
+
   sub_test_case "a block sees what it wrote into the array it walks" do
     def walk(a, meth)
       seen = []
