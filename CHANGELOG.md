@@ -1,3 +1,16 @@
+# 0.14.1 (2026/10/22)
+
+Fixes:
+
+* Fix a host loop such as `each` yielding the old values of an array after its block wrote the array through `store_binary`, an in-place `cumsum` or `cumprod`, or an in-place `map` or `map_with_index`, also one paused by an Enumerator (PR #631, PR #630)
+* Fix an in-place `map_with_index` over a view that reaches an element more than once, such as `x[[0, 0, 0]]`, reading the element as it was before its own write. It now reads its own write, as `map` and numo do (PR #631)
+* Fix the release gem recording the tag of the previous release as `Cumo::REVISION`, as the 0.14.0 gem does with `"v0.13.0-11-gafd8ead9"`. `rake release` now makes the tag before it builds the gem, so this gem gives `"v0.14.1"` (PR #626)
+
+Changes:
+
+* `+`, `-`, `*` and `/` between a complex array and a real array of the same precision, in either order, read the real array as it is rather than casting it to a complex array first. On 4M elements this makes SComplex with SFloat about 1.7 to 1.8 times faster, and DComplex divided by DFloat about 1.4 times. The answers are the same but for the sign of a NaN (PR #632)
+* A host loop such as `each` whose block writes to the device copies the rest of the row, or of the array, again at once when copying the elements one at a time would cost more. With one write early in an `each_with_index` over 100,000 elements, the loop is about 90 times faster and about as fast as with no write. With a write at every 100th element it is about 12 times faster, and with a write at every other element about 16% slower (PR #631)
+
 # 0.14.0 (2026/10/18)
 
 Breaking changes:
