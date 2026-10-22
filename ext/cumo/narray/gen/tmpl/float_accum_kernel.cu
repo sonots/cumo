@@ -256,14 +256,12 @@ void cumo_<%=type_name%>_abs_min_kernel_launch(cumo_na_reduction_arg_t* arg)
 }
 <% end %>
 <% end %>
-<% if is_double_precision %>
+<% if is_double_precision && kernel_part?("kahan_sum") %>
 
-<% if kernel_part?("kahan_sum") %>
 void cumo_<%=type_name%>_kahan_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_kahan_sum_impl>(*arg, cumo_<%=type_name%>_kahan_sum_impl{});
 }
-<% end %>
 <% end %>
 <% if is_double_precision && kernel_part?(nan: true) %>
 
