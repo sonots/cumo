@@ -41,14 +41,14 @@ erb_dir.unshift("tmpl_bit") if (type_name == "bit")
 erb_dir.map! { |d| File.join(thisdir, d) }
 
 TEMPLATE_KERNEL_PARTS = {
-  "accum" => %w[reduce reduce_nan],
-  "accum_index" => %w[reduce reduce_nan],
-  "accum_arg" => %w[reduce reduce_nan],
-  "accum_binary" => %w[reduce reduce_nan reduce_from],
-  "cum" => %w[reduce],
-  "layer_norm" => %w[reduce],
-  "rms_norm" => %w[reduce],
-  "softmax" => %w[reduce],
+  "accum" => %w[reduce reduce_rare reduce_nan],
+  "accum_index" => %w[reduce_rare reduce_nan],
+  "accum_arg" => %w[reduce_rare reduce_nan],
+  "accum_binary" => %w[reduce_rare reduce_nan reduce_from],
+  "cum" => %w[reduce_rare],
+  "layer_norm" => %w[reduce_rare],
+  "rms_norm" => %w[reduce_rare],
+  "softmax" => %w[reduce_rare],
   "bit_count" => %w[reduce],
   "bit_reduce" => %w[reduce],
   "bit_stat" => %w[reduce],
@@ -63,10 +63,14 @@ TEMPLATE_KERNEL_PARTS = {
 
 MATH_TEMPLATES = %w[unary_s binary_s ternary_s frexp].freeze
 COMMON_MATH = %w[sqrt log log2 log10 exp exp2 sin cos tan tanh erf gelu gelu_tanh silu sigmoid softplus].freeze
+COMMON_REDUCE = %w[sum mean max min].freeze
 
 abort "unknown kernel part: #{$kernel_part}" unless KERNEL_PARTS.include?($kernel_part)
-undeclared_math = COMMON_MATH - File.read(File.join(thisdir, "spec.rb")).scan(/^\s*math "(\w+)"/).flatten
+spec = File.read(File.join(thisdir, "spec.rb"))
+undeclared_math = COMMON_MATH - spec.scan(/^\s*math "(\w+)"/).flatten
 abort "COMMON_MATH names no math function in spec.rb: #{undeclared_math.join(', ')}" unless undeclared_math.empty?
+undeclared_reduce = COMMON_REDUCE - spec.scan(/^\s*accum "(\w+)"/).flatten
+abort "COMMON_REDUCE names no accum in spec.rb: #{undeclared_reduce.join(', ')}" unless undeclared_reduce.empty?
 
 class ErbPP
   def kernel_parts
@@ -83,8 +87,12 @@ class ErbPP
     @children.select { |c| c.kernel_parts.include?($kernel_part) }
   end
 
-  def kernel_part?(nan: false, from: nil)
-    $kernel_part == (from ? "reduce_from" : nan ? "reduce_nan" : "reduce")
+  def kernel_part?(op = nil, nan: false, from: nil)
+    return $kernel_part == "reduce_from" if from
+    return $kernel_part == "reduce_nan" if nan
+    raise ArgumentError, "kernel_part? needs the name of the reduction" unless op
+
+    $kernel_part == (COMMON_REDUCE.include?(op) ? "reduce" : "reduce_rare")
   end
 
   def indexer_dims(narrow = false)

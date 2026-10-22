@@ -181,23 +181,29 @@ extern "C" {
 #endif
 #endif
 
-<% if kernel_part? %>
+<% if kernel_part?("mean") %>
 void cumo_<%=type_name%>_mean_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     <%=acc%> n = (<%=acc%>)(arg->in_indexer.total_size / arg->out_indexer.total_size);
     cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_mean_impl>(*arg, cumo_<%=type_name%>_mean_impl{n});
 }
+<% end %>
 
+<% if kernel_part?("var") %>
 void cumo_<%=type_name%>_var_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_var_impl>(*arg, cumo_<%=type_name%>_var_impl{});
 }
+<% end %>
 
+<% if kernel_part?("stddev") %>
 void cumo_<%=type_name%>_stddev_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_stddev_impl>(*arg, cumo_<%=type_name%>_stddev_impl{});
 }
+<% end %>
 
+<% if kernel_part?("rms") %>
 void cumo_<%=type_name%>_rms_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     <%=acc%> n = (<%=acc%>)(arg->in_indexer.total_size / arg->out_indexer.total_size);
@@ -226,30 +232,38 @@ void cumo_<%=type_name%>_rms_nan_kernel_launch(cumo_na_reduction_arg_t* arg)
     cumo_reduce_split<dtype, rtype, cumo_<%=type_name%>_rms_nan_impl>(*arg, cumo_<%=type_name%>_rms_nan_impl{});
 }
 <% end %>
-<% if %w[sfloat dfloat].include?(type_name) && kernel_part? %>
+<% if %w[sfloat dfloat].include?(type_name) %>
+<% if kernel_part?("abs_sum") %>
 void cumo_<%=type_name%>_abs_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_abs_sum_impl>(*arg, cumo_<%=type_name%>_abs_sum_impl{});
 }
+<% end %>
 
+<% if kernel_part?("abs_max") %>
 void cumo_<%=type_name%>_abs_max_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_extremum_rules::Max>;
     cumo_reduce_split<dtype, dtype, impl>(*arg, impl{});
 }
+<% end %>
 
+<% if kernel_part?("abs_min") %>
 void cumo_<%=type_name%>_abs_min_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     using impl = cumo_<%=type_name%>_abs_extremum_of<cumo_<%=type_name%>_extremum_rules::Min>;
     cumo_reduce_split<dtype, dtype, impl>(*arg, impl{});
 }
 <% end %>
-<% if is_double_precision && kernel_part? %>
+<% end %>
+<% if is_double_precision %>
 
+<% if kernel_part?("kahan_sum") %>
 void cumo_<%=type_name%>_kahan_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_kahan_sum_impl>(*arg, cumo_<%=type_name%>_kahan_sum_impl{});
 }
+<% end %>
 <% end %>
 <% if is_double_precision && kernel_part?(nan: true) %>
 
