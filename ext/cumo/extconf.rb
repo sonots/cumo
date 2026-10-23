@@ -70,6 +70,7 @@ cuda/cudnn
 cuda/cudnn_impl
 cuda/cusolver
 cuda/cufft
+cuda/cub
 )
 %w[bit int8 int16 int32 int64 uint8 uint16 uint32 uint64 hfloat bfloat sfloat dfloat scomplex dcomplex robject].each do |type_name|
   srcs << "narray/types/#{type_name}"

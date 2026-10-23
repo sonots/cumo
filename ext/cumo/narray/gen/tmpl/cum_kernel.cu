@@ -162,6 +162,7 @@ struct <%="cumo_thrust_#{name}#{j}"%>
 template<typename Iterator1, typename Iterator2>
 static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan_by_key"%>(Iterator1 first, Iterator1 last, Iterator2 result, uint64_t row_len)
 {
+    cumo_cuda_cub_prime_ptx_version();
     cumo_thrust_pool_allocator alloc;
     <%="cumo_thrust_#{name}_row"%> row = {row_len};
     auto keys = thrust::make_transform_iterator(thrust::make_counting_iterator<uint64_t>(0), row);
@@ -190,6 +191,7 @@ static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan_by_key"%>(Iterator1 fi
 template<typename Iterator1, typename Iterator2>
 static cudaError_t <%="cumo_#{type_name}_#{name}#{j}_scan"%>(Iterator1 first, Iterator1 last, Iterator2 result)
 {
+    cumo_cuda_cub_prime_ptx_version();
     cumo_thrust_pool_allocator alloc;
     try {
 <% if widen %>

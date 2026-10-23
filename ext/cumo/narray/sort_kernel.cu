@@ -146,6 +146,7 @@ cudaError_t sort_pairs(const Key* kin, Key* kout, const Value* vin, Value* vout,
                        int64_t total, int64_t n_rows, int64_t row_len) {
     size_t bytes = 0;
     cudaError_t st = cudaSuccess;
+    cumo_cuda_cub_prime_ptx_version();
     if (n_rows == 1) {
         st = cub::DeviceRadixSort::SortPairs(nullptr, bytes, kin, kout, vin, vout, total, 0, sizeof(Key) * 8, cumo_cuda_stream());
         if (st != cudaSuccess) { return st; }
@@ -168,6 +169,7 @@ template <typename Key>
 cudaError_t sort_keys(const Key* kin, Key* kout, int64_t total, int64_t n_rows, int64_t row_len) {
     size_t bytes = 0;
     cudaError_t st = cudaSuccess;
+    cumo_cuda_cub_prime_ptx_version();
     if (n_rows == 1) {
         st = cub::DeviceRadixSort::SortKeys(nullptr, bytes, kin, kout, total, 0, sizeof(Key) * 8, cumo_cuda_stream());
         if (st != cudaSuccess) { return st; }
