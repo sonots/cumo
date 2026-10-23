@@ -198,54 +198,72 @@ extern "C" {
 #endif
 #endif
 
-<% if kernel_part? %>
+<% if kernel_part?("sum") %>
 void cumo_<%=type_name%>_sum_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, <%=dtype%>, cumo_<%=type_name%>_sum_impl>(*arg, cumo_<%=type_name%>_sum_impl{});
 }
+<% end %>
 
+<% if kernel_part?("prod") %>
 void cumo_<%=type_name%>_prod_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, <%=dtype%>, cumo_<%=type_name%>_prod_impl>(*arg, cumo_<%=type_name%>_prod_impl{});
 }
+<% end %>
 
+<% if kernel_part?("min") %>
 void cumo_<%=type_name%>_min_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_min_impl>(*arg, cumo_<%=type_name%>_min_impl{});
 }
+<% end %>
 
+<% if kernel_part?("max") %>
 void cumo_<%=type_name%>_max_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_max_impl>(*arg, cumo_<%=type_name%>_max_impl{});
 }
+<% end %>
 
+<% if kernel_part?("ptp") %>
 void cumo_<%=type_name%>_ptp_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, dtype, cumo_<%=type_name%>_ptp_impl>(*arg, cumo_<%=type_name%>_ptp_impl{});
 }
+<% end %>
 
+<% if kernel_part?("minmax") %>
 void cumo_<%=type_name%>_minmax_kernel_launch(cumo_na_reduction_arg_t* arg, cumo_na_iarray_t* out2)
 {
     cumo_reduce_pair_split<dtype, dtype, cumo_<%=type_name%>_minmax_impl>(*arg, *out2, cumo_<%=type_name%>_minmax_impl{});
 }
+<% end %>
 <% unless is_float %>
 
+<% if kernel_part?("mean") %>
 void cumo_<%=type_name%>_mean_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     double n = (double)(arg->in_indexer.total_size / arg->out_indexer.total_size);
     cumo_reduce_split<dtype, double, cumo_<%=type_name%>_mean_impl>(*arg, cumo_<%=type_name%>_mean_impl{n});
 }
+<% end %>
 
+<% if kernel_part?("var") %>
 void cumo_<%=type_name%>_var_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, double, cumo_<%=type_name%>_var_impl>(*arg, cumo_<%=type_name%>_var_impl{});
 }
+<% end %>
 
+<% if kernel_part?("stddev") %>
 void cumo_<%=type_name%>_stddev_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     cumo_reduce_split<dtype, double, cumo_<%=type_name%>_stddev_impl>(*arg, cumo_<%=type_name%>_stddev_impl{});
 }
+<% end %>
 
+<% if kernel_part?("rms") %>
 void cumo_<%=type_name%>_rms_kernel_launch(cumo_na_reduction_arg_t* arg)
 {
     double n = (double)(arg->in_indexer.total_size / arg->out_indexer.total_size);

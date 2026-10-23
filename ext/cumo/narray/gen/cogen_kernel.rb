@@ -41,14 +41,14 @@ erb_dir.unshift("tmpl_bit") if (type_name == "bit")
 erb_dir.map! { |d| File.join(thisdir, d) }
 
 TEMPLATE_KERNEL_PARTS = {
-  "accum" => %w[reduce reduce_nan],
-  "accum_index" => %w[reduce reduce_nan],
-  "accum_arg" => %w[reduce reduce_nan],
-  "accum_binary" => %w[reduce reduce_nan reduce_from],
-  "cum" => %w[reduce],
-  "layer_norm" => %w[reduce],
-  "rms_norm" => %w[reduce],
-  "softmax" => %w[reduce],
+  "accum" => %w[reduce reduce_rare reduce_nan],
+  "accum_index" => %w[reduce reduce_rare reduce_nan],
+  "accum_arg" => %w[reduce reduce_rare reduce_nan],
+  "accum_binary" => %w[reduce reduce_rare reduce_nan reduce_from],
+  "cum" => %w[reduce_rare],
+  "layer_norm" => %w[reduce_rare],
+  "rms_norm" => %w[reduce_rare],
+  "softmax" => %w[reduce_rare],
   "bit_count" => %w[reduce],
   "bit_reduce" => %w[reduce],
   "bit_stat" => %w[reduce],
@@ -63,6 +63,9 @@ TEMPLATE_KERNEL_PARTS = {
 
 MATH_TEMPLATES = %w[unary_s binary_s ternary_s frexp].freeze
 COMMON_MATH = %w[sqrt log log2 log10 exp exp2 sin cos tan tanh erf gelu gelu_tanh silu sigmoid softplus].freeze
+# mulsum is here for dot of two vectors.
+COMMON_REDUCE = %w[sum mean max min mulsum].freeze
+RARE_REDUCE = %w[prod ptp minmax var stddev rms abs_sum abs_max abs_min kahan_sum min_index max_index argmin argmax].freeze
 
 abort "unknown kernel part: #{$kernel_part}" unless KERNEL_PARTS.include?($kernel_part)
 undeclared_math = COMMON_MATH - File.read(File.join(thisdir, "spec.rb")).scan(/^\s*math "(\w+)"/).flatten
@@ -83,8 +86,13 @@ class ErbPP
     @children.select { |c| c.kernel_parts.include?($kernel_part) }
   end
 
-  def kernel_part?(nan: false, from: nil)
-    $kernel_part == (from ? "reduce_from" : nan ? "reduce_nan" : "reduce")
+  def kernel_part?(op = nil, nan: false, from: nil)
+    return $kernel_part == "reduce_from" if from
+    return $kernel_part == "reduce_nan" if nan
+    return $kernel_part == "reduce" if COMMON_REDUCE.include?(op)
+    return $kernel_part == "reduce_rare" if RARE_REDUCE.include?(op)
+
+    raise ArgumentError, "#{op.inspect} is in neither COMMON_REDUCE nor RARE_REDUCE"
   end
 
   def indexer_dims(narrow = false)

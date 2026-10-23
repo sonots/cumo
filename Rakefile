@@ -39,7 +39,9 @@ Rake::TestTask.new(:test) do |t|
 end
 
 require "rake/extensiontask"
-Rake::ExtensionTask.new("cumo")
+ext = Rake::ExtensionTask.new("cumo")
+# The Makefile lists an object for each kernel part, so a new part needs extconf.rb to run again.
+file "#{ext.tmp_dir}/#{ext.platform}/#{ext.name}/#{RUBY_VERSION}/Makefile" => "ext/cumo/narray/gen/kernel_parts.rb"
 
 desc 'Build the C++ memory pool test harness without running it (running it needs a GPU)'
 task :build_ctest do

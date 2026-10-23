@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-KERNEL_PARTS = %w[main reduce reduce_nan reduce_from math math_rare compare cast misc].freeze
+KERNEL_PARTS = %w[main reduce reduce_nan reduce_from reduce_rare math math_rare compare cast misc].freeze
 MATH_TYPES = %w[hfloat bfloat sfloat dfloat scomplex dcomplex].freeze
 
 def kernel_parts_of(type_name)
-  return KERNEL_PARTS.first(4) if type_name == "robject"
+  return %w[main reduce reduce_nan reduce_from] if type_name == "robject"
 
   KERNEL_PARTS.reject do |part|
     (%w[math math_rare].include?(part) && !MATH_TYPES.include?(type_name)) ||
-      (%w[compare misc].include?(part) && type_name == "bit")
+      (%w[compare misc reduce_rare].include?(part) && type_name == "bit")
   end
 end
 
