@@ -29,7 +29,7 @@ Without `GPU=1` the ported examples run their CPU arm and print `Skipping GPU (s
 | Example | Status | Notes |
 | --- | --- | --- |
 | `cg/cg.rb` | Ported | Conjugate gradient, CPU on Numo and GPU on Cumo |
-| `kmeans/kmeans.rb` | Ported | Including `--use-custom-kernel`; `--output-image` prints a notice instead of drawing |
+| `kmeans/kmeans.rb` | Ported | Including `--use-custom-kernel`, which does not swap the centroid's x and y as the CuPy original does; `--output-image` prints a notice instead of drawing |
 | `gmm/gmm.rb` | Ported | `--output-image` prints a notice instead of drawing |
 | `finance/black_scholes.rb` | Ported | Naive and `ElementwiseKernel` arms |
 | `finance/monte_carlo.rb` | Ported | `ElementwiseKernel` with its own xorshift128+ in the preamble |

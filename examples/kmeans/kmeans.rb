@@ -90,9 +90,6 @@ def fit_custom(x, n_clusters, max_iter)
   centers = x[initial_indexes, true].dup
 
   max_iter.times do
-    # The CuPy original passes the centroid's y as c0 and its x as c1, so it
-    # measures against the centroids mirrored across y = x. That clusters its
-    # sample data right only because the data is symmetric about that line.
     distances = var_kernel.call(x[true, :new, 0], x[true, :new, 1],
                                 centers[:new, true, 0], centers[:new, true, 1])
     new_pred = distances.argmin(axis: 1)
