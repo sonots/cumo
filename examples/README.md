@@ -62,4 +62,5 @@ A file marked "Not ported" is a stub. Running it prints which CuPy API the origi
 * Reductions in Cumo return 0-dimensional arrays rather than Ruby numbers, so a scalar that steers control flow is read back with `Float(...)` or `Integer(...)`, which reads a Numo scalar too.
 * `numpy.random.choice(n, k, replace=False)` is `(0...n).to_a.sample(k)`, and `numpy.where(cond, a, b)` is written as arithmetic on a 0/1 mask, since neither library has a direct counterpart.
 * Assertions from `cupy.testing` are written inline.
+* `kmeans.rb --use-custom-kernel` hands the distance kernel each centroid's x then y. The CuPy original swaps them, which clusters its sample data right only because that data is symmetric about y = x.
 * `Cumo::Linalg.eigh` reads the upper triangle whatever `uplo:` says, as numo-linalg-alt does, where `cupy.linalg.eigh` reads the triangle that `UPLO` names.
