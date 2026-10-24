@@ -334,6 +334,12 @@ __global__ void iota_kernel(I* out, int64_t n) {
     }
 }
 
+// The positions go to CUB as this rather than as a bare integer, so that
+// SortPairs is a function of this file alone. With a bare integer it is the
+// same function for every type whose key has the same width, and the link
+// keeps one, so SFloat would launch the kernels of the UInt32 module.
+template <typename I> struct position { I value; };
+
 // perm[i] is the position the i-th smallest element sat at, and the index
 // array holds the number to answer for that position.
 template <int NDIM, typename I>
@@ -378,13 +384,13 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
         key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
         float_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
         cumo_check_launch_holding(kin, kout, pin, pout, gathered);
-        cumo_check_status_holding(sort_pairs(kin, kout, pin, pout, total, n_rows, row_len),
+        cumo_check_status_holding(sort_pairs(kin, kout, (const position<I>*)pin, (position<I>*)pout, total, n_rows, row_len),
                              kin, kout, pin, pout, gathered);
         cumo_cuda_runtime_free((char*)kout);
         cumo_cuda_runtime_free((char*)kin);
     } else {
         T* kout = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
-        cumo_check_status_holding(sort_pairs(data, kout, pin, pout, total, n_rows, row_len),
+        cumo_check_status_holding(sort_pairs(data, kout, (const position<I>*)pin, (position<I>*)pout, total, n_rows, row_len),
                              kout, pin, pout, gathered);
         cumo_cuda_runtime_free((char*)kout);
     }
@@ -401,7 +407,7 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
 
 } // namespace
 
-// float_key is only defined for the two float types, so the integer entry
+// float_key is only defined for the float types, so the integer entry
 // points must not instantiate it; the bool picks the branch at compile time.
 #define CUMO_DEF_SORT(name, type, is_float)                                                     \
     extern "C" void cumo_##name##_sort_kernel_launch(                                           \
