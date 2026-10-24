@@ -59,6 +59,7 @@ TEMPLATE_KERNEL_PARTS = {
   "poly" => %w[misc],
   "quantize_symmetric" => %w[misc],
   "unary_ret2" => %w[misc],
+  "sort" => %w[sort],
 }.freeze
 
 MATH_TEMPLATES = %w[unary_s binary_s ternary_s frexp].freeze
