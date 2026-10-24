@@ -52,7 +52,7 @@ jobs:
           - cuda_version: "12.9.2"
             cudnn_suffix: "cudnn"
             ubuntu_version: "ubuntu24.04"
-            cuda_arch: "arch=compute_50,code=sm_50 arch=compute_120,code=sm_120"
+            cuda_arch: "arch=compute_50,code=sm_50 arch=compute_121,code=sm_121"
 
           - cuda_version: "13.4.3"
             cudnn_suffix: "cudnn"
