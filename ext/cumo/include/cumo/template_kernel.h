@@ -186,6 +186,8 @@ void cumo_cuda_runtime_check_kernel_launch(void);
 // The stream every launch and copy goes to. It is 0 until Stream#with says
 // otherwise, and thread local, so one thread's choice is not another's.
 struct CUstream_st* cumo_cuda_stream(void);
+// Call before any CUB or Thrust algorithm. Defined in cuda/cub.cu, which says why.
+void cumo_cuda_cub_prime_ptx_version(void);
 
 // The forms to call while scratch is held, which free what they are given
 // before they raise. Pass every buffer that is still outstanding, including the
