@@ -1820,6 +1820,9 @@ cumo_na_s_from_binary(int argc, VALUE *argv, VALUE type)
     VALUE vstr, vshape, vna;
     VALUE velmsz;
 
+    if (RTEST(rb_class_inherited_p(type, cumo_cRObject))) {
+        rb_raise(rb_eTypeError, "cannot restore %s from binary data", rb_class2name(type));
+    }
     narg = rb_scan_args(argc,argv,"11",&vstr,&vshape);
     Check_Type(vstr,T_STRING);
     str_len = RSTRING_LEN(vstr);
@@ -1931,6 +1934,9 @@ cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
     VALUE velmsz;
     cumo_narray_t *na;
 
+    if (RTEST(rb_obj_is_kind_of(self, cumo_cRObject))) {
+        rb_raise(rb_eTypeError, "cannot store binary data to %s", rb_obj_classname(self));
+    }
     narg = rb_scan_args(argc,argv,"11",&vstr,&voffset);
     Check_Type(vstr,T_STRING);
     if (narg==2) {
@@ -2016,6 +2022,9 @@ cumo_na_to_binary(VALUE self)
     VALUE str;
     cumo_narray_t *na;
 
+    if (RTEST(rb_obj_is_kind_of(self, cumo_cRObject))) {
+        rb_raise(rb_eTypeError, "cannot convert %s into binary data", rb_obj_classname(self));
+    }
     CumoGetNArray(self,na);
     if (na->type == CUMO_NARRAY_VIEW_T &&
         !(cumo_na_view_offset_reaches_bytes(self) && cumo_na_check_contiguous(self)==Qtrue)) {
