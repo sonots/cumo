@@ -158,6 +158,9 @@ cumo_na_swap_byte(VALUE self)
                           CUMO_STRIDE_LOOP|CUMO_NDF_INDEXER_LOOP|CUMO_NDF_ACCEPT_BYTESWAP,
                           1, 1, ain, aout };
 
+    if (rb_obj_is_kind_of(self, cumo_cRObject)) {
+        rb_raise(rb_eTypeError, "cannot swap bytes of %s", rb_obj_classname(self));
+    }
     // Cumo::Bit's element is one bit, so swapping the bytes of an element
     // changes nothing, and a loop stepping by the element stride would walk
     // one byte per bit, eight times past the end of the packed buffer. Only

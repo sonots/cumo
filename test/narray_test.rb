@@ -8083,20 +8083,19 @@ class NArrayTest < Test::Unit::TestCase
       # shape reads a megabyte out of.
       f = Cumo::RObject.new(2)
       f.store([+"a", +"b"])
-      f.store_binary(("\\x01" * 16).freeze)
       f.marshal_load([1, [1 << 20], 0, Array.new(1 << 20) { |i| i }])
       borrowed = f.size == (1 << 20) && f[(1 << 20) - 1].to_a.first == (1 << 20) - 1
 
       # Converting a shape element runs to_int, which is Ruby free to reach
       # this array and free or replace the buffer before it is released here.
-      reentered = %w[free store_binary marshal_load].map do |what|
+      reentered = %w[free store marshal_load].map do |what|
         g = Cumo::RObject.new(4)
         g.store([1, 2, 3, 4])
         o = Object.new
         o.define_singleton_method(:to_int) do
           case what
           when "free" then g.free
-          when "store_binary" then g.store_binary(("\\x01" * 32).freeze)
+          when "store" then g.store([5, 6, 7, 8])
           else g.marshal_load([1, [2], 0, [+"x", +"y"]])
           end
           8

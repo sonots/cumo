@@ -797,6 +797,30 @@ class NArrayAltCoverageTest < CumoTestBase
     assert_equal(%w[hello world], b.to_a)
   end
 
+  def test_robject_rejects_binary_io
+    a = Cumo::RObject[1, 2, 3]
+    bytes = "\x00" * 24
+
+    assert_raise(NoMethodError) { a.store_binary(bytes) }
+    assert_raise(NoMethodError) { a.to_binary }
+    assert_raise(NoMethodError) { a.to_string }
+    assert_raise(NoMethodError) { a.hton }
+    assert_raise(NoMethodError) { a.set(bytes) }
+    assert_raise(NoMethodError) { RObjectSubclass.new(3).store_binary(bytes) }
+    assert_raise(NoMethodError) { Cumo::RObject.from_binary(bytes) }
+    assert_raise(NoMethodError) { Cumo::RObject.from_string(bytes) }
+    assert_raise(NoMethodError) { RObjectSubclass.from_binary(bytes) }
+
+    assert_raise(TypeError) { Cumo::NArray.instance_method(:store_binary).bind_call(a, bytes) }
+    assert_raise(TypeError) { Cumo::NArray.instance_method(:to_binary).bind_call(a) }
+    assert_raise(TypeError) { Cumo::NArray.instance_method(:swap_byte).bind_call(a) }
+    assert_raise(NoMethodError) { Cumo::NArray.instance_method(:to_swapped).bind_call(a) }
+    assert_raise(TypeError) do
+      Cumo::NArray.singleton_class.instance_method(:from_binary).bind_call(RObjectSubclass, bytes)
+    end
+    assert_equal([1, 2, 3], a.to_a)
+  end
+
   def test_marshal_of_a_subclass_of_another_dtype_still_goes_through_bytes
     a = Int32Subclass.new(3)
     a.store(Cumo::Int32[1, 2, 3])

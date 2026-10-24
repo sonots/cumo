@@ -100,8 +100,12 @@ end
 
 if is_object
   undef_singleton_method "from_binary"
+  undef_singleton_method "from_string"
+  undef_method "store_binary"
   undef_method "to_binary"
+  undef_method "to_string"
   undef_method "swap_byte"
+  undef_method "hton"
   undef_method "to_network"
   undef_method "to_vacs"
   undef_method "to_host"
