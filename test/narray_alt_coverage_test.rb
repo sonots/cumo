@@ -804,6 +804,7 @@ class NArrayAltCoverageTest < CumoTestBase
     assert_raise(NoMethodError) { a.store_binary(bytes) }
     assert_raise(NoMethodError) { a.to_binary }
     assert_raise(NoMethodError) { a.to_string }
+    assert_raise(NoMethodError) { a.hton }
     assert_raise(NoMethodError) { a.set(bytes) }
     assert_raise(NoMethodError) { RObjectSubclass.new(3).store_binary(bytes) }
     assert_raise(NoMethodError) { Cumo::RObject.from_binary(bytes) }
@@ -812,6 +813,8 @@ class NArrayAltCoverageTest < CumoTestBase
 
     assert_raise(TypeError) { Cumo::NArray.instance_method(:store_binary).bind_call(a, bytes) }
     assert_raise(TypeError) { Cumo::NArray.instance_method(:to_binary).bind_call(a) }
+    assert_raise(TypeError) { Cumo::NArray.instance_method(:swap_byte).bind_call(a) }
+    assert_raise(NoMethodError) { Cumo::NArray.instance_method(:to_swapped).bind_call(a) }
     assert_raise(TypeError) do
       Cumo::NArray.singleton_class.instance_method(:from_binary).bind_call(RObjectSubclass, bytes)
     end
