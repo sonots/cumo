@@ -55,7 +55,6 @@ narray/ndloop
 narray/ndloop_kernel
 narray/data
 narray/data_kernel
-narray/sort_kernel
 narray/math
 narray/SFMT
 narray/struct

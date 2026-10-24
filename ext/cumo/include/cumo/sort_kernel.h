@@ -1,3 +1,6 @@
+#ifndef CUMO_SORT_KERNEL_H
+#define CUMO_SORT_KERNEL_H
+
 #include "cumo/narray_kernel.h"
 #include "cumo/indexer.h"
 #include "cumo/template_kernel.h"
@@ -422,15 +425,4 @@ void sort_index_rows(cumo_na_iarray_t* a, cumo_na_indexer_t* indexer, cumo_na_ia
         }                                                                                       \
     }
 
-CUMO_DEF_SORT(int8, int8_t, false)
-CUMO_DEF_SORT(int16, int16_t, false)
-CUMO_DEF_SORT(int32, int32_t, false)
-CUMO_DEF_SORT(int64, int64_t, false)
-CUMO_DEF_SORT(uint8, u_int8_t, false)
-CUMO_DEF_SORT(uint16, u_int16_t, false)
-CUMO_DEF_SORT(uint32, u_int32_t, false)
-CUMO_DEF_SORT(uint64, u_int64_t, false)
-CUMO_DEF_SORT(hfloat, cumo_half, true)
-CUMO_DEF_SORT(bfloat, cumo_bfloat, true)
-CUMO_DEF_SORT(sfloat, float, true)
-CUMO_DEF_SORT(dfloat, double, true)
+#endif /* ifndef CUMO_SORT_KERNEL_H */
