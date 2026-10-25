@@ -893,6 +893,7 @@ ndloop_set_output(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
                 }
                 LARG(lp,j).value = t;
                 LARG(lp,j).elmsz = sizeof(VALUE);
+                rb_ary_push(results, Qnil);
             } else {
                 rb_raise(rb_eRuntimeError,"ndloop_set_output: invalid for type");
             }
@@ -1518,7 +1519,7 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
     case 0:
         return Qnil;
     case 1:
-        return rb_ary_entry(results,0);
+        return RARRAY_AREF(results,0);
         // x = RARRAY_AREF(results,0);
         // if (CUMO_NDF_TEST(nf,CUMO_NDF_EXTRACT)) {
         //     if (CumoIsNArray(x)){
