@@ -1518,7 +1518,7 @@ ndloop_extract(VALUE results, cumo_ndfunc_t *nf)
     case 0:
         return Qnil;
     case 1:
-        return RARRAY_AREF(results,0);
+        return rb_ary_entry(results,0);
         // x = RARRAY_AREF(results,0);
         // if (CUMO_NDF_TEST(nf,CUMO_NDF_EXTRACT)) {
         //     if (CumoIsNArray(x)){
