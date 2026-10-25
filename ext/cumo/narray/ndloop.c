@@ -893,6 +893,7 @@ ndloop_set_output(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, VALUE args)
                 }
                 LARG(lp,j).value = t;
                 LARG(lp,j).elmsz = sizeof(VALUE);
+                rb_ary_push(results, Qnil);
             } else {
                 rb_raise(rb_eRuntimeError,"ndloop_set_output: invalid for type");
             }
