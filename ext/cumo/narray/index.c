@@ -301,6 +301,18 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     q->orig_dim = orig_dim;
 }
 
+static ssize_t
+cumo_na_range_count(ssize_t beg, ssize_t end, ssize_t step, ssize_t size)
+{
+    if (step > 0 ? end < beg : end > beg) {
+        return (beg < 0 || beg > size) ? -1 : 0;
+    }
+    if (beg < 0 || beg >= size || end < 0 || end >= size) {
+        return -1;
+    }
+    return (end - beg) / step + 1;
+}
+
 static void
 cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_na_index_arg_t *q)
 {
@@ -332,7 +344,8 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
         if (RTEST(x.exclude_end)) {
             dot = edot;
         }
-        if (beg < 0 || beg >= size) {
+        n = cumo_na_range_count(beg, end, step, size);
+        if (n < 0) {
             rb_raise(rb_eRangeError,
                      "%"SZF"d%s is out of range for size=%"SZF"d",
                      beg_orig, dot, size);
@@ -346,7 +359,8 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
             end--;
             dot = edot;
         }
-        if (beg < 0 || beg >= size || end < 0 || end >= size) {
+        n = cumo_na_range_count(beg, end, step, size);
+        if (n < 0) {
             rb_raise(rb_eRangeError,
                      "%"SZF"d%s%"SZF"d is out of range for size=%"SZF"d",
                      beg_orig, dot, end_orig, size);
@@ -368,15 +382,14 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
         end--;
         dot = edot;
     }
-    if (beg < 0 || beg >= size || end < 0 || end >= size) {
+    n = cumo_na_range_count(beg, end, step, size);
+    if (n < 0) {
         rb_raise(rb_eRangeError,
                  "%"SZF"d%s%"SZF"d is out of range for size=%"SZF"d",
                  beg_orig, dot, end_orig, size);
     }
 #endif
-    n = (end-beg)/step+1;
-    if (n<0) n=0;
-    cumo_na_index_set_step(q,orig_dim,n,beg,step);
+    cumo_na_index_set_step(q,orig_dim,n,n == 0 ? 0 : beg,step);
 
 }
 
@@ -461,7 +474,7 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
             cumo_na_index_set_step(q,i,size,0,1);
         }
         else if (a==cumo_sym_reverse) {
-            cumo_na_index_set_step(q,i,size,size-1,-1);
+            cumo_na_index_set_step(q,i,size,size > 0 ? size-1 : 0,-1);
         }
         else if (a==cumo_sym_new) {
             cumo_na_index_set_step(q,i,1,0,1);
@@ -731,6 +744,21 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
     na2->base.size = total;
 }
 
+static void
+cumo_na_index_at_empty(cumo_narray_view_t *na2, const cumo_na_index_arg_t *q, ssize_t elmsz, int ndim)
+{
+    int i;
+
+    for (i=0; i<ndim-1; i++) {
+        if (q[i].n != 0) {
+            rb_raise(cumo_na_eShapeError, "index array sizes mismatch");
+        }
+    }
+    CUMO_SDX_SET_STRIDE(na2->stridx[0], elmsz);
+    na2->base.size = 0;
+    na2->base.shape[0] = 0;
+}
+
 void cumo_na_index_at_nadata_index_stride_add_kernel_launch(size_t *idx, size_t *idx1, ssize_t s1, uint64_t n);
 void cumo_na_index_at_nadata_index_beg_step_stride_kernel_launch(size_t *idx, size_t beg, ssize_t step, ssize_t s1, uint64_t n);
 void cumo_na_index_at_nadata_index_beg_step_stride_add_kernel_launch(size_t *idx, size_t beg, ssize_t step, ssize_t s1, uint64_t n);
@@ -749,6 +777,10 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
     strides_na1 = ALLOCA_N(ssize_t, na1->base.ndim);
     cumo_na_get_strides_nadata(na1, strides_na1, elmsz);
 
+    if (size == 0) {
+        cumo_na_index_at_empty(na2, q, elmsz, ndim);
+        return;
+    }
     if (q[ndim-1].idx != NULL) {
         index = q[ndim-1].idx;
     } else {
@@ -759,14 +791,8 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
 
     for (i=ndim-1; i>=0; i--) {
         stride1 = strides_na1[q[i].orig_dim];
-        if (i==ndim-1) {
-            if (size == 0) {
-                rb_raise(cumo_na_eShapeError, "cannot get element of empty array");
-            }
-        } else {
-            if (size != q[i].n) {
-                rb_raise(cumo_na_eShapeError, "index array sizes mismatch");
-            }
+        if (i!=ndim-1 && size != q[i].n) {
+            rb_raise(cumo_na_eShapeError, "index array sizes mismatch");
         }
 
         if (q[i].idx != NULL) {
@@ -803,6 +829,10 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
     size_t  *index;
     size_t size = q[ndim-1].n;
 
+    if (size == 0) {
+        cumo_na_index_at_empty(na2, q, elmsz, ndim);
+        return;
+    }
     if (q[ndim-1].idx != NULL) {
         index = q[ndim-1].idx;
     } else {
@@ -813,14 +843,8 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
 
     for (i=ndim-1; i>=0; i--) {
         cumo_stridx_t sdx1 = na1->stridx[q[i].orig_dim];
-        if (i==ndim-1) {
-            if (size == 0) {
-                rb_raise(cumo_na_eShapeError, "cannot get element of empty array");
-            }
-        } else {
-            if (size != q[i].n) {
-                rb_raise(cumo_na_eShapeError, "index array sizes mismatch");
-            }
+        if (i!=ndim-1 && size != q[i].n) {
+            rb_raise(cumo_na_eShapeError, "index array sizes mismatch");
         }
 
         if (q[i].idx != NULL && CUMO_SDX_IS_INDEX(sdx1)) {
@@ -1201,9 +1225,6 @@ cumo_na_get_result_dimension(VALUE self, int argc, VALUE *argv, ssize_t stride, 
     VALUE a;
 
     CumoGetNArray(self,na);
-    if (na->size == 0) {
-        rb_raise(cumo_na_eShapeError, "cannot get element of empty array");
-    }
     idx = ALLOCA_N(ssize_t, argc);
     for (i=j=0; i<argc; i++) {
         a = argv[i];

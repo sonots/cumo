@@ -61,8 +61,8 @@ class NArrayTest < Test::Unit::TestCase
     test "#{dtype}[]" do
       a = dtype[]
 
-      assert_raise(Cumo::NArray::ShapeError) { a[true] }
-      assert_raise(Cumo::NArray::ShapeError) { a[1..-1] }
+      assert { a[true].shape == [0] }
+      assert_raise(RangeError) { a[1..-1] }
 
       assert { a.size == 0 }
       assert { a.ndim == 1 }
@@ -4457,6 +4457,70 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([0, 0, 0], out.scan(/offset = (\d+)/).flatten.map(&:to_i))
   end
 
+  test "an empty array can be indexed" do
+    [Cumo::DFloat, Cumo::Int32, Cumo::Bit].each do |dtype|
+      a = dtype.zeros(0, 3)
+      {
+        [true, true] => [0, 3], [true] => [0], [0...0, true] => [0, 3], [0..-1, true] => [0, 3],
+        [true, 1] => [0], [true, -1] => [0], [true, 0...2] => [0, 2], [[], true] => [0, 3],
+        [true, [0, 2]] => [0, 2], [Cumo::Int32[], true] => [0, 3], [:new, true, true] => [1, 0, 3],
+        [false, 1] => [0], [(0..).step(2), true] => [0, 3], [:reverse, true] => [0, 3]
+      }.each do |idx, shape|
+        assert_equal(shape, a[*idx].shape, "#{dtype} #{idx.inspect}")
+      end
+      assert_equal([0, 1], a.slice(true, 1).shape, dtype.to_s)
+      assert_equal([0], a.at([], []).shape, dtype.to_s)
+      assert_equal([0], a[true, [0, 2]][true, 1].shape, dtype.to_s)
+      a[true, true] = 1
+      a[true, 1] = dtype.zeros(0)
+      a[[], true] = 1
+      assert_equal([0, 3], a.shape, dtype.to_s)
+      assert_raise(IndexError, dtype.to_s) { a[0] }
+      assert_raise(RangeError, dtype.to_s) { a[0, true] }
+      assert_raise(RangeError, dtype.to_s) { a[1..2, true] }
+      assert_raise(Cumo::NArray::ShapeError, dtype.to_s) { a.at([], [0]) }
+
+      b = dtype.zeros(3, 0)
+      assert_equal([0], b[1, true].shape, dtype.to_s)
+      assert_equal([2, 0], b[[0, 2], true].shape, dtype.to_s)
+      assert_equal([2, 0], b[1..2, true].shape, dtype.to_s)
+      c = dtype.zeros(2, 0, 3)
+      assert_equal([0, 3], c[0, true, true].shape, dtype.to_s)
+      assert_equal([2, 0], c[true, true, 1].shape, dtype.to_s)
+      assert_equal([0, 2], c[1, true, 0...2].shape, dtype.to_s)
+    end
+    x = Cumo::DFloat.zeros(0, 3)
+    assert_equal([0], x[x > 0].shape)
+    x[x > 0] = 1
+    assert_equal([0], Cumo::DFloat.new(2, 3).seq.at([], []).shape)
+  end
+
+  test "an empty range selects nothing wherever it may start" do
+    a = Cumo::DFloat.new(2, 3).seq
+    [0...0, 1...1, 2...2, 2.., 2..1, -1...-1].each do |r|
+      assert_equal([0, 3], a[r, true].shape, r.inspect)
+    end
+    [3...3, 3.., -3..-1].each do |r|
+      assert_raise(RangeError, r.inspect) { a[r, true] }
+    end
+    a[2...2, true] = 9
+    assert_equal([[0, 1, 2], [3, 4, 5]], a.to_a)
+    v = Cumo::DFloat.new(5).seq
+    assert_equal([], v[(1..0).step(2)].to_a)
+    assert_equal([], v[(3...3).step(2)].to_a)
+    assert_equal([0, 2, 4], v[(0..).step(2)].to_a)
+    assert_equal([1, 3], v[(1..3).step(2)].to_a)
+  end
+
+  test "an empty range starts the view at its base" do
+    out = run_child(<<~RUBY)
+      require "cumo/narray"
+      a = Cumo::DFloat.new(3, 4).seq
+      [a[true, 4...4], a[3.., true], a[true, 4..], Cumo::DFloat.new(0, 3)[:reverse, true]].each(&:debug_info)
+    RUBY
+    assert_equal([0, 0, 0, 0], out.scan(/offset = (\d+)/).flatten.map(&:to_i))
+  end
+
   # The zeroing also kept every host loop off an empty buffer. What reads one
   # now is a segmentation fault, so a child takes these; to_a nests the way
   # numpy's tolist does.
@@ -8243,12 +8307,13 @@ class NArrayTest < Test::Unit::TestCase
   end
 
   # An empty subscript makes a real view that reaches nowhere, so it stays
-  # usable whatever the base does. Only an empty Array or Int32 builds one:
-  # an empty Range is turned away before it gets this far.
+  # usable whatever the base does.
   test "an empty view is left alone when its base shrinks" do
     [
       [:array, ->(a) { a[[]] }],
-      [:int32, ->(a) { a[Cumo::Int32.cast([])] }]
+      [:int32, ->(a) { a[Cumo::Int32.cast([])] }],
+      [:range, ->(a) { a[0...0] }],
+      [:range_at_end, ->(a) { a[8...8] }]
     ].each do |what, build|
       a = Cumo::DFloat.new(8).seq
       v = build.call(a)
@@ -8257,7 +8322,6 @@ class NArrayTest < Test::Unit::TestCase
       a.seq
       assert_equal([], v.to_a, what.to_s)
     end
-    assert_raise(RangeError) { Cumo::DFloat.new(8).seq[0...0] }
   end
 
   # Once a base has been made smaller its views have to be measured from then
