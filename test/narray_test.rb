@@ -4510,6 +4510,15 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([], v[(3...3).step(2)].to_a)
     assert_equal([0, 2, 4], v[(0..).step(2)].to_a)
     assert_equal([1, 3], v[(1..3).step(2)].to_a)
+    assert_equal([], v[(3...3).step(-1)].to_a)
+    assert_equal([], v[(0...0).step(-1)].to_a)
+    assert_equal([4, 3, 2], v[(4...1).step(-1)].to_a)
+    assert_equal([3, 2, 1, 0], v[(3..).step(-1)].to_a)
+    assert_equal([4, 3, 2, 1, 0], v[(-1..).step(-1)].to_a)
+    assert_raise(RangeError) { v[(5...5).step(-1)] }
+    assert_raise(RangeError) { v[0..-100] }
+    assert_equal([0], Cumo::DFloat.zeros(0)[(-1..).step(-1)].shape)
+    assert_raise(RangeError) { Cumo::DFloat.zeros(0)[(0..).step(-1)] }
   end
 
   test "an empty range starts the view at its base" do
