@@ -198,6 +198,30 @@ Cumo::DFloat.new(1, 3).seq.transpose.contiguous?               #=> true
 Code that runs against both libraries should not read `contiguous?` and expect the same answer.
 Where it wants a contiguous array it can ask for one, since `dup` answers one in either library.
 
+#### Subscripts That Select Nothing
+
+Numo raises `ShapeError` for every subscript of an empty array.
+Cumo returns the empty view numpy does, and raises only for a subscript that names an element.
+
+```ruby
+a = Cumo::DFloat.new(0, 3)
+a[true, 1].shape   #=> [0], where Numo raises ShapeError
+a[0]               # raises IndexError, where Numo raises ShapeError
+```
+
+A range that selects nothing only has to start where an element could be inserted, as with `Array#[]`.
+Numo raises `RangeError` when such a range starts at either end of an axis.
+
+```ruby
+b = Cumo::DFloat.new(2, 3).seq
+b[2...2, true].shape   #=> [0, 3], where Numo raises RangeError
+b[3...3, true]         # raises RangeError in both
+```
+
+A stepped range that selects nothing also selects nothing in Cumo.
+Numo returns one element for `(1..0).step(2)` and two for `(3...3).step(-1)`.
+`compatible_mode` does not change any of this.
+
 ### Keeping Scalars On The Device
 
 The 0-dimensional return is what lets an iterative loop stay on the GPU.

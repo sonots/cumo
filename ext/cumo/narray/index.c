@@ -178,6 +178,11 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
     cudaError_t status;
     int n = RARRAY_LEN(ary);
 
+    if (n == 0) {
+        cumo_na_index_set_step(q, orig_dim, 0, 0, 1);
+        return;
+    }
+
     // A step names the one element a one-element subscript does, without a
     // device allocation, a kernel to fill it, or the synchronize a loop pays
     // to read that one entry back. at() is left out: it gathers through an
@@ -250,10 +255,16 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
         if (CUMO_NA_SIZE(na) != (size_t)size) {
             rb_raise(rb_eIndexError, "Bit-NArray size mismatch");
         }
-        a = rb_funcall(a, cumo_id_where, 0);
-        CumoGetNArray(a,na);
+        if (size > 0) {
+            a = rb_funcall(a, cumo_id_where, 0);
+            CumoGetNArray(a,na);
+        }
     }
     n = CUMO_NA_SIZE(na);
+    if (n == 0) {
+        cumo_na_index_set_step(q, orig_dim, 0, 0, 1);
+        return;
+    }
     idx = cumo_na_new(cIndex,1,&n);
     cumo_na_store(idx,a);
 
@@ -308,12 +319,12 @@ cumo_na_range_count(ssize_t beg, ssize_t end, int excl, ssize_t step, ssize_t si
 
     if (step > 0) {
         if (excl ? end <= beg : end < beg) {
-            return (beg < 0 || beg > size || (excl ? end < 0 : end < -1)) ? -1 : 0;
+            return (beg < 0 || beg > size || end < -1 || end > size) ? -1 : 0;
         }
         last = excl ? end - 1 : end;
     } else {
         if (excl ? end >= beg : end > beg) {
-            return (beg < -1 || beg >= size || (excl ? end >= size : end > size)) ? -1 : 0;
+            return (beg < -1 || beg >= size || end < -1 || end > size) ? -1 : 0;
         }
         last = excl ? end + 1 : end;
     }
@@ -331,8 +342,8 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
     // caught that: a truncated count came out negative up to 2**32 and was
     // rounded to an empty view, and past that it came out positive and wrong.
     ssize_t n;
-    ssize_t beg, end, beg_orig, end_orig;
-    const char *dot = "..", *edot = "...";
+    ssize_t beg, end;
+    int excl;
 
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     rb_arithmetic_sequence_components_t x;
@@ -345,56 +356,34 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
         rb_raise(rb_eArgError, "step must not be zero");
     }
 
-    beg = beg_orig = NUM2SSIZET(x.begin);
-    if (beg < 0) {
-        beg += size;
-    }
-    if (RTEST(x.exclude_end)) {
-        dot = edot;
-    }
+    beg = NUM2SSIZET(x.begin);
     if (T_NIL == TYPE(x.end)) { // endless range
-        n = cumo_na_range_count(beg, step > 0 ? size - 1 : 0, 0, step, size);
-        if (n < 0) {
-            rb_raise(rb_eRangeError,
-                     "%"SZF"d%s is out of range for size=%"SZF"d",
-                     beg_orig, dot, size);
-        }
+        end = step > 0 ? size - 1 : 0;
+        excl = 0;
     } else {
-        end = end_orig = NUM2SSIZET(x.end);
+        end = NUM2SSIZET(x.end);
         if (end < 0) {
             end += size;
         }
-        n = cumo_na_range_count(beg, end, RTEST(x.exclude_end), step, size);
-        if (n < 0) {
-            rb_raise(rb_eRangeError,
-                     "%"SZF"d%s%"SZF"d is out of range for size=%"SZF"d",
-                     beg_orig, dot, end_orig, size);
-        }
+        excl = RTEST(x.exclude_end);
     }
 #else
-    VALUE excl_end;
-
-    beg = beg_orig = NUM2SSIZET(rb_funcall(range,cumo_id_beg,0));
-    if (beg < 0) {
-        beg += size;
-    }
-    end = end_orig = NUM2SSIZET(rb_funcall(range,cumo_id_end,0));
+    beg = NUM2SSIZET(rb_funcall(range,cumo_id_beg,0));
+    end = NUM2SSIZET(rb_funcall(range,cumo_id_end,0));
     if (end < 0) {
         end += size;
     }
-    excl_end = rb_funcall(range,cumo_id_exclude_end,0);
-    if (RTEST(excl_end)) {
-        dot = edot;
-    }
-    n = cumo_na_range_count(beg, end, RTEST(excl_end), step, size);
-    if (n < 0) {
-        rb_raise(rb_eRangeError,
-                 "%"SZF"d%s%"SZF"d is out of range for size=%"SZF"d",
-                 beg_orig, dot, end_orig, size);
-    }
+    excl = RTEST(rb_funcall(range,cumo_id_exclude_end,0));
 #endif
+    if (beg < 0) {
+        beg += size;
+    }
+    n = cumo_na_range_count(beg, end, excl, step, size);
+    if (n < 0) {
+        rb_raise(rb_eRangeError, "%"PRIsVALUE" is out of range for size=%"SZF"d",
+                 rb_inspect(range), size);
+    }
     cumo_na_index_set_step(q,orig_dim,n,beg,step);
-
 }
 
 void
@@ -639,6 +628,9 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
         j++;
         total *= size;
     }
+    if (total == 0) {
+        na2->offset = 0;
+    }
     cumo_na_set_newaxis_strides(na2, newaxis, n_newaxis, j, elmsz);
     na2->base.size = total;
 }
@@ -713,10 +705,12 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
                 size_t  last;
                 stride1 = -stride1;
                 last = na1->base.shape[q[i].orig_dim] - 1;
-                if (na2->offset < last * stride1) {
-                    rb_raise(rb_eStandardError,"bug: negative offset");
+                if (na1->base.size > 0) {
+                    if (na2->offset < last * stride1) {
+                        rb_raise(rb_eStandardError,"bug: negative offset");
+                    }
+                    na2->offset -= last * stride1;
                 }
-                na2->offset -= last * stride1;
                 cumo_na_index_aref_naview_index_stride_last_kernel_launch(index, stride1, last, size);
             } else {
                 cumo_na_index_aref_naview_index_stride_kernel_launch(index, stride1, size);
@@ -743,6 +737,9 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
 
         j++;
         total *= size;
+    }
+    if (total == 0) {
+        na2->offset = na1->offset;
     }
     cumo_na_set_newaxis_strides(na2, newaxis, n_newaxis, j, elmsz);
     na2->base.size = total;
@@ -771,18 +768,11 @@ cumo_na_index_at_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
                      cumo_na_index_arg_t *q, ssize_t elmsz, int ndim, int keep_dim)
 {
     int i;
-    size_t size = cumo_na_index_at_size(q, ndim);
+    size_t size = na2->base.size;
     ssize_t stride1;
     ssize_t *strides_na1;
     size_t  *index;
     ssize_t beg, step;
-
-    na2->base.size = size;
-    na2->base.shape[0] = size;
-    if (size == 0) {
-        CUMO_SDX_SET_STRIDE(na2->stridx[0], elmsz);
-        return;
-    }
 
     strides_na1 = ALLOCA_N(ssize_t, na1->base.ndim);
     cumo_na_get_strides_nadata(na1, strides_na1, elmsz);
@@ -828,14 +818,8 @@ cumo_na_index_at_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
 {
     int i;
     size_t  *index;
-    size_t size = cumo_na_index_at_size(q, ndim);
+    size_t size = na2->base.size;
 
-    na2->base.size = size;
-    na2->base.shape[0] = size;
-    if (size == 0) {
-        CUMO_SDX_SET_STRIDE(na2->stridx[0], elmsz);
-        return;
-    }
     if (q[ndim-1].idx != NULL) {
         index = q[ndim-1].idx;
     } else {
@@ -1003,6 +987,13 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
 
     elmsz = cumo_na_element_stride(self);
 
+    if (at_mode && ndim > 0) {
+        size_t size = cumo_na_index_at_size(q, ndim);
+        na2->base.size = size;
+        na2->base.shape[0] = size;
+        CUMO_SDX_SET_STRIDE(na2->stridx[0], elmsz);
+    }
+
     switch(na1->type) {
     case CUMO_NARRAY_DATA_T:
     case CUMO_NARRAY_FILEMAP_T:
@@ -1011,7 +1002,9 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
             na2->base.size = 1;
         } else {
             if (at_mode) {
-                cumo_na_index_at_nadata((cumo_narray_data_t *)na1,na2,q,elmsz,ndim,keep_dim);
+                if (na2->base.size > 0) {
+                    cumo_na_index_at_nadata((cumo_narray_data_t *)na1,na2,q,elmsz,ndim,keep_dim);
+                }
             } else {
                 cumo_na_index_aref_nadata((cumo_narray_data_t *)na1,na2,q,elmsz,ndim,keep_dim);
             }
@@ -1027,7 +1020,9 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
             na2->offset = ((cumo_narray_view_t *)na1)->offset;
             na2->data = ((cumo_narray_view_t *)na1)->data;
             if (at_mode) {
-               cumo_na_index_at_naview((cumo_narray_view_t *)na1,na2,q,elmsz,ndim,keep_dim);
+                if (na2->base.size > 0) {
+                    cumo_na_index_at_naview((cumo_narray_view_t *)na1,na2,q,elmsz,ndim,keep_dim);
+                }
             } else {
                cumo_na_index_aref_naview((cumo_narray_view_t *)na1,na2,q,elmsz,ndim,keep_dim);
             }

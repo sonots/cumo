@@ -4492,7 +4492,12 @@ class NArrayTest < Test::Unit::TestCase
     x = Cumo::DFloat.zeros(0, 3)
     assert_equal([0], x[x > 0].shape)
     x[x > 0] = 1
+    assert_equal([0, 2], x.reverse(1)[true, [0, 2]].shape)
     assert_equal([0], Cumo::DFloat.new(2, 3).seq.at([], []).shape)
+    w = Cumo::DFloat.new(3, 4).seq[[2, 0], true]
+    assert_equal([0], w.at([], []).shape)
+    assert_equal([10.0, 0.0], w.at([0, 1], [2, 0]).to_a)
+    assert_raise(Cumo::NArray::ShapeError) { w.at([], [0]) }
   end
 
   test "an empty range selects nothing wherever it may start" do
@@ -4515,19 +4520,25 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([4, 3, 2], v[(4...1).step(-1)].to_a)
     assert_equal([3, 2, 1, 0], v[(3..).step(-1)].to_a)
     assert_equal([4, 3, 2, 1, 0], v[(-1..).step(-1)].to_a)
-    assert_raise(RangeError) { v[(5...5).step(-1)] }
+    assert_equal([], v[0...-6].to_a)
+    assert_equal([], v[(4...5).step(-1)].to_a)
+    e = assert_raise(RangeError) { v[(5...5).step(-1)] }
+    assert_match(/step\(-1\)/, e.message)
     assert_raise(RangeError) { v[0..-100] }
     assert_equal([0], Cumo::DFloat.zeros(0)[(-1..).step(-1)].shape)
     assert_raise(RangeError) { Cumo::DFloat.zeros(0)[(0..).step(-1)] }
   end
 
-  test "an empty range starts the view at its base" do
+  test "an empty view sits at its base" do
     out = run_child(<<~RUBY)
       require "cumo/narray"
       a = Cumo::DFloat.new(3, 4).seq
-      [a[true, 4...4], a[3.., true], a[true, 4..], Cumo::DFloat.new(0, 3)[:reverse, true]].each(&:debug_info)
+      e = Cumo::DFloat.new(0, 3)
+      [a[true, 4...4], a[3.., true], a[true, 4..], e[:reverse, true], e[true, :reverse], e[true, 2],
+       e.slice(true, 2), e[true, 1..2], Cumo::DFloat.new(2, 0, 3)[1, true, 2],
+       e.reverse(1)[true, [0, 2]], e.reverse(1)[true, 1]].each(&:debug_info)
     RUBY
-    assert_equal([0, 0, 0, 0], out.scan(/offset = (\d+)/).flatten.map(&:to_i))
+    assert_equal([0] * 11, out.scan(/offset = (\d+)/).flatten.map(&:to_i))
   end
 
   # The zeroing also kept every host loop off an empty buffer. What reads one
