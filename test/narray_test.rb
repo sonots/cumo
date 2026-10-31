@@ -2861,6 +2861,22 @@ class NArrayTest < Test::Unit::TestCase
     assert { a.to_a == [[0, 1, 2], [0, 1, 2]] }
   end
 
+  test "store survives a GC between a cast sub-narray and a row that raises" do
+    script = <<~RUBY
+      require "cumo/narray"
+      caught = 0
+      GC.stress = true
+      10.times do
+        Cumo::DFloat.new(2, 3).store([Cumo::Int32[1, 0, 1], Cumo::DFloat.new(2, 3)])
+      rescue Cumo::NArray::ShapeError
+        caught += 1
+      end
+      GC.stress = false
+      print caught
+    RUBY
+    assert_equal("10", run_child(script))
+  end
+
   test "store into a strided view is not clobbered by a later allocation" do
     # Storing a Ruby Array into a strided destination stages it in a device
     # buffer and launches a kernel to scatter it. The buffer was released right
