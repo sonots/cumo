@@ -2603,6 +2603,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
         }
     }
  loop_end:
+    LARG(lp,1).value = Qnil;
     LARG(lp,1).ptr = NULL;
     LARG(lp,1).shape = saved_shape;
     LARG(lp,1).elmsz = saved_elmsz;
