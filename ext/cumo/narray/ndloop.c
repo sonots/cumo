@@ -53,6 +53,7 @@ typedef struct CUMO_NA_MD_LOOP {
                               // 3 for sum(), 1 for sum(axis: 1), 2 for sum(axis: [1,2])
     int   *trans_map;
     size_t sub_narray_len;    // elements the sub-narray of the current row reaches with, for loop_store_subnarray
+    VALUE  sub_narray;
     VALUE  vargs;
     VALUE  reduce;            // dimension indicies to reduce in reduction kernel (in bits), e.g., for an array of shape:
                               // [2,3,4], 111b for sum(), 010b for sum(axis: 1), 110b for sum(axis: [1,2])
@@ -2547,6 +2548,7 @@ loop_store_subnarray(cumo_ndfunc_t *nf, cumo_na_md_loop_t *lp, int i0, size_t *c
     if (rb_obj_class(a) != a_type) {
         a = rb_funcall(a_type, cumo_id_cast, 1, a);
     }
+    lp->sub_narray = a;
     CumoGetNArray(a,na);
     if (na->ndim != nd-i0+1) {
         rb_raise(cumo_na_eShapeError, "mismatched dimension of sub-narray: "
