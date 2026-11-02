@@ -271,8 +271,6 @@ cumo_na_step_sequence( VALUE obj, size_t *plen, double *pbeg, double *pstep )
 void
 Init_cumo_na_step()
 {
-    rb_define_alias(rb_cRange, "%", "step");
-
     cumo_id_beg  = rb_intern("begin");
     cumo_id_end  = rb_intern("end");
     cumo_id_len  = rb_intern("length");
