@@ -1,3 +1,24 @@
+# 0.15.0 (2026/11/02)
+
+Breaking changes:
+
+* A subscript of an empty array is read as it is for any other array, where every subscript of an empty array raised `Cumo::NArray::ShapeError`. `a[true, 1]` of a 0 x 3 array answers an empty view, and a subscript that names an element raises as it does for any array, so `a[0]` raises `IndexError`. An empty range now selects nothing when it starts where an element could be inserted, as with `Array#[]`, so `b[2...2, true]` of a 2 x 3 array answers a 0 x 3 view where it raised `RangeError`. The README lists where this differs from Numo (PR #641)
+* `Cumo::RObject` no longer has `store_binary`, `to_string`, `hton` or `Cumo::RObject.from_string`, and `set` with a String raises `NoMethodError` for it. They read or wrote the object references of an RObject as raw bytes, so the next garbage collection could crash, and `to_string` gave out heap addresses. Calling the methods of `Cumo::NArray` on an RObject through `bind_call` raises `TypeError` (PR #638)
+
+Fixes:
+
+* Fix `require "cumo"` under `ruby -w` warning "method redefined; discarding old %". Cumo no longer defines `Range#%` again, which Ruby has had since 2.6 and which works the same (PR #643)
+* Fix a crash, possible since 0.7.0, when storing an Array whose NArray row of another type is followed by a row that raises, such as one with the wrong number of dimensions. The garbage collector could free the cast copy of the row before the store let go of it (PR #642)
+* Fix a range with a negative step and an excluded or missing end selecting the wrong elements: `(4...1).step(-1)` selected 5 elements of a 5-element array where it should select 3, and `(3..).step(-1)` none. Fix a stepped range that selects nothing returning elements, as `(1..0).step(2)` returned one and `(3...3).step(-1)` two (PR #641)
+* Fix `to_a` and `format_to_a` aborting when Cumo is compiled with `RUBY_DEBUG` against a Ruby whose headers check the index of `RARRAY_AREF`, as Ruby master does since ruby/ruby@61261bf5c4 (PR #640)
+
+Changes:
+
+* CI builds against CUDA 13.4.3 on Ubuntu 26.04 where it built against 13.4.1 on Ubuntu 24.04, and the CUDA 12.9.2 job builds for sm_121 where it built for sm_120 (PR #639)
+* The first `sort`, `median` or `sort_index` of a type loads the sort kernels of that type alone, where the first of a process loaded those of all twelve types. On SFloat the first `sort` is about 5.7 times faster, `median` about 9 times and `sort_index` about 3 times (PR #636)
+* The first `cumsum` or `cumprod` of a process no longer loads every sort kernel, which makes the first SFloat `cumsum` about 2.1 times faster and keeps the peak RSS 57 MB lower (PR #635)
+* `sum`, `mean`, `max`, `min` and the `dot` of two vectors have a kernel module of their own, so the first of them on a type no longer loads every reduction of the type. The first SFloat `sum` or vector `dot` of a process is about 8.6 times faster (PR #634)
+
 # 0.14.1 (2026/10/22)
 
 Fixes:
