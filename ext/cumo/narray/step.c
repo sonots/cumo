@@ -46,27 +46,12 @@ cumo_na_step_array_index(VALUE obj, size_t ary_size,
     VALUE vbeg, vend, vstep, vlen;
     ssize_t end=ary_size;
 
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     rb_arithmetic_sequence_components_t x;
     rb_arithmetic_sequence_extract(obj, &x);
 
     vstep = x.step;
     vbeg = x.begin;
     vend = x.end;
-#else
-    cumo_enumerator_t *e;
-
-    if (rb_obj_is_kind_of(obj, rb_cRange)) {
-        vstep = rb_ivar_get(obj, cumo_id_step);
-    } else { // Enumerator
-        cumo_na_parse_enumerator_step(obj, &vstep);
-        e = (cumo_enumerator_t *)DATA_PTR(obj);
-        obj =  e->obj; // Range
-    }
-
-    vbeg = rb_funcall(obj, cumo_id_beg, 0);
-    vend = rb_funcall(obj, cumo_id_end, 0);
-#endif
     vlen = rb_ivar_get(obj, cumo_id_len);
 
     if (RTEST(vbeg)) {
@@ -194,27 +179,12 @@ cumo_na_step_sequence( VALUE obj, size_t *plen, double *pbeg, double *pstep )
     double dbeg, dend, dstep=1, dsize, err;
     size_t size, n;
 
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     rb_arithmetic_sequence_components_t x;
     rb_arithmetic_sequence_extract(obj, &x);
 
     vstep = x.step;
     dbeg = NUM2DBL(x.begin);
     vend = x.end;
-#else
-    cumo_enumerator_t *e;
-
-    if (rb_obj_is_kind_of(obj, rb_cRange)) {
-        vstep = rb_ivar_get(obj, cumo_id_step);
-    } else { // Enumerator
-        cumo_na_parse_enumerator_step(obj, &vstep);
-        e = (cumo_enumerator_t *)DATA_PTR(obj);
-        obj =  e->obj; // Range
-    }
-
-    dbeg = NUM2DBL(rb_funcall(obj, cumo_id_beg, 0));
-    vend = rb_funcall(obj, cumo_id_end, 0);
-#endif
     vlen = rb_ivar_get(obj, cumo_id_len);
 
     if (RTEST(vlen)) {

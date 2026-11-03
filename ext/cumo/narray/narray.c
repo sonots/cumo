@@ -47,9 +47,7 @@ VALUE cumo_sym_init;
 #ifndef HAVE_RB_CCOMPLEX
 VALUE rb_cComplex;
 #endif
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
 VALUE rb_cArithSeq;
-#endif
 
 int cumo_na_inspect_rows_=20;
 int cumo_na_inspect_cols_=80;
@@ -2309,11 +2307,7 @@ cumo_na_get_reduce_flag_from_axes(VALUE cumo_na_obj, VALUE axes)
             step = 0;
             //printf("beg=%d step=%d len=%d\n",beg,step,len);
         } else if (rb_obj_is_kind_of(v,rb_cRange) ||
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
                    rb_obj_is_kind_of(v,rb_cArithSeq)
-#else
-                   rb_obj_is_kind_of(v,rb_cEnumerator)
-#endif
                    ) {
             cumo_na_step_array_index( v, ndim, &len, &beg, &step );
         } else {
@@ -2744,9 +2738,7 @@ Init_cumo_narray()
     rb_require("complex");
     rb_cComplex = rb_const_get(rb_cObject, rb_intern("Complex"));
 #endif
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     rb_cArithSeq = rb_path2class("Enumerator::ArithmeticSequence");
-#endif
 
     cumo_na_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
     cumo_na_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);
