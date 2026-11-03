@@ -103,12 +103,10 @@ static int cumo_na_mdai_object_type(int type, VALUE v)
     if (rb_obj_is_kind_of(v, rb_cRange)) {
         MDAI_ATTR_TYPE(type,v,begin);
         MDAI_ATTR_TYPE(type,v,end);
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     } else if (rb_obj_is_kind_of(v, rb_cArithSeq)) {
         MDAI_ATTR_TYPE(type,v,begin);
         MDAI_ATTR_TYPE(type,v,end);
         MDAI_ATTR_TYPE(type,v,step);
-#endif
     } else {
         type = cumo_na_object_type(type,v);
     }
@@ -193,11 +191,7 @@ cumo_na_mdai_investigate(cumo_na_mdai_t *mdai, int ndim)
             }
         }
         else
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
         if (rb_obj_is_kind_of(v, rb_cRange) || rb_obj_is_kind_of(v, rb_cArithSeq))
-#else
-        if (rb_obj_is_kind_of(v, rb_cRange) || rb_obj_is_kind_of(v, rb_cEnumerator))
-#endif
         {
             cumo_na_step_sequence(v,&length,&dbeg,&dstep);
             len += length-1;

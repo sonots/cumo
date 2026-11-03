@@ -69,11 +69,7 @@ static void
         if (idx1) {
             for (i=i1=0; i1<n1 && i<n; i1++) {
                 if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
                 if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq))
-#else
-                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cEnumerator))
-#endif
                 {
                     cumo_na_step_sequence(x,&len,&beg,&step);
                     for (c=0; c<len && i<n; c++,i++) {
@@ -91,11 +87,7 @@ static void
         } else {
             for (i=i1=0; i1<n1 && i<n; i1++) {
                 if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
                 if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq))
-#else
-                if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cEnumerator))
-#endif
                 {
                     cumo_na_step_sequence(x,&len,&beg,&step);
                     for (c=0; c<len && i<n; c++,i++) {
@@ -127,11 +119,7 @@ static void
         dtype* host_z = RB_ALLOCV_N(dtype, buf, n);
         for (i=i1=0; i1<n1 && i<n; i1++) {
             if (!cumo_na_store_rary_fetch(v1, i1, &x)) break;
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
             if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cArithSeq))
-#else
-            if (rb_obj_is_kind_of(x, rb_cRange) || rb_obj_is_kind_of(x, rb_cEnumerator))
-#endif
             {
                 cumo_na_step_sequence(x,&len,&beg,&step);
                 for (c=0; c<len && i<n; c++,i++) {

@@ -117,7 +117,6 @@ unless have_type("u_int64_t", stdint)
   have_type("uint64_t", stdint)
 end
 have_func("exp10")
-have_func("rb_arithmetic_sequence_extract")
 have_func("RTYPEDDATA_GET_DATA")
 
 have_var("rb_cComplex")

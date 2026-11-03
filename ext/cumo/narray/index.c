@@ -52,9 +52,6 @@ static VALUE cumo_sym_plus;
 static VALUE cumo_sym_sum;
 static VALUE cumo_sym_tilde;
 static VALUE cumo_sym_rest;
-static ID cumo_id_beg;
-static ID cumo_id_end;
-static ID cumo_id_exclude_end;
 static ID cumo_id_each;
 static ID cumo_id_step;
 static ID cumo_id_dup;
@@ -345,7 +342,6 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
     ssize_t beg, end;
     int excl;
 
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     rb_arithmetic_sequence_components_t x;
     rb_arithmetic_sequence_extract(range, &x);
     if (rb_obj_is_kind_of(range, rb_cArithSeq)) {
@@ -373,14 +369,6 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
         }
         excl = RTEST(x.exclude_end);
     }
-#else
-    beg = NUM2SSIZET(rb_funcall(range,cumo_id_beg,0));
-    end = NUM2SSIZET(rb_funcall(range,cumo_id_end,0));
-    if (end < 0) {
-        end += size;
-    }
-    excl = RTEST(rb_funcall(range,cumo_id_exclude_end,0));
-#endif
     if (beg < 0) {
         beg += size;
     }
@@ -497,11 +485,9 @@ cumo_na_index_parse_each(volatile VALUE a, ssize_t size, int i, cumo_na_index_ar
         if (rb_obj_is_kind_of(a, rb_cRange)) {
             cumo_na_parse_range(a, 1, i, size, q);
         }
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
         else if (rb_obj_is_kind_of(a, rb_cArithSeq)) {
             cumo_na_parse_range(a, 1, i, size, q);
         }
-#endif
         else if (rb_obj_is_kind_of(a, rb_cEnumerator)) {
             cumo_na_parse_enumerator(a, i, size, q);
         }
@@ -1337,9 +1323,6 @@ Init_cumo_na_index()
     cumo_sym_sum        = ID2SYM(rb_intern("sum"));
     cumo_sym_tilde      = ID2SYM(rb_intern("~"));
     cumo_sym_rest       = ID2SYM(rb_intern("rest"));
-    cumo_id_beg         = rb_intern("begin");
-    cumo_id_end         = rb_intern("end");
-    cumo_id_exclude_end = rb_intern("exclude_end?");
     cumo_id_each        = rb_intern("each");
     cumo_id_step        = rb_intern("step");
     cumo_id_dup         = rb_intern("dup");

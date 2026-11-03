@@ -205,9 +205,7 @@ extern VALUE cumo_cRObject;
 #ifndef HAVE_RB_CCOMPLEX
 extern VALUE rb_cComplex;
 #endif
-#ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
 extern VALUE rb_cArithSeq;
-#endif
 
 extern VALUE cumo_sym_reduce;
 extern VALUE cumo_sym_option;
