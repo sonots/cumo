@@ -27,7 +27,6 @@ void Init_cumo();
 void Init_cumo_narray();
 void Init_cumo_na_data();
 void Init_cumo_na_ndloop();
-void Init_cumo_na_step();
 void Init_cumo_na_index();
 void Init_cumo_bit();
 void Init_cumo_int8();
@@ -189,7 +188,6 @@ Init_cumo()
 
     Init_cumo_narray();
 
-    Init_cumo_na_step();
     Init_cumo_na_index();
 
     Init_cumo_na_data();
