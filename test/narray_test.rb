@@ -4557,6 +4557,21 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(ArgumentError) { v[(0..4).enum_for(:step, 2.0)] }
   end
 
+  test "a beginless range starts at the end the step leaves from" do
+    v = Cumo::DFloat.new(5).seq
+    assert_equal([0, 1, 2, 3], v[..3].to_a)
+    assert_equal([0, 1, 2], v[...3].to_a)
+    assert_equal([0, 2], v[(..3).step(2)].to_a)
+    assert_equal([4, 3], v[(..3) % -1].to_a)
+    assert_equal([4], v[(...3) % -1].to_a)
+    assert_equal([0, 1], v.at(..1).to_a)
+    assert_equal([[0, 1], [2, 3]], Cumo::DFloat.new(3, 2).seq[..1, true].to_a)
+    w = v.dup
+    w[..1] = 9
+    assert_equal([9, 9, 2, 3, 4], w.to_a)
+    assert_equal([0], Cumo::DFloat.zeros(0)[..-1].shape)
+  end
+
   test "an empty view sits at its base" do
     out = run_child(<<~RUBY)
       require "cumo/narray"
