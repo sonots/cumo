@@ -24,8 +24,6 @@
 #define DBL_EPSILON 2.2204460492503131e-16
 #endif
 
-#define EXCL(r) RTEST(rb_funcall((r), rb_intern("exclude_end?"), 0))
-
 void
 cumo_na_step_array_index(VALUE obj, size_t ary_size,
                       size_t *plen, ssize_t *pbeg, ssize_t *pstep)
@@ -67,7 +65,7 @@ cumo_na_step_array_index(VALUE obj, size_t ary_size,
         if (!RTEST(vend)) {
             end = ary_size-1;
         }
-        else if (EXCL(obj)) {
+        else if (RTEST(x.exclude_end)) {
             end--;
         }
         if (beg<=end) {
@@ -82,7 +80,7 @@ cumo_na_step_array_index(VALUE obj, size_t ary_size,
         if (!RTEST(vend)) {
             end = 0;
         }
-        else if (EXCL(obj)) {
+        else if (RTEST(x.exclude_end)) {
             end++;
         }
         if (beg>=end) {
@@ -129,7 +127,7 @@ cumo_na_step_sequence( VALUE obj, size_t *plen, double *pbeg, double *pstep )
         err = (fabs(dbeg)+fabs(dend)+fabs(dend-dbeg))/fabs(dstep)*DBL_EPSILON;
         if (err>0.5) err=0.5;
         dsize = (dend-dbeg)/dstep;
-        if (EXCL(obj))
+        if (RTEST(x.exclude_end))
             dsize -= err;
         else
             dsize += err;
