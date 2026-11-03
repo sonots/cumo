@@ -358,7 +358,11 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
         rb_raise(rb_eArgError, "step must not be zero");
     }
 
-    beg = NUM2SSIZET(x.begin);
+    if (T_NIL == TYPE(x.begin)) { // beginless range
+        beg = step > 0 ? 0 : size - 1;
+    } else {
+        beg = NUM2SSIZET(x.begin);
+    }
     if (T_NIL == TYPE(x.end)) { // endless range
         end = step > 0 ? size - 1 : 0;
         excl = 0;
