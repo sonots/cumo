@@ -24,16 +24,7 @@
 #define DBL_EPSILON 2.2204460492503131e-16
 #endif
 
-
 #define EXCL(r) RTEST(rb_funcall((r), rb_intern("exclude_end?"), 0))
-
-/*
- *  call-seq:
- *     step.parameters([array_size])    => [start,step,length]
- *
- *  Returns the iteration parameters of <i>step</i>.  If
- *  <i>array_sizse</i> is given, negative array index is considered.
- */
 
 void
 cumo_na_step_array_index(VALUE obj, size_t ary_size,
@@ -63,8 +54,6 @@ cumo_na_step_array_index(VALUE obj, size_t ary_size,
             end += ary_size;
         }
     }
-
-    //puts("pass 1");
 
     if (RTEST(vstep)) {
         step = NUM2SSIZET(vstep);
@@ -104,8 +93,6 @@ cumo_na_step_array_index(VALUE obj, size_t ary_size,
     } else {
         rb_raise( rb_eStandardError, "step must be non-zero" );
     }
-
-    //puts("pass 2");
 
     if (beg<0 || beg>=(ssize_t)ary_size ||
         end<0 || end>=(ssize_t)ary_size) {
