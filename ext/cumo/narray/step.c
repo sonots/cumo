@@ -24,7 +24,7 @@
 #define DBL_EPSILON 2.2204460492503131e-16
 #endif
 
-static ID cumo_id_beg, cumo_id_end, cumo_id_len, cumo_id_step;
+static ID cumo_id_len;
 
 
 #define EXCL(r) RTEST(rb_funcall((r), rb_intern("exclude_end?"), 0))
@@ -241,8 +241,5 @@ cumo_na_step_sequence( VALUE obj, size_t *plen, double *pbeg, double *pstep )
 void
 Init_cumo_na_step()
 {
-    cumo_id_beg  = rb_intern("begin");
-    cumo_id_end  = rb_intern("end");
-    cumo_id_len  = rb_intern("length");
-    cumo_id_step = rb_intern("step");
+    cumo_id_len = rb_intern("length");
 }
