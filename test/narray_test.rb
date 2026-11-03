@@ -4545,6 +4545,18 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(RangeError) { Cumo::DFloat.zeros(0)[(0..).step(-1)] }
   end
 
+  test "an Enumerator subscript takes its step" do
+    v = Cumo::DFloat.new(5).seq
+    assert_equal([0, 2, 4], v[(0..4).enum_for(:step, 2)].to_a)
+    assert_equal([4, 3, 2, 1, 0], v[(4..0).enum_for(:step, -1)].to_a)
+    assert_equal([4, 2, 0], v[(4..).enum_for(:step, -2)].to_a)
+    assert_equal([1, 3], v.at((1..4).enum_for(:step, 2)).to_a)
+    assert_equal([[1, 3], [5, 7]], Cumo::DFloat.new(2, 4).seq[true, (1..).enum_for(:step, 2)].to_a)
+    assert_equal([1, 2, 3], v[(1..3).each].to_a)
+    assert_raise(ArgumentError) { v[(0..4).enum_for(:step, 0)] }
+    assert_raise(ArgumentError) { v[(0..4).enum_for(:step, 2.0)] }
+  end
+
   test "an empty view sits at its base" do
     out = run_child(<<~RUBY)
       require "cumo/narray"

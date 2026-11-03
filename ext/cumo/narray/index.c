@@ -348,10 +348,12 @@ cumo_na_parse_range(VALUE range, ssize_t step, int orig_dim, ssize_t size, cumo_
 #ifdef HAVE_RB_ARITHMETIC_SEQUENCE_EXTRACT
     rb_arithmetic_sequence_components_t x;
     rb_arithmetic_sequence_extract(range, &x);
-    if (!RB_INTEGER_TYPE_P(x.step)) {
-        rb_raise(rb_eArgError, "step must be an Integer");
+    if (rb_obj_is_kind_of(range, rb_cArithSeq)) {
+        if (!RB_INTEGER_TYPE_P(x.step)) {
+            rb_raise(rb_eArgError, "step must be an Integer");
+        }
+        step = NUM2SSIZET(x.step);
     }
-    step = NUM2SSIZET(x.step);
     if (step == 0) {
         rb_raise(rb_eArgError, "step must not be zero");
     }
@@ -430,6 +432,9 @@ cumo_na_parse_enumerator(VALUE enum_obj, int orig_dim, ssize_t size, cumo_na_ind
         rb_raise(rb_eTypeError,"wrong argument type (not T_DATA)");
     }
     cumo_na_parse_enumerator_step(enum_obj, &step);
+    if (!RB_INTEGER_TYPE_P(step)) {
+        rb_raise(rb_eArgError, "step must be an Integer");
+    }
     e = CUMO_RENUMERATOR_PTR(enum_obj);
     cumo_na_parse_range(e->obj, NUM2SSIZET(step), orig_dim, size, q); // e->obj : Range Object
 }
