@@ -85,7 +85,7 @@ module Cumo::CUDA
       k = ElementwiseKernel.new("raw T x", "raw T y", "y[i] = x[i] * 2", "twice_into_raw")
       x = Cumo::SFloat.new(3).seq
       y = Cumo::SFloat.zeros(3)
-      assert_raise(ArgumentError) { k.call(x, y) }
+      assert_raise_message(/size: has to say/) { k.call(x, y) }
       k.call(x, y, size: 3)
       assert_equal([0.0, 2.0, 4.0], y.to_a)
     end

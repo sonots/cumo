@@ -209,13 +209,12 @@ module Cumo::CUDA
     # An input that other threads write while it is read, because it shares
     # memory with an output, is read from a copy; so is an index view, and,
     # for an elementwise kernel, a transposed view, which the copy reorders
-    # in tiles where the kernel would read it a row apart per thread. Only an
-    # output in in_place is written by each thread at the element it reads.
-    def input_layout(a, shape, outs, elementwise, in_place: [])
+    # in tiles where the kernel would read it a row apart per thread.
+    def input_layout(a, shape, outputs, elementwise)
       layout = Driver.narray_view_layout(a)
       held = nil
       if layout.nil? || (elementwise && transposed?(a, layout[1])) ||
-         outs.any? { |o| overlaps?(layout, o) && !(in_place.any? { |q| q.equal?(o) } && same_place?(layout, a, o, shape)) }
+         outputs.any? { |p, o| overlaps?(layout, o) && !(elementwise && !p.raw && same_place?(layout, a, o, shape)) }
         held = a.dup
         layout = Driver.narray_view_layout(held)
       end
