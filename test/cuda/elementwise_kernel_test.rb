@@ -96,6 +96,10 @@ module Cumo::CUDA
       a = Cumo::Int32.new(n).seq
       k.call(a, a)
       assert_equal(0, a.ne(Cumo::Int32.new(n).seq.reverse).count_true.to_i)
+      both = ElementwiseKernel.new("T x", "T y, raw T z", "z[_ind.size() - 1 - i] = x", "reverse_into_both")
+      b = Cumo::Int32.new(n).seq
+      both.call(b, b, b)
+      assert_equal(0, b.ne(Cumo::Int32.new(n).seq.reverse).count_true.to_i)
     end
 
     test "an input cannot be written and a number is held to its type" do
