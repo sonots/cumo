@@ -210,11 +210,11 @@ module Cumo::CUDA
     # memory with an output, is read from a copy; so is an index view, and,
     # for an elementwise kernel, a transposed view, which the copy reorders
     # in tiles where the kernel would read it a row apart per thread.
-    def input_layout(a, shape, outputs, elementwise)
+    def input_layout(a, shape, outs, elementwise, raw_outs: [])
       layout = Driver.narray_view_layout(a)
       held = nil
-      if layout.nil? || (elementwise && transposed?(a, layout[1])) ||
-         outputs.any? { |p, o| overlaps?(layout, o) && !(elementwise && !p.raw && same_place?(layout, a, o, shape)) }
+      if layout.nil? || (elementwise && transposed?(a, layout[1])) || raw_outs.any? { |o| overlaps?(layout, o) } ||
+         outs.any? { |o| overlaps?(layout, o) && !(elementwise && same_place?(layout, a, o, shape)) }
         held = a.dup
         layout = Driver.narray_view_layout(held)
       end

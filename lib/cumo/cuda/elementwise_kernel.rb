@@ -72,8 +72,10 @@ module Cumo::CUDA
     def launch(ins, outs, types, shape, n)
       params = @in_params + @out_params
       arrays = ins.map.with_index { |a, k| @in_params[k].raw ? readable(a) : a } + outs
+      raw_outs = outs.select.with_index { |_, k| @out_params[k].raw }
+      plain_outs = outs.reject.with_index { |_, k| @out_params[k].raw }
       layouts = ins.map.with_index do |a, k|
-        a.is_a?(Cumo::NArray) && !@in_params[k].raw ? input_layout(a, shape, @out_params.zip(outs), true) : nil
+        a.is_a?(Cumo::NArray) && !@in_params[k].raw ? input_layout(a, shape, plain_outs, true, raw_outs: raw_outs) : nil
       end
       walked = params.each_index.select { |k| arrays[k].is_a?(Cumo::NArray) && !params[k].raw }
       cshape, cstrides = collapse(shape, walked.map { |k| layouts[k] ? layouts[k][1] : strides(arrays[k], shape) })
