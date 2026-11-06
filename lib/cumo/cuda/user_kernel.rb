@@ -210,10 +210,10 @@ module Cumo::CUDA
     # memory with an output, is read from a copy; so is an index view, and,
     # for an elementwise kernel, a transposed view, which the copy reorders
     # in tiles where the kernel would read it a row apart per thread.
-    def input_layout(a, shape, outs, elementwise)
+    def input_layout(a, shape, outs, elementwise, raw_outs: [])
       layout = Driver.narray_view_layout(a)
       held = nil
-      if layout.nil? || (elementwise && transposed?(a, layout[1])) ||
+      if layout.nil? || (elementwise && transposed?(a, layout[1])) || raw_outs.any? { |o| overlaps?(layout, o) } ||
          outs.any? { |o| overlaps?(layout, o) && !(elementwise && same_place?(layout, a, o, shape)) }
         held = a.dup
         layout = Driver.narray_view_layout(held)
@@ -238,7 +238,7 @@ module Cumo::CUDA
 
     def check_outputs(outs, out_params, shape)
       outs.each_with_index do |a, k|
-        if a.shape != shape
+        if !out_params[k].raw && a.shape != shape
           raise ArgumentError, "output #{out_params[k].name} has shape #{a.shape.inspect} where #{shape.inspect} is needed"
         end
         raise ArgumentError, "output #{out_params[k].name} is not contiguous" unless a.contiguous?

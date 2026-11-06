@@ -58,7 +58,7 @@ module Cumo::CUDA
 
     def broadcast_shape(ins, outs, size)
       shapes = @in_params.zip(ins).filter_map { |p, a| a.shape if a.is_a?(Cumo::NArray) && !p.raw }
-      shapes += outs.filter_map { |o| o&.shape }
+      shapes += @out_params.zip(outs).filter_map { |p, o| o.shape if o && !p.raw }
       if shapes.empty?
         raise ArgumentError, "every argument is raw or a number, so size: has to say how many elements there are" if size.nil?
         return [Integer(size)]
@@ -72,8 +72,10 @@ module Cumo::CUDA
     def launch(ins, outs, types, shape, n)
       params = @in_params + @out_params
       arrays = ins.map.with_index { |a, k| @in_params[k].raw ? readable(a) : a } + outs
+      raw_outs = outs.select.with_index { |_, k| @out_params[k].raw }
+      plain_outs = outs.reject.with_index { |_, k| @out_params[k].raw }
       layouts = ins.map.with_index do |a, k|
-        a.is_a?(Cumo::NArray) && !@in_params[k].raw ? input_layout(a, shape, outs, true) : nil
+        a.is_a?(Cumo::NArray) && !@in_params[k].raw ? input_layout(a, shape, plain_outs, true, raw_outs: raw_outs) : nil
       end
       walked = params.each_index.select { |k| arrays[k].is_a?(Cumo::NArray) && !params[k].raw }
       cshape, cstrides = collapse(shape, walked.map { |k| layouts[k] ? layouts[k][1] : strides(arrays[k], shape) })
