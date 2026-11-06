@@ -73,6 +73,23 @@ module Cumo::CUDA
       assert_raise(ArgumentError) { k.call(x, y, size: 5) }
     end
 
+    test "a raw output takes any shape, so rows can be added into a larger array" do
+      k = ElementwiseKernel.new("T g, raw int64 rows, int64 cols", "raw T out",
+                                "atomicAdd(&out[rows[i / cols] * cols + i % cols], g)", "add_rows")
+      out = Cumo::SFloat.zeros(6, 3)
+      k.call(Cumo::SFloat.ones(4, 3), Cumo::Int64[0, 2, 2, 5], 3, out)
+      assert_equal([[1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 0, 0], [0, 0, 0], [1, 1, 1]], out.to_a)
+    end
+
+    test "a raw output does not decide the element count" do
+      k = ElementwiseKernel.new("raw T x", "raw T y", "y[i] = x[i] * 2", "twice_into_raw")
+      x = Cumo::SFloat.new(3).seq
+      y = Cumo::SFloat.zeros(3)
+      assert_raise(ArgumentError) { k.call(x, y) }
+      k.call(x, y, size: 3)
+      assert_equal([0.0, 2.0, 4.0], y.to_a)
+    end
+
     test "an input cannot be written and a number is held to its type" do
       assert_raise(CompileError) { ElementwiseKernel.new("T x", "T y", "y = x; x = 99", "writes_input").call(Cumo::SFloat.new(3).seq) }
       assert_raise(CompileError) { ElementwiseKernel.new("raw T x", "T y", "y = x[i]; x[i] = 99", "writes_raw").call(Cumo::SFloat.new(3).seq, size: 3) }
