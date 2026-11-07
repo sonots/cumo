@@ -286,6 +286,16 @@ module Cumo::CUDA
       assert_equal((picked * picked).to_a, out.to_a)
     end
 
+    test "a raw input is copied only when it shares memory with an output" do
+      omit("needs the memory pool to count with") unless MemoryPool.enabled?
+      empty_pool
+      twice = ElementwiseKernel.new("raw T x", "T y", "y = x[i] * 2", "twice_from_raw")
+      a = Cumo::SFloat.new(2, 1 << 16).seq
+      twice.call(a[0, true], a[1, true])
+      assert_equal(0, pool_growth { twice.call(a[0, true], a[1, true]) }, "apart")
+      assert_operator(pool_growth { twice.call(a[1, true], a[1, true]) }, :>=, (1 << 16) * 4, "the same row")
+    end
+
     test "an input that shares memory with the output is read before it is written" do
       copy = ElementwiseKernel.new("T x", "T y", "y = x", "copy_in_place")
       a = Cumo::SFloat.new(1 << 20).seq
