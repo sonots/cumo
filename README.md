@@ -840,6 +840,7 @@ A transposed view is copied first, since the copy reorders it in tiles where the
 So is a view built on an index array.
 An input that is not raw is also copied when it shares memory with a raw output, or with another output other than element for element, since the kernel would read what another thread has already written.
 A raw input is copied when it is not contiguous, or when it shares memory with any output, since the operation may read any element of it.
+CuPy reads such an input in place, so a kernel that reads only its own element of an array it also writes takes an extra copy of that array here.
 A raw output has to be contiguous.
 An argument marked `raw T y` is handed over as a pointer for the operation to index itself, with `i` the element index and `_ind.size()` the element count, and when every argument is raw or a number, `size:` says how many elements there are.
 Inputs are `const`, so an operation that writes one does not compile, and a number handed to an integer type has to be an Integer that fits.

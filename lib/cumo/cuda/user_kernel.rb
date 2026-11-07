@@ -200,14 +200,14 @@ module Cumo::CUDA
     end
 
     # A raw argument is indexed by the operation itself, so it has to be
-    # contiguous, it goes through a pointer the kernel may write, and any of
-    # its elements may be read after another thread wrote an output there.
+    # contiguous, and it goes through a pointer the kernel may write. Any
+    # element of it may be read after another thread wrote an output there.
     def readable(a, outs)
       return a unless a.is_a?(Cumo::NArray)
       return a.dup if !a.contiguous? || a.frozen?
 
       layout = Driver.narray_view_layout(a)
-      layout.nil? || outs.any? { |o| overlaps?(layout, o) } ? a.dup : a
+      outs.any? { |o| overlaps?(layout, o) } ? a.dup : a
     end
 
     # [address, strides of the broadcast shape, the copy read instead, if any].

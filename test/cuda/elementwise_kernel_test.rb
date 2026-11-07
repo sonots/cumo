@@ -251,9 +251,13 @@ module Cumo::CUDA
       assert_equal([:simple, 2, 3], kinds.call)
     end
 
-    def pool_growth
+    def empty_pool
       GC.start
       MemoryPool.free_all_blocks
+    end
+
+    def pool_growth
+      empty_pool
       before = MemoryPool.total_bytes
       yield
       Runtime.cudaDeviceSynchronize
@@ -262,8 +266,7 @@ module Cumo::CUDA
 
     test "a reversed or stepped view is read where it is, and a transposed or index view is copied first" do
       omit("needs the memory pool to count with") unless MemoryPool.enabled?
-      GC.start
-      MemoryPool.free_all_blocks
+      empty_pool
       base = Cumo::SFloat.new(256, 256).seq
       out = Cumo::SFloat.new(256, 256)
       SQUARED_DIFF.call(base.reverse(1), 0, out)
