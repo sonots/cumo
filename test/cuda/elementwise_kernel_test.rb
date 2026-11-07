@@ -262,6 +262,8 @@ module Cumo::CUDA
 
     test "a reversed or stepped view is read where it is, and a transposed or index view is copied first" do
       omit("needs the memory pool to count with") unless MemoryPool.enabled?
+      GC.start
+      MemoryPool.free_all_blocks
       base = Cumo::SFloat.new(256, 256).seq
       out = Cumo::SFloat.new(256, 256)
       SQUARED_DIFF.call(base.reverse(1), 0, out)
