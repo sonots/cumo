@@ -839,7 +839,8 @@ An input is read through its own strides, so a reversed or stepped view goes to 
 A transposed view is copied first, since the copy reorders it in tiles where the kernel would read it a row apart per thread.
 So is a view built on an index array.
 An input that is not raw is also copied when it shares memory with a raw output, or with another output other than element for element, since the kernel would read what another thread has already written.
-A raw input has to be contiguous and is copied when it is not, and a raw output has to be contiguous.
+A raw input is copied when it is not contiguous, or when it shares memory with any output, since the operation may read any element of it.
+A raw output has to be contiguous.
 An argument marked `raw T y` is handed over as a pointer for the operation to index itself, with `i` the element index and `_ind.size()` the element count, and when every argument is raw or a number, `size:` says how many elements there are.
 Inputs are `const`, so an operation that writes one does not compile, and a number handed to an integer type has to be an Integer that fits.
 `preamble:` is placed before the kernel, after the typedefs of the letters, so a device function can be written in terms of `T`.

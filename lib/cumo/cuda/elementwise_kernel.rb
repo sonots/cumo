@@ -71,7 +71,7 @@ module Cumo::CUDA
 
     def launch(ins, outs, types, shape, n)
       params = @in_params + @out_params
-      arrays = ins.map.with_index { |a, k| @in_params[k].raw ? readable(a) : a } + outs
+      arrays = ins.map.with_index { |a, k| @in_params[k].raw ? readable(a, outs) : a } + outs
       raw_outs = outs.select.with_index { |_, k| @out_params[k].raw }
       plain_outs = outs.reject.with_index { |_, k| @out_params[k].raw }
       layouts = ins.map.with_index do |a, k|

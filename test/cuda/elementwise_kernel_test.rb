@@ -102,6 +102,18 @@ module Cumo::CUDA
       assert_equal(0, b.ne(Cumo::Int32.new(n).seq.reverse).count_true.to_i)
     end
 
+    test "a raw input that shares memory with an output is read from a copy" do
+      n = 1 << 22
+      into_plain = ElementwiseKernel.new("raw T x", "T y", "y = x[_ind.size() - 1 - i]", "reverse_raw_into_plain")
+      a = Cumo::Int32.new(n).seq
+      into_plain.call(a, a)
+      assert_equal(0, a.ne(Cumo::Int32.new(n).seq.reverse).count_true.to_i)
+      into_raw = ElementwiseKernel.new("raw T x", "raw T y", "y[_ind.size() - 1 - i] = x[i]", "reverse_raw_into_raw")
+      b = Cumo::Int32.new(n).seq
+      into_raw.call(b, b, size: n)
+      assert_equal(0, b.ne(Cumo::Int32.new(n).seq.reverse).count_true.to_i)
+    end
+
     test "an input cannot be written and a number is held to its type" do
       assert_raise(CompileError) { ElementwiseKernel.new("T x", "T y", "y = x; x = 99", "writes_input").call(Cumo::SFloat.new(3).seq) }
       assert_raise(CompileError) { ElementwiseKernel.new("raw T x", "T y", "y = x[i]; x[i] = 99", "writes_raw").call(Cumo::SFloat.new(3).seq, size: 3) }
