@@ -41,15 +41,18 @@ module Cumo::CUDA
 
     # Applies the kernel and answers the output, or the outputs as an Array
     # when there are several. Outputs may be given after the inputs. size:
-    # is the element count when no argument decides it.
+    # is the element count when no argument decides it. A raw output has to
+    # be given unless size: is.
     def call(*args, size: nil)
       ins, outs = split_args(args, @in_params, @out_params)
-      if outs.empty? && size.nil? && (raw = @out_params.find(&:raw))
-        raise ArgumentError, "output #{raw.name} is raw, so it has to be given unless size: says how many elements there are"
-      end
       types = resolve_types(@in_params, ins, @out_params, outs)
       shape = broadcast_shape(ins, outs, size)
-      outs = @out_params.each_with_index.map { |p, k| outs[k] || types[p.type].new(*shape) }
+      outs = @out_params.each_with_index.map do |p, k|
+        next outs[k] if outs[k]
+        raise ArgumentError, "output #{p.name} is raw, so it has to be given" if p.raw && size.nil?
+
+        types[p.type].new(*shape)
+      end
       check_outputs(outs, @out_params, shape)
 
       n = shape.inject(1, :*)
