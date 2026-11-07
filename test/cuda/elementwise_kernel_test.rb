@@ -90,6 +90,13 @@ module Cumo::CUDA
       assert_equal([0.0, 2.0, 4.0], y.to_a)
     end
 
+    test "a raw output is allocated only when size: says how long it is" do
+      put_one = ElementwiseKernel.new("T x, raw int64 at", "raw T y", "if (i == 0) y[at[0]] = x", "put_one")
+      assert_raise_message(/output y is raw, so it has to be given/) { put_one.call(Cumo::SFloat[1, 2, 3, 4], Cumo::Int64[2]) }
+      twice = ElementwiseKernel.new("raw T x", "raw T y", "y[i] = x[i] * 2", "twice_into_allocated")
+      assert_equal([2.0, 4.0, 6.0], twice.call(Cumo::SFloat[1, 2, 3], size: 3).to_a)
+    end
+
     test "an input that shares memory with a raw output is read from a copy" do
       k = ElementwiseKernel.new("T x", "raw T y", "y[_ind.size() - 1 - i] = x", "reverse_into_raw")
       n = 1 << 22

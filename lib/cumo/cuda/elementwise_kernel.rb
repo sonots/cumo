@@ -44,6 +44,9 @@ module Cumo::CUDA
     # is the element count when no argument decides it.
     def call(*args, size: nil)
       ins, outs = split_args(args, @in_params, @out_params)
+      if outs.empty? && size.nil? && (raw = @out_params.find(&:raw))
+        raise ArgumentError, "output #{raw.name} is raw, so it has to be given unless size: says how many elements there are"
+      end
       types = resolve_types(@in_params, ins, @out_params, outs)
       shape = broadcast_shape(ins, outs, size)
       outs = @out_params.each_with_index.map { |p, k| outs[k] || types[p.type].new(*shape) }

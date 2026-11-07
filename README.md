@@ -835,6 +835,7 @@ A type is one of `float64`, `float32`, `float16`, `bfloat16`, `int64`, `int32`, 
 Outputs decide a letter before inputs do, and a letter that only a Ruby number reaches becomes `int64` or `float64`.
 Array arguments are broadcast against each other, and an output may be given after the inputs, or is allocated.
 An output marked raw is left out of the broadcast, so it can have any shape and does not decide how many elements there are.
+A raw output has to be given, unless `size:` says how many elements there are, and then one that long is allocated.
 An input is read through its own strides, so a reversed or stepped view goes to the kernel as it is.
 A transposed view is copied first, since the copy reorders it in tiles where the kernel would read it a row apart per thread.
 So is a view built on an index array.
