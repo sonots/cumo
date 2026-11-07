@@ -88,6 +88,18 @@ module Cumo::CUDA
       assert_raise_message(/size: has to say/) { k.call(x, y) }
       k.call(x, y, size: 3)
       assert_equal([0.0, 2.0, 4.0], y.to_a)
+      assert_equal([0.0, 2.0, 4.0], k.call(x, size: 3).to_a)
+    end
+
+    test "a raw output left out is allocated only when size: says how long it is" do
+      put_one = ElementwiseKernel.new("T x, raw int64 at", "raw T y", "if (i == 0) y[at[0]] = x", "put_one")
+      assert_raise_message("output y is raw, so it has to be given") { put_one.call(Cumo::SFloat[1, 2, 3, 4], Cumo::Int64[2]) }
+      fill = ElementwiseKernel.new("T v", "raw T y", "y[i] = v", "fill_raw")
+      assert_raise_message(/size: has to say/) { fill.call(1.5) }
+      assert_equal([1.5, 1.5], fill.call(1.5, size: 2).to_a)
+      both = ElementwiseKernel.new("raw T x", "T y, raw T z", "y = x[i]; z[i] = x[i] * 2", "plain_and_raw")
+      y, z = both.call(Cumo::SFloat[1, 2, 3], size: 3)
+      assert_equal([[1.0, 2.0, 3.0], [2.0, 4.0, 6.0]], [y.to_a, z.to_a])
     end
 
     test "an input that shares memory with a raw output is read from a copy" do

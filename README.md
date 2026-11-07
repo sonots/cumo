@@ -843,6 +843,8 @@ A raw input is copied when it is not contiguous, or when it shares memory with a
 CuPy reads such an input in place, so a kernel that reads only its own element of an array it also writes takes an extra copy of that array here.
 A raw output has to be contiguous.
 An argument marked `raw T y` is handed over as a pointer for the operation to index itself, with `i` the element index and `_ind.size()` the element count, and when every argument is raw or a number, `size:` says how many elements there are.
+A raw output has to be given, since nothing else says how long it is.
+When `size:` is given, one that long is allocated instead, and the elements the operation does not write are left uninitialized.
 Inputs are `const`, so an operation that writes one does not compile, and a number handed to an integer type has to be an Integer that fits.
 `preamble:` is placed before the kernel, after the typedefs of the letters, so a device function can be written in terms of `T`.
 `float16` and `bfloat16` are CUDA's `__half` and `__nv_bfloat16`, compiled with the toolkit's `cuda_fp16.h` and `cuda_bf16.h`, which are found through `CUDA_PATH` or the `nvcc` on `PATH`.
