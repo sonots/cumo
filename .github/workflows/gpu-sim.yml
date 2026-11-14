@@ -1,0 +1,114 @@
+# Run the Ruby test suite on a simulated NVIDIA H100.
+#
+# build.yml only compiles Cumo, so test/ and the C++ memory pool test never
+# run in CI. This job builds the extension for one PTX-only architecture and
+# runs `rake test` under PantheonSim
+# (https://github.com/pantheongpu/pantheonsim), a functional GPU simulator.
+name: GPU simulator tests
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'ext/**'
+      - 'lib/**'
+      - 'test/**'
+      - '3rd_party/**'
+      - 'Gemfile'
+      - '*.gemspec'
+      - 'Rakefile'
+      - '.github/workflows/gpu-sim.yml'
+
+concurrency:
+  group: gpu-sim-${{ github.event.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cuda-h100:
+    name: CUDA 12.6 / simulated H100
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up the simulated H100 and CUDA toolkit
+        uses: pantheongpu/setup-pantheonsim@a1b9d4237411f9b2b0e0bb895b4d83377f336a7b # v0.1.9
+        with:
+          gpu: nvidia/h100
+          cuda-toolkit: "12.6"
+          # Cumo links the toolkit's cuBLAS, cuSOLVER and cuFFT.
+          library-path: 'false'
+
+      # The toolkit step installs nvcc, cudart and cuBLAS; Cumo also wants
+      # NVRTC, cuSOLVER and cuFFT.
+      - name: Install NVRTC, cuSOLVER and cuFFT
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            cuda-nvrtc-dev-12-6 libcusolver-dev-12-6 libcufft-dev-12-6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      # The simulator runs PTX, so build for compute_90 only (no SASS), and it
+      # needs a shared CUDA runtime (nvcc defaults to the static one).
+      - name: Compile Cumo
+        env:
+          CUMO_NVCC_GENERATE_CODE: arch=compute_90,code=compute_90
+          NVCC_APPEND_FLAGS: --cudart shared
+        run: |
+          export CUDA_PATH=/usr/local/cuda-12.6
+          export CPATH=$CUDA_PATH/include:${CPATH}
+          # The driver's stub only satisfies the linker; the simulator
+          # provides libcuda.so.1 at run time.
+          export LIBRARY_PATH=$CUDA_PATH/lib64:$CUDA_PATH/lib64/stubs:${LIBRARY_PATH}
+          export PATH=$CUDA_PATH/bin:$PATH
+          export MAKEFLAGS=-j4
+          vgpu run --preload bundle exec rake compile
+
+      # `rake test` also builds and runs the C++ memory pool test, so the two
+      # run here separately, and the Ruby tests go through one process with
+      # the exclusions below (a rake task cannot take them, since a test name
+      # holds spaces). VGPU_QUIET stops the simulator's start-up line on stderr
+      # from landing in the output of the tests that run a child ruby.
+      - name: Test on the simulated H100
+        env:
+          VGPU_QUIET: '1'
+        run: |
+          export CUDA_PATH=/usr/local/cuda-12.6
+          export PATH=$CUDA_PATH/bin:$PATH
+          export LIBRARY_PATH=$CUDA_PATH/lib64:$CUDA_PATH/lib64/stubs:${LIBRARY_PATH}
+          export NVCC_APPEND_FLAGS="--cudart shared"
+          export CUMO_NVCC_GENERATE_CODE="arch=compute_90,code=compute_90"
+          export MAKEFLAGS=-j4
+
+          bundle exec rake build_ctest
+          (cd ext/cumo && vgpu run make run-ctest)
+
+          # Left out, and why:
+          # - CUDNNTest: cuDNN is not installed here, so Cumo builds without it.
+          # - Three tests in narray_test.rb that go past 2**31 elements or
+          #   bytes: about 17 minutes on the simulator.
+          # - Marshalling an RObject array (six tests): the copy to the host
+          #   raises "invalid argument" on the simulator.
+          # - Four linalg tests whose results differ on the simulator: a NaN
+          #   that inv does not reject, a stacked norm holding NaN, a defective
+          #   matrix and one QR factor.
+          # - The CUDA_MODULE_LOADING test, which reads 1 where it expects 2.
+          # - The test that makes cudaFree fail in the GC hook, which sees no
+          #   failure here.
+          vgpu run bundle exec ruby -Itest -Ilib \
+            -e 'Dir["test/**/*_test.rb"].sort.each { |f| require "./#{f}" }' -- \
+            --ignore-testcase=CUDNNTest \
+            --ignore-name='/more than 2\*\*32 elements|whose far end sits at or past 2\*\*31 bytes|range subscript longer than 2\*\*31/' \
+            --ignore-name='/marshal round trips an array that was never allocated|marshal_load rejects a malformed stream|marshal_dump_of_a_non_contiguous_robject_view|marshal_dump_of_a_robject_view_with_an_offset|marshal_of_a_robject_subclass|zero_dimensional_view_is_contiguous/' \
+            --ignore-name='/defective matrices and repeated eigenvalues|a NaN on the diagonal of U raises|stacked matrix holding NaN or Infinity|the factors numo-linalg-alt answers/' \
+            --ignore-name='/modules load lazily unless CUDA_MODULE_LOADING|a_failing_free_from_the_gc_hook/'
