@@ -1058,9 +1058,10 @@ module Cumo
       if n < 0 || n >= shape[axis]
         raise ShapeError, "n=#{n} is invalid for shape[#{axis}]=#{shape[axis]}"
       end
-      # One subtraction is exact. The sum below takes a copy, a product and an
-      # addition, and its product with -1+0i turns a complex infinity into NaN.
-      if n == 1
+      # One subtraction is exact and takes one kernel. The sum below takes three
+      # and turns a complex NaN or infinity into NaN parts. Subclasses and RObject
+      # keep the sum, since - returns the base class and calls other methods.
+      if n == 1 && self.class.superclass.equal?(NArray) && !is_a?(RObject)
         hi = [true] * ndim
         lo = [true] * ndim
         hi[axis] = 1..-1
