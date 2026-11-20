@@ -232,11 +232,44 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
 
 void cumo_na_index_range_check_kernel_launch(size_t *out, const char *in, int elmsz, ssize_t size, uint64_t n, int *oor, size_t *item);
 
+// Hands back indices the host or a kernel can read in a row, with the width of
+// each. An Int32 or Int64 one whose elements already sit that way, which is
+// what Bit#where returns, is read where it is, since copying it cost a launch
+// and a buffer the GC was told about. The stride is checked rather than the
+// contiguity, which a Struct field passes with the stride of the whole record.
+static VALUE
+cumo_na_index_readable(VALUE a, size_t n, int *elmsz)
+{
+    VALUE klass = rb_obj_class(a), idx;
+    cumo_narray_t *na;
+    cumo_narray_view_t *nv;
+    int w = (klass == cumo_cInt32) ? 4 : (klass == cumo_cInt64) ? 8 : 0;
+
+    CumoGetNArray(a,na);
+    if (w != 0 && CUMO_NA_NDIM(na) == 1) {
+        if (CUMO_NA_TYPE(na) == CUMO_NARRAY_DATA_T) {
+            *elmsz = w;
+            return a;
+        }
+        if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+            nv = (cumo_narray_view_t*)na;
+            if (CUMO_SDX_IS_STRIDE(nv->stridx[0]) && CUMO_SDX_GET_STRIDE(nv->stridx[0]) == w) {
+                *elmsz = w;
+                return a;
+            }
+        }
+    }
+    idx = cumo_na_new(cIndex,1,&n);
+    cumo_na_store(idx,a);
+    *elmsz = (int)sizeof(ssize_t);
+    return idx;
+}
+
 // read an NArray of indices into q
 static void
 cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_arg_t *q, int at_mode)
 {
-    VALUE idx, klass;
+    VALUE idx;
     cumo_narray_t *na;
     size_t n;
     const char *nidxp;
@@ -262,19 +295,6 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
         cumo_na_index_set_step(q, orig_dim, 0, 0, 1);
         return;
     }
-    // A contiguous Int32 or Int64 index, which is also what Bit#where returns,
-    // is read where it is. Copying it into a new Index cost a launch and a
-    // buffer the GC was told about.
-    klass = rb_obj_class(a);
-    if ((klass == cumo_cInt32 || klass == cumo_cInt64) && cumo_na_check_contiguous(a) == Qtrue) {
-        idx = a;
-    } else {
-        idx = cumo_na_new(cIndex,1,&n);
-        cumo_na_store(idx,a);
-    }
-    elmsz = (rb_obj_class(idx) == cumo_cInt32) ? 4 : 8;
-    nidxp = cumo_na_get_offset_pointer_for_read(idx); // Cumo::NArray data resides on GPU
-
     // One index names a position rather than a list, so it is read here and
     // the axis is walked by a step. Taking a buffer and a launch to check a
     // single value costs more than reading it.
@@ -282,6 +302,8 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
         ssize_t first;
         int32_t first32;
         int64_t first64;
+        idx = cumo_na_index_readable(a, n, &elmsz);
+        nidxp = cumo_na_get_offset_pointer_for_read(idx); // Cumo::NArray data resides on GPU
         CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_parse_narray_index", "any");
         if (elmsz == 4) {
             cumo_cuda_runtime_check_status(
@@ -302,8 +324,12 @@ cumo_na_parse_narray_index(VALUE a, int orig_dim, ssize_t size, cumo_na_index_ar
     // on the host first, the way cumo_na_parse_array() has to for a Ruby Array,
     // cost a copy each way and a walk over them here. Nothing touches managed
     // memory from the host on this path, which is what breaks under Ractor
-    // (sonots/cumo#180), where only the GVL made it atomic.
+    // (sonots/cumo#180), where only the GVL made it atomic. The buffer is taken
+    // before the indices are: running short of it runs GC.start, and Ruby code
+    // that runs then could free indices that are read where they are.
     q->idx = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
+    idx = cumo_na_index_readable(a, n, &elmsz);
+    nidxp = cumo_na_get_offset_pointer_for_read(idx); // Cumo::NArray data resides on GPU
     oor = cumo_cuda_runtime_error_flag_new();
     item = cumo_cuda_runtime_error_item_new();
     cumo_na_index_range_check_kernel_launch(q->idx, nidxp, elmsz, size, (uint64_t)n, oor, item);
