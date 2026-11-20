@@ -416,6 +416,26 @@ class NArrayExtraTest < CumoTestBase
     end
   end
 
+  def test_diff_complex_infinity
+    [Cumo::DComplex, Cumo::SComplex].each do |dtype|
+      a = dtype[Complex(Float::INFINITY, 1), Complex(2, 5)]
+      assert_equal([Complex(-Float::INFINITY, 4)], a.diff.to_a)
+    end
+  end
+
+  def test_diff_keeps_subclass
+    klass = Class.new(Cumo::DFloat)
+    assert_equal(klass, klass.new(3).seq.diff.class)
+  end
+
+  def test_diff_robject_calls_times_and_plus
+    x = Object.new
+    def x.*(other)
+      10 * other
+    end
+    assert_equal([-3], Cumo::RObject[x, 7].diff.to_a)
+  end
+
   def test_triu
     TYPES.each do |dtype|
       a = dtype.new(3, 3).seq + 1
