@@ -423,6 +423,19 @@ class NArrayExtraTest < CumoTestBase
     end
   end
 
+  def test_diff_keeps_subclass
+    klass = Class.new(Cumo::DFloat)
+    assert_equal(klass, klass.new(3).seq.diff.class)
+  end
+
+  def test_diff_robject_calls_times_and_plus
+    x = Object.new
+    def x.*(other)
+      10 * other
+    end
+    assert_equal([-3], Cumo::RObject[x, 7].diff.to_a)
+  end
+
   def test_triu
     TYPES.each do |dtype|
       a = dtype.new(3, 3).seq + 1
