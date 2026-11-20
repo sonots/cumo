@@ -67,6 +67,18 @@ module Cumo::CUDA
       assert { MemoryPool.total_bytes - base < 256 << 20 }
     end
 
+    def test_dropped_index_views_do_not_grow_the_pool_by_their_total_size
+      MemoryPool.enable
+      view = Cumo::SFloat.new(1 << 17).seq[Cumo::Int64.new(1 << 17).seq]
+      GC.start
+      MemoryPool.free_all_blocks
+      base = MemoryPool.total_bytes
+      # reverse copies the 1 MiB index array, and the view holds nothing else
+      1024.times { view.reverse }
+      GC.start
+      assert { MemoryPool.total_bytes - base < 256 << 20 }
+    end
+
     # Destroying the context leaves every pointer allocated under it invalid, so
     # cudaFree fails for the rest of the process. That has to be reported rather
     # than raised: the free runs from the GC sweep, where a raise surfaces at
