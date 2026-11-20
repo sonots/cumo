@@ -170,7 +170,10 @@ static VALUE
 
     CumoGetNArrayData(idx_1,nidx);
     nv->stridx = ZALLOC_N(cumo_stridx_t,1);
-    cumo_na_index_own(nv,0,(size_t*)nidx->ptr);
+    // idx_1 told the GC of this buffer when it was allocated and, once its
+    // pointer is taken, takes nothing back, so the view counts it instead.
+    rb_gc_adjust_memory_usage(-(ssize_t)(sizeof(size_t) * g.cap1));
+    cumo_na_index_own(nv,0,(size_t*)nidx->ptr,g.cap1);
     nidx->ptr = NULL;
     RB_GC_GUARD(idx_1);
 
