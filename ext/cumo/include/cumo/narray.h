@@ -256,9 +256,11 @@ typedef struct {
     // A view made from another one can point at the index arrays it already
     // has rather than copy them. index_owner keeps that view alive for as long
     // as this one borrows from it, and index_owned says which dimensions are
-    // this view's own to free.
+    // this view's own to free. index_bytes is what those take on the device,
+    // told to the GC when they are taken and when they are freed.
     VALUE    index_owner;
     uint64_t index_owned;
+    size_t   index_bytes;
 } cumo_narray_view_t;
 
 
@@ -519,14 +521,27 @@ typedef unsigned int CUMO_BIT_DIGIT;
 #include "cumo/ndloop.h"
 #include "cumo/intern.h"
 
-// An index array a view holds is freed only if it was set through here, so a
-// view that puts one in stridx any other way leaks it. The bit names the slot,
-// so code that permutes stridx has to permute index_owned with it.
+// An index array a view holds is freed only if it was set through here or
+// cumo_na_index_own, so a view that puts one in stridx any other way leaks it.
+// The bit names the slot, so code that permutes stridx has to permute
+// index_owned with it. n is the element count it was allocated with. This one
+// takes an array the GC has already heard of, such as the buffer another array
+// gives up, so only its release is counted.
 static inline void
-cumo_na_index_own(cumo_narray_view_t *nv, int i, size_t *idx)
+cumo_na_index_adopt(cumo_narray_view_t *nv, int i, size_t *idx, size_t n)
 {
     CUMO_SDX_SET_INDEX(nv->stridx[i], idx);
     nv->index_owned |= (uint64_t)1 << i;
+    nv->index_bytes += sizeof(size_t) * n;
+}
+
+// Takes a freshly allocated index array. The GC has to hear of it, or nothing
+// collects views that hold large index arrays and little else.
+static inline void
+cumo_na_index_own(cumo_narray_view_t *nv, int i, size_t *idx, size_t n)
+{
+    cumo_na_index_adopt(nv, i, idx, n);
+    rb_gc_adjust_memory_usage((ssize_t)(sizeof(size_t) * n));
 }
 
 // One dimension of nv now points at an index array that from reaches, so from

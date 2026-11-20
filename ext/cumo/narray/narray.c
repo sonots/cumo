@@ -139,18 +139,13 @@ cumo_na_debug_info(VALUE self)
 static size_t
 cumo_na_view_memsize(const void* ptr)
 {
-    int i;
     size_t size = sizeof(cumo_narray_view_t);
     const cumo_narray_view_t *na = ptr;
 
     assert(na->base.type == CUMO_NARRAY_VIEW_T);
 
+    size += na->index_bytes;
     if (na->stridx != NULL) {
-        for (i=0; i<na->base.ndim; i++) {
-            if (CUMO_SDX_IS_INDEX(na->stridx[i]) && (na->index_owned & ((uint64_t)1 << i))) {
-                size += sizeof(size_t) * na->base.shape[i];
-            }
-        }
         size += sizeof(cumo_stridx_t) * na->base.ndim;
     }
     if (na->base.size > 0) {
@@ -181,6 +176,9 @@ cumo_na_view_free(void* ptr)
         }
         xfree(na->stridx);
         na->stridx = NULL;
+    }
+    if (na->index_bytes > 0) {
+        rb_gc_adjust_memory_usage(-(ssize_t)na->index_bytes);
     }
     if (na->base.shape != NULL && na->base.shape != &(na->base.size)) {
         xfree(na->base.shape);
@@ -223,6 +221,7 @@ cumo_na_s_allocate_view(VALUE klass)
     na->index_sync_epoch = SIZE_MAX;
     na->index_owner = Qnil;
     na->index_owned = 0;
+    na->index_bytes = 0;
     return TypedData_Wrap_Struct(klass, &cumo_na_data_type_view, (void*)na);
 }
 
@@ -1692,12 +1691,12 @@ cumo_na_reverse(int argc, VALUE *argv, VALUE self)
                 } else if (cumo_na_test_reduce(reduce,i)) {
                     idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                     idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-                    cumo_na_index_own(na2,i,idx2);
+                    cumo_na_index_own(na2,i,idx2,n);
                     cumo_na_index_reverse_kernel_launch(idx2,idx1,n);
                 } else {
                     idx1 = CUMO_SDX_GET_INDEX(na1->stridx[i]);
                     idx2 = (size_t*)cumo_cuda_runtime_malloc(sizeof(size_t)*n);
-                    cumo_na_index_own(na2,i,idx2);
+                    cumo_na_index_own(na2,i,idx2,n);
                     cumo_cuda_runtime_check_status(cudaMemcpyAsync(idx2,idx1,sizeof(size_t)*n,cudaMemcpyDeviceToDevice,cumo_cuda_stream()));
                     cumo_cuda_runtime_note_device_write();
                 }
