@@ -76,6 +76,74 @@ __global__ void float_key_kernel(const Float* in, typename float_key<Float>::typ
     }
 }
 
+// A key that also gives the float back, so that sort and median can sort the
+// keys alone instead of the keys with the values. The usual order of the bits
+// puts a negative NaN first; rotating every key down by the number of negative
+// NaNs wraps them round to follow the positive ones, so every NaN is last.
+template <typename U>
+__device__ static inline U rotated_key(U bits, U inf_bits) {
+    const U sign = (U)1 << (sizeof(U) * 8 - 1);
+    const U neg_nans = (U)((U)(sign - 1) - inf_bits);
+    return (U)(((bits & sign) ? (U)~bits : (U)(bits | sign)) - neg_nans);
+}
+
+template <typename U>
+__device__ static inline U rotated_bits(U key, U inf_bits) {
+    const U sign = (U)1 << (sizeof(U) * 8 - 1);
+    const U neg_nans = (U)((U)(sign - 1) - inf_bits);
+    const U k = (U)(key + neg_nans);
+    return (k & sign) ? (U)(k & (U)~sign) : (U)~k;
+}
+
+template <typename Float> struct float_order;
+
+template <> struct float_order<float> {
+    typedef uint32_t type;
+    __device__ static type key(float x) { return rotated_key<type>(__float_as_uint(x), 0x7f800000u); }
+    __device__ static float value(type k) { return __uint_as_float(rotated_bits<type>(k, 0x7f800000u)); }
+};
+
+template <> struct float_order<cumo_half> {
+    typedef uint16_t type;
+    __device__ static type key(cumo_half x) { return rotated_key<type>(__half_as_ushort(x), 0x7c00u); }
+    __device__ static cumo_half value(type k) { return __ushort_as_half(rotated_bits<type>(k, 0x7c00u)); }
+};
+
+template <> struct float_order<cumo_bfloat> {
+    typedef uint16_t type;
+    __device__ static type key(cumo_bfloat x) {
+        uint16_t bits;
+        memcpy(&bits, &x, sizeof(bits));
+        return rotated_key<type>(bits, 0x7f80u);
+    }
+    __device__ static cumo_bfloat value(type k) {
+        uint16_t bits = rotated_bits<type>(k, 0x7f80u);
+        cumo_bfloat x;
+        memcpy(&x, &bits, sizeof(bits));
+        return x;
+    }
+};
+
+template <> struct float_order<double> {
+    typedef uint64_t type;
+    __device__ static type key(double x) { return rotated_key<type>((type)__double_as_longlong(x), 0x7ff0000000000000ull); }
+    __device__ static double value(type k) { return __longlong_as_double((long long)rotated_bits<type>(k, 0x7ff0000000000000ull)); }
+};
+
+template <typename Float>
+__global__ void order_key_kernel(const Float* in, typename float_order<Float>::type* out, uint64_t n) {
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        out[i] = float_order<Float>::key(in[i]);
+    }
+}
+
+template <typename Float>
+__global__ void order_value_kernel(const typename float_order<Float>::type* in, Float* out, uint64_t n) {
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        out[i] = float_order<Float>::value(in[i]);
+    }
+}
+
 // sort writes its answer back where it read it, so an in-place sort of a view
 // backed by an index array has to address that array; the other two callers
 // hand over an array they copied themselves and never do.
@@ -212,13 +280,15 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
 
     T* out = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
     if constexpr (IS_FLOAT) {
-        typedef typename float_key<T>::type key_t;
+        typedef typename float_order<T>::type key_t;
         key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
         key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
-        float_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
+        order_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
         cumo_check_launch_holding(kin, kout, out, gathered);
-        cumo_check_status_holding(sort_pairs(kin, kout, data, out, total, n_rows, row_len),
-                             kin, kout, out, gathered);
+        cumo_check_status_holding(sort_keys(kin, kout, total, n_rows, row_len), kin, kout, out, gathered);
+        // Rows laid out end to end take their floats back in place.
+        order_value_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(kout, flat ? data : out, total);
+        cumo_check_launch_holding(kin, kout, out, gathered);
         cumo_cuda_runtime_free((char*)kout);
         cumo_cuda_runtime_free((char*)kin);
     } else {
@@ -226,7 +296,9 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
     }
 
     if (flat) {
-        cudaMemcpyAsync(data, out, sizeof(T) * total, cudaMemcpyDeviceToDevice, cumo_cuda_stream());
+        if constexpr (!IS_FLOAT) {
+            cudaMemcpyAsync(data, out, sizeof(T) * total, cudaMemcpyDeviceToDevice, cumo_cuda_stream());
+        }
     } else {
 #define CUMO_SORT_L(N) scatter_kernel<N><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, out)
         CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
@@ -302,13 +374,14 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat, int prnan) {
 
     T* sorted = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
     if constexpr (IS_FLOAT) {
-        typedef typename float_key<T>::type key_t;
+        typedef typename float_order<T>::type key_t;
         key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
         key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
-        float_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
+        order_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
         cumo_check_launch_holding(kin, kout, sorted, gathered);
-        cumo_check_status_holding(sort_pairs(kin, kout, data, sorted, total, n_rows, row_len),
-                             kin, kout, sorted, gathered);
+        cumo_check_status_holding(sort_keys(kin, kout, total, n_rows, row_len), kin, kout, sorted, gathered);
+        order_value_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(kout, sorted, total);
+        cumo_check_launch_holding(kin, kout, sorted, gathered);
         cumo_cuda_runtime_free((char*)kout);
         cumo_cuda_runtime_free((char*)kin);
     } else {
