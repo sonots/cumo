@@ -9,6 +9,7 @@
 #include "cumo/types/bf16_def_kernel.h"
 
 #include <cub/cub.cuh>
+#include <cuda/std/tuple>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/iterator/transform_iterator.h>
 
@@ -73,6 +74,79 @@ template <typename Float>
 __global__ void float_key_kernel(const Float* in, typename float_key<Float>::type* out, uint64_t n) {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         out[i] = float_key<Float>::of(in[i]);
+    }
+}
+
+// A key that also gives the float back, so that sort and median can sort the
+// keys alone instead of the keys with the values. The usual order of the bits
+// puts a negative NaN first; rotating every key down by the number of negative
+// NaNs wraps them round to follow the positive ones, so every NaN is last.
+template <typename U>
+__device__ static inline U rotated_key(U bits, U inf_bits) {
+    const U sign = (U)1 << (sizeof(U) * 8 - 1);
+    const U neg_nans = (U)((U)(sign - 1) - inf_bits);
+    return (U)(((bits & sign) ? (U)~bits : (U)(bits | sign)) - neg_nans);
+}
+
+template <typename U>
+__device__ static inline U rotated_bits(U key, U inf_bits) {
+    const U sign = (U)1 << (sizeof(U) * 8 - 1);
+    const U neg_nans = (U)((U)(sign - 1) - inf_bits);
+    const U k = (U)(key + neg_nans);
+    return (k & sign) ? (U)(k & (U)~sign) : (U)~k;
+}
+
+template <typename Float> struct float_order;
+
+template <> struct float_order<float> {
+    typedef uint32_t type;
+    __device__ static type key(float x) { return rotated_key<type>(__float_as_uint(x), 0x7f800000u); }
+    __device__ static float value(type k) { return __uint_as_float(rotated_bits<type>(k, 0x7f800000u)); }
+};
+
+template <> struct float_order<cumo_half> {
+    typedef uint16_t type;
+    __device__ static type key(cumo_half x) { return rotated_key<type>(__half_as_ushort(x), 0x7c00u); }
+    __device__ static cumo_half value(type k) { return __ushort_as_half(rotated_bits<type>(k, 0x7c00u)); }
+};
+
+template <> struct float_order<cumo_bfloat> {
+    typedef uint16_t type;
+    __device__ static type key(cumo_bfloat x) {
+        uint16_t bits;
+        memcpy(&bits, &x, sizeof(bits));
+        return rotated_key<type>(bits, 0x7f80u);
+    }
+    __device__ static cumo_bfloat value(type k) {
+        uint16_t bits = rotated_bits<type>(k, 0x7f80u);
+        cumo_bfloat x;
+        memcpy(&x, &bits, sizeof(bits));
+        return x;
+    }
+};
+
+template <> struct float_order<double> {
+    typedef uint64_t type;
+    __device__ static type key(double x) { return rotated_key<type>((type)__double_as_longlong(x), 0x7ff0000000000000ull); }
+    __device__ static double value(type k) {
+        type bits = rotated_bits<type>(k, 0x7ff0000000000000ull);
+        double x;
+        memcpy(&x, &bits, sizeof(bits));
+        return x;
+    }
+};
+
+template <typename Float>
+__global__ void order_key_kernel(const Float* in, typename float_order<Float>::type* out, uint64_t n) {
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        out[i] = float_order<Float>::key(in[i]);
+    }
+}
+
+template <typename Float>
+__global__ void order_value_kernel(const typename float_order<Float>::type* in, Float* out, uint64_t n) {
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        out[i] = float_order<Float>::value(in[i]);
     }
 }
 
@@ -191,6 +265,36 @@ cudaError_t sort_keys(const Key* kin, Key* kout, int64_t total, int64_t n_rows, 
     return st;
 }
 
+// A bare uint32_t key makes SortKeys the same function as the UInt32 sort's,
+// and the link keeps one, so SFloat would launch the kernels of the UInt32
+// module. Wrapped in a type of this file, as position below does for sort_index.
+template <typename U> struct order_bits { U bits; };
+template <typename U> struct order_bits_decomposer {
+    __host__ __device__ ::cuda::std::tuple<U&> operator()(order_bits<U>& k) const { return {k.bits}; }
+};
+
+// The segmented sort takes iterators of this file already. A CUB without the
+// decomposer, before 2.2, is left sharing the function.
+template <typename U>
+cudaError_t sort_order_keys(const U* kin, U* kout, int64_t total, int64_t n_rows, int64_t row_len) {
+#if CUB_VERSION >= 200200
+    if (n_rows == 1) {
+        size_t bytes = 0;
+        cudaError_t st;
+        const order_bits<U>* in = (const order_bits<U>*)kin;
+        order_bits<U>* out = (order_bits<U>*)kout;
+        cumo_cuda_cub_prime_ptx_version();
+        st = cub::DeviceRadixSort::SortKeys(nullptr, bytes, in, out, total, order_bits_decomposer<U>{}, 0, (int)sizeof(U) * 8, cumo_cuda_stream());
+        if (st != cudaSuccess) { return st; }
+        char* tmp = cumo_cuda_runtime_malloc(bytes);
+        st = cub::DeviceRadixSort::SortKeys(tmp, bytes, in, out, total, order_bits_decomposer<U>{}, 0, (int)sizeof(U) * 8, cumo_cuda_stream());
+        cumo_cuda_runtime_free(tmp);
+        return st;
+    }
+#endif
+    return sort_keys(kin, kout, total, n_rows, row_len);
+}
+
 template <typename T, bool IS_FLOAT>
 void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n_rows, int64_t row_len, int flat) {
     int64_t total = (int64_t)indexer->total_size;
@@ -210,31 +314,35 @@ void sort_rows(cumo_na_iarray_stridx_t* a, cumo_na_indexer_t* indexer, int64_t n
         data = gathered;
     }
 
-    T* out = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
+    // Rows laid out end to end take their floats back in place, so a float
+    // sort needs a buffer of its own only for the rows it gathered.
+    T* out = (IS_FLOAT && flat) ? 0 : (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
     if constexpr (IS_FLOAT) {
-        typedef typename float_key<T>::type key_t;
+        typedef typename float_order<T>::type key_t;
         key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
         key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
-        float_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
+        order_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
         cumo_check_launch_holding(kin, kout, out, gathered);
-        cumo_check_status_holding(sort_pairs(kin, kout, data, out, total, n_rows, row_len),
-                             kin, kout, out, gathered);
+        cumo_check_status_holding(sort_order_keys(kin, kout, total, n_rows, row_len), kin, kout, out, gathered);
+        order_value_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(kout, flat ? data : out, total);
+        cumo_check_launch_holding(kin, kout, out, gathered);
         cumo_cuda_runtime_free((char*)kout);
         cumo_cuda_runtime_free((char*)kin);
     } else {
         cumo_check_status_holding(sort_keys(data, out, total, n_rows, row_len), out, gathered);
+        if (flat) {
+            cudaMemcpyAsync(data, out, sizeof(T) * total, cudaMemcpyDeviceToDevice, cumo_cuda_stream());
+        }
     }
 
-    if (flat) {
-        cudaMemcpyAsync(data, out, sizeof(T) * total, cudaMemcpyDeviceToDevice, cumo_cuda_stream());
-    } else {
+    if (!flat) {
 #define CUMO_SORT_L(N) scatter_kernel<N><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(*a, *indexer, out)
         CUMO_SORT_BY_RANK(indexer->ndim, CUMO_SORT_L);
 #undef CUMO_SORT_L
+        cumo_check_launch_holding(out, gathered);
     }
-    cumo_check_launch_holding(out, gathered);
     if (gathered) cumo_cuda_runtime_free((char*)gathered);
-    cumo_cuda_runtime_free((char*)out);
+    if (out) cumo_cuda_runtime_free((char*)out);
 }
 
 // The rows are already sorted, so the middle of each is the answer. Trailing
@@ -302,13 +410,14 @@ void median_rows(cumo_na_reduction_arg_t* arg, int flat, int prnan) {
 
     T* sorted = (T*)cumo_cuda_runtime_malloc(sizeof(T) * total);
     if constexpr (IS_FLOAT) {
-        typedef typename float_key<T>::type key_t;
+        typedef typename float_order<T>::type key_t;
         key_t* kin = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
         key_t* kout = (key_t*)cumo_cuda_runtime_malloc(sizeof(key_t) * total);
-        float_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
+        order_key_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(data, kin, total);
         cumo_check_launch_holding(kin, kout, sorted, gathered);
-        cumo_check_status_holding(sort_pairs(kin, kout, data, sorted, total, n_rows, row_len),
-                             kin, kout, sorted, gathered);
+        cumo_check_status_holding(sort_order_keys(kin, kout, total, n_rows, row_len), kin, kout, sorted, gathered);
+        order_value_kernel<T><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(kout, sorted, total);
+        cumo_check_launch_holding(kin, kout, sorted, gathered);
         cumo_cuda_runtime_free((char*)kout);
         cumo_cuda_runtime_free((char*)kin);
     } else {
