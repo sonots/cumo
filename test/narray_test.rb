@@ -2952,6 +2952,31 @@ class NArrayTest < Test::Unit::TestCase
     assert_raise(IndexError) { a.at(Cumo::Int32[0, 3], Cumo::Int32[0, 0]) }
   end
 
+  test "an Int32 or Int64 index view is read from its own first element" do
+    x = Cumo::DFloat.new(10).seq * 10
+    [Cumo::Int32, Cumo::Int64].each do |itype|
+      idx = itype[9, 9, 2, -1, 5, -10, 9]
+      assert { x[idx[2..5]] == [20, 90, 50, 0] }
+      assert { x.at(idx[2..5]) == [20, 90, 50, 0] }
+      assert { x[idx[3..3]] == [90] }
+      y = x.dup
+      y[idx[2..4]] = -1
+      assert { y == [0, 10, -1, 30, 40, -1, 60, 70, 80, -1] }
+    end
+  end
+
+  test "a stepped Int32 or Int64 index view is read element by element" do
+    x = Cumo::DFloat.new(10).seq * 10
+    [Cumo::Int32, Cumo::Int64].each do |itype|
+      idx = itype[1, 9, 3, 9, -2, 9]
+      assert { x[idx[(0..-1) % 2]] == [10, 30, 80] }
+      assert { x[idx.reverse] == [90, 80, 90, 30, 90, 10] }
+      y = x.dup
+      y[idx[(0..-1) % 2]] = -1
+      assert { y == [0, -1, 20, -1, 40, 50, 60, 70, -1, 90] }
+    end
+  end
+
   test "indexing by a Bit array is unaffected by the range check" do
     # A Bit index goes through where(), whose result is in range by
     # construction, so the check must not reject it.
