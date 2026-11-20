@@ -15,10 +15,9 @@ __device__ static inline void <%=c_iter%>_add_double(double *address, double val
 __device__ static inline void <%=c_iter%>_add_double(double *address, double val) { atomicAdd(address, val); }
 #endif
 
-// Counting into shared memory first turns the atomics that pile onto a few
-// output bins into cheap ones inside each block, plus one add per bin per block
-// at the end. That end costs grid * n adds, so it pays once each bin gets a few
-// dozen items, and the bins have to fit what a block gets without opting in.
+// Counting in shared memory first moves the atomics that pile onto a few bins
+// inside each block, at the price of one add per bin per block at the end, so it
+// pays once each bin gets a few dozen items and the bins fit in a block's share.
 #define CUMO_BINCOUNT_SHARED_BLOCK 256
 #define CUMO_BINCOUNT_SHARED_BYTES 49152
 #define CUMO_BINCOUNT_ITEMS_PER_BIN 32
