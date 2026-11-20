@@ -1058,6 +1058,15 @@ module Cumo
       if n < 0 || n >= shape[axis]
         raise ShapeError, "n=#{n} is invalid for shape[#{axis}]=#{shape[axis]}"
       end
+      # One subtraction gives the same values as the sum below, which takes a
+      # copy, a product and an addition.
+      if n == 1
+        hi = [true] * ndim
+        lo = [true] * ndim
+        hi[axis] = 1..-1
+        lo[axis] = 0..-2
+        return self[*hi] - self[*lo]
+      end
       # calculate polynomial coefficient
       c = self.class[-1, 1]
       2.upto(n) do |i|

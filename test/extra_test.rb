@@ -416,6 +416,13 @@ class NArrayExtraTest < CumoTestBase
     end
   end
 
+  def test_diff_complex_infinity
+    [Cumo::DComplex, Cumo::SComplex].each do |dtype|
+      a = dtype[Complex(Float::INFINITY, 1), Complex(2, 5)]
+      assert_equal([Complex(-Float::INFINITY, 4)], a.diff.to_a)
+    end
+  end
+
   def test_triu
     TYPES.each do |dtype|
       a = dtype.new(3, 3).seq + 1
