@@ -49,13 +49,12 @@ cumo_bincount_shared_grid(const void *kernel, uint64_t count, uint64_t n, size_t
     if (n == 0 || smem > CUMO_BINCOUNT_SHARED_BYTES || count / CUMO_BINCOUNT_ITEMS_PER_BIN < n) {
         return 0;
     }
+    // A failed query leaves its error for the launch check that follows, which
+    // may be the report of a kernel that faulted earlier.
     if (cudaGetDevice(&dev) != cudaSuccess ||
         cudaDeviceGetAttribute(&sms, cudaDevAttrMultiProcessorCount, dev) != cudaSuccess ||
         cudaOccupancyMaxActiveBlocksPerMultiprocessor(&per_sm, kernel, CUMO_BINCOUNT_SHARED_BLOCK, smem) != cudaSuccess ||
         per_sm <= 0) {
-        // The launch check after this reads the last error, which a failed
-        // query would leave behind.
-        (void)cudaGetLastError();
         return 0;
     }
     grid = (size_t)sms * (size_t)per_sm;
