@@ -6606,6 +6606,25 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([1, 1, 0, 0], zeros.map { |x| (1.0 / x).negative? ? 1 : 0 }, "#{dtype} signed zero order")
     end
 
+    # The keys are made per width, so every float type is checked, with its NaNs
+    # written as bits since a cast from Ruby need not keep the sign of one.
+    {
+      Cumo::DFloat => ["Q<", 0x7ff8000000000000, 0xfff8000000000000],
+      Cumo::SFloat => ["L<", 0x7fc00000, 0xffc00000],
+      Cumo::HFloat => ["S<", 0x7e00, 0xfe00],
+      Cumo::BFloat => ["S<", 0x7fc0, 0xffc0],
+    }.each do |dtype, (pack, pos_nan, neg_nan_bits)|
+      inf = Float::INFINITY
+      bits = dtype.cast([2.0, -inf, 0.0, -0.0, inf, 0.0, -2.0, 0.0]).to_binary.unpack("#{pack}*")
+      bits[2] = neg_nan_bits
+      bits[5] = pos_nan
+      sorted = dtype.from_binary(bits.pack("#{pack}*")).sort
+      got = sorted.to_a
+      assert_equal([-inf, -2.0, 0.0, 0.0, 2.0, inf], got[0, 6], "#{dtype} order")
+      assert_equal([1, 0], got[2, 2].map { |x| (1.0 / x).negative? ? 1 : 0 }, "#{dtype} signed zero order")
+      assert_equal([neg_nan_bits, pos_nan].sort, sorted.to_binary.unpack("#{pack}*")[6, 2].sort, "#{dtype} NaNs last")
+    end
+
     # nan:true asks for the order the default already produces. Its comparator
     # answered -1 for a NaN against anything, so the partition took elements
     # other than the NaN to the wrong side.
