@@ -1,22 +1,16 @@
 #include "cumo/narray_kernel.h"
 
-#if defined(__cplusplus)
-extern "C" {
-#if 0
-} /* satisfy cc-mode */
-#endif
-#endif
-
 // Normalizing and range checking the indices where they already sit, rather
 // than copying them to the host to do it there and copying the result back. An
 // index outside the axis raises the flag and leaves its own value behind, and
 // the caller reads both once it has synchronized, so no view is ever built out
 // of one. Such an index is written as zero so that this pass stays in bounds.
-// The indices are 4 or 8 bytes wide, so an Int32 or Int64 one is read in place.
-__global__ void cumo_na_index_range_check_kernel(size_t *out, const char *in, int elmsz, ssize_t size, uint64_t n, int *oor, size_t *item)
+// T is the index type, so an Int32 or Int64 one is read in place.
+template<typename T>
+__global__ void cumo_na_index_range_check_kernel(size_t *out, const T *in, ssize_t size, uint64_t n, int *oor, size_t *item)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
-        ssize_t pos = (elmsz == 4) ? (ssize_t)((const int32_t*)in)[i] : (ssize_t)((const int64_t*)in)[i];
+        ssize_t pos = (ssize_t)in[i];
         ssize_t v = (pos < 0) ? pos + size : pos;
         if (v < 0 || v >= size) {
             *oor = 1;
@@ -26,6 +20,13 @@ __global__ void cumo_na_index_range_check_kernel(size_t *out, const char *in, in
         out[i] = (size_t)v;
     }
 }
+
+#if defined(__cplusplus)
+extern "C" {
+#if 0
+} /* satisfy cc-mode */
+#endif
+#endif
 
 __global__ void cumo_na_index_aref_nadata_index_stride_kernel(size_t *idx, ssize_t s1, uint64_t n)
 {
@@ -115,7 +116,11 @@ void cumo_na_index_range_check_kernel_launch(size_t *out, const char *in, int el
 {
     size_t grid_dim = cumo_get_grid_dim(n);
     size_t block_dim = cumo_get_block_dim(n);
-    cumo_na_index_range_check_kernel<<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(out, in, elmsz, size, n, oor, item);
+    if (elmsz == 4) {
+        cumo_na_index_range_check_kernel<int32_t><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(out, (const int32_t*)in, size, n, oor, item);
+    } else {
+        cumo_na_index_range_check_kernel<int64_t><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(out, (const int64_t*)in, size, n, oor, item);
+    }
     cumo_cuda_runtime_check_kernel_launch();
 }
 
