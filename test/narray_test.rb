@@ -3303,6 +3303,25 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal(997, r.size)
       assert_equal(1 << 20, r.to_a.sum)
     end
+
+    test "each bin is right when the blocks count in shared memory first" do
+      # 32 items or more per bin take the shared memory kernel, which keeps a
+      # copy of the bins per warp when they are few and one copy when many.
+      [3, 2000].each do |length|
+        count = length * 100
+        xs = Array.new(count) { |i| (i * 7919) % length }
+        ws = Array.new(count) { |i| (((i * 13) % 9) - 4) * 0.25 }
+        x = Cumo::Int32.cast(xs)
+        assert_equal(bincount_expect(xs, length), x.bincount.to_a, "#{length} bins")
+        picked = (0...count).step(2).to_a
+        assert_equal(bincount_expect(picked.map { |i| xs[i] }, length),
+                     x[picked].bincount(minlength: length).to_a, "#{length} bins, index view")
+        [Cumo::SFloat, Cumo::DFloat].each do |wtype|
+          assert_equal(bincount_expect_weighted(xs, ws, length), x.bincount(wtype.cast(ws)).to_a,
+                       "#{length} bins, #{wtype} weights")
+        end
+      end
+    end
   end
 
   # These all run a host loop over managed memory, so they read whatever the
