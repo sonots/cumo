@@ -525,7 +525,8 @@ typedef unsigned int CUMO_BIT_DIGIT;
 // view that puts one in stridx any other way leaks it. The bit names the slot,
 // so code that permutes stridx has to permute index_owned with it. n is the
 // element count it was allocated with. The GC has to hear of it, or nothing
-// collects views that hold large index arrays and little else.
+// collects views that hold large index arrays and little else. Telling it can
+// start a GC, so the view must already be safe to mark and free.
 static inline void
 cumo_na_index_own(cumo_narray_view_t *nv, int i, size_t *idx, size_t n)
 {

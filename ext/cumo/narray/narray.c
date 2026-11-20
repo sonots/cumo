@@ -139,18 +139,13 @@ cumo_na_debug_info(VALUE self)
 static size_t
 cumo_na_view_memsize(const void* ptr)
 {
-    int i;
     size_t size = sizeof(cumo_narray_view_t);
     const cumo_narray_view_t *na = ptr;
 
     assert(na->base.type == CUMO_NARRAY_VIEW_T);
 
+    size += na->index_bytes;
     if (na->stridx != NULL) {
-        for (i=0; i<na->base.ndim; i++) {
-            if (CUMO_SDX_IS_INDEX(na->stridx[i]) && (na->index_owned & ((uint64_t)1 << i))) {
-                size += sizeof(size_t) * na->base.shape[i];
-            }
-        }
         size += sizeof(cumo_stridx_t) * na->base.ndim;
     }
     if (na->base.size > 0) {
