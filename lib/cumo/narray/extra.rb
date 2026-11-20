@@ -1058,8 +1058,8 @@ module Cumo
       if n < 0 || n >= shape[axis]
         raise ShapeError, "n=#{n} is invalid for shape[#{axis}]=#{shape[axis]}"
       end
-      # One subtraction gives the same values as the sum below, which takes a
-      # copy, a product and an addition.
+      # One subtraction is exact. The sum below takes a copy, a product and an
+      # addition, and its product with -1+0i turns a complex infinity into NaN.
       if n == 1
         hi = [true] * ndim
         lo = [true] * ndim
