@@ -3363,10 +3363,20 @@ class NArrayTest < Test::Unit::TestCase
       assert_raise(RuntimeError) { Cumo::DFloat.zeros(3).freeze.add_at(0, 1) }
     end
 
+    # Without the copy, the thread that reads the last value would read it after
+    # other threads had added to it, which takes more than one block to show.
     test "add_at reads values held in self's own memory before it adds" do
-      a = Cumo::DFloat[1, 2, 3]
-      a.add_at(Cumo::Int32[1, 0, 2], a)
-      assert_equal([3, 3, 6], a.to_a)
+      n = 2**20
+      a = Cumo::DFloat.ones(n)
+      a.add_at(Cumo::Int32.new(n).fill(n - 1), a)
+      assert_equal(n + 1, a[-1].to_f)
+      assert_equal(1, a[0].to_f)
+    end
+
+    test "add_at adds at every element of an index array of more than one dimension" do
+      assert_equal([1, 4, 0, 0, 0, 5], Cumo::DFloat.zeros(6).add_at(Cumo::Int32[[0, 5], [5, 1]], Cumo::DFloat[[1, 2], [3, 4]]).to_a)
+      assert_equal([1, 1, 0, 0, 0, 2], Cumo::DFloat.zeros(6).add_at([[0, 5], [5, 1]], 1).to_a)
+      assert_equal([1, 2, 1, 0, 0], Cumo::DFloat.zeros(5).add_at(Cumo::Int32[[0, 1], [1, 2]], 1).to_a)
     end
 
     test "add_at through a view writes the array it views" do
