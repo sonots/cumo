@@ -74,7 +74,7 @@ __device__ static inline void cumo_<%=type_name%>_add_at_one(dtype *p, dtype v)
 <% end %>
 }
 
-<% ((0..opt_indexer_ndim).to_a << '').each do |idim| %>
+<% indexer_dims.each do |idim| %>
 __global__ void <%="cumo_#{c_iter}_kernel_dim#{idim}"%>(cumo_na_iarray_stridx_t a1, cumo_na_iarray_stridx_t a2, cumo_na_indexer_t indexer)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {

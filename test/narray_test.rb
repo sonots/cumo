@@ -3324,7 +3324,9 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
-  # The expected arrays are numpy.add.at's for the same operands.
+  # The expected arrays are numpy.add.at's for the same operands, except where a
+  # single subscript of a multi-dimensional array counts its elements in order,
+  # as []= does.
   sub_test_case "add_at" do
     [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::UInt16, Cumo::UInt32, Cumo::UInt64,
      Cumo::HFloat, Cumo::BFloat, Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex].each do |dtype|

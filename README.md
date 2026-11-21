@@ -423,7 +423,8 @@ grad.add_at(Cumo::Int32[2, 0, 2], true, Cumo::SFloat.ones(3, 3))   # row 2 gets 
 ```
 
 The subscripts are those of `[]=`, so a single subscript of a multi-dimensional array counts its elements in order, where numpy would take its rows; a row is `a.add_at(i, true, values)`.
-The values are cast to the receiver's type before they are added, and have to broadcast to the shape of the places selected, as in numpy.
+The values have to broadcast to the shape of the places selected, as in numpy.
+They are cast to the receiver's type before they are added, where numpy adds in the type the two promote to and rounds each sum back: adding `-0.5` to an integer `1` leaves `1` here and gives `0` in numpy.
 Every numeric type has it, Bit and RObject do not, and a floating-point sum comes out in whatever order the device adds, so its last bits can differ from run to run.
 
 ### Fused Operations
