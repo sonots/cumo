@@ -1314,6 +1314,10 @@ module Cumo
       uint: { 8 => UInt8, 16 => UInt16, 32 => UInt32, 64 => UInt64 }
     }.freeze
     SEARCH_FLOATS = [BFloat, HFloat, SFloat, DFloat].freeze
+    # A Ractor other than the main one reads a constant only when what it holds
+    # is frozen too.
+    Ractor.make_shareable(SEARCH_KINDS)
+    Ractor.make_shareable(SEARCH_INTEGERS)
     private_constant :SEARCH_KINDS, :SEARCH_INTEGERS, :SEARCH_FLOATS
 
     def searchsorted_kind(klass)
