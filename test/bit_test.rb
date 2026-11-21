@@ -700,9 +700,10 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
-  # 4096 elements is one block's range of the compaction, so these sizes take
-  # several blocks and straddle their edges.
-  [8192, 8193, 12_289, 100_003].each do |n|
+  # A short array takes one block of the compaction and ends inside a word.
+  # 4096 elements is one block's range, so the long ones take several and
+  # straddle their edges.
+  [1, 31, 33, 100, 4097, 8192, 8193, 12_289, 100_003].each do |n|
     patterns = {
       "all true" => proc { |i| 1 },
       "all false" => proc { |i| 0 },
@@ -724,9 +725,9 @@ class BitTest < Test::Unit::TestCase
     end
 
     test "where and mask over a view of #{n} bits" do
-      src = (0...(2 * n)).map { |i| (i * 5 + 2) % 4 == 0 ? 1 : 0 }
+      src = (0...(2 * n + 33)).map { |i| (i * 5 + 2) % 4 == 0 ? 1 : 0 }
       a = Cumo::Bit.cast(src)
-      f = Cumo::SFloat.new(2 * n).seq
+      f = Cumo::SFloat.new(2 * n + 33).seq
       [2, 3].each do |st|
         r = (0...(2 * n)).step(st)
         want = r.each_with_index.select { |j, _| src[j] == 1 }.map { |_, k| k }
@@ -756,6 +757,40 @@ class BitTest < Test::Unit::TestCase
     t = (0...(r * c)).select { |k| src[(k % r) * c + k / r] == 1 }
     assert_equal(t, a.transpose.where.to_a)
     assert_equal(t.map { |k| ((k % r) * c + k / r).to_f }, f.transpose[a.transpose].to_a)
+  end
+
+  # Short rows keep the host loop, and an index array on the inner axis
+  # reaches it as one, on the mask's side, the values' side or both.
+  test "where and mask over short rows indexed on the inner axis" do
+    src = (0...64).map { |i| (i * 5 + 3) % 7 < 3 ? 1 : 0 }
+    cols = [7, 0, 3, 5]
+    want = (0...8).flat_map { |r| cols.map { |c| src[r * 8 + c] } }
+    vals = (0...8).flat_map { |r| cols.map { |c| (r * 8 + c).to_f } }
+    ones = want.each_index.select { |i| want[i] == 1 }
+    zeros = want.each_index.select { |i| want[i].zero? }
+    v = Cumo::Bit.cast(src).reshape(8, 8)[true, cols]
+    f = Cumo::DFloat.new(8, 8).seq[true, cols]
+    assert_equal(ones, v.where.to_a)
+    assert_equal([ones, zeros], v.where2.map(&:to_a))
+    assert_equal(ones.map { |k| vals[k] }, f[v].to_a)
+    assert_equal(ones.map(&:to_f), Cumo::DFloat.new(8, 4).seq[v].to_a)
+    assert_equal(ones.map { |k| vals[k] }, f[Cumo::Bit.cast(want).reshape(8, 4)].to_a)
+  end
+
+  test "a short where, where2 and mask do not synchronize" do
+    script = <<~'RUBY'
+      require "cumo/narray"
+      $stderr.sync = true
+      x = Cumo::SFloat.new(100).seq
+      a = x.gt(40)
+      a.where
+      a.where2
+      x[a]
+      print "done"
+    RUBY
+    out = run_child(script, env: { "RUBYOPT" => nil, "CUMO_SHOW_WARNING" => "1" })
+    assert_equal("done", out.lines.last)
+    assert_not_include(out, "synchronizes with CPU")
   end
 
   test "[]= on a frozen view raises whatever the subscript is" do
