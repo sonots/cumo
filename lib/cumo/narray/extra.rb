@@ -1250,6 +1250,44 @@ module Cumo
       idx % shape[axis]
     end
 
+    # Finds where values would go in a sorted 1-dimensional array to keep it
+    # sorted, as numpy.searchsorted does. NaN sorts after every number.
+    #
+    # @example
+    #   a = Cumo::DFloat[1, 2, 2, 3]
+    #   a.searchsorted(2)
+    #   # => 1
+    #   a.searchsorted(2, side: "right")
+    #   # => 3
+    #   a.searchsorted([0, 2.5, 9])
+    #   # => Cumo::Int64#shape=[3]
+    #   # [0, 3, 4]
+    #
+    # @param v [Numeric, Array, Cumo::NArray] the values to place.
+    # @param side ["left", "right"] "left" answers the first place each value
+    #   can go, and "right" the last.
+    # @param sorter [Cumo::NArray, Array, nil] the indices that sort self, as
+    #   argsort answers them, for a self that is not sorted itself.
+    # @return [Cumo::Int64] the places, shaped as v.
+    def searchsorted(v, side: "left", sorter: nil)
+      right = case side.to_s
+              when "left" then false
+              when "right" then true
+              else raise ArgumentError, "side must be \"left\" or \"right\", not #{side.inspect}"
+              end
+      raise ShapeError, "searchsorted needs a 1-dimensional array" unless ndim == 1
+
+      v = NArray.cast(v) if v.is_a?(Array)
+      t = self.class::UPCAST[v.class]
+      t ||= v.class::UPCAST[self.class] if v.is_a?(NArray)
+      unless t&.private_method_defined?(:insertion_points)
+        raise TypeError, "searchsorted does not take #{t || v.class}"
+      end
+
+      sorter = Int64.cast(sorter) unless sorter.nil?
+      t.cast(self).send(:insertion_points, t.cast(v), right, sorter).extract
+    end
+
     # Return the sum along diagonals of the array.
     #
     # If 2-D array, computes the summation along its diagonal with the

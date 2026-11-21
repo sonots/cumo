@@ -671,6 +671,77 @@ class NArrayExtraTest < CumoTestBase
     end
   end
 
+  # The expected places are numpy.searchsorted's for the same arrays.
+  def test_searchsorted
+    [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::UInt16, Cumo::UInt32, Cumo::UInt64,
+     Cumo::HFloat, Cumo::BFloat, Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      a = dtype[1, 2, 2, 3, 5]
+      v = dtype[0, 1, 2, 4, 5, 6]
+      assert_kind_of(Cumo::Int64, a.searchsorted(v))
+      assert_equal([0, 0, 1, 4, 4, 5], a.searchsorted(v).to_a, dtype.name)
+      assert_equal([0, 1, 3, 4, 5, 5], a.searchsorted(v, side: "right").to_a, dtype.name)
+      assert_equal([0, 1, 3, 4, 5, 5], a.searchsorted(v, side: :right).to_a, dtype.name)
+    end
+  end
+
+  def test_searchsorted_puts_nan_after_every_number
+    inf = Float::INFINITY
+    nan = Float::NAN
+    [Cumo::HFloat, Cumo::BFloat, Cumo::SFloat, Cumo::DFloat].each do |dtype|
+      a = dtype[-inf, -1, 0, 1, inf, nan, nan]
+      v = dtype[nan, inf, -inf, -0.0, 0.5]
+      assert_equal([5, 4, 0, 2, 3], a.searchsorted(v).to_a, dtype.name)
+      assert_equal([7, 5, 1, 3, 3], a.searchsorted(v, side: "right").to_a, dtype.name)
+    end
+  end
+
+  def test_searchsorted_against_a_host_search
+    rng = Random.new(5)
+    [Cumo::Int32, Cumo::DFloat].each do |dtype|
+      sorted = Array.new(1000) { rng.rand(-300..300) }.sort
+      queries = Array.new(1500) { rng.rand(-320..320) }
+      left = queries.map { |q| sorted.bsearch_index { |x| x >= q } || sorted.size }
+      right = queries.map { |q| sorted.bsearch_index { |x| x > q } || sorted.size }
+      assert_equal(left, dtype.cast(sorted).searchsorted(dtype.cast(queries)).to_a, dtype.name)
+      assert_equal(right, dtype.cast(sorted).searchsorted(dtype.cast(queries), side: "right").to_a, dtype.name)
+    end
+  end
+
+  def test_searchsorted_takes_the_shape_of_v
+    a = Cumo::DFloat[1, 100, 2, 100, 3][(0..4).step(2)]
+    assert_equal([[0, 1], [2, 3]], a.searchsorted(Cumo::DFloat[[0, 2], [3, 4]]).to_a)
+    assert_equal([0, 2], a.searchsorted(Cumo::DFloat[0, 9, 3, 9][(0..3).step(2)]).to_a)
+    assert_equal([], a.searchsorted(2.5).shape)
+    assert_equal(2, a.searchsorted(2.5).to_i)
+    assert_equal([0, 0], Cumo::DFloat[].searchsorted([1, 2]).to_a)
+    assert_equal([0], a.searchsorted(Cumo::DFloat[]).shape)
+  end
+
+  def test_searchsorted_compares_in_the_common_type
+    a = Cumo::Int32[1, 2, 3]
+    assert_equal(2, a.searchsorted(2.5).to_i)
+    assert_equal([2, 0], a.searchsorted([2.5, 0.5]).to_a)
+    assert_equal([2, 0], a.searchsorted(Cumo::DFloat[2.5, 0.5]).to_a)
+    assert_equal([0, 1], Cumo::UInt8[1, 200].searchsorted(Cumo::Int8[-1, 100]).to_a)
+  end
+
+  def test_searchsorted_with_sorter
+    a = Cumo::DFloat[3, 1, 2]
+    assert_equal([2, 0, 3], a.searchsorted([2.5, 0, 9], sorter: a.argsort).to_a)
+    assert_equal([1], a.searchsorted([1], side: "right", sorter: [1, 2, 0]).to_a)
+    assert_raise(IndexError) { a.searchsorted(2.5, sorter: [1, 5, 0]) }
+    assert_raise(IndexError) { a.searchsorted(2.5, sorter: [1, -1, 0]) }
+    assert_raise(Cumo::NArray::ShapeError) { a.searchsorted(2.5, sorter: [1, 2]) }
+  end
+
+  def test_searchsorted_refuses
+    assert_raise(ArgumentError) { Cumo::DFloat[1, 2].searchsorted(1, side: "middle") }
+    assert_raise(Cumo::NArray::ShapeError) { Cumo::DFloat[[1, 2], [3, 4]].searchsorted(1) }
+    assert_raise(TypeError) { Cumo::DComplex[1, 2].searchsorted(1) }
+    assert_raise(TypeError) { Cumo::DFloat[1, 2].searchsorted(Complex(1, 1)) }
+    assert_raise(TypeError) { Cumo::RObject[1, 2].searchsorted(1) }
+  end
+
   def test_trace
     TYPES.each do |dtype|
       a = dtype.new(3, 3).seq + 1
