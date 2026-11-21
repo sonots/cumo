@@ -13,6 +13,17 @@ class NArrayRactorTest < CumoTestBase
       assert_empty(a & b)
     end
 
+    # searchsorted picks its type from tables, which a Ractor other than the
+    # main one can read only once they are frozen through.
+    def test_searchsorted_in_a_ractor
+      r = Ractor.new do
+        promoted = Cumo::UInt32[1, 3_000_000_000].searchsorted(Cumo::Int32[5]).to_a
+        sorted = Cumo::DFloat[3, 1, 2].searchsorted([2.5], sorter: [1, 2, 0]).to_a
+        [promoted, sorted]
+      end
+      assert_equal([[1], [2]], Timeout.timeout(60) { r.respond_to?(:take) ? r.take : r.value })
+    end
+
     data(:dtype, TYPES, keep: true)
     def test_non_frozen(data)
       dtype = data.fetch(:dtype)
