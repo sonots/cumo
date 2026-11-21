@@ -3373,6 +3373,16 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal(1, a[0].to_f)
     end
 
+    # aref steps through the memory after a 0-dimensional array for an index
+    # array, so add_at refuses subscripts there, as numpy does.
+    test "add_at takes no subscripts on a 0-dimensional array" do
+      assert_raise(IndexError) { Cumo::DFloat.cast(7).add_at(Cumo::Int32[0, 0], 1) }
+      a = Cumo::DFloat.zeros(5)
+      assert_raise(IndexError) { a[2].add_at(Cumo::Int32[0, 0], 1) }
+      assert_equal([0, 0, 0, 0, 0], a.to_a)
+      assert_equal(8, Cumo::DFloat.cast(7).add_at(1).to_f)
+    end
+
     test "add_at adds at every element of an index array of more than one dimension" do
       assert_equal([1, 4, 0, 0, 0, 5], Cumo::DFloat.zeros(6).add_at(Cumo::Int32[[0, 5], [5, 1]], Cumo::DFloat[[1, 2], [3, 4]]).to_a)
       assert_equal([1, 1, 0, 0, 0, 2], Cumo::DFloat.zeros(6).add_at([[0, 5], [5, 1]], 1).to_a)
