@@ -17,8 +17,9 @@ typedef struct {
 char *cumo_bit_where_scratch_new(void);
 void cumo_bit_where_kernel_launch(CUMO_BIT_DIGIT *a, size_t p, ssize_t s, size_t *idx, uint64_t n, int invert, char *out, size_t elmsz, uint64_t cap, uint64_t count, char *scratch);
 
-// Taking a pointer runs allocate, which a Ruby class can redefine, so both are
-// read once every allocation has run.
+// Taking a pointer runs allocate, which a Ruby class can redefine, so the
+// pointers are read once every allocation has run, the scratch's too: a retry
+// after the pool runs out calls GC.start, which runs finalizers.
 static void
 bit_where_take(VALUE idx, char **ptr, size_t *cap)
 {
@@ -35,8 +36,8 @@ bit_where_cursors(char *scratch, uint64_t *v, int n)
 }
 
 // The host loop reads and writes managed memory, so each page it touches moves
-// to the host and back. Only a walk of many short segments keeps it, since the
-// kernels cost three launches a segment.
+// to the host and back. Only a walk split into short segments keeps it, since
+// the kernels cost three launches a segment.
 static int
 bit_where_on_device(const where_opt_t *g, size_t n)
 {
@@ -59,15 +60,29 @@ typedef struct {
     int            ncur;
     uint64_t       cur[2];
     cudaError_t    st;
+    VALUE          out[2];
+    int            sized;
 } where_run_t;
 
-// ndloop can raise with the scratch still held, and rb_raise is a longjmp, so
-// the walk and its read-back run under an ensure that owns the scratch.
+// Taking the pointers and ndloop can raise with the scratch held, and rb_raise
+// is a longjmp, so they run under an ensure that owns the scratch.
 static VALUE
 bit_where_run(VALUE arg)
 {
     where_run_t *r = (where_run_t*)arg;
+    where_opt_t *g = r->g;
+    int k;
 
+    for (k = 0; k < r->ncur; k++) {
+        cumo_na_get_pointer_for_write(r->out[k]);
+    }
+    bit_where_take(r->out[0], &g->idx1, &g->cap1);
+    if (r->ncur == 2) {
+        bit_where_take(r->out[1], &g->idx0, &g->cap0);
+    }
+    if (r->sized) {
+        bit_where_check(CUMO_RNARRAY_SIZE(r->args[0]), g->size);
+    }
     if (r->nargs == 2) {
         cumo_na_ndloop3(r->ndf, r->g, 2, r->args[0], r->args[1]);
     } else {
@@ -203,8 +218,6 @@ static VALUE
         idx_1 = cumo_na_new(cumo_cInt32, 1, &n_1);
         g->elmsz = 4;
     }
-    bit_where_take(idx_1, &g->idx1, &g->cap1);
-    bit_where_check(CUMO_RNARRAY_SIZE(self), size);
     g->wrote1 = 0;
     g->idx0 = NULL;
     g->cap0 = 0;
@@ -212,15 +225,17 @@ static VALUE
     g->size = size;
     g->scratch = NULL;
     g->used_kernel = 0;
-    if (size > 0) {
-        g->scratch = cumo_bit_where_scratch_new();
-    }
     r.ndf = &ndf;
     r.g = g;
     r.args[0] = self;
     r.nargs = 1;
     r.ncur = 1;
     r.st = cudaSuccess;
+    r.out[0] = idx_1;
+    r.sized = 1;
+    if (size > 0) {
+        g->scratch = cumo_bit_where_scratch_new();
+    }
     rb_ensure(bit_where_run, (VALUE)&r, bit_where_release, (VALUE)&r);
     cumo_cuda_runtime_check_status(r.st);
     if (g->used_kernel) { g->wrote1 += (size_t)r.cur[0]; }

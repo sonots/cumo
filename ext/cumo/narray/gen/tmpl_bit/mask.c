@@ -142,7 +142,6 @@ static VALUE
     idx_1 = cumo_na_new(cIndex, 1, &n_1);
     g.count = 0;
     g.elmsz = SIZEOF_VOIDP;
-    bit_where_take(idx_1, &g.idx1, &g.cap1);
     g.wrote1 = 0;
     g.idx0 = NULL;
     g.cap0 = 0;
@@ -150,9 +149,6 @@ static VALUE
     g.size = CUMO_RNARRAY_SIZE(mask);
     g.scratch = NULL;
     g.used_kernel = 0;
-    if (g.size > 0) {
-        g.scratch = cumo_bit_where_scratch_new();
-    }
     r.ndf = &ndf;
     r.g = &g;
     r.args[0] = mask;
@@ -160,6 +156,11 @@ static VALUE
     r.nargs = 2;
     r.ncur = 1;
     r.st = cudaSuccess;
+    r.out[0] = idx_1;
+    r.sized = 0;
+    if (g.size > 0) {
+        g.scratch = cumo_bit_where_scratch_new();
+    }
     rb_ensure(bit_where_run, (VALUE)&r, bit_where_release, (VALUE)&r);
     cumo_cuda_runtime_check_status(r.st);
     if (g.used_kernel) { g.wrote1 += (size_t)r.cur[0]; }
