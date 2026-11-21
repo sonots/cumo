@@ -406,7 +406,8 @@ x.searchsorted(2.5, sorter: x.argsort)     # => 2
 ```
 
 It takes numpy's keywords `side:` and `sorter:`, and answers a `Cumo::Int64` shaped like the values.
-The array and the values are compared in the type they promote to, and NaN sorts after every number, as in numpy.
+The array and the values are compared in the type numpy would promote them to, which holds both: `UInt32` and `Int32` in `Int64`, and `SFloat` and `Int64` in `DFloat`, where Cumo's arithmetic answers `Int32` and `SFloat`.
+A Ruby number counts as an `Int32`, an `Int64` or a `DFloat`, by its value, and NaN sorts after every number, as in numpy.
 A sorter index out of range raises `IndexError`, and complex and object arrays raise `TypeError`, since Cumo does not sort them.
 
 ### Fused Operations

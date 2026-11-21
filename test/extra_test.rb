@@ -711,8 +711,9 @@ class NArrayExtraTest < CumoTestBase
     a = Cumo::DFloat[1, 100, 2, 100, 3][(0..4).step(2)]
     assert_equal([[0, 1], [2, 3]], a.searchsorted(Cumo::DFloat[[0, 2], [3, 4]]).to_a)
     assert_equal([0, 2], a.searchsorted(Cumo::DFloat[0, 9, 3, 9][(0..3).step(2)]).to_a)
-    assert_equal([], a.searchsorted(2.5).shape)
-    assert_equal(2, a.searchsorted(2.5).to_i)
+    r = a.searchsorted(2.5)
+    assert_equal(2, r.to_i)
+    assert_equal([], r.shape) unless Cumo.compatible_mode_enabled?
     assert_equal([0, 0], Cumo::DFloat[].searchsorted([1, 2]).to_a)
     assert_equal([0], a.searchsorted(Cumo::DFloat[]).shape)
   end

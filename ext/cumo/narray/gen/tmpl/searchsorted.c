@@ -11,6 +11,7 @@ static VALUE
     cumo_narray_t *na, *nv, *ns, *nout;
     char *a_ptr, *v_ptr, *s_ptr = NULL, *out_ptr;
     int *oor = NULL;
+    int i;
 
     CUMO_CHECK_NARRAY_TYPE(self, cT, "self");
     CUMO_CHECK_NARRAY_TYPE(v, cT, "v");
@@ -48,7 +49,14 @@ static VALUE
     if (na->ndim != 1) {
         rb_raise(cumo_na_eShapeError, "searchsorted needs a 1-dimensional array");
     }
-    CUMO_ROW_CHECK_SAME_SHAPE(nout, nv);
+    if (nout->ndim != nv->ndim) {
+        rb_raise(cumo_na_eShapeError, "v or the result was reshaped while it was measured");
+    }
+    for (i = 0; i < nv->ndim; ++i) {
+        if (nout->shape[i] != nv->shape[i]) {
+            rb_raise(cumo_na_eShapeError, "v or the result was reshaped while it was measured");
+        }
+    }
     if (!NIL_P(s_cont)) {
         CumoGetNArray(s_cont, ns);
         if (ns->ndim != 1 || ns->size != na->size) {
@@ -67,8 +75,11 @@ static VALUE
         cumo_<%=type_name%>_searchsorted_kernel_launch(
             (const dtype*)a_ptr, na->size, (const int64_t*)s_ptr, (const dtype*)v_ptr,
             (int64_t*)out_ptr, nv->size, RTEST(right), oor);
-        if (oor != NULL && cumo_cuda_runtime_error_flag_get(oor)) {
-            rb_raise(rb_eIndexError, "sorter has an index out of range");
+        if (oor != NULL) {
+            CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("searchsorted", "<%=type_name%>");
+            if (cumo_cuda_runtime_error_flag_get(oor)) {
+                rb_raise(rb_eIndexError, "sorter has an index out of range");
+            }
         }
     }
     RB_GC_GUARD(a_cont);

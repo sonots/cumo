@@ -1277,16 +1277,72 @@ module Cumo
               end
       raise ShapeError, "searchsorted needs a 1-dimensional array" unless ndim == 1
 
-      v = NArray.cast(v) if v.is_a?(Array)
-      t = self.class::UPCAST[v.class]
-      t ||= v.class::UPCAST[self.class] if v.is_a?(NArray)
-      unless t&.private_method_defined?(:insertion_points)
-        raise TypeError, "searchsorted does not take #{t || v.class}"
-      end
+      v = NArray.cast(v) unless v.is_a?(NArray)
+      t = searchsorted_type(self.class, v.class)
+      raise TypeError, "searchsorted does not compare #{self.class} with #{v.class}" if t.nil?
 
-      sorter = Int64.cast(sorter) unless sorter.nil?
+      unless sorter.nil?
+        sorter = NArray.cast(sorter) unless sorter.is_a?(NArray)
+        if sorter.is_a?(Bit) || !%i[int uint].include?(searchsorted_kind(sorter.class)&.first)
+          raise TypeError, "sorter must hold integers, not #{sorter.class}"
+        end
+
+        sorter = Int64.cast(sorter)
+      end
       t.cast(self).send(:insertion_points, t.cast(v), right, sorter).extract
     end
+
+    # What searchsorted compares, and the bits of each: the width of an integer,
+    # the precision of a float. Bit takes part as numpy's bool does.
+    SEARCH_KINDS = {
+      Bit => [:uint, 8],
+      UInt8 => [:uint, 8],
+      UInt16 => [:uint, 16],
+      UInt32 => [:uint, 32],
+      UInt64 => [:uint, 64],
+      Int8 => [:int, 8],
+      Int16 => [:int, 16],
+      Int32 => [:int, 32],
+      Int64 => [:int, 64],
+      BFloat => [:float, 8],
+      HFloat => [:float, 11],
+      SFloat => [:float, 24],
+      DFloat => [:float, 53]
+    }.freeze
+    SEARCH_INTEGERS = {
+      int: { 8 => Int8, 16 => Int16, 32 => Int32, 64 => Int64 },
+      uint: { 8 => UInt8, 16 => UInt16, 32 => UInt32, 64 => UInt64 }
+    }.freeze
+    SEARCH_FLOATS = [BFloat, HFloat, SFloat, DFloat].freeze
+    private_constant :SEARCH_KINDS, :SEARCH_INTEGERS, :SEARCH_FLOATS
+
+    def searchsorted_kind(klass)
+      SEARCH_KINDS[klass.ancestors.find { |k| SEARCH_KINDS.key?(k) }]
+    end
+
+    # The type numpy compares two operands in, one that holds both. UPCAST is
+    # not that: it answers Int32 for UInt32 and Int32, and SFloat for SFloat and
+    # Int64, where a value that wraps or rounds moves its place.
+    def searchsorted_type(k1, k2)
+      (kind1, bits1), (kind2, bits2) = [k1, k2].map { |k| searchsorted_kind(k) }
+      return nil if kind1.nil? || kind2.nil?
+
+      if kind1 != :float && kind2 != :float
+        return SEARCH_INTEGERS[kind1][[bits1, bits2].max] if kind1 == kind2
+
+        signed, unsigned = kind1 == :int ? [bits1, bits2] : [bits2, bits1]
+        return SEARCH_INTEGERS[:int][signed] if signed > unsigned
+        return SEARCH_INTEGERS[:int][unsigned * 2] if unsigned < 64
+
+        return DFloat
+      end
+
+      # bfloat16 reaches as far as single precision, beyond what half holds
+      floats = [k1, k2].any? { |k| k <= BFloat } ? SEARCH_FLOATS - [HFloat] : SEARCH_FLOATS
+      need = [bits1, bits2].max
+      floats.find { |f| SEARCH_KINDS[f][1] >= need } || DFloat
+    end
+    private :searchsorted_kind, :searchsorted_type
 
     # Return the sum along diagonals of the array.
     #
