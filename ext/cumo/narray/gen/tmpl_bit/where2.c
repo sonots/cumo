@@ -23,7 +23,7 @@ static void
     wrote0 = g->wrote0;
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a, p, s, idx);
-    if (i >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE && g->scratch) {
+    if (bit_where_on_device(g, i)) {
         cumo_bit_where_kernel_launch(a,p,s,idx,i,0,idx1,e,cap1,count,g->scratch);
         cumo_bit_where_kernel_launch(a,p,s,idx,i,1,idx0,e,cap0,count,g->scratch);
         g->count = count + i;
@@ -119,9 +119,10 @@ static VALUE
     bit_where_check(CUMO_RNARRAY_SIZE(self), size);
     g->wrote1 = 0;
     g->wrote0 = 0;
+    g->size = size;
     g->scratch = NULL;
     g->used_kernel = 0;
-    if (size >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
+    if (size > 0) {
         g->scratch = cumo_bit_where_scratch_new();
     }
     r.ndf = &ndf;

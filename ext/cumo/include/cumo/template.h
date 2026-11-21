@@ -65,8 +65,9 @@
         CUMO_REBASE_BIT_PTR(lp, i, ad, ps);                     \
     }
 
-// A where compaction takes three launches, so below this many elements walking
-// the bits on the host costs less. This is a tuning value, not a hard limit.
+// A where compaction takes three launches a segment, so a walk that ndloop
+// splits into segments shorter than this walks the bits on the host instead.
+// This is a tuning value, not a hard limit.
 #define CUMO_BIT_WHERE_MIN_KERNEL_SIZE 8192
 
 #define CUMO_GET_DATA( ptr, type, val )                 \

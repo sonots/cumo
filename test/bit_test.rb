@@ -700,10 +700,8 @@ class BitTest < Test::Unit::TestCase
     end
   end
 
-  # where, where2 and mask only reach the device below
-  # CUMO_BIT_WHERE_MIN_KERNEL_SIZE, which is 8192, so these are the sizes that
-  # exercise the compaction rather than the host loop. 4096 elements is one
-  # block's range, so the sizes straddle that too.
+  # 4096 elements is one block's range of the compaction, so these sizes take
+  # several blocks and straddle their edges.
   [8192, 8193, 12_289, 100_003].each do |n|
     patterns = {
       "all true" => proc { |i| 1 },
@@ -1094,47 +1092,53 @@ class BitTest < Test::Unit::TestCase
     assert_equal 8, Integer(a.count_true)
   end
 
-  def assert_where_refuses(n, body, setup: "")
+  def assert_where_refuses(shape, body, setup: "")
     assert_child_raises("the bit array and its index array no longer agree", <<~RUBY, prelude: MUTATING_ALLOCATE)
-      $a = Cumo::Bit.new(#{n}).fill(1)
+      $a = Cumo::Bit.new(#{shape.join(', ')}).fill(1)
       #{setup}
       [Cumo::Int32, Cumo::Int64].each { |k| k.prepend(Mutating) }
       #{body}
     RUBY
   end
 
-  { 1024 => "host loop", 16384 => "scatter kernel" }.each do |n, path|
-    test "where refuses an index array its own allocate shrank, #{path}" do
-      assert_where_refuses(n, "$mutate = ->(idx) { idx.send(:initialize, 1) }\n$a.where")
+  # This check runs before the walk picks a path. A view would not reach it: a
+  # base that shrinks under a view is refused for that instead.
+  [1024, 16_384].each do |n|
+    test "where refuses a bit array its index array's allocate shrank, #{n} bits" do
+      assert_where_refuses([n], "$mutate = ->(_) { $a.send(:initialize, [4]); $a.fill(1) }\n$a.where")
     end
+  end
 
-    test "where refuses a bit array its index array's allocate shrank, #{path}" do
-      assert_where_refuses(n, "$mutate = ->(_) { $a.send(:initialize, [4]); $a.fill(1) }\n$a.where")
+  # A contiguous bit array is one segment however short, so it compacts on the
+  # device. The short columns of a transposed one keep the host loop.
+  { "host loop" => [[32, 32], ".transpose"], "scatter kernel" => [[16_384], ""] }.each do |path, (shape, view)|
+    test "where refuses an index array its own allocate shrank, #{path}" do
+      assert_where_refuses(shape, "$mutate = ->(idx) { idx.send(:initialize, 1) }\n$a#{view}.where")
     end
 
     test "where refuses a bit array whose bits its index array's allocate turned on, #{path}" do
-      assert_where_refuses(n, "$mutate = ->(_) { $a.fill(1) }\n$a.where", setup: "$a.fill(0); $a[0] = 1")
+      assert_where_refuses(shape, "$mutate = ->(_) { $a.fill(1) }\n$a#{view}.where", setup: "$a.fill(0); $a[0] = 1")
     end
 
     test "where refuses a bit array whose bits its index array's allocate turned off, #{path}" do
-      assert_where_refuses(n, "$mutate = ->(_) { $a.fill(0) }\n$a.where")
+      assert_where_refuses(shape, "$mutate = ->(_) { $a.fill(0) }\n$a#{view}.where")
     end
 
     test "where2 refuses a bit array whose bits its index arrays' allocate turned off, #{path}" do
-      assert_where_refuses(n, "$mutate = ->(_) { $a.fill(0) }\n$a.where2")
+      assert_where_refuses(shape, "$mutate = ->(_) { $a.fill(0) }\n$a#{view}.where2")
     end
 
     test "masked aref refuses a bit array whose bits its index array's allocate turned on, #{path}" do
-      assert_where_refuses(n, "$mutate = ->(_) { $a.fill(1) }\nCumo::DFloat.new(#{n}).seq[$a]",
+      assert_where_refuses(shape, "$mutate = ->(_) { $a.fill(1) }\nCumo::DFloat.new(#{shape.join(', ')}).seq#{view}[$a#{view}]",
                            setup: "$a.fill(0); $a[0] = 1")
     end
 
     test "where still answers when allocate replaced the index array's buffer, #{path}" do
       assert_child_raises("no error", <<~RUBY, prelude: MUTATING_ALLOCATE)
-        a = Cumo::Bit.new(#{n}).fill(1)
+        a = Cumo::Bit.new(#{shape.join(', ')}).fill(1)#{view}
         $mutate = ->(idx) { idx.send(:initialize, idx.size) }
         [Cumo::Int32, Cumo::Int64].each { |k| k.prepend(Mutating) }
-        raise "wrong" unless a.where.to_a == (0...#{n}).to_a
+        raise "wrong" unless a.where.to_a == (0...#{shape.inject(:*)}).to_a
         raise "allocate never ran" unless $fired
       RUBY
     end

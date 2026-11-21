@@ -8,6 +8,7 @@ typedef struct {
     size_t cap0;
     size_t wrote1;
     size_t wrote0;
+    size_t size;
     int    used_kernel;
 } where_opt_t;
 
@@ -31,6 +32,15 @@ static cudaError_t
 bit_where_cursors(char *scratch, uint64_t *v, int n)
 {
     return cumo_cuda_runtime_memcpy_to_host(v, scratch, n * sizeof(uint64_t));
+}
+
+// The host loop reads and writes managed memory, so each page it touches moves
+// to the host and back. Only a walk of many short segments keeps it, since the
+// kernels cost three launches a segment.
+static int
+bit_where_on_device(const where_opt_t *g, size_t n)
+{
+    return g->scratch && (n >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE || n == g->size);
 }
 
 static void
@@ -122,7 +132,7 @@ static void
     wrote = g->wrote1;
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a, p, s, idx);
-    if (i >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE && g->scratch) {
+    if (bit_where_on_device(g, i)) {
         // idx1 stays put: the device-side cursor in the scratch orders the
         // writes of successive calls instead.
         cumo_bit_where_kernel_launch(a,p,s,idx,i,0,idx1,e,cap,count,g->scratch);
@@ -199,9 +209,10 @@ static VALUE
     g->idx0 = NULL;
     g->cap0 = 0;
     g->wrote0 = 0;
+    g->size = size;
     g->scratch = NULL;
     g->used_kernel = 0;
-    if (size >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
+    if (size > 0) {
         g->scratch = cumo_bit_where_scratch_new();
     }
     r.ndf = &ndf;
