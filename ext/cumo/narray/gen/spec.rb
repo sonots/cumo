@@ -430,6 +430,10 @@ if is_comparable && !is_object
   def_method "insertion_points", "searchsorted", private: true
 end
 
+unless is_object
+  def_method "add_at"
+end
+
 # Math
 # histogram
 

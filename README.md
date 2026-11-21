@@ -410,6 +410,23 @@ The array and the values are compared in the type numpy would promote them to, w
 A Ruby number counts as an `Int32`, an `Int64` or a `DFloat`, by its value, and NaN sorts after every number, as in numpy.
 A sorter index out of range raises `IndexError`, and complex and object arrays raise `TypeError`, since Cumo does not sort them.
 
+### Adding At Places That Repeat
+
+`add_at` adds values in place at the places subscripts select, as `numpy.add.at` does: a place selected more than once gets every value added to it, where `a[idx] += b` adds only one of them.
+Numo has no such method.
+
+```ruby
+counts = Cumo::Int32.zeros(5)
+counts.add_at(Cumo::Int32[1, 3, 1, 1], 1)        # => [0, 3, 0, 1, 0]
+grad = Cumo::SFloat.zeros(4, 3)
+grad.add_at(Cumo::Int32[2, 0, 2], true, Cumo::SFloat.ones(3, 3))   # row 2 gets two rows, row 0 one
+```
+
+The subscripts are those of `[]=`, so a single subscript of a multi-dimensional array counts its elements in order, where numpy would take its rows; a row is `a.add_at(i, true, values)`.
+The values have to broadcast to the shape of the places selected, as in numpy.
+They are cast to the receiver's type before they are added, where numpy adds in the type the two promote to and rounds each sum back: adding `-0.5` to an integer `1` leaves `1` here and gives `0` in numpy.
+Every numeric type has it, Bit and RObject do not, and a floating-point sum comes out in whatever order the device adds, so its last bits can differ from run to run.
+
 ### Fused Operations
 
 `layer_norm`, `rms_norm` and `softmax` normalize along the last axis in one kernel each, and `quantize_symmetric` takes it to 8-bit integers in one more.
