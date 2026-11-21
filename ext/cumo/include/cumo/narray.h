@@ -544,6 +544,17 @@ cumo_na_index_own(cumo_narray_view_t *nv, int i, size_t *idx, size_t n)
     rb_gc_adjust_memory_usage((ssize_t)(sizeof(size_t) * n));
 }
 
+// Since Ruby 3.3 a temporary ages and can hold its device memory until a major
+// GC. Unprotected, it stays young but is marked at every minor GC, which only a
+// large buffer pays for. Ruby's per-Ractor GC requires shareable ones protected.
+static inline void
+cumo_na_keep_young_if_large(VALUE self, size_t bytes)
+{
+    if (bytes >= ((size_t)1 << 20) && !RB_FL_TEST_RAW(self, RUBY_FL_SHAREABLE)) {
+        RB_OBJ_WB_UNPROTECT(self);
+    }
+}
+
 // One dimension of nv now points at an index array that from reaches, so from
 // has to outlive nv. A lender that owns nothing itself is skipped for its own
 // lender, which keeps the common chain one link long. A lender that owns even
