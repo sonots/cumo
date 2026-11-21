@@ -726,6 +726,36 @@ class NArrayExtraTest < CumoTestBase
     assert_equal([0, 1], Cumo::UInt8[1, 200].searchsorted(Cumo::Int8[-1, 100]).to_a)
   end
 
+  # Pairs where UPCAST answers a type that cannot hold both operands, and Ruby
+  # numbers, which numpy places by their value rather than in self's type.
+  def test_searchsorted_promotes_as_numpy_does
+    assert_equal([1], Cumo::UInt32[1, 3_000_000_000].searchsorted(Cumo::Int32[5]).to_a)
+    assert_equal([0, 2], Cumo::UInt64[1, 2, 2**63].searchsorted(Cumo::Int64[-1, 2**62]).to_a)
+    assert_equal([2], Cumo::Int16[-5, 1].searchsorted(Cumo::UInt16[40_000]).to_a)
+    assert_equal([1], Cumo::SFloat[16_777_216].searchsorted(Cumo::Int64[16_777_217]).to_a)
+    assert_equal([0], Cumo::Int32[2049].searchsorted(Cumo::HFloat[2048], side: "right").to_a)
+    assert_equal(0, Cumo::UInt8[1, 2, 3].searchsorted(-1).to_i)
+    assert_equal(3, Cumo::Int32[1, 2, 3].searchsorted(2**40).to_i)
+    assert_equal(4, Cumo::Int8[1, 2, 3, 100].searchsorted(200).to_i)
+    assert_equal(2, Cumo::SFloat[1, 2, 3].searchsorted(2.0000001).to_i)
+    assert_equal(1, Cumo::HFloat[2048, 2050].searchsorted(2049.0).to_i)
+  end
+
+  def test_searchsorted_takes_ranges_and_bits
+    assert_equal([0, 0, 1, 2], Cumo::DFloat[1, 2].searchsorted(0..3).to_a)
+    assert_equal(1, Cumo::Bit[0, 1, 1].searchsorted(1).to_i)
+    assert_equal([1], Cumo::Bit[0, 1, 1].searchsorted([1]).to_a)
+    assert_equal([0, 1], Cumo::Bit[0, 1, 1].searchsorted(Cumo::Bit[0, 1]).to_a)
+  end
+
+  def test_searchsorted_takes_only_an_integer_sorter
+    a = Cumo::DFloat[3, 1, 2]
+    assert_raise(TypeError) { a.searchsorted(2.5, sorter: [1.5, 2.2, 0.1]) }
+    assert_raise(TypeError) { a.searchsorted(2.5, sorter: Cumo::DFloat[1, 2, 0]) }
+    assert_raise(TypeError) { a.searchsorted(2.5, sorter: Cumo::Bit[1, 0, 1]) }
+    assert_equal(2, a.searchsorted(2.5, sorter: Cumo::UInt8[1, 2, 0]).to_i)
+  end
+
   def test_searchsorted_with_sorter
     a = Cumo::DFloat[3, 1, 2]
     assert_equal([2, 0, 3], a.searchsorted([2.5, 0, 9], sorter: a.argsort).to_a)
