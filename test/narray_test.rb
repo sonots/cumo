@@ -5555,7 +5555,7 @@ class NArrayTest < Test::Unit::TestCase
         bit.(64).reshape(8, 8).transpose(1, 0).reverse(1)[(0...8).step(2), true],
         rows.(8, 8).transpose.map(&:reverse).each_slice(2).map(&:first),
       ],
-      # over CUMO_BIT_WHERE_MIN_KERNEL_SIZE, so where compacts on the device
+      # long enough that the compaction takes more than one block
       "128x128 transpose then reverse(1)" => [
         bit.(128 * 128).reshape(128, 128).transpose(1, 0).reverse(1),
         rows.(128, 128).transpose.map(&:reverse),

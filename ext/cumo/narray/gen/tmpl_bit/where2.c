@@ -23,7 +23,7 @@ static void
     wrote0 = g->wrote0;
     CUMO_INIT_COUNTER(lp, i);
     CUMO_INIT_PTR_BIT_IDX(lp, 0, a, p, s, idx);
-    if (i >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE && g->scratch) {
+    if (bit_where_on_device(g, i)) {
         cumo_bit_where_kernel_launch(a,p,s,idx,i,0,idx1,e,cap1,count,g->scratch);
         cumo_bit_where_kernel_launch(a,p,s,idx,i,1,idx0,e,cap0,count,g->scratch);
         g->count = count + i;
@@ -112,24 +112,23 @@ static VALUE
         idx_0 = cumo_na_new(cumo_cInt32, 1, &n_0);
         g->elmsz = 4;
     }
-    cumo_na_get_pointer_for_write(idx_1);
-    cumo_na_get_pointer_for_write(idx_0);
-    bit_where_take(idx_1, &g->idx1, &g->cap1);
-    bit_where_take(idx_0, &g->idx0, &g->cap0);
-    bit_where_check(CUMO_RNARRAY_SIZE(self), size);
     g->wrote1 = 0;
     g->wrote0 = 0;
+    g->size = size;
     g->scratch = NULL;
     g->used_kernel = 0;
-    if (size >= CUMO_BIT_WHERE_MIN_KERNEL_SIZE) {
-        g->scratch = cumo_bit_where_scratch_new();
-    }
     r.ndf = &ndf;
     r.g = g;
     r.args[0] = self;
     r.nargs = 1;
     r.ncur = 2;
     r.st = cudaSuccess;
+    r.out[0] = idx_1;
+    r.out[1] = idx_0;
+    r.sized = 1;
+    if (size > 0) {
+        g->scratch = cumo_bit_where_scratch_new();
+    }
     rb_ensure(bit_where_run, (VALUE)&r, bit_where_release, (VALUE)&r);
     cumo_cuda_runtime_check_status(r.st);
     if (g->used_kernel) {
