@@ -45,7 +45,7 @@ static void
   multi-dimensional array counts its elements in order, and a row is
   a.add_at(i, true, values). An index array of more than one dimension
   selects a place for each of its elements, and the values broadcast to its
-  shape.
+  shape. A 0-dimensional array takes no subscripts, as in numpy.
   @overload add_at(*index, values)
     @param [Numeric,Array,Range,Cumo::NArray] index  subscripts, as for []=.
     @param [Numeric,Array,Cumo::NArray] values  what to add, cast to
@@ -73,6 +73,12 @@ static VALUE
     // check of the pointer it takes never reaches self.
     if (OBJ_FROZEN(self)) {
         rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
+    }
+    // aref steps through the memory after a 0-dimensional array for an index
+    // array, whatever its values, so the subscripts numpy refuses here are
+    // refused before they reach it.
+    if (argc > 0 && CUMO_RNARRAY_NDIM(self) == 0) {
+        rb_raise(rb_eIndexError, "a 0-dimensional array takes no subscripts");
     }
     if (!rb_obj_is_kind_of(values, cT)) {
         values = rb_funcall(cT, cumo_id_cast, 1, values);
