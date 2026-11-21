@@ -59,6 +59,7 @@ TEMPLATE_KERNEL_PARTS = {
   "poly" => %w[misc],
   "quantize_symmetric" => %w[misc],
   "searchsorted" => %w[misc],
+  "add_at" => %w[misc],
   "unary_ret2" => %w[misc],
   "sort" => %w[sort],
 }.freeze

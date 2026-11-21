@@ -3324,6 +3324,61 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # The expected arrays are numpy.add.at's for the same operands.
+  sub_test_case "add_at" do
+    [Cumo::Int8, Cumo::Int16, Cumo::Int32, Cumo::Int64, Cumo::UInt8, Cumo::UInt16, Cumo::UInt32, Cumo::UInt64,
+     Cumo::HFloat, Cumo::BFloat, Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex].each do |dtype|
+      test "#{dtype}#add_at adds every value of a place selected more than once" do
+        a = dtype.zeros(5)
+        assert_same(a, a.add_at(Cumo::Int32[1, 3, 1, 1], 1))
+        assert_equal([0, 3, 0, 1, 0], a.to_a)
+        a.add_at([4, -1], dtype[1, 2])
+        assert_equal([0, 3, 0, 1, 3], a.to_a)
+      end
+
+      test "#{dtype}#add_at takes the subscripts of []=" do
+        a = dtype.zeros(3, 2)
+        a.add_at(Cumo::Int64[2, 0, 2], true, dtype[[1, 2], [3, 4], [5, 6]])
+        assert_equal([[3, 4], [0, 0], [6, 8]], a.to_a)
+        a.add_at(1, true, 1)
+        assert_equal([[3, 4], [1, 1], [6, 8]], a.to_a)
+        a.add_at(Cumo::Int32[5, 5], 2)
+        assert_equal([[3, 4], [1, 1], [6, 12]], a.to_a)
+      end
+
+      # Four places share one 32-bit word for the narrowest types, which have
+      # no atomic of their own.
+      test "#{dtype}#add_at when many threads add to the same places" do
+        a = dtype.zeros(4).add_at(Cumo::Int32.cast(Array.new(800) { |i| (i * 7) % 4 }), 1)
+        assert_equal(dtype.cast([200] * 4).to_a, a.to_a)
+      end
+    end
+
+    test "add_at refuses what numpy refuses" do
+      assert_raise(IndexError) { Cumo::DFloat.zeros(3).add_at(Cumo::Int32[3], 1) }
+      assert_raise(Cumo::NArray::ShapeError) { Cumo::DFloat.zeros(3).add_at(Cumo::Int32[0, 1], Cumo::DFloat[1, 2, 3]) }
+      assert_raise(Cumo::NArray::ShapeError) { Cumo::DFloat.zeros(3).add_at(0..2, Cumo::DFloat.ones(1, 3)) }
+      assert_raise(RuntimeError) { Cumo::DFloat.zeros(3).freeze.add_at(0, 1) }
+    end
+
+    test "add_at reads values held in self's own memory before it adds" do
+      a = Cumo::DFloat[1, 2, 3]
+      a.add_at(Cumo::Int32[1, 0, 2], a)
+      assert_equal([3, 3, 6], a.to_a)
+    end
+
+    test "add_at through a view writes the array it views" do
+      a = Cumo::DFloat.zeros(6)
+      a[(0..5).step(2)].add_at(Cumo::Int32[1, 1], 1)
+      assert_equal([0, 0, 2, 0, 0, 0], a.to_a)
+    end
+
+    test "add_at casts the values to the receiver's type first" do
+      assert_equal([2, 0], Cumo::Int32.zeros(2).add_at(Cumo::Int32[0, 0], 1.5).to_a)
+      assert_equal([254, 0], Cumo::UInt8.zeros(2).add_at(Cumo::Int32[0, 0], -1).to_a)
+    end
+  end
+
   # These all run a host loop over managed memory, so they read whatever the
   # last kernel has written so far unless they synchronize first. The arrays
   # are large enough that the kernel filling them is still in flight.
