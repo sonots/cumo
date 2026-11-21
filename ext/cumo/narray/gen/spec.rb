@@ -426,6 +426,8 @@ if is_comparable && !is_object
   def_method "sort"
   def_method "sort_index"
   def_method "median"
+  # Cumo::NArray#searchsorted casts its operands before it calls this
+  def_method "insertion_points", "searchsorted", private: true
 end
 
 # Math

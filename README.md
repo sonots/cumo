@@ -392,6 +392,24 @@ A thread's plans also go when it ends, and when an allocation it makes from the 
 They keep its single positional argument, its double precision results and the `ArgumentError`s it raises, so code written for numo-pocketfft runs on the GPU after the replacement of `Numo` with `Cumo` above.
 A 0-dimensional array raises `Cumo::NArray::DimensionError`, where numo-pocketfft fails on it in a different way in each function.
 
+### Searching A Sorted Array
+
+`searchsorted` answers where values would go in a sorted one-dimensional array to keep it sorted, as `numpy.searchsorted` does.
+Numo has no such method.
+
+```ruby
+a = Cumo::DFloat[1, 2, 2, 3]
+a.searchsorted([0, 2, 9])                  # => [0, 1, 4]
+a.searchsorted([0, 2, 9], side: "right")   # => [0, 3, 4]
+x = Cumo::DFloat[3, 1, 2]
+x.searchsorted(2.5, sorter: x.argsort)     # => 2
+```
+
+It takes numpy's keywords `side:` and `sorter:`, and answers a `Cumo::Int64` shaped like the values.
+The array and the values are compared in the type numpy would promote them to, which holds both: `UInt32` and `Int32` in `Int64`, and `SFloat` and `Int64` in `DFloat`, where Cumo's arithmetic answers `Int32` and `SFloat`.
+A Ruby number counts as an `Int32`, an `Int64` or a `DFloat`, by its value, and NaN sorts after every number, as in numpy.
+A sorter index out of range raises `IndexError`, and complex and object arrays raise `TypeError`, since Cumo does not sort them.
+
 ### Fused Operations
 
 `layer_norm`, `rms_norm` and `softmax` normalize along the last axis in one kernel each, and `quantize_symmetric` takes it to 8-bit integers in one more.

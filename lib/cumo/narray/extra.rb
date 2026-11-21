@@ -1250,6 +1250,104 @@ module Cumo
       idx % shape[axis]
     end
 
+    # Finds where values would go in a sorted 1-dimensional array to keep it
+    # sorted, as numpy.searchsorted does. NaN sorts after every number.
+    #
+    # @example
+    #   a = Cumo::DFloat[1, 2, 2, 3]
+    #   a.searchsorted(2)
+    #   # => 1
+    #   a.searchsorted(2, side: "right")
+    #   # => 3
+    #   a.searchsorted([0, 2.5, 9])
+    #   # => Cumo::Int64#shape=[3]
+    #   # [0, 3, 4]
+    #
+    # @param v [Numeric, Array, Cumo::NArray] the values to place.
+    # @param side ["left", "right"] "left" answers the first place each value
+    #   can go, and "right" the last.
+    # @param sorter [Cumo::NArray, Array, nil] the indices that sort self, as
+    #   argsort answers them, for a self that is not sorted itself.
+    # @return [Cumo::Int64] the places, shaped as v.
+    def searchsorted(v, side: "left", sorter: nil)
+      right = case side.to_s
+              when "left" then false
+              when "right" then true
+              else raise ArgumentError, "side must be \"left\" or \"right\", not #{side.inspect}"
+              end
+      raise ShapeError, "searchsorted needs a 1-dimensional array" unless ndim == 1
+
+      v = NArray.cast(v) unless v.is_a?(NArray)
+      t = searchsorted_type(self.class, v.class)
+      raise TypeError, "searchsorted does not compare #{self.class} with #{v.class}" if t.nil?
+
+      unless sorter.nil?
+        sorter = NArray.cast(sorter) unless sorter.is_a?(NArray)
+        if sorter.is_a?(Bit) || !%i[int uint].include?(searchsorted_kind(sorter.class)&.first)
+          raise TypeError, "sorter must hold integers, not #{sorter.class}"
+        end
+
+        sorter = Int64.cast(sorter)
+      end
+      t.cast(self).send(:insertion_points, t.cast(v), right, sorter).extract
+    end
+
+    # What searchsorted compares, and the bits of each: the width of an integer,
+    # the precision of a float. Bit takes part as numpy's bool does.
+    SEARCH_KINDS = {
+      Bit => [:uint, 8],
+      UInt8 => [:uint, 8],
+      UInt16 => [:uint, 16],
+      UInt32 => [:uint, 32],
+      UInt64 => [:uint, 64],
+      Int8 => [:int, 8],
+      Int16 => [:int, 16],
+      Int32 => [:int, 32],
+      Int64 => [:int, 64],
+      BFloat => [:float, 8],
+      HFloat => [:float, 11],
+      SFloat => [:float, 24],
+      DFloat => [:float, 53]
+    }.freeze
+    SEARCH_INTEGERS = {
+      int: { 8 => Int8, 16 => Int16, 32 => Int32, 64 => Int64 },
+      uint: { 8 => UInt8, 16 => UInt16, 32 => UInt32, 64 => UInt64 }
+    }.freeze
+    SEARCH_FLOATS = [BFloat, HFloat, SFloat, DFloat].freeze
+    # A Ractor other than the main one reads a constant only when what it holds
+    # is frozen too.
+    Ractor.make_shareable(SEARCH_KINDS)
+    Ractor.make_shareable(SEARCH_INTEGERS)
+    private_constant :SEARCH_KINDS, :SEARCH_INTEGERS, :SEARCH_FLOATS
+
+    def searchsorted_kind(klass)
+      SEARCH_KINDS[klass.ancestors.find { |k| SEARCH_KINDS.key?(k) }]
+    end
+
+    # The type numpy compares two operands in, one that holds both. UPCAST is
+    # not that: it answers Int32 for UInt32 and Int32, and SFloat for SFloat and
+    # Int64, where a value that wraps or rounds moves its place.
+    def searchsorted_type(k1, k2)
+      (kind1, bits1), (kind2, bits2) = [k1, k2].map { |k| searchsorted_kind(k) }
+      return nil if kind1.nil? || kind2.nil?
+
+      if kind1 != :float && kind2 != :float
+        return SEARCH_INTEGERS[kind1][[bits1, bits2].max] if kind1 == kind2
+
+        signed, unsigned = kind1 == :int ? [bits1, bits2] : [bits2, bits1]
+        return SEARCH_INTEGERS[:int][signed] if signed > unsigned
+        return SEARCH_INTEGERS[:int][unsigned * 2] if unsigned < 64
+
+        return DFloat
+      end
+
+      # bfloat16 reaches as far as single precision, beyond what half holds
+      floats = [k1, k2].any? { |k| k <= BFloat } ? SEARCH_FLOATS - [HFloat] : SEARCH_FLOATS
+      need = [bits1, bits2].max
+      floats.find { |f| SEARCH_KINDS[f][1] >= need } || DFloat
+    end
+    private :searchsorted_kind, :searchsorted_type
+
     # Return the sum along diagonals of the array.
     #
     # If 2-D array, computes the summation along its diagonal with the
