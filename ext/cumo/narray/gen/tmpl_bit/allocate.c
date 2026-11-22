@@ -13,6 +13,7 @@ static VALUE
             ptr = cumo_cuda_runtime_malloc(CUMO_BIT_BYTES(na->size));
             CUMO_NA_DATA_PTR(na) = ptr;
             rb_gc_adjust_memory_usage(CUMO_BIT_BYTES(na->size));
+            cumo_na_keep_young_if_large(self, CUMO_BIT_BYTES(na->size));
         }
         break;
     case CUMO_NARRAY_VIEW_T:

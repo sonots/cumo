@@ -34,6 +34,7 @@ static VALUE
             // few-byte object holding an arbitrarily large buffer and does not
             // run until the host itself runs out.
             rb_gc_adjust_memory_usage(sizeof(dtype) * na->size);
+            cumo_na_keep_young_if_large(self, sizeof(dtype) * na->size);
             <% end %>
         }
         <% if !is_object && !is_bit %>

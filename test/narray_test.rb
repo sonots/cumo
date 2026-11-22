@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "objspace"
 require_relative "test_helper"
 
 class NArrayTest < Test::Unit::TestCase
@@ -2426,6 +2427,30 @@ class NArrayTest < Test::Unit::TestCase
 
     s = Ractor.make_shareable(Cumo::DFloat.cast(5.0))
     assert { (s * Cumo::DFloat[1, 2]).to_a == [5, 10] }
+  end
+
+  sub_test_case "write barrier protection of data arrays" do
+    setup do
+      omit "Ruby 3.2 and older never protect these arrays" if Gem::Version.new(RUBY_VERSION) < Gem::Version.new("3.3")
+    end
+
+    def wb_protected?(a)
+      ObjectSpace.dump(a).include?('"wb_protected":true')
+    end
+
+    test "only a buffer of 1 MiB or more leaves it" do
+      assert { !wb_protected?(Cumo::SFloat.new(1 << 18).seq) }
+      assert { wb_protected?(Cumo::SFloat.new((1 << 18) - 1).seq) }
+      assert { !wb_protected?(Cumo::Bit.zeros(1 << 23)) }
+      assert { wb_protected?(Cumo::Bit.zeros((1 << 23) - 32)) }
+    end
+
+    test "a shareable array keeps it when its buffer comes later" do
+      a = Ractor.make_shareable(Cumo::DFloat.new(1 << 17))
+      a.allocate
+      assert { Ractor.shareable?(a) }
+      assert { wb_protected?(a) }
+    end
   end
 
   test "adding a new axis to a narray-view" do
