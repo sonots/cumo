@@ -108,6 +108,8 @@ void cumo_na_index_mark_filled(cumo_narray_view_t *nv);
 void cumo_na_index_wait_fill(cumo_narray_view_t *nv);
 VALUE cumo_na_aref_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, size_t pos);
 VALUE cumo_na_at_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, size_t pos);
+int cumo_na_index_in_place_width(VALUE idx);
+void cumo_na_index_check_range_in_place(const char *p, int width, uint64_t n, ssize_t size);
 
 // defined in array, used in math
 VALUE cumo_na_ary_composition_dtype(VALUE ary);

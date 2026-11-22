@@ -232,37 +232,68 @@ cumo_na_parse_array(VALUE ary, int orig_dim, ssize_t size, cumo_na_index_arg_t *
 
 void cumo_na_index_range_check_kernel_launch(size_t *out, const char *in, int elmsz, ssize_t size, uint64_t n, int *oor, size_t *item);
 
-// Hands back indices the host or a kernel can read in a row, with the width of
-// each. An Int32 or Int64 one whose elements already sit that way, which is
-// what Bit#where returns, is read where it is, since copying it cost a launch
-// and a buffer the GC was told about. The stride is checked rather than the
-// contiguity, which a Struct field passes with the stride of the whole record.
-static VALUE
-cumo_na_index_readable(VALUE a, size_t n, int *elmsz)
+// The width of an Int32 or Int64 index array whose elements sit in a row a
+// kernel can read, which is what Bit#where returns, or 0. The stride is checked
+// rather than the contiguity, which a Struct field passes with the stride of the
+// whole record.
+int
+cumo_na_index_in_place_width(VALUE a)
 {
-    VALUE klass = rb_obj_class(a), idx;
+    VALUE klass = rb_obj_class(a);
     cumo_narray_t *na;
     cumo_narray_view_t *nv;
     int w = (klass == cumo_cInt32) ? 4 : (klass == cumo_cInt64) ? 8 : 0;
 
     CumoGetNArray(a,na);
-    if (w != 0 && CUMO_NA_NDIM(na) == 1) {
-        if (CUMO_NA_TYPE(na) == CUMO_NARRAY_DATA_T) {
-            *elmsz = w;
-            return a;
+    if (w == 0 || CUMO_NA_NDIM(na) != 1) {
+        return 0;
+    }
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_DATA_T) {
+        return w;
+    }
+    if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
+        nv = (cumo_narray_view_t*)na;
+        if (CUMO_SDX_IS_STRIDE(nv->stridx[0]) && CUMO_SDX_GET_STRIDE(nv->stridx[0]) == w) {
+            return w;
         }
-        if (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) {
-            nv = (cumo_narray_view_t*)na;
-            if (CUMO_SDX_IS_STRIDE(nv->stridx[0]) && CUMO_SDX_GET_STRIDE(nv->stridx[0]) == w) {
-                *elmsz = w;
-                return a;
-            }
-        }
+    }
+    return 0;
+}
+
+// Hands back indices the host or a kernel can read in a row, with the width of
+// each. One that already sits that way is read where it is, since copying it
+// cost a launch and a buffer the GC was told about.
+static VALUE
+cumo_na_index_readable(VALUE a, size_t n, int *elmsz)
+{
+    VALUE idx;
+    int w = cumo_na_index_in_place_width(a);
+
+    if (w != 0) {
+        *elmsz = w;
+        return a;
     }
     idx = cumo_na_new(cIndex,1,&n);
     cumo_na_store(idx,a);
     *elmsz = (int)sizeof(ssize_t);
     return idx;
+}
+
+void cumo_na_index_check_range_kernel_launch(const char *in, int elmsz, ssize_t size, uint64_t n, int *oor, size_t *item);
+
+// A caller that reads the indices where they sit has no copy with the bad ones
+// written as zero, so every one is checked before it uses any.
+void
+cumo_na_index_check_range_in_place(const char *p, int width, uint64_t n, ssize_t size)
+{
+    int *oor = cumo_cuda_runtime_error_flag_new();
+    size_t *item = cumo_cuda_runtime_error_item_new();
+
+    cumo_na_index_check_range_kernel_launch(p, width, size, n, oor, item);
+    CUMO_SHOW_SYNCHRONIZE_WARNING_ONCE("cumo_na_index_check_range_in_place", "any");
+    if (cumo_cuda_runtime_error_flag_get(oor)) {
+        rb_raise(rb_eIndexError, "index=%"SZF"d out of shape[0]=%"SZF"d", (ssize_t)*item, size);
+    }
 }
 
 // read an NArray of indices into q

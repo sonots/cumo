@@ -21,6 +21,20 @@ __global__ void cumo_na_index_range_check_kernel(size_t *out, const T *in, ssize
     }
 }
 
+// The same check for a caller that reads the indices where they are afterwards,
+// so nothing is written.
+template<typename T>
+__global__ void cumo_na_index_check_range_kernel(const T *in, ssize_t size, uint64_t n, int *oor, size_t *item)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        ssize_t pos = (ssize_t)in[i];
+        if (pos < -size || pos >= size) {
+            *oor = 1;
+            *item = (size_t)pos;
+        }
+    }
+}
+
 #if defined(__cplusplus)
 extern "C" {
 #if 0
@@ -120,6 +134,18 @@ void cumo_na_index_range_check_kernel_launch(size_t *out, const char *in, int el
         cumo_na_index_range_check_kernel<int32_t><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(out, (const int32_t*)in, size, n, oor, item);
     } else {
         cumo_na_index_range_check_kernel<int64_t><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>(out, (const int64_t*)in, size, n, oor, item);
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+}
+
+void cumo_na_index_check_range_kernel_launch(const char *in, int elmsz, ssize_t size, uint64_t n, int *oor, size_t *item)
+{
+    size_t grid_dim = cumo_get_grid_dim(n);
+    size_t block_dim = cumo_get_block_dim(n);
+    if (elmsz == 4) {
+        cumo_na_index_check_range_kernel<int32_t><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>((const int32_t*)in, size, n, oor, item);
+    } else {
+        cumo_na_index_check_range_kernel<int64_t><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>((const int64_t*)in, size, n, oor, item);
     }
     cumo_cuda_runtime_check_kernel_launch();
 }
