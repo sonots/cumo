@@ -74,9 +74,8 @@ static VALUE
     if (OBJ_FROZEN(self)) {
         rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
     }
-    // aref steps through the memory after a 0-dimensional array for an index
-    // array, whatever its values, so the subscripts numpy refuses here are
-    // refused before they reach it.
+    // Refused as numpy's add.at does, though []= takes these subscripts as
+    // indexing the one element.
     if (argc > 0 && CUMO_RNARRAY_NDIM(self) == 0) {
         rb_raise(rb_eIndexError, "a 0-dimensional array takes no subscripts");
     }

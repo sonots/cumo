@@ -2393,6 +2393,38 @@ class NArrayTest < Test::Unit::TestCase
     assert { c.to_a == [7] }
   end
 
+  test "an index array on a 0-dimensional array selects its element for each entry" do
+    assert_equal([7, 7], Cumo::DFloat.cast(7)[Cumo::Int32[0, 0]].to_a)
+    assert_equal([[7, 7], [7, 7]], Cumo::DFloat.cast(7)[Cumo::Int32[[0, 0], [0, 0]]].to_a)
+    a = Cumo::DFloat.new(5).seq
+    assert_equal([2, 2, 2], a[2][[0, -1, 0]].to_a)
+    assert_equal([1, 1], Cumo::Bit[0, 1, 0][1][Cumo::Int32[0, 0]].to_a)
+    assert_equal([7, 7], Cumo::RObject.cast(7)[Cumo::Int32[0, 0]].to_a)
+  end
+
+  test "writing through an index array on a 0-dimensional view stays at its element" do
+    z = Cumo::DFloat.zeros(5)
+    v = z[2]
+    v[Cumo::Int32[0, 0]] = 1
+    assert_equal([0, 0, 1, 0, 0], z.to_a)
+    b = Cumo::Bit.zeros(3)
+    w = b[1]
+    w[[0, 0]] = 1
+    assert_equal([0, 1, 0], b.to_a)
+  end
+
+  test "an index array out of range on a 0-dimensional array raises IndexError" do
+    assert_raise(IndexError) { Cumo::DFloat.cast(7)[Cumo::Int32[0, 1]] }
+    assert_raise(IndexError) { Cumo::DFloat.new(5).seq[2][Cumo::Int32[-2]] }
+  end
+
+  test ":new on a 0-dimensional array still adds an axis of length one" do
+    assert_equal([7], Cumo::DFloat.cast(7)[:new].to_a)
+    v = Cumo::DFloat.new(5).seq[2][:new]
+    assert_equal([1], v.shape)
+    assert_equal([2], v.to_a)
+  end
+
   test "inspect shows the value of a scalar cast to an array" do
     assert_equal("Cumo::DFloat#shape=[]\n5", Cumo::DFloat.cast(5.0).inspect)
     assert_equal("Cumo::DFloat(view)#shape=[1]\n[5]", Cumo::DFloat.cast(5.0)[true].inspect)
@@ -3398,8 +3430,7 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal(1, a[0].to_f)
     end
 
-    # aref steps through the memory after a 0-dimensional array for an index
-    # array, so add_at refuses subscripts there, as numpy does.
+    # numpy's add.at refuses these, though []= takes them as indexing the one element.
     test "add_at takes no subscripts on a 0-dimensional array" do
       assert_raise(IndexError) { Cumo::DFloat.cast(7).add_at(Cumo::Int32[0, 0], 1) }
       a = Cumo::DFloat.zeros(5)
