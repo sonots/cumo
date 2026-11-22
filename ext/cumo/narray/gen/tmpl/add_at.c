@@ -19,6 +19,68 @@ static VALUE
     return (CUMO_NA_TYPE(na) == CUMO_NARRAY_VIEW_T) ? CUMO_NA_VIEW_DATA(na) : a;
 }
 
+void <%="cumo_#{c_iter}_flat_kernel_launch"%>(char *p, const char *idx, int idx_size, const char *v, uint64_t v_step, ssize_t size, uint64_t n);
+
+// The offset pointer of a view through an index array names only its first
+// element, so such a view is read through the view even with one element.
+static int
+<%=c_func%>_flat_values(VALUE values, size_t n, uint64_t *v_step)
+{
+    cumo_narray_t *nv;
+    cumo_narray_view_t *vv;
+
+    CumoGetNArray(values, nv);
+    if (nv->ndim > 1 || (nv->size != 1 && nv->size != n)) {
+        return 0;
+    }
+    if (nv->ndim == 1 && CUMO_NA_TYPE(nv) == CUMO_NARRAY_VIEW_T) {
+        vv = (cumo_narray_view_t*)nv;
+        if (!CUMO_SDX_IS_STRIDE(vv->stridx[0]) ||
+                (nv->size > 1 && CUMO_SDX_GET_STRIDE(vv->stridx[0]) != sizeof(dtype))) {
+            return 0;
+        }
+    }
+    *v_step = (nv->size == 1) ? 0 : 1;
+    return 1;
+}
+
+// An Int32 or Int64 index array into a data array is added from where its
+// indices sit, after one pass that checks their range, rather than through a
+// view that first writes them out as offsets. Returns 0 to leave it to the view.
+static int
+<%=c_func%>_flat(VALUE self, VALUE idx, VALUE values)
+{
+    cumo_narray_t *na;
+    const char *ip, *v;
+    char *p;
+    uint64_t v_step;
+    size_t n;
+    int width;
+
+    CumoGetNArray(self, na);
+    if (CUMO_NA_TYPE(na) != CUMO_NARRAY_DATA_T || CUMO_TEST_COLUMN_MAJOR(self)) {
+        return 0;
+    }
+    // The kernel reads the indices while it adds into self, so indices held in
+    // self's own memory go through the view, which writes them out first.
+    if (<%=c_func%>_root(idx) == <%=c_func%>_root(self)) {
+        return 0;
+    }
+    width = cumo_na_index_in_place_width(idx);
+    n = CUMO_RNARRAY_SIZE(idx);
+    if (width == 0 || n == 0 || !<%=c_func%>_flat_values(values, n, &v_step)) {
+        return 0;
+    }
+    // Taking memory can run Ruby, so all of it is taken before the indices are
+    // checked. An unallocated self is refused here, as the view refuses it.
+    ip = cumo_na_get_offset_pointer_for_read(idx);
+    v = cumo_na_get_offset_pointer_for_read(values);
+    p = cumo_na_get_pointer_for_read_write(self);
+    cumo_na_index_check_range_in_place(ip, width, n, (ssize_t)na->size);
+    <%="cumo_#{c_iter}_flat_kernel_launch"%>(p, ip, width, v, v_step, (ssize_t)na->size, n);
+    return 1;
+}
+
 // numpy refuses values that would have to grow the selection to fit, where
 // ndloop would broadcast the selection instead and add each row of them.
 static void
@@ -99,6 +161,11 @@ static VALUE
                 values = cumo_na_flatten(spread);
             }
             sub = cumo_na_flatten(idx);
+        }
+        // A flat Ruby Array keeps the subscripts of []=, so only an NArray, or
+        // the one a nested Array became above, is read directly.
+        if (CumoIsNArray(sub) && <%=c_func%>_flat(self, sub, values)) {
+            return self;
         }
         nd = cumo_na_get_result_dimension(self, 1, &sub, sizeof(dtype), &pos);
         view = cumo_na_aref_main(1, &sub, self, 0, nd, pos);

@@ -93,3 +93,30 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_ia
     <%= indexer_switch("cumo_#{c_iter}_kernel", "*a1,*a2,*indexer") %>
     cumo_cuda_runtime_check_kernel_launch();
 }
+
+<% [["int32", "int32_t"], ["int64", "int64_t"]].each do |iname, itype| %>
+__global__ void <%="cumo_#{c_iter}_flat_#{iname}_kernel"%>(dtype *p, const <%=itype%> *idx, const dtype *v, uint64_t v_step, ssize_t size, uint64_t n)
+{
+    for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        ssize_t k = (ssize_t)idx[i];
+        // The range was checked through a flag the whole process shares, so an
+        // index that slipped past it is skipped rather than added outside.
+        if (k < -size || k >= size) {
+            continue;
+        }
+        cumo_<%=type_name%>_add_at_one(p + ((k < 0) ? k + size : k), v[i * v_step]);
+    }
+}
+<% end %>
+
+void <%="cumo_#{c_iter}_flat_kernel_launch"%>(char *p, const char *idx, int idx_size, const char *v, uint64_t v_step, ssize_t size, uint64_t n)
+{
+    size_t grid_dim = cumo_get_grid_dim(n);
+    size_t block_dim = cumo_get_block_dim(n);
+    if (idx_size == 4) {
+        <%="cumo_#{c_iter}_flat_int32_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>((dtype*)p, (const int32_t*)idx, (const dtype*)v, v_step, size, n);
+    } else {
+        <%="cumo_#{c_iter}_flat_int64_kernel"%><<<grid_dim, block_dim, 0, cumo_cuda_stream()>>>((dtype*)p, (const int64_t*)idx, (const dtype*)v, v_step, size, n);
+    }
+    cumo_cuda_runtime_check_kernel_launch();
+}
