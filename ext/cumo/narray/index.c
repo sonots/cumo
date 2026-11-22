@@ -573,8 +573,8 @@ cumo_na_index_parse_args(VALUE args, cumo_narray_t *na, cumo_na_index_arg_t *q, 
         }
         // new dimension
         else if (v==cumo_sym_new) {
-            // Past the last dimension, which is how the aref functions below tell
-            // a new axis from a real one.
+            // Past the last dimension and with no index array, which is how the
+            // aref functions below tell a new axis from a real one.
             cumo_na_index_parse_each(v, 1, na->ndim, &q[j], at_mode);
             j++;
         }
@@ -696,9 +696,9 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
         cumo_stridx_t sdx1;
         ssize_t size;
 
-        // Past the last dimension only a 0-dim receiver's own subscript reads
-        // this (see cumo_na_index_aref_nadata). A zero union would read as an
-        // index array at NULL.
+        // An index array past the last dimension, as a 0-dim receiver's own
+        // subscript is (see cumo_na_index_aref_nadata), reads this. A zero
+        // union would read as an index array at NULL.
         CUMO_SDX_SET_STRIDE(sdx1, 0);
 
         if (orig_dim < na1->base.ndim) {
