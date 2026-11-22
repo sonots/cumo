@@ -1,3 +1,34 @@
+# 0.16.0 (2026/11/22)
+
+Breaking changes:
+
+* `ElementwiseKernel` raises `ArgumentError` when a raw output is left out, unless `size:` gives its length, as CuPy does. It allocated one with the shape of the loop, which the kernel could leave partly uninitialized or write past. A call that left out a raw output and wrote only inside the loop has to pass the output now (PR #650)
+* `ElementwiseKernel` no longer broadcasts a raw output against the inputs or lets it decide how many elements the kernel runs over, as in CuPy. A raw output larger than the inputs gets only the elements the kernel writes, a raw output smaller than the loop is no longer refused, so the kernel has to stay inside it, and a call whose arrays are all raw needs `size:` (PR #648)
+
+Fixes:
+
+* Fix out-of-bounds reads and writes when the `to_int` of a subscript reshapes the array it indexes. With `x` of shape [3, 2] and an `i` that reshapes it to [1, 6], `x[[2, i], true]` read and wrote past the buffer. Indexing now raises `RuntimeError` when the shape changed while the subscripts were read. Indexing an array made by `Class#allocate` no longer crashes (PR #662)
+* Fix out-of-bounds reads and writes when a 0-dimensional array is indexed by an index array. `Cumo::DFloat.cast(7)[Cumo::Int32[0, 0]]` read past the array, and `z[2][[0, 0]] = 1` also wrote to `z[3]`. Every entry now selects the one element, and an entry out of range raises `IndexError` as before (PR #661)
+* Fix `Bit#where`, `Bit#where2` and indexing by a Bit array possibly writing into freed memory when the memory pool ran short, since the retry runs `GC.start` and a finalizer could free a buffer the kernels were about to fill (PR #657)
+* Fix device memory growing without bound in a loop that drops views made by indexing. Such a view owns an index array that the GC was never told about, so reversing a view indexed by 10^7 Int64 values 50 times grew the memory pool by 4 GB without running the GC (PR #653)
+* Fix `ElementwiseKernel` allocating a raw output it was not given with the shape of the loop (PR #650)
+* Fix `ElementwiseKernel` reading a raw input in place while an output overwrites it. A raw input that overlaps any output is now read from a copy (PR #649)
+* Fix `ElementwiseKernel` raising `ArgumentError` for a raw output shaped unlike its inputs, such as a larger array a kernel adds rows into with `atomicAdd`. An input that is not raw and shares memory with a raw output is read from a copy (PR #648)
+* Fix a beginless range such as `a[..3]` or `a[(..3).step(2)]` raising `TypeError` as a subscript. It starts at the first element for a positive step and at the last for a negative one (PR #645)
+* Fix an Enumerator subscript ignoring its step, so `(0..4).enum_for(:step, 2)` selected every element and `(4..0).enum_for(:step, -1)` none. The step of an Enumerator has to be a nonzero Integer, as that of an ArithmeticSequence does, so a step of 0 or 2.0 raises `ArgumentError` (PR #644)
+
+Changes:
+
+* Add `add_at(*index, values)`, numpy's `add.at`, which adds every value of a place selected more than once. It takes the subscripts of `[]=`, casts the values to the type of the array first, and takes no subscripts on a 0-dimensional array, as numpy does. An Int32 or Int64 index array into an array that is not a view is read where it sits, which for 10^7 indices into 1000 places is about 1.6 to 1.9 times faster than going through a view and runs no GC (PR #663, PR #659)
+* Add `searchsorted`, numpy's `searchsorted`, with its `side:` and `sorter:`, its order with NaN after every number, and its promotion, which unlike Cumo's arithmetic compares UInt32 with Int32 in Int64 and SFloat with Int64 in DFloat. For 5 million sorted doubles and as many values it is about 8.7 times faster than a concatenation and `sort_index` (PR #658)
+* On Ruby 3.3 and later, an array whose buffer is 1 MiB or more is not write-barrier protected, as every array was up to Ruby 3.2. A large temporary is freed by the next minor GC, where it could keep its device memory until a major GC and bring that major GC sooner. Steps that make many large temporaries run up to about 1.5 times faster, and an old container that holds such an array is scanned at every minor GC (PR #660)
+* `Bit#where`, `Bit#where2` and indexing by a Bit array of fewer than 8192 elements compact on the device when the walk is one segment, where they walked the bits on the host. On 1000 elements this is about 22 to 34 times faster (PR #657)
+* `sort` and `median` of float arrays sort the keys alone. Sorting 10^7 SFloat is about 1.6 times faster, 10^7 HFloat about 1.7 times and 10^6 DFloat about 1.6 times, and the median of 10^7 SFloat about 1.45 times. NaNs now come out in the order of their bits rather than their input order, so the median of a row of NaNs can be a NaN with other bits (PR #656)
+* `bincount` with few bins counts in shared memory first. 10^8 items in 10 bins are counted about 4.3 times faster, 7.0 times with float weights and 5.8 times with double weights. Weighted sums are added per block, so their rounding differs from before, as the order of the atomic adds already made it vary (PR #655)
+* An Int32 or Int64 index array is read where it is rather than copied into a new Int64 array. Gathering 10^7 elements by an Int64 index is about 1.66 times faster, 10^5 elements about 1.23 times, and storing through 10^7 indices about 1.17 times (PR #654)
+* `diff` with `n` of 1 subtracts the two slices once on the built-in numeric types, about 2.5 to 3.9 times faster on SFloat and DFloat with the same bits for real and integer types. A complex result no longer gets a NaN part from an infinite operand, and a zero part can take the other sign, as in numpy (PR #652)
+* Building an array from ranges or arithmetic sequences reads each one's end once, which is about 1.3 times faster for 20,000 ranges and about 1.24 times for 20,000 arithmetic sequences. A Range subclass that overrides `exclude_end?` is read in array data and axes as subscripts read it (PR #647)
+
 # 0.15.0 (2026/11/02)
 
 Breaking changes:
