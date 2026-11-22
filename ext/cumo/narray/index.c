@@ -645,7 +645,10 @@ cumo_na_index_aref_nadata(cumo_narray_data_t *na1, cumo_narray_view_t *na2,
             na2->base.reduce = rb_funcall(m,'|',1,na2->base.reduce);
         }
 
-        if (orig_dim >= na1->base.ndim) {
+        // A 0-dim receiver is indexed as one element, so its subscript also
+        // lands past the last dimension. :new never brings an index array, and
+        // with stride1 left at 0 every entry selects that one element.
+        if (orig_dim >= na1->base.ndim && q[i].idx == NULL) {
             // new dimension
             newaxis[n_newaxis++] = j;
             CUMO_SDX_SET_STRIDE(na2->stridx[j], elmsz);
@@ -693,8 +696,10 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
         cumo_stridx_t sdx1;
         ssize_t size;
 
-        sdx1.stride = 0;
-        sdx1.index = NULL;
+        // Past the last dimension only a 0-dim receiver's own subscript reads
+        // this (see cumo_na_index_aref_nadata). A zero union would read as an
+        // index array at NULL.
+        CUMO_SDX_SET_STRIDE(sdx1, 0);
 
         if (orig_dim < na1->base.ndim) {
             sdx1 = na1->stridx[orig_dim];
@@ -718,7 +723,7 @@ cumo_na_index_aref_naview(cumo_narray_view_t *na1, cumo_narray_view_t *na2,
             na2->base.reduce = rb_funcall(m,'|',1,na2->base.reduce);
         }
 
-        if (orig_dim >= na1->base.ndim) {
+        if (orig_dim >= na1->base.ndim && q[i].idx == NULL) {
             // new dimension
             newaxis[n_newaxis++] = j;
             CUMO_SDX_SET_STRIDE(na2->stridx[j], elmsz);
