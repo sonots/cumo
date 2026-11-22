@@ -2425,6 +2425,44 @@ class NArrayTest < Test::Unit::TestCase
     assert_equal([2], v.to_a)
   end
 
+  def subscript_that_runs(value, &before)
+    subscript = Object.new
+    subscript.define_singleton_method(:to_int) do
+      before&.call
+      value
+    end
+    subscript
+  end
+
+  test "an index whose to_int reshapes the array raises RuntimeError" do
+    x = Cumo::DFloat.new(3, 2).seq
+    assert_raise(RuntimeError) { x[[2, subscript_that_runs(0) { x.reshape!(1, 6) }], true] }
+
+    x = Cumo::DFloat.new(3, 2).seq
+    assert_raise(RuntimeError) { x[[2, subscript_that_runs(0) { x.reshape!(1, 6) }], true] = 9 }
+    assert_equal([[0, 1, 2, 3, 4, 5]], x.to_a)
+
+    x = Cumo::DFloat.new(3, 2).seq
+    assert_raise(RuntimeError) { x.at([2, subscript_that_runs(0) { x.reshape!(2, 3) }], [0, 1]) }
+  end
+
+  test "an index whose to_int leaves the shape as it was still reads" do
+    x = Cumo::DFloat.new(3, 2).seq
+    assert_equal([[4, 5], [0, 1]], x[[2, subscript_that_runs(0)], true].to_a)
+    assert_equal([[4, 5], [0, 1]], x[[2, subscript_that_runs(0) { x.reshape!(3, 2) }], true].to_a)
+
+    base = Cumo::DFloat.new(3, 2).seq
+    v = base[0..2, true]
+    assert_equal([[4, 5], [0, 1]], v[[2, subscript_that_runs(0) { base.reshape!(1, 6) }], true].to_a)
+  end
+
+  test "indexing an array that was only allocated does not crash" do
+    x = Cumo::DFloat.allocate
+    assert_equal([1], x[:new].shape)
+    assert_equal([0], x[true].shape)
+    assert_raise(IndexError) { x[[0]] }
+  end
+
   test "inspect shows the value of a scalar cast to an array" do
     assert_equal("Cumo::DFloat#shape=[]\n5", Cumo::DFloat.cast(5.0).inspect)
     assert_equal("Cumo::DFloat(view)#shape=[1]\n[5]", Cumo::DFloat.cast(5.0)[true].inspect)
