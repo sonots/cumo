@@ -1004,8 +1004,26 @@ VALUE cumo_na_aref_md_protected(VALUE data_value)
     VALUE view;
     cumo_narray_view_t *na2;
     ssize_t elmsz;
+    cumo_narray_t as_parsed;
 
-    cumo_na_index_parse_args(args, na1, q, ndim, at_mode);
+    // A subscript's to_int is Ruby and may reshape the receiver, while the
+    // strides below come from its shape after the parse. Parse against the
+    // shape as it was, and refuse a receiver whose shape moved meanwhile.
+    as_parsed = *na1;
+    if (na1->ndim > 1) {
+        as_parsed.shape = ALLOCA_N(size_t, na1->ndim);
+        memcpy(as_parsed.shape, na1->shape, sizeof(size_t) * na1->ndim);
+    } else {
+        // As cumo_na_alloc_shape lays it out. An array that was only
+        // allocated has no shape yet, and its size reads as zero here.
+        as_parsed.shape = &as_parsed.size;
+    }
+    cumo_na_index_parse_args(args, &as_parsed, q, ndim, at_mode);
+    if (na1->ndim != as_parsed.ndim || na1->size != as_parsed.size ||
+            (na1->ndim > 1 &&
+             memcmp(na1->shape, as_parsed.shape, sizeof(size_t) * na1->ndim) != 0)) {
+        rb_raise(rb_eRuntimeError, "shape of NArray changed while its index was converted");
+    }
 
     if (cumo_na_debug_flag) print_index_arg(q,ndim);
 
