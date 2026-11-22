@@ -3493,6 +3493,42 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([2, 0], Cumo::Int32.zeros(2).add_at(Cumo::Int32[0, 0], 1.5).to_a)
       assert_equal([254, 0], Cumo::UInt8.zeros(2).add_at(Cumo::Int32[0, 0], -1).to_a)
     end
+
+    # Read where they sit, the indices would change under the add, which takes
+    # more than one block to show.
+    test "add_at reads indices held in self's own memory before it adds" do
+      n = 10**7
+      a = Cumo::Int32.new(n).seq(1)
+      a[-1] = 0
+      sum = a.sum.to_i
+      a.add_at(a, n)
+      assert_equal(sum + (n * n), a.sum.to_i)
+      assert_equal(n, a.min.to_i)
+    end
+
+    test "add_at reads values through a view of an index array" do
+      src = Cumo::DFloat[10, 20, 30, 40]
+      assert_equal([40, 0, 0], Cumo::DFloat.zeros(3).add_at(Cumo::Int32[0], src.at(Cumo::Int32[3])).to_a)
+      assert_equal([40, 0, 40], Cumo::DFloat.zeros(3).add_at(Cumo::Int32[0, 2], src[Cumo::Int32[1, 3]][1..1]).to_a)
+    end
+
+    test "add_at refuses what []= refuses" do
+      assert_raise(RuntimeError) { Cumo::DFloat.new(5).add_at(Cumo::Int32[1], 1) }
+      assert_raise(TypeError) { Cumo::DFloat.zeros(4).add_at([0..2], 1) }
+    end
+
+    test "add_at adds the same reading indices in place as through a view" do
+      [Cumo::Int32, Cumo::Int64].each do |klass|
+        n = 2**20
+        idx = klass.cast((Cumo::DFloat.new(n).rand * 1000).floor - 500)
+        spaced = klass.zeros(2 * n)
+        spaced[(0...(2 * n)).step(2)] = idx
+        values = (Cumo::DFloat.new(n).rand * 8).floor
+        in_place = Cumo::DFloat.zeros(1000).add_at(idx, values)
+        viewed = Cumo::DFloat.zeros(1000).add_at(spaced[(0...(2 * n)).step(2)], values)
+        assert_equal(viewed.to_a, in_place.to_a)
+      end
+    end
   end
 
   # These all run a host loop over managed memory, so they read whatever the
