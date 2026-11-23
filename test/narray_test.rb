@@ -3677,16 +3677,41 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([0, 1, 2], a.to_a)
     end
 
-    test "Bit takes one too" do
+    test "a Cumo::Bit receiver writes at every element of it" do
       a = Cumo::Bit.new(6).fill(0)
       a[Cumo::Int32[[0, 1], [4, 5]]] = 1
       assert_equal([1, 1, 0, 0, 1, 1], a.to_a)
     end
 
-    test "RObject takes one too" do
+    test "a Cumo::RObject receiver writes at every element of it" do
       a = Cumo::RObject.new(5).seq
       a[Cumo::Int32[[0, 1], [2, 3]]] = 99
       assert_equal([99, 99, 99, 99, 4], a.to_a)
+    end
+
+    # The value reaches the same store as with every other subscript, which
+    # keeps an object an object rather than asking it for an Array.
+    test "a value that is not an array goes in as it is" do
+      a = Cumo::RObject.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = nil
+      assert_equal([nil, nil, nil, nil, 4], a.to_a)
+      b = Cumo::RObject.new(3).seq
+      b[Cumo::Int32[[0, 1]]] = (1..2)
+      assert_equal([1..2, 1..2, 2], b.to_a)
+    end
+
+    # A Ruby Array is padded and truncated to the shape it is stored into, and
+    # an NArray broadcasts, which is what the other subscripts do as well.
+    test "a Ruby Array value is padded and truncated as it is elsewhere" do
+      a = Cumo::DFloat.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = [[7, 8]]
+      assert_equal([7, 8, 0, 0, 4], a.to_a)
+      b = Cumo::DFloat.new(5).seq
+      b[Cumo::Int32[[0, 1], [2, 3]]] = [[7, 8, 9], [1, 2, 3]]
+      assert_equal([7, 8, 1, 2, 4], b.to_a)
+      c = Cumo::DFloat.new(2, 2).seq
+      c[true, true] = [[7, 8]]
+      assert_equal([[7, 8], [0, 0]], c.to_a)
     end
 
     # A Bit subscript is a mask, which selects where it is true whatever its

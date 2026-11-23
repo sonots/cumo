@@ -31,7 +31,7 @@ static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
 {
     int nd;
-    size_t pos;
+    size_t pos = 0;
     VALUE a, idx = Qnil;
 
     argc--;
@@ -47,22 +47,26 @@ static VALUE
             rb_raise(rb_eRuntimeError, "cannot write to frozen NArray.");
         }
         if (argc == 1) {
-            idx = RB_TYPE_P(argv[0], T_ARRAY) ? rb_apply(cumo_cNArray, rb_intern("[]"), argv[0]) : argv[0];
+            idx = argv[0];
+            // Only a nested Ruby Array becomes an index array of more than one
+            // dimension, so only that one is worth building here.
+            if (RB_TYPE_P(idx, T_ARRAY) && RARRAY_LEN(idx) > 0 && RB_TYPE_P(RARRAY_AREF(idx, 0), T_ARRAY)) {
+                idx = rb_apply(cumo_cNArray, rb_intern("[]"), idx);
+            }
             if (!CumoIsNArray(idx) || rb_obj_is_kind_of(idx, cumo_cBit) || CUMO_RNARRAY_NDIM(idx) <= 1) {
                 idx = Qnil;
             }
         }
         if (RTEST(idx)) {
             // An index array of more than one dimension selects into a new
-            // array rather than a view, so it goes in flattened, with the
-            // value spread over its shape, as add_at does. A store through
-            // the array it selects into would be lost with it.
+            // array rather than a view, so it goes in flattened, and a store
+            // through the array it selects into would be lost with it. A value
+            // with a shape of its own is written into the shape of the index
+            // by the same store first, so a shape that does not fit is taken
+            // the way every other subscript takes it.
             VALUE val = argv[argc], sub;
 
-            if (!rb_obj_is_kind_of(val, cT)) {
-                val = rb_funcall(cT, cumo_id_cast, 1, val);
-            }
-            if (CUMO_RNARRAY_NDIM(val) > 0) {
+            if (RB_TYPE_P(val, T_ARRAY) || (CumoIsNArray(val) && CUMO_RNARRAY_NDIM(val) > 0)) {
                 VALUE spread = cumo_na_new(cT, CUMO_RNARRAY_NDIM(idx), CUMO_RNARRAY_SHAPE(idx));
                 <%=c_func.sub(/_aset/,"_store")%>(spread, val);
                 val = cumo_na_flatten(spread);
