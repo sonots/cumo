@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Cumo::CUDA
+  # Raised when NVRTC fails to compile a kernel. Its message is the log of
+  # NVRTC, and dump writes the source with it.
   class CompileError < StandardError
     def initialize(msg, source, name, options)
       @msg = msg
@@ -9,14 +11,18 @@ module Cumo::CUDA
       @options = options
     end
 
+    # The log of NVRTC.
     def message
       @msg
     end
 
+    # The log of NVRTC.
     def to_s
       @msg
     end
 
+    # Writes the log, the name, the options and the source with line numbers
+    # to io.
     def dump(io)
       lines = @source.split("\n")
       digits = Math.log10(lines.size).floor + 1

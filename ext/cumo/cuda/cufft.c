@@ -585,8 +585,15 @@ Init_cumo_cuda_cufft(void)
 
     /*
       Document-module: Cumo::CUDA::Cufft
+
+      cuFFT, which the transforms of Cumo::FFT run on.
     */
     mCufft = rb_define_module_under(mCUDA, "Cufft");
+    /*
+      Document-class: Cumo::CUDA::CufftError
+
+      Raised when a call to cuFFT fails.
+    */
     eCufftError = rb_define_class_under(mCUDA, "CufftError", rb_eStandardError);
 
     rb_define_singleton_method(mCufft, "available?", rb_cufft_available_p, 0);

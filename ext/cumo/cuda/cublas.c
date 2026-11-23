@@ -82,8 +82,16 @@ Init_cumo_cuda_cublas(void)
     cumo_cuda_thread_local_init(&handles, sizeof(cublasHandle_t));
 
     /*
-      Document-module: Cumo::Cublas
+      Document-module: Cumo::CUDA::Cublas
+
+      cuBLAS, which gemm and the floating point matrix products of dot run on.
+      It has no methods of its own.
     */
     mCublas = rb_define_module_under(mCUDA, "Cublas");
+    /*
+      Document-class: Cumo::CUDA::CublasError
+
+      Raised when a call to cuBLAS fails.
+    */
     eCublasError = rb_define_class_under(mCUDA, "CublasError", rb_eStandardError);
 }

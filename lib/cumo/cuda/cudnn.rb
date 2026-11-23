@@ -110,7 +110,7 @@ module Cumo
         #   pad_value: nil, the default, leaves the padding out of the average,
         #   and pad_value: 0 counts it as zeros.
         #   @return [Cumo::NArray]
-        #   @raise [RuntimeError] when pad_value is neither nil nor 0.
+        #   @raise [::RuntimeError] when pad_value is neither nil nor 0.
         # @see Cumo::DFloat#pooling_forward
         def avg_pool(a, *args, **kwargs)
           a.avg_pool(*args, **kwargs)
@@ -119,7 +119,7 @@ module Cumo
         # @overload avg_pool_backward(a, y, gy, kernel_size, stride: kernel_size, pad: 0, pad_value: nil, gx: nil)
         #   The gradient of avg_pool, with the same pad_value:.
         #   @return [Cumo::NArray]
-        #   @raise [RuntimeError] when pad_value is neither nil nor 0.
+        #   @raise [::RuntimeError] when pad_value is neither nil nor 0.
         # @see Cumo::DFloat#pooling_backward
         def avg_pool_backward(a, *args, **kwargs)
           a.avg_pool_backward(*args, **kwargs)

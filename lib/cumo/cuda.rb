@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 module Cumo
+  # The CUDA layer of Cumo: devices, streams, events, pinned host memory,
+  # the memory pool, kernels compiled at run time, and the CUDA libraries
+  # Cumo calls.
   module CUDA
   end
 end

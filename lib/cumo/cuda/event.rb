@@ -46,6 +46,9 @@ module Cumo::CUDA
       self
     end
 
+    # Waits until the work that the last record captured is done. An event
+    # that was never recorded returns at once.
+    # @return [self]
     def synchronize
       Runtime.cudaEventSynchronize(handle)
       self
@@ -55,6 +58,7 @@ module Cumo::CUDA
       Runtime.cudaEventQuery(handle)
     end
 
+    # Destroys the event. Calling it again does nothing.
     def destroy
       return if @ptr.nil?
       Runtime.cudaEventDestroy(@ptr)

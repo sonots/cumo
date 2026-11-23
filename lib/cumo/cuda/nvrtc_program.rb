@@ -3,6 +3,8 @@
 require_relative 'compile_error'
 
 module Cumo::CUDA
+  # CUDA source to compile with NVRTC, as Compiler does. Call destroy when it
+  # is no longer needed.
   class NVRTCProgram
     # name_expressions: names such as "kernel<float>" whose mangled names
     # lowered_name answers once the program is compiled.
@@ -22,16 +24,21 @@ module Cumo::CUDA
       end
     end
 
+    # The mangled name of a name expression given to new, once compiled.
     def lowered_name(name_expression)
       NVRTC.nvrtcGetLoweredName(@ptr, name_expression)
     end
 
+    # Releases the program. Calling it again does nothing.
     def destroy
       return unless @ptr
       NVRTC.nvrtcDestroyProgram(@ptr)
       @ptr = nil
     end
 
+    # Compiles the source with the NVRTC options.
+    # @return [String] the PTX.
+    # @raise [Cumo::CUDA::CompileError] with the log of NVRTC.
     def compile(options: [])
       begin
         NVRTC.nvrtcCompileProgram(@ptr, options)

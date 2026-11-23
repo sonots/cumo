@@ -257,7 +257,21 @@ Init_cumo_cuda_memory_pool()
 {
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
+    /*
+      Document-module: Cumo::CUDA::MemoryPool
+
+      The pool Cumo allocates device memory from. Memory that arrays let go of
+      stays in the pool and is handed out again. It is enabled by default, and
+      CUMO_MEMORY_POOL=OFF or disable turns it off.
+    */
     VALUE mMemoryPool = rb_define_module_under(mCUDA, "MemoryPool");
+    /*
+      Document-class: Cumo::CUDA::OutOfMemoryError
+
+      Raised when the memory pool cannot allocate device memory, even after
+      it runs the GC and lets go of what it holds. Without the pool, a failed
+      allocation raises Cumo::CUDA::RuntimeError.
+    */
     cumo_cuda_eOutOfMemoryError = rb_define_class_under(mCUDA, "OutOfMemoryError", rb_eStandardError);
     
     rb_define_singleton_method(mMemoryPool, "enable", RUBY_METHOD_FUNC(rb_memory_pool_enable), 0);
