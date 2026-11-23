@@ -64,7 +64,9 @@ module Cumo::CUDA
     # Runs the block with this as the current stream, waits for everything
     # the block queued, and puts the previous stream back. The block's work
     # is ordered after what the previous stream had queued, and nothing the
-    # block started is left running once it returns.
+    # block started is left running once it returns. The null stream is the
+    # exception. The host does not wait for it, and the previous stream is
+    # ordered after the block's work instead.
     def with
       before = Stream.current
       if before.handle != handle
@@ -75,7 +77,13 @@ module Cumo::CUDA
         yield self
       ensure
         begin
-          synchronize unless null?
+          if !null?
+            synchronize
+          elsif before.handle != handle
+            # A non-blocking stream is not ordered after the null stream by
+            # itself, so it waits for the block's work there on the device.
+            before.wait_event(record(Event.new(timing: false)))
+          end
         ensure
           Runtime.current_stream = before.handle
         end
