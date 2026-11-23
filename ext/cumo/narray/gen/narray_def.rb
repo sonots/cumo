@@ -175,9 +175,17 @@ module NArrayType
     ["DComplex", "cumo_dcomplex", "m_from_dcomplex"],
   ].freeze
 
+  # The entries of UPCAST as [key, value] pairs of Ruby class names, in the
+  # order the rb_hash_aset calls insert them. init_upcast.c writes them out as
+  # the documented value of the constant.
+  def upcast_doc
+    @opts[:upcast_doc] ||= []
+  end
+
   def upcast(c=nil, t=nil)
     @opts[:upcast] ||= []
     if c
+      upcast_doc << ["Cumo::#{c}", "Cumo::#{t || class_name}"]
       if t
         t = "cumo_c#{t}"
       else
@@ -203,6 +211,9 @@ module NArrayType
 
   def upcast_rb(c, t=nil)
     @opts[:upcast] ||= []
+    # Ruby has had one Integer class since 2.4, so the Fixnum and Bignum keys
+    # below are documented as the Integer one they are compiled in place of.
+    upcast_doc << [c, "Cumo::#{t || class_name}"]
     if t
       t = "cumo_c#{t}"
     else

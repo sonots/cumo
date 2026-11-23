@@ -77,25 +77,52 @@ end
 # Constants
 
 cn = get(:class_name)
+
+# A doc tool shows the C expression of a constant as its value, which tells a
+# reader nothing, so each description below opens with "value: ". RObject holds
+# a VALUE, which is 64 bits wide on every build Cumo supports.
+doc_value = {
+  bit: { bits: 1 },
+  int8: { bits: 8, max: "127", min: "-128" },
+  int16: { bits: 16, max: "32767", min: "-32768" },
+  int32: { bits: 32, max: "2147483647", min: "-2147483648" },
+  int64: { bits: 64, max: "9223372036854775807", min: "-9223372036854775808" },
+  uint8: { bits: 8, max: "255", min: "0" },
+  uint16: { bits: 16, max: "65535", min: "0" },
+  uint32: { bits: 32, max: "4294967295", min: "0" },
+  uint64: { bits: 64, max: "18446744073709551615", min: "0" },
+  bfloat: { bits: 16, max: "3.3895313892515355e+38", min: "1.1754943508222875e-38", epsilon: "0.0078125" },
+  hfloat: { bits: 16, max: "65504.0", min: "6.103515625e-05", epsilon: "0.0009765625" },
+  sfloat: { bits: 32, max: "3.4028234663852886e+38", min: "1.1754943508222875e-38", epsilon: "1.1920928955078125e-07" },
+  dfloat: { bits: 64, max: "1.7976931348623157e+308", min: "2.2250738585072014e-308", epsilon: "2.220446049250313e-16" },
+  scomplex: { bits: 64, max: "3.4028234663852886e+38", min: "1.1754943508222875e-38", epsilon: "1.1920928955078125e-07" },
+  dcomplex: { bits: 128, max: "1.7976931348623157e+308", min: "2.2250738585072014e-308", epsilon: "2.220446049250313e-16" },
+  robject: { bits: 64 }
+}[get(:type_name).to_sym]
+raise "spec.rb: no documented constant values for #{get(:type_name)}" if doc_value.nil?
+# A missing entry would quietly put the C expression back in the docs.
+doc_value.default_proc = proc { |_, key| raise "spec.rb: #{get(:type_name)} has no documented #{key}" }
+
 if is_bit
-  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(1)", desc: "Element size of #{cn} in bits."
-  def_const "ELEMENT_BYTE_SIZE", "rb_float_new(1.0/8)", desc: "Element size of #{cn} in bytes, 1/8 as a Float."
-  def_const "CONTIGUOUS_STRIDE", "INT2FIX(1)", desc: "Stride of a contiguous #{cn} array, in bits."
+  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(1)", desc: "#{doc_value[:bits]}: Element size of #{cn} in bits."
+  def_const "ELEMENT_BYTE_SIZE", "rb_float_new(1.0/8)", desc: "0.125: Element size of #{cn} in bytes, 1/8 as a Float."
+  def_const "CONTIGUOUS_STRIDE", "INT2FIX(1)", desc: "#{doc_value[:bits]}: Stride of a contiguous #{cn} array, in bits."
 else
-  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(sizeof(dtype)*8)", desc: "Element size of #{cn} in bits."
-  def_const "ELEMENT_BYTE_SIZE", "INT2FIX(sizeof(dtype))", desc: "Element size of #{cn} in bytes."
-  def_const "CONTIGUOUS_STRIDE", "INT2FIX(sizeof(dtype))", desc: "Stride of a contiguous #{cn} array, in bytes."
+  bytes = doc_value[:bits] / 8
+  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(sizeof(dtype)*8)", desc: "#{doc_value[:bits]}: Element size of #{cn} in bits."
+  def_const "ELEMENT_BYTE_SIZE", "INT2FIX(sizeof(dtype))", desc: "#{bytes}: Element size of #{cn} in bytes."
+  def_const "CONTIGUOUS_STRIDE", "INT2FIX(sizeof(dtype))", desc: "#{bytes}: Stride of a contiguous #{cn} array, in bytes."
 end
 
 if !is_object
   part = is_complex ? "a real or imaginary part of #{cn}" : cn
   if is_float
-    def_const "EPSILON", "M_EPSILON", desc: "Machine epsilon of #{part}, the difference between 1 and the next larger number it holds."
-    def_const "MAX", "M_MAX", desc: "The largest finite number #{part} holds."
-    def_const "MIN", "M_MIN", desc: "The smallest positive normalized number #{part} holds, as MIN of Float is. The most negative finite one is -MAX."
+    def_const "EPSILON", "M_EPSILON", desc: "#{doc_value[:epsilon]}: Machine epsilon of #{part}, the difference between 1 and the next larger number it holds."
+    def_const "MAX", "M_MAX", desc: "#{doc_value[:max]}: The largest finite number #{part} holds."
+    def_const "MIN", "M_MIN", desc: "#{doc_value[:min]}: The smallest positive normalized number #{part} holds, as MIN of Float is. The most negative finite one is -MAX."
   elsif is_int
-    def_const "MAX", "M_MAX", desc: "The largest value #{cn} holds."
-    def_const "MIN", "M_MIN", desc: "The smallest value #{cn} holds."
+    def_const "MAX", "M_MAX", desc: "#{doc_value[:max]}: The largest value #{cn} holds."
+    def_const "MIN", "M_MIN", desc: "#{doc_value[:min]}: The smallest value #{cn} holds."
   end
 end
 

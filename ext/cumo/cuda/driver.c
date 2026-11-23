@@ -770,15 +770,15 @@ Init_cumo_cuda_driver()
     rb_define_singleton_method(mDriver, "cuDeviceGet", rb_cuDeviceGet, 1);
     rb_define_singleton_method(mDriver, "cuCtxCreate", rb_cuCtxCreate, 2);
 
-    /* A cubin, for cuLinkAddData and cuLinkAddFile. */
+    /* 0: A cubin, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_CUBIN", INT2NUM(CU_JIT_INPUT_CUBIN));
-    /* A fat binary, for cuLinkAddData and cuLinkAddFile. */
+    /* 2: A fat binary, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_FATBINARY", INT2NUM(CU_JIT_INPUT_FATBINARY));
-    /* An archive of host objects with embedded device code, for cuLinkAddData and cuLinkAddFile. */
+    /* 4: An archive of host objects with embedded device code, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_LIBRARY", INT2NUM(CU_JIT_INPUT_LIBRARY));
-    /* A host object with embedded device code, for cuLinkAddData and cuLinkAddFile. */
+    /* 3: A host object with embedded device code, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_OBJECT", INT2NUM(CU_JIT_INPUT_OBJECT));
-    /* PTX, for cuLinkAddData and cuLinkAddFile. */
+    /* 1: PTX, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_PTX", INT2NUM(CU_JIT_INPUT_PTX));
 
     check_status(cuInit(0));

@@ -5,7 +5,7 @@
     cT = rb_define_class_under(<%=ns_var%>, "<%=class_name%>", cNArray);
 
   <% for x in class_alias %>
-    // alias of <%=class_name%>
+    /* <%= full_class_name.gsub("::") { "\\:\\:" } %>: The same class as <%=class_name%>, under another name. */
     rb_define_const(<%=ns_var%>, "<%=x%>", <%=type_var%>);
   <% end %>
 
