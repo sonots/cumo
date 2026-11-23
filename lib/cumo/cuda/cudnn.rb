@@ -3,29 +3,11 @@
 module Cumo
   module CUDA
     module CUDNN
-      # The cuDNN methods Cumo writes in Ruby rather than in C. They are
-      # included in Cumo::BFloat, Cumo::HFloat, Cumo::SFloat and Cumo::DFloat,
-      # and each one calls a cuDNN method of that class, so a build without
-      # cuDNN raises Cumo::CUDA::CUDNNError from them.
+      # The pooling methods Cumo writes in Ruby rather than in C, which pick a
+      # CUDNN_POOLING_* mode and hand the rest over to pooling_forward or
+      # pooling_backward. Only a build with cuDNN defines those modes, which
+      # Cumo::CUDA::CUDNN.available? reports.
       module NArrayMethods
-        # @overload conv_backward_data(w, b: nil, stride: 1, pad: 0, out_size: nil, y: nil)
-        #   The same as conv_transpose, under the name of the cuDNN function it
-        #   reaches, cudnnConvolutionBackwardData.
-        #   @return [Cumo::NArray]
-        # @see Cumo::DFloat#conv_transpose
-        def conv_backward_data(*args, **kwargs)
-          conv_transpose(*args, **kwargs)
-        end
-
-        # @overload conv_backward_filter(gy, w_shape, stride: 1, pad: 0, gw: nil)
-        #   The same as conv_grad_w, under the name of the cuDNN function it
-        #   reaches, cudnnConvolutionBackwardFilter.
-        #   @return [Cumo::NArray]
-        # @see Cumo::DFloat#conv_grad_w
-        def conv_backward_filter(*args, **kwargs)
-          conv_grad_w(*args, **kwargs)
-        end
-
         # @overload max_pool(kernel_size, stride: kernel_size, pad: 0, y: nil)
         #   Max pooling, which returns
         #   pooling_forward(CUDNN_POOLING_MAX, kernel_size, ...).
@@ -82,15 +64,13 @@ module Cumo
       end
     end
   end
-end
 
-module Cumo
-  # @!parse
-  #   class BFloat; include CUDA::CUDNN::NArrayMethods; end
-  #   class HFloat; include CUDA::CUDNN::NArrayMethods; end
-  #   class SFloat; include CUDA::CUDNN::NArrayMethods; end
-  #   class DFloat; include CUDA::CUDNN::NArrayMethods; end
-  [BFloat, HFloat, SFloat, DFloat].each { |klass| klass.include(CUDA::CUDNN::NArrayMethods) }
+  # The four classes cuDNN has kernels for, written out one by one so that a
+  # doc tool reads the same list Ruby does.
+  class BFloat; include CUDA::CUDNN::NArrayMethods; end
+  class HFloat; include CUDA::CUDNN::NArrayMethods; end
+  class SFloat; include CUDA::CUDNN::NArrayMethods; end
+  class DFloat; include CUDA::CUDNN::NArrayMethods; end
 end
 
 module Cumo
