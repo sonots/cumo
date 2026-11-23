@@ -441,8 +441,8 @@ rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
 /*
   Destroys a stream. A stream that is current in a thread of the calling
   Ractor cannot be destroyed. A thread of another Ractor is out of reach,
-  since a Ractor sees its own threads only, so a handle shared with another
-  Ractor is the caller's to keep alive.
+  since a Ractor sees its own threads only, and destroying a stream such a
+  thread has current takes the process down on its next launch.
 
   @param [Integer] stream
   @raise [ArgumentError] if the stream is current in a thread of the calling
@@ -453,7 +453,7 @@ static VALUE
 rb_cudaStreamDestroy(VALUE self, VALUE stream)
 {
     if (stream_in_use_p((cudaStream_t)NUM2SIZET(stream))) {
-        rb_raise(rb_eArgError, "a stream that is current in a thread cannot be destroyed");
+        rb_raise(rb_eArgError, "a stream that is current in a thread of this Ractor cannot be destroyed");
     }
     cumo_cuda_runtime_check_status(cudaStreamDestroy((cudaStream_t)cumo_cuda_handle_take(&streams, stream, "cudaStream_t")));
     return Qnil;

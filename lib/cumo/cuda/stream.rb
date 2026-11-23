@@ -113,9 +113,7 @@ module Cumo::CUDA
     end
 
     # Waits for the stream, hands its pooled memory back, and destroys it. A
-    # stream that is current in a thread of this Ractor is refused, and stays
-    # usable. A thread of another Ractor is out of reach, since a Ractor sees
-    # its own threads only.
+    # stream that is current in a thread is refused, and stays usable.
     def destroy
       return if @ptr.nil? || null?
       Runtime.cudaStreamSynchronize(@ptr)
