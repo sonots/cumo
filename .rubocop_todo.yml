@@ -659,11 +659,10 @@ Lint/Void:
     - 'test/bit_test.rb'
     - 'test/narray_test.rb'
 
-# Offense count: 4
+# Offense count: 3
 Naming/AccessorMethodName:
   Exclude:
     - 'lib/cumo/cuda/compiler.rb'
-    - 'lib/cumo/cuda/device.rb'
 
 # Offense count: 2
 # Configuration parameters: ExpectMatchingDefinition, CheckDefinitionPathHierarchy, CheckDefinitionPathHierarchyRoots, Regex, IgnoreExecutableScripts, AllowedAcronyms.

@@ -4,7 +4,8 @@ module Cumo::CUDA
   class Device
     attr_reader :id
 
-    def self.get_currend_id
+    # The id of the device the calling thread uses.
+    def self.current_id
       Runtime.cudaGetDevice
     end
 
