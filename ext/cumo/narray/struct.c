@@ -833,6 +833,11 @@ NST_TYPEDEF(scomplex,cumo_cSComplex)
 void
 Init_cumo_na_struct()
 {
+    /*
+      Document-class: Cumo::Struct
+
+      @private
+    */
     cT = rb_define_class_under(mCumo, "Struct", cumo_cNArray);
     //cNStMember = rb_define_class_under(cT, "Member", rb_cObject);
 
