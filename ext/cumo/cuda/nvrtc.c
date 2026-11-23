@@ -383,7 +383,8 @@ Init_cumo_cuda_nvrtc()
     /*
       Document-class: Cumo::CUDA::NVRTCError
 
-      Raised when a call to NVRTC fails. A failed compile raises CompileError instead.
+      Raised when a call to NVRTC fails. NVRTCProgram#compile turns a failed
+      compile into Cumo::CUDA::CompileError.
     */
     eNVRTCError = rb_define_class_under(mCUDA, "NVRTCError", rb_eStandardError);
 

@@ -46,7 +46,9 @@ module Cumo::CUDA
       self
     end
 
-    # Waits until the event is reached, and returns self.
+    # Waits until the work that the last record captured is done. An event
+    # that was never recorded returns at once.
+    # @return [self]
     def synchronize
       Runtime.cudaEventSynchronize(handle)
       self

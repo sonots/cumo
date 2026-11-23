@@ -1370,7 +1370,7 @@ Init_cumo_cuda_cusolver(void)
     /*
       Document-module: Cumo::CUDA::Cusolver
 
-      cuSOLVER, which Cumo::Linalg runs on.
+      cuSOLVER, which the factorizations and the solvers of Cumo::Linalg run on.
     */
     mCusolver = rb_define_module_under(mCUDA, "Cusolver");
     /*

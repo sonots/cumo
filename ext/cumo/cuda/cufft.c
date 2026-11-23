@@ -586,7 +586,7 @@ Init_cumo_cuda_cufft(void)
     /*
       Document-module: Cumo::CUDA::Cufft
 
-      cuFFT, which Cumo::FFT runs on.
+      cuFFT, which the transforms of Cumo::FFT run on.
     */
     mCufft = rb_define_module_under(mCUDA, "Cufft");
     /*

@@ -36,7 +36,8 @@ module Cumo::CUDA
       @ptr = nil
     end
 
-    # Compiles the source with the NVRTC options, and returns the PTX.
+    # Compiles the source with the NVRTC options.
+    # @return [String] the PTX.
     # @raise [Cumo::CUDA::CompileError] with the log of NVRTC.
     def compile(options: [])
       begin

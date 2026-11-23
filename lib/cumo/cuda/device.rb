@@ -27,7 +27,7 @@ module Cumo::CUDA
 
     # Runs the block with this as the current device of the calling thread,
     # restores the previous one after, and returns the value of the block.
-    # @raise [RuntimeError] without a block.
+    # @raise [::RuntimeError] without a block.
     def with
       raise unless block_given?
       prev_id = Runtime.cudaGetDevice
@@ -42,7 +42,7 @@ module Cumo::CUDA
     end
 
     # Waits for everything queued on the current device of the calling
-    # thread, which is this device only after use or inside with.
+    # thread, which is this device only when id is the current device's.
     def synchronize
       Runtime.cudaDeviceSynchronize
     end

@@ -82,7 +82,8 @@ module Cumo::CUDA
       end
     end
 
-    # Waits for everything queued on the stream, and returns self.
+    # Waits for everything queued on the stream.
+    # @return [self]
     def synchronize
       Runtime.cudaStreamSynchronize(handle)
       self

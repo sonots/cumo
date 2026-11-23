@@ -84,8 +84,8 @@ Init_cumo_cuda_cublas(void)
     /*
       Document-module: Cumo::CUDA::Cublas
 
-      cuBLAS, which dot, gemm and the rest of the matrix products run on. It
-      has no methods of its own.
+      cuBLAS, which gemm and the floating point matrix products of dot run on.
+      It has no methods of its own.
     */
     mCublas = rb_define_module_under(mCUDA, "Cublas");
     /*

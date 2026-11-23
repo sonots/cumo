@@ -268,7 +268,9 @@ Init_cumo_cuda_memory_pool()
     /*
       Document-class: Cumo::CUDA::OutOfMemoryError
 
-      Raised when Cumo cannot allocate device memory.
+      Raised when the memory pool cannot allocate device memory, even after
+      it runs the GC and lets go of what it holds. Without the pool, a failed
+      allocation raises Cumo::CUDA::RuntimeError.
     */
     cumo_cuda_eOutOfMemoryError = rb_define_class_under(mCUDA, "OutOfMemoryError", rb_eStandardError);
     
