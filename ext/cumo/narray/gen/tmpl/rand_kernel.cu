@@ -7,6 +7,9 @@ elsif !acc_type.empty?
 else
   rand_type = "dtype"
 end
+# The type the caller read the upper bound in, which rand_opt_t carries.
+high_type = acc_type.empty? ? "dtype" : acc_type
+next_below = is_double_precision ? "nextafter" : "nextafterf"
 %>
 <% unless is_object %>
 
@@ -26,8 +29,27 @@ end
 #define cumo_rand_uniform(st) (1.0f - curand_uniform(st))
 <% end %>
 
+<% if !is_int && acc_type.empty? %>
+// The product and the sum round to the nearest value the type holds, which
+// can be the upper bound rand does not include. Such a draw takes the
+// neighbour below the bound, which carries the weight of every draw that
+// rounded up to it. A range that does not rise is left alone.
+__device__ static rtype
+<%="cumo_#{c_iter}_component"%>(curandStatePhilox4_32_10_t *st, rtype low, rtype span, rtype high)
+{
+    rtype u = cumo_rand_uniform(st);
+    // A span the type cannot hold leaves every draw infinite, or NaN where u
+    // is zero, so the bounds are weighted instead. That never leaves them.
+    rtype v = isfinite(span) ? (u * span + low) : ((1 - u) * low + u * high);
+    if (low < high && v >= high) {
+        v = <%=next_below%>(high, low);
+    }
+    return v;
+}
+<% end %>
+
 __device__ static dtype
-<%="cumo_#{c_iter}_value"%>(curandStatePhilox4_32_10_t *st, dtype low, <%=rand_type%> max, int shift)
+<%="cumo_#{c_iter}_value"%>(curandStatePhilox4_32_10_t *st, dtype low, <%=rand_type%> max, <%=high_type%> high, int shift)
 {
     //<% if is_int %>
     <%=rand_type%> x;
@@ -44,29 +66,33 @@ __device__ static dtype
     return (dtype)x + low;
     //<% elsif is_complex %>
     dtype z;
-    CUMO_REAL(z) = cumo_rand_uniform(st) * CUMO_REAL(max) + CUMO_REAL(low);
-    CUMO_IMAG(z) = cumo_rand_uniform(st) * CUMO_IMAG(max) + CUMO_IMAG(low);
+    CUMO_REAL(z) = <%="cumo_#{c_iter}_component"%>(st, CUMO_REAL(low), CUMO_REAL(max), CUMO_REAL(high));
+    CUMO_IMAG(z) = <%="cumo_#{c_iter}_component"%>(st, CUMO_IMAG(low), CUMO_IMAG(max), CUMO_IMAG(high));
     return z;
     //<% elsif !acc_type.empty? %>
-    // Rounding the float into the element type can land on the upper bound, which rand
-    // does not include, and the neighbour below it is the nearest value that
-    // does. A bound the type cannot hold has no neighbour to step to.
+    // Rounding the float into the element type can land on or past the upper
+    // bound, which rand does not include, so such a draw takes the largest
+    // value the type holds below it. A range that does not rise is left alone.
     <%=acc_type%> flow = <%=to_acc%>(low);
-    float high = flow + max;
-    dtype h = <%=from_acc%>(cumo_rand_uniform(st) * max + flow);
-    if (isfinite(high) && <%=to_acc%>(h) >= high) {
-        h = <%=step_down%>(h);
+    <%=acc_type%> u = cumo_rand_uniform(st);
+    <%=acc_type%> v = isfinite(max) ? (u * max + flow) : ((1 - u) * flow + u * high);
+    dtype h = <%=from_acc%>(v);
+    if (flow < high && <%=to_acc%>(h) >= high) {
+        h = <%=from_acc%>(high);
+        if (<%=to_acc%>(h) >= high) {
+            h = <%=step_down%>(h);
+        }
     }
     return h;
     //<% else %>
-    return (dtype)(cumo_rand_uniform(st) * max) + low;
+    return <%="cumo_#{c_iter}_component"%>(st, low, max, high);
     //<% end %>
 }
 
 <% layouts = [["", "cumo_na_iarray_t", "cumo_na_iarray_at_dim"], ["stridx_", "cumo_na_iarray_stridx_t", "cumo_na_iarray_stridx_at_dim"]] %>
 <% layouts.each do |pfx, atype, at| %>
 <% indexer_dims(pfx.empty?).each do |idim| %>
-__global__ void <%="cumo_#{c_iter}_#{pfx}kernel_dim#{idim}"%>(<%=atype%> a1, cumo_na_indexer_t indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift)
+__global__ void <%="cumo_#{c_iter}_#{pfx}kernel_dim#{idim}"%>(<%=atype%> a1, cumo_na_indexer_t indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, <%=high_type%> high, int shift)
 {
     for (uint64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < indexer.total_size; i += blockDim.x * gridDim.x) {
         curandStatePhilox4_32_10_t st;
@@ -74,7 +100,7 @@ __global__ void <%="cumo_#{c_iter}_#{pfx}kernel_dim#{idim}"%>(<%=atype%> a1, cum
         // whatever grid the launch happens to pick.
         curand_init(seed, offset + i, 0, &st);
         cumo_na_indexer_set_dim<%=idim%>(&indexer, i);
-        *(dtype*)<%=at%><%=idim%>(&a1, &indexer) = <%="cumo_#{c_iter}_value"%>(&st, low, max, shift);
+        *(dtype*)<%=at%><%=idim%>(&a1, &indexer) = <%="cumo_#{c_iter}_value"%>(&st, low, max, high, shift);
     }
 }
 <% end %>
@@ -90,11 +116,11 @@ extern "C" {
 #endif
 
 <% layouts.each do |pfx, atype, at| %>
-void <%="cumo_#{c_iter}_#{pfx}kernel_launch"%>(<%=atype%>* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift)
+void <%="cumo_#{c_iter}_#{pfx}kernel_launch"%>(<%=atype%>* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, <%=high_type%> high, int shift)
 {
     size_t grid_dim = cumo_get_grid_dim(indexer->total_size);
     size_t block_dim = cumo_get_block_dim(indexer->total_size);
-    <%= indexer_switch("cumo_#{c_iter}_#{pfx}kernel", "*a1,*indexer,seed,offset,low,max,shift", narrow: (%w[a1] if pfx.empty?)) %>
+    <%= indexer_switch("cumo_#{c_iter}_#{pfx}kernel", "*a1,*indexer,seed,offset,low,max,high,shift", narrow: (%w[a1] if pfx.empty?)) %>
     cumo_cuda_runtime_check_kernel_launch();
 }
 <% end %>
