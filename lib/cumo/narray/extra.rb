@@ -69,13 +69,13 @@ module Cumo
     end
 
     # Flip each row in the left/right direction.
-    # Same as `a[true, (-1..0).step(-1), ...]`.
+    # Same as `a[true, (-1..0).step(-1), false]`.
     def fliplr
       reverse(1)
     end
 
     # Flip each column in the up/down direction.
-    # Same as `a[(-1..0).step(-1), ...]`.
+    # Same as `a[(-1..0).step(-1), false]`.
     def flipud
       reverse(0)
     end
@@ -168,9 +168,9 @@ module Cumo
     end
 
     # Converts a to an NArray. An NArray is returned as it is, except that a
-    # 0-dimensional one becomes a 1-dimensional view. A number or a finite
-    # numeric Range becomes the 1-dimensional array that self[a] makes, and
-    # anything else is cast.
+    # 0-dimensional one becomes a 1-dimensional view. A number or a Range
+    # becomes the 1-dimensional array that self[a] makes. The Range needs
+    # finite ends that convert to Float. Anything else is cast.
     def self.asarray(a)
       case a
       when NArray
@@ -371,23 +371,23 @@ module Cumo
     end
 
     # Return a new array with sub-arrays along an axis deleted.
-    # If axis is not given, obj is applied to the flattened array.
-
+    # If axis is not given, indice is applied to the flattened array.
+    #
     # @example
     #   a = Cumo::DFloat[[1,2,3,4], [5,6,7,8], [9,10,11,12]]
     #   a.delete(1,0)
-    #   # => Cumo::DFloat(view)#shape=[2,4]
+    #   # => Cumo::DFloat#shape=[2,4]
     #   # [[1, 2, 3, 4],
     #   #  [9, 10, 11, 12]]
     #
     #   a.delete((0..-1).step(2),1)
-    #   # => Cumo::DFloat(view)#shape=[3,2]
+    #   # => Cumo::DFloat#shape=[3,2]
     #   # [[2, 4],
     #   #  [6, 8],
     #   #  [10, 12]]
     #
     #   a.delete([1,3,5])
-    #   # => Cumo::DFloat(view)#shape=[9]
+    #   # => Cumo::DFloat#shape=[9]
     #   # [1, 3, 5, 7, 8, 9, 10, 11, 12]
 
     def delete(indice, axis=nil)
@@ -1246,7 +1246,10 @@ module Cumo
     # @overload argsort(axis: -1)
     #   @param axis [Integer, nil] Axis along which to sort. Default is -1 (the last axis).
     #     If `nil` is given, the array is flattened before sorting.
-    #   @return [Cumo::Int32] An array of indices that would sort the array.
+    #   @return [Cumo::Int32, Cumo::Int64] An array of indices that would sort the array.
+    # @overload argsort(axis)
+    #   @param axis [Integer, nil] The same as the keyword.
+    #   @return [Cumo::Int32, Cumo::Int64] An array of indices that would sort the array.
     def argsort(axis_ = 'none', axis: -1)
       raise NotImplementedError, "argsort is not implemented for #{self.class}" unless respond_to?(:sort_index)
 
@@ -1273,9 +1276,11 @@ module Cumo
     # @example
     #   a = Cumo::DFloat[1, 2, 2, 3]
     #   a.searchsorted(2)
-    #   # => 1
+    #   # => Cumo::Int64#shape=[]
+    #   # 1
     #   a.searchsorted(2, side: "right")
-    #   # => 3
+    #   # => Cumo::Int64#shape=[]
+    #   # 3
     #   a.searchsorted([0, 2.5, 9])
     #   # => Cumo::Int64#shape=[3]
     #   # [0, 3, 4]
@@ -1285,7 +1290,8 @@ module Cumo
     #   can go, and "right" the last.
     # @param sorter [Cumo::NArray, Array, nil] the indices that sort self, as
     #   argsort answers them, for a self that is not sorted itself.
-    # @return [Cumo::Int64] the places, shaped as v.
+    # @return [Cumo::Int64, Integer] the places, shaped as v. An Integer under
+    #   compatible mode when v is a number.
     def searchsorted(v, side: "left", sorter: nil)
       right = case side.to_s
               when "left" then false
@@ -1460,10 +1466,11 @@ module Cumo
     end
 
     # Outer product of two arrays.
-    # Same as `self[false,:new] * b[false,:new,true]`.
+    # Same as `self[false,:new] * b[false,:new,true]`, or
+    # `self[false,:new] * b` for a 0-dimensional b.
     #
     # @param b [Cumo::NArray]
-    # @param axis [Integer] applied axis (default=-1)
+    # @param axis [Integer, nil] applied axis (default=nil, the product above)
     # @return [Cumo::NArray]  return outer product
     # @example
     #   a = Cumo::DFloat.ones(5)
@@ -1503,8 +1510,11 @@ module Cumo
     # Percentile
     #
     # @param q [Integer, Float] from 0 to 100
-    # @param axis [Integer] applied axis
-    # @return [Cumo::NArray, Float]  return percentile, a Float when compatible_mode makes the result a Ruby number
+    # @param axis [Integer, nil] applied axis (default=nil, the flattened array)
+    # @return [Cumo::NArray, Numeric]  return percentile. It keeps the class of
+    #   self only at q = 100 or along an axis of one element. Otherwise an
+    #   integer self gives a DFloat. It is a Ruby number when compatible_mode
+    #   makes the result one.
     def percentile(q, axis: nil)
       raise ArgumentError, "q is out of range" if q < 0 || q > 100
 
@@ -1569,16 +1579,18 @@ module Cumo
     # Compute a covariance matrix.
     #
     # @param y [Cumo::NArray] (optional) If not nil, the covariance matrix of `self` and `y` is computed.
-    # @param ddof [Integer] (optional) Delta degrees of freedom. The divisor used in calculations is `N - ddof`,
+    # @param ddof [Integer] (optional) Delta degrees of freedom, 0 or 1. The divisor used in calculations is `N - ddof`,
     #   where `N` represents the number of observations.
     # @param fweights [Cumo::NArray] (optional) 1-D array of integer frequency weights.
     # @param aweights [Cumo::NArray] (optional) 1-D array of observation vector weights.
-    # @return [Cumo::NArray]  return covariance matrix
+    # @return [Cumo::NArray, Float]  return covariance matrix, a Float under
+    #   compatible mode for one variable.
     #
     # @example
     #   x = Cumo::DFloat[4, 5, 6]
     #   x.cov
-    #   # => 1.0
+    #   # => Cumo::DFloat#shape=[]
+    #   # 1
     #
     #   x = Cumo::DFloat[[4, 5, 6], [3, 2, 1]]
     #   x.cov

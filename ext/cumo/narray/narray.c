@@ -532,16 +532,16 @@ cumo_na_s_ones(int argc, VALUE *argv, VALUE klass)
   This singleton method is valid not for NArray class itself
   but for typed NArray subclasses, e.g., DFloat, Int64.
 
-  @overload linspace(x1, x2, [n])
+  @overload linspace(x1, x2, n = 100)
     @param [Numeric] x1   The start value
     @param [Numeric] x2   The end value
     @param [Integer] n    The number of elements. (default is 100).
     @return [Cumo::NArray]  result array.
 
   @example
-    a = Cumo::DFloat.linspace(-5,5,7)
+    a = Cumo::DFloat.linspace(-6,6,7)
     # => Cumo::DFloat#shape=[7]
-    # [-5, -3.33333, -1.66667, 0, 1.66667, 3.33333, 5]
+    # [-6, -4, -2, 0, 2, 4, 6]
  */
 static VALUE
 cumo_na_s_linspace(int argc, VALUE *argv, VALUE klass)
@@ -566,11 +566,12 @@ cumo_na_s_linspace(int argc, VALUE *argv, VALUE klass)
 }
 
 /*
-  Returns an array of N logarithmically spaced points between 10^a and 10^b.
-  This singleton method is valid not for NArray having +logseq+ method,
-  i.e., DFloat, SFloat, DComplex, and SComplex.
+  Returns an array of N logarithmically spaced points between base**a and
+  base**b.
+  This singleton method is valid only for the classes that have a +logseq+
+  method, i.e., DFloat, SFloat, HFloat, BFloat, DComplex, SComplex and RObject.
 
-  @overload logspace(a, b, [n, base])
+  @overload logspace(a, b, n = 50, base = 10)
     @param [Numeric] a  The start value
     @param [Numeric] b  The end value
     @param [Integer] n  The number of elements. (default is 50)
@@ -584,7 +585,7 @@ cumo_na_s_linspace(int argc, VALUE *argv, VALUE klass)
 
     Cumo::DComplex.logspace(0,1i*Math::PI,5,Math::E)
     # => Cumo::DComplex#shape=[5]
-    #    [1+4.44659e-323i, 0.707107+0.707107i, 6.12323e-17+1i, -0.707107+0.707107i, ...]
+    #    [1+0i, 0.707107+0.707107i, 6.12323e-17+1i, -0.707107+0.707107i, ...]
  */
 static VALUE
 cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
@@ -612,9 +613,14 @@ cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
 
 
 /*
-  Returns a NArray with shape=(n,n) whose diagonal elements are 1, otherwise 0.
+  Returns a NArray whose last two axes hold 1 on the diagonal and 0 elsewhere.
+  With one size n, its shape is (n,n).
   @overload  eye(n)
     @param [Integer] n  Size of NArray. Creates 2-D NArray with shape=(n,n)
+    @return [Cumo::NArray]  created NArray.
+  @overload  eye(*shape)
+    @param [Integer] shape  Two or more sizes. The last two axes hold the
+      diagonal, repeated along the others.
     @return [Cumo::NArray]  created NArray.
   @example
     a = Cumo::DFloat.eye(3)
@@ -1770,13 +1776,13 @@ cumo_na_upcast(VALUE type1, VALUE type2)
 }
 
 /*
-  Returns an array containing other and self,
-  both are converted to upcasted type of NArray.
+  Returns an array of other, cast to the upcast type of self and other,
+  and self as it is.
   Note that NArray has distinct UPCAST mechanism.
   Coerce is used for operation between non-NArray and NArray.
   @overload coerce(other)
     @param [Object] other  numeric object.
-    @return [Array]  NArray-casted [other,self]
+    @return [Array]  [other cast to NArray, self]
 */
 static VALUE
 cumo_na_coerce(VALUE x, VALUE y)
@@ -1823,10 +1829,12 @@ cumo_na_s_byte_size(VALUE type)
 
 
 /*
-  Returns a new 1-D array initialized from binary raw data in a string.
-  @overload from_binary(string,[shape])
+  Returns a new array initialized from binary raw data in a string,
+  1-dimensional unless shape is given.
+  @overload from_binary(string, shape = nil)
     @param [String] string  Binary raw data.
-    @param [Array] shape  array of integers representing array shape.
+    @param [Array, Integer] shape  array of integers representing array shape.
+      An Integer is the length of a 1-dimensional array.
     @return [Cumo::NArray] NArray containing binary data.
  */
 static VALUE
@@ -1938,10 +1946,10 @@ cumo_na_view_offset_reaches_bytes(VALUE self)
 
 /*
   Stores binary raw data from a string into NArray.
-  @overload store_binary(string,[offset])
+  @overload store_binary(string, offset = 0)
     @param [String] string  Binary raw data.
     @param [Integer] offset  Byte offset in string (optional).
-    @return [Integer] stored length.
+    @return [Integer] the number of bytes stored.
  */
 static VALUE
 cumo_na_store_binary(int argc, VALUE *argv, VALUE self)
@@ -2143,7 +2151,7 @@ static VALUE cumo_na_inplace( VALUE self );
   Load marshal data.
   @overload marshal_load(data)
     @param [Array] data  Array containing marshal data.
-    @return [nil]
+    @return [Cumo::NArray] self.
  */
 static VALUE
 cumo_na_marshal_load(VALUE self, VALUE a)
@@ -2695,6 +2703,8 @@ static VALUE cumo_na_inspect_cols_set(VALUE mod, VALUE num)
   @overload == other
     @param [Object] other
     @return [Boolean] true if self and other is equal.
+    @raise [Cumo::NArray::CastError, TypeError] if other cannot be cast to the
+      class of self.
 */
 static VALUE
 cumo_na_equal(VALUE self, volatile VALUE other)

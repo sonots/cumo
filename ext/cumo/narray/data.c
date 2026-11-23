@@ -715,7 +715,7 @@ cumo_na_flatten_dim(VALUE self, int sd)
 
 /*
   Returns a 1-dimensional view of the elements of self in their order, which
-  shares memory with self.
+  shares memory with self. A 0-dimensional self gives a 0-dimensional view.
 
   @return [Cumo::NArray] a view of self.
 */

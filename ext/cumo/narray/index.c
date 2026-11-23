@@ -1267,7 +1267,9 @@ cumo_na_at_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, s
   keeps its axis with length 1, unless every index is an Integer.
 
   @overload slice(*indices)
-  @return [Cumo::NArray] a view of self.
+  @return [Cumo::NArray] a view of self. A single integer index array of two
+    or more dimensions gives a copy, as [] does, and so does a 0-dimensional
+    self.
   @example
     a = Cumo::DFloat.new(2, 3).seq
     a.slice(1, true).shape  # => [1, 3]
