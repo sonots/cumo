@@ -931,7 +931,11 @@ cumo_na_release_lock(VALUE self)
 }
 
 
-/* method: size() -- returns the total number of typeents */
+/*
+  Returns the number of elements.
+
+  @return [Integer]
+ */
 static VALUE
 cumo_na_size(VALUE self)
 {
@@ -941,7 +945,11 @@ cumo_na_size(VALUE self)
 }
 
 
-/* method: size() -- returns the total number of typeents */
+/*
+  Returns the number of dimensions.
+
+  @return [Integer]
+ */
 static VALUE
 cumo_na_ndim(VALUE self)
 {
@@ -967,7 +975,11 @@ cumo_na_empty_p(VALUE self)
 }
 
 
-/* method: shape() -- returns shape, array of the size of dimensions */
+/*
+  Returns the shape, the size of each dimension.
+
+  @return [Array<Integer>]
+ */
 static VALUE
  cumo_na_shape(VALUE self)
 {

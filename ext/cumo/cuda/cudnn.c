@@ -138,7 +138,8 @@ Init_cumo_cuda_cudnn(void)
       pages. available? tells whether Cumo was built with cuDNN.
     */
     mCUDNN = rb_define_module_under(mCUDA, "CUDNN");
-    rb_define_const(mCUDA, "Cudnn", mCUDNN); // alias
+    /* The same module as CUDNN, under another name. */
+    rb_define_const(mCUDA, "Cudnn", mCUDNN);
     /*
       Document-class: Cumo::CUDA::CUDNNError
 

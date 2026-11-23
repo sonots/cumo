@@ -35,6 +35,15 @@ check_status(CUresult status)
 // Context Management
 //////////////////////////////////////////////
 
+/*
+  Creates a context on the device and makes it current in the calling
+  thread. Cumo runs on the primary context of the device, so this is a
+  separate one.
+
+  @param flags [Integer]
+  @param dev [Integer] a device handle from cuDeviceGet.
+  @return [Integer] the context handle.
+ */
 static VALUE
 rb_cuCtxCreate(VALUE self, VALUE flags, VALUE dev)
 {
@@ -53,6 +62,11 @@ rb_cuCtxCreate(VALUE self, VALUE flags, VALUE dev)
     return SIZET2NUM((size_t)_pctx);
 }
 
+/*
+  The context current in the calling thread.
+
+  @return [Integer] the context handle, 0 when there is none.
+ */
 static VALUE
 rb_cuCtxGetCurrent(VALUE self)
 {
@@ -69,6 +83,12 @@ rb_cuCtxGetCurrent(VALUE self)
 // Device Management
 //////////////////////////////////////////////
 
+/*
+  The device handle of the device with that ordinal.
+
+  @param ordinal [Integer]
+  @return [Integer]
+ */
 static VALUE
 rb_cuDeviceGet(VALUE self, VALUE ordinal)
 {
@@ -106,10 +126,19 @@ cuLinkAddData_without_gvl_cb(void *param)
     return (void *)status;
 }
 
-// TODO(sonots): Support options.
+/*
+  Adds data to a link.
+
+  @param state [Integer] a link state handle.
+  @param type [Integer] one of the CU_JIT_INPUT_* constants.
+  @param data [String]
+  @param name [String]
+  @return [nil]
+ */
 static VALUE
 rb_cuLinkAddData(VALUE self, VALUE state, VALUE type, VALUE data, VALUE name)
 {
+    // TODO(sonots): Support options.
     CUjitInputType _type = (CUjitInputType)NUM2INT(type);
     // The image may be a cubin, so it is taken by length and allowed to hold
     // NUL bytes; the name is a plain C string cuLinkAddData reports errors with.
@@ -147,10 +176,18 @@ cuLinkAddFile_without_gvl_cb(void *param)
     return (void *)status;
 }
 
-// TODO(sonots): Support options.
+/*
+  Adds a file to a link.
+
+  @param state [Integer] a link state handle.
+  @param type [Integer] one of the CU_JIT_INPUT_* constants.
+  @param path [String]
+  @return [nil]
+ */
 static VALUE
 rb_cuLinkAddFile(VALUE self, VALUE state, VALUE type, VALUE path)
 {
+    // TODO(sonots): Support options.
     CUjitInputType _type = (CUjitInputType)NUM2INT(type);
     const char* _path = StringValueCStr(path);
     CUlinkState _state = (CUlinkState)cumo_cuda_handle_get(&link_states, state, "CUlinkState");
@@ -180,6 +217,12 @@ cuLinkComplete_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  Links what was added.
+
+  @param state [Integer] a link state handle.
+  @return [String] the cubin.
+ */
 static VALUE
 rb_cuLinkComplete(VALUE self, VALUE state)
 {
@@ -212,10 +255,15 @@ cuLinkCreate_without_gvl_cb(void *param)
     return (void *)status;
 }
 
-// TODO(sonots): Support options.
+/*
+  Creates a link state, which LinkState wraps.
+
+  @return [Integer] the link state handle.
+ */
 static VALUE
 rb_cuLinkCreate(VALUE self)
 {
+    // TODO(sonots): Support options.
     CUlinkState state;
     CUresult status;
 
@@ -241,6 +289,12 @@ cuLinkDestroy_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  Destroys a link state.
+
+  @param state [Integer] a link state handle.
+  @return [nil]
+ */
 static VALUE
 rb_cuLinkDestroy(VALUE self, VALUE state)
 {
@@ -270,6 +324,14 @@ cuModuleGetFunction_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  The function handle of the kernel of that name in a module. A C++ kernel
+  is found by its mangled name.
+
+  @param hmod [Integer] a module handle.
+  @param name [String]
+  @return [Integer]
+ */
 static VALUE
 rb_cuModuleGetFunction(VALUE self, VALUE hmod, VALUE name)
 {
@@ -307,6 +369,14 @@ cuModuleGetGlobal_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  The bytes of the global variable of that name in a module, read from the
+  device, where the CUDA function gives its address and size.
+
+  @param hmod [Integer] a module handle.
+  @param name [String]
+  @return [String]
+ */
 static VALUE
 rb_cuModuleGetGlobal(VALUE self, VALUE hmod, VALUE name)
 {
@@ -344,6 +414,12 @@ cuModuleLoad_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  Loads a module from a file, such as a cubin or a PTX file.
+
+  @param fname [String]
+  @return [Integer] the module handle.
+ */
 static VALUE
 rb_cuModuleLoad(VALUE self, VALUE fname)
 {
@@ -375,6 +451,12 @@ cuModuleLoadData_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  Loads a module from a cubin, fatbin or PTX image held in a String.
+
+  @param image [String]
+  @return [Integer] the module handle.
+ */
 static VALUE
 rb_cuModuleLoadData(VALUE self, VALUE image)
 {
@@ -412,6 +494,12 @@ forget_function(st_data_t key, st_data_t owner, st_data_t hmod)
     return owner == hmod ? ST_DELETE : ST_CONTINUE;
 }
 
+/*
+  Unloads a module.
+
+  @param hmod [Integer] a module handle.
+  @return [nil]
+ */
 static VALUE
 rb_cuModuleUnload(VALUE self, VALUE hmod)
 {
@@ -567,6 +655,14 @@ check_params(CUfunction f, long n, const size_t *given)
 }
 #endif
 
+/*
+  Launches a kernel, as Function#launch does.
+
+  @param hfunc [Integer] a function handle from cuModuleGetFunction.
+  @param stream [Integer, nil] a stream handle, nil for the current stream.
+  @param args [Array] the arguments of the kernel, each an NArray, an Integer, a Float or a String of packed bytes.
+  @return [nil]
+ */
 static VALUE
 rb_cuLaunchKernel(VALUE self, VALUE hfunc,
                   VALUE grid_x, VALUE grid_y, VALUE grid_z,
@@ -630,6 +726,12 @@ Init_cumo_cuda_driver()
 
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
+    /*
+      Document-module: Cumo::CUDA::Driver
+
+      The functions of the CUDA driver API under their own names, with handles
+      as Integers. Module, Function and LinkState wrap them.
+    */
     mDriver = rb_define_module_under(mCUDA, "Driver");
     /*
       Document-class: Cumo::CUDA::DriverError
@@ -659,10 +761,15 @@ Init_cumo_cuda_driver()
     rb_define_singleton_method(mDriver, "cuDeviceGet", rb_cuDeviceGet, 1);
     rb_define_singleton_method(mDriver, "cuCtxCreate", rb_cuCtxCreate, 2);
 
+    /* A cubin, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_CUBIN", INT2NUM(CU_JIT_INPUT_CUBIN));
+    /* A fat binary, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_FATBINARY", INT2NUM(CU_JIT_INPUT_FATBINARY));
+    /* An archive of host objects with embedded device code, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_LIBRARY", INT2NUM(CU_JIT_INPUT_LIBRARY));
+    /* A host object with embedded device code, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_OBJECT", INT2NUM(CU_JIT_INPUT_OBJECT));
+    /* PTX, for cuLinkAddData and cuLinkAddFile. */
     rb_define_const(mDriver, "CU_JIT_INPUT_PTX", INT2NUM(CU_JIT_INPUT_PTX));
 
     check_status(cuInit(0));

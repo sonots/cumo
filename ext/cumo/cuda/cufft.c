@@ -484,18 +484,27 @@ transform(VALUE x, VALUE vrank, cufft_kind_t kind, int direction, VALUE vn, int 
     return c.y;
 }
 
+/*
+  @private
+ */
 static VALUE
 rb_cufft_c2c(VALUE self, VALUE x, VALUE rank, VALUE inverse)
 {
     return transform(x, rank, CUFFT_KIND_C2C, RTEST(inverse) ? CUFFT_INVERSE : CUFFT_FORWARD, Qnil, 0);
 }
 
+/*
+  @private
+ */
 static VALUE
 rb_cufft_r2c(VALUE self, VALUE x, VALUE rank)
 {
     return transform(x, rank, CUFFT_KIND_R2C, CUFFT_FORWARD, Qnil, 0);
 }
 
+/*
+  @private
+ */
 static VALUE
 rb_cufft_c2r(VALUE self, VALUE x, VALUE rank, VALUE n, VALUE overwrite)
 {
