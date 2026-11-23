@@ -3624,6 +3624,145 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # Such an index array selects into a new array rather than a view, so the
+  # store used to land in that array and go nowhere. It goes in flattened
+  # instead, with the value spread over its shape, as add_at does.
+  sub_test_case "[]= with an index array of more than one dimension" do
+    test "writes at every element of the index array" do
+      a = Cumo::DFloat.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = 99
+      assert_equal([99, 99, 99, 99, 4], a.to_a)
+    end
+
+    test "counts the elements of a receiver of more than one dimension" do
+      a = Cumo::DFloat.zeros(3, 4)
+      a[Cumo::Int32[[0, 5], [11, 1]]] = 1
+      assert_equal([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]], a.to_a)
+    end
+
+    test "takes a Ruby Array of rows for the index array" do
+      a = Cumo::DFloat.new(5).seq
+      a[[[0, 1], [2, 3]]] = 99
+      assert_equal([99, 99, 99, 99, 4], a.to_a)
+      # Cumo::NArray[] answers two dimensions for a row of NArrays as well
+      b = Cumo::DFloat.new(6).seq
+      b[[Cumo::Int32[0, 1], Cumo::Int32[2, 3]]] = 9
+      assert_equal([9, 9, 9, 9, 4, 5], b.to_a)
+      # and for one whose first element is not the row, where it pads the
+      # places with zeros as Cumo::NArray[] does
+      c = Cumo::DFloat.new(5).seq
+      c[[0, [1, 2]]] = 9
+      assert_equal([9, 9, 9, 3, 4], c.to_a)
+    end
+
+    test "spreads the value over the shape of the index array" do
+      a = Cumo::DFloat.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = Cumo::DFloat[[10, 11], [12, 13]]
+      assert_equal([10, 11, 12, 13, 4], a.to_a)
+      b = Cumo::DFloat.new(5).seq
+      b[Cumo::Int32[[0, 1], [2, 3]]] = Cumo::DFloat[[7, 8]]
+      assert_equal([7, 8, 7, 8, 4], b.to_a)
+      c = Cumo::DFloat.new(5).seq
+      assert_raise(Cumo::NArray::ShapeError) { c[Cumo::Int32[[0, 1], [2, 3]]] = Cumo::DFloat[1, 2, 3] }
+    end
+
+    test "writes through a view into the array it views" do
+      base = Cumo::DFloat.new(4, 4).seq
+      base[0..1, 0..1][Cumo::Int32[[0, 1], [2, 3]]] = 99
+      assert_equal([[99, 99], [99, 99]], base[0..1, 0..1].to_a)
+      assert_equal(2.0, base[0, 2].to_f)
+    end
+
+    test "answers the errors the other subscripts do" do
+      a = Cumo::DFloat.new(5).seq
+      assert_raise(IndexError) { a[Cumo::Int32[[0, 1], [2, 9]]] = 1 }
+      assert_raise(RuntimeError) { a.freeze[Cumo::Int32[[0, 1], [2, 3]]] = 1 }
+      assert_equal([0, 1, 2, 3, 4], a.to_a)
+    end
+
+    # A value with nothing in it leaves the array it is stored into as it was,
+    # and the receiver is no different.
+    test "a value with nothing in it writes nothing" do
+      a = Cumo::DFloat[7, 8]
+      a[Cumo::Int32[[0], [1]]] = Cumo::DFloat[]
+      assert_equal([7, 8], a.to_a)
+      b = Cumo::Bit[1, 1]
+      b[Cumo::Int32[[0], [1]]] = Cumo::Bit[]
+      assert_equal([1, 1], b.to_a)
+      c = Cumo::RObject[7, 8]
+      c[Cumo::Int32[[0], [1]]] = Cumo::RObject[]
+      assert_equal([7, 8], c.to_a)
+      # one whose shape does not broadcast is refused, as it is elsewhere
+      d = Cumo::DFloat.new(5).seq
+      assert_raise(Cumo::NArray::ShapeError) { d[Cumo::Int32[[0, 1], [2, 3]]] = Cumo::DFloat.zeros(0, 2) }
+      assert_equal([0, 1, 2, 3, 4], d.to_a)
+    end
+
+    test "an index out of range is answered before the value is read" do
+      a = Cumo::Int32.zeros(1)
+      assert_raise(IndexError) { a[Cumo::Int32[[1]]] = [["bad"]] }
+      assert_raise(IndexError) { a[Cumo::Int32[[1]]] = 5 }
+    end
+
+    test "an index array with nothing in it writes nothing" do
+      a = Cumo::DFloat.new(3).seq
+      a[Cumo::Int32.zeros(0, 2)] = 9
+      assert_equal([0, 1, 2], a.to_a)
+    end
+
+    test "a Cumo::Bit receiver writes at every element of it" do
+      a = Cumo::Bit.new(6).fill(0)
+      a[Cumo::Int32[[0, 1], [4, 5]]] = 1
+      assert_equal([1, 1, 0, 0, 1, 1], a.to_a)
+    end
+
+    test "a Cumo::RObject receiver writes at every element of it" do
+      a = Cumo::RObject.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = 99
+      assert_equal([99, 99, 99, 99, 4], a.to_a)
+    end
+
+    # The value reaches the same store as with every other subscript, which
+    # keeps an object an object rather than asking it for an Array.
+    test "a value that is not an array goes in as it is" do
+      a = Cumo::RObject.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = nil
+      assert_equal([nil, nil, nil, nil, 4], a.to_a)
+      b = Cumo::RObject.new(3).seq
+      b[Cumo::Int32[[0, 1]]] = (1..2)
+      assert_equal([1..2, 1..2, 2], b.to_a)
+    end
+
+    # A Ruby Array is padded and truncated to the shape it is stored into, and
+    # an NArray broadcasts, which is what the other subscripts do as well.
+    test "a Ruby Array value is padded and truncated as it is elsewhere" do
+      a = Cumo::DFloat.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = [[7, 8]]
+      assert_equal([7, 8, 0, 0, 4], a.to_a)
+      b = Cumo::DFloat.new(5).seq
+      b[Cumo::Int32[[0, 1], [2, 3]]] = [[7, 8, 9], [1, 2, 3]]
+      assert_equal([7, 8, 1, 2, 4], b.to_a)
+      c = Cumo::DFloat.new(2, 2).seq
+      c[true, true] = [[7, 8]]
+      assert_equal([[7, 8], [0, 0]], c.to_a)
+      # A flat one goes in as it does for a selection of the same shape, which
+      # is the shape of the index array
+      d = Cumo::DFloat.new(5).seq
+      d[Cumo::Int32[[0, 1], [2, 3]]] = [1, 2]
+      e = Cumo::DFloat.zeros(2, 2)
+      e[true, true] = [1, 2]
+      assert_equal(e.to_a.flatten + [4], d.to_a)
+    end
+
+    # A Bit subscript is a mask, which selects where it is true whatever its
+    # shape, and already wrote through a view.
+    test "a Bit mask of more than one dimension selects where it is true" do
+      a = Cumo::DFloat.new(2, 3).seq
+      a[Cumo::Bit[[1, 0, 1], [0, 1, 0]]] = 99
+      assert_equal([[99, 1, 99], [3, 99, 5]], a.to_a)
+    end
+  end
+
   # These all run a host loop over managed memory, so they read whatever the
   # last kernel has written so far unless they synchronize first. The arrays
   # are large enough that the kernel filling them is still in flight.
