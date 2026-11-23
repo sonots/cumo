@@ -1,7 +1,32 @@
-#ifdef CUDNN_FOUND
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
-// gx, ggamma, gbeta = x.batch_norm_backward(gamma, gy, mean:, inv_std:, eps:, axis:)
+/*
+  The gradients of batch_norm, on cuDNN. self is the input of batch_norm and
+  gy the gradient of its result. mean and inv_std take what batch_norm wrote,
+  and are computed again when they are not given.
+
+  @overload batch_norm_backward(gamma, gy, mean: nil, inv_std: nil, eps: 2e-5, axis: [0], gx: nil, ggamma: nil, gbeta: nil)
+    @param [Cumo::<%=class_name%>] gamma  The scale given to batch_norm.
+    @param [Cumo::<%=class_name%>] gy  The gradient of the result of batch_norm.
+    @param [Cumo::<%=class_name%>] mean  The mean that batch_norm wrote.
+    @param [Cumo::<%=class_name%>] inv_std  The inv_std that batch_norm wrote.
+    @param [Float] eps  The eps given to batch_norm.
+    @param [Array<Integer>] axis  The axis given to batch_norm.
+    @param [Cumo::<%=class_name%>] gx  An array to write the gradient of self into.
+    @param [Cumo::<%=class_name%>] ggamma  An array to write the gradient of gamma into.
+    @param [Cumo::<%=class_name%>] gbeta  An array to write the gradient of beta into.
+    @return [Array<Cumo::<%=class_name%>>] [gx, ggamma, gbeta]
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -181,12 +206,4 @@ BATCH_NORM_BACKWARD_ERROR:
     }
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND

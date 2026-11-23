@@ -1,7 +1,36 @@
-#ifdef CUDNN_FOUND
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
-// y = x.batch_norm(gamma, beta, running_mean:, running_var:, eps:, decay:, axis:, mean:, inv_std:)
+/*
+  Batch normalization for training, on cuDNN. It normalizes self over the
+  axes in axis with the mean and the variance of this batch, and returns
+  gamma * (self - mean) / sqrt(var + eps) + beta.
+  gamma, beta and the statistics have the shape of self with the axes in
+  axis reduced to 1, such as [1, C] for [N, C], or [1, C, 1, 1] for
+  [N, C, H, W] with axis: [0, 2, 3].
+
+  @overload batch_norm(gamma, beta, running_mean: nil, running_var: nil, mean: nil, inv_std: nil, eps: 2e-5, decay: 0.9, axis: [0], y: nil)
+    @param [Cumo::<%=class_name%>] gamma  The scale.
+    @param [Cumo::<%=class_name%>] beta  The shift.
+    @param [Cumo::<%=class_name%>] running_mean  Updated in place to decay * running_mean + (1 - decay) * mean.
+    @param [Cumo::<%=class_name%>] running_var  Updated in place in the same way, with the unbiased variance of this batch.
+    @param [Cumo::<%=class_name%>] mean  An array to write the mean of this batch into, for batch_norm_backward.
+    @param [Cumo::<%=class_name%>] inv_std  An array to write 1 / sqrt(var + eps) into, for batch_norm_backward.
+    @param [Float] eps  Added to the variance.
+    @param [Float] decay  How much of the running statistics is kept.
+    @param [Array<Integer>] axis  The axes to normalize over, such as [0] or [0, 2, 3].
+    @param [Cumo::<%=class_name%>] y  An array to write the result into and return.
+    @return [Cumo::<%=class_name%>]
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -188,12 +217,4 @@ BATCH_NORM_ERROR:
     return y;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND

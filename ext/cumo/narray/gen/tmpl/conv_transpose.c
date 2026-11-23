@@ -1,4 +1,13 @@
-#ifdef CUDNN_FOUND
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
 // VALUE is Ruby Array
@@ -95,7 +104,23 @@ static VALUE
 
 // cover_all=true is not supported with CUDNN
 // dilation > 1 is not supported yet
-// x.conv(w, b: nil, stride: 1, pad: 0, out_size: nil, y: nil)
+/*
+  The transposed convolution of self with w on cuDNN, which is the gradient
+  of conv with respect to its input. self is (batch, in_channels, d1, ...,
+  dN), w is (in_channels, out_channels, k1, ..., kN), and the result is
+  (batch, out_channels, o1, ..., oN), where each o is
+  (d - 1) * stride - 2 * pad + k unless out_size gives it.
+
+  @overload conv_transpose(w, b: nil, stride: 1, pad: 0, out_size: nil, y: nil)
+    @param [Cumo::<%=class_name%>] w  The filters.
+    @param [Cumo::<%=class_name%>] b  A bias of out_channels elements, added to each output channel.
+    @param [Integer,Array<Integer>] stride  The stride, for every spatial axis or one per axis.
+    @param [Integer,Array<Integer>] pad  The zero padding on both sides, for every spatial axis or one per axis.
+    @param [Array<Integer>] out_size  The spatial size of the result, which conv with the same stride and pad has to take back to the size of self.
+    @param [Cumo::<%=class_name%>] y  An array to write the result into and return.
+    @return [Cumo::<%=class_name%>]
+    @raise [RuntimeError] when conv cannot take out_size back to the size of self.
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -196,12 +221,4 @@ static VALUE
     return y;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND

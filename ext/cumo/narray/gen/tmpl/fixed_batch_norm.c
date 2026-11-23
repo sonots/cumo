@@ -1,7 +1,33 @@
-#ifdef CUDNN_FOUND
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
-// y = x.fixed_batch_norm(gamma, beta, mean, var, eps:, axis:)
+/*
+  Batch normalization for inference, on cuDNN, with the given mean and var
+  in place of those of the batch. It returns
+  gamma * (self - mean) / sqrt(var + eps) + beta.
+  gamma, beta and the statistics have the shape of self with the axes in
+  axis reduced to 1, such as [1, C] for [N, C], or [1, C, 1, 1] for
+  [N, C, H, W] with axis: [0, 2, 3].
+
+  @overload fixed_batch_norm(gamma, beta, mean, var, eps: 2e-5, axis: [0], y: nil)
+    @param [Cumo::<%=class_name%>] gamma  The scale.
+    @param [Cumo::<%=class_name%>] beta  The shift.
+    @param [Cumo::<%=class_name%>] mean  The mean to normalize with, such as the running_mean of batch_norm.
+    @param [Cumo::<%=class_name%>] var  The variance to normalize with, such as the running_var of batch_norm.
+    @param [Float] eps  Added to the variance.
+    @param [Array<Integer>] axis  The axes the statistics were taken over.
+    @param [Cumo::<%=class_name%>] y  An array to write the result into and return.
+    @return [Cumo::<%=class_name%>]
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -134,12 +160,4 @@ FIXED_BATCH_NORM_ERROR:
     return y;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND
