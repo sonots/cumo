@@ -69,17 +69,21 @@ else
   shift_set = ""
   rand_type = "dtype"
 end
+# The type the upper bound is read in, which the kernel needs to keep a draw
+# that rounds up to it out of the result.
+high_type = acc_type.empty? ? "dtype" : acc_type
 %>
 
 typedef struct {
     dtype low;
     <%=rand_type%> max;
+    <%=high_type%> high;
     u_int64_t seed;
 } rand_opt_t;
 
 <% unless is_object %>
-void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift);
-void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, int shift);
+void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, <%=high_type%> high, int shift);
+void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, <%=high_type%> high, int shift);
 <% end %>
 
 static void
@@ -88,11 +92,13 @@ static void
     rand_opt_t *g;
     dtype    low;
     <%=rand_type%> max;
+    <%=high_type%> high;
     <%=shift_def%>
 
     g = (rand_opt_t*)(lp->opt_ptr);
     low = g->low;
     max = g->max;
+    high = g->high;
     <%=shift_set%>
 
     <% if is_object %>
@@ -102,6 +108,11 @@ static void
         ssize_t  s1;
         size_t  *idx1;
         dtype x;
+        // The sum goes through a Float, which can round up to the upper bound
+        // that rand does not include. An object has no neighbour below that
+        // bound to step to, so such a draw is dropped and another taken. A
+        // range that does not rise would drop every draw, and is left as it was.
+        int bounded = m_lt(low, high);
 
         CUMO_INIT_COUNTER(lp, i);
         CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
@@ -109,12 +120,16 @@ static void
         cumo_cuda_runtime_device_synchronize();
         if (idx1) {
             for (; i--;) {
-                x = m_add(<%=m_rand%>,low);
+                do {
+                    x = m_add(<%=m_rand%>,low);
+                } while (bounded && m_ge(x,high));
                 CUMO_SET_DATA_INDEX(p1,idx1,dtype,x);
             }
         } else {
             for (; i--;) {
-                x = m_add(<%=m_rand%>,low);
+                do {
+                    x = m_add(<%=m_rand%>,low);
+                } while (bounded && m_ge(x,high));
                 CUMO_SET_DATA_STRIDE(p1,s1,dtype,x);
             }
         }
@@ -131,10 +146,10 @@ static void
 
         if (cumo_na_loop_has_index(lp)) {
             cumo_na_iarray_stridx_t b1 = cumo_na_make_iarray_stridx(&lp->args[0]);
-            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,g->seed,offset,low,max,shift_arg);
+            <%="cumo_#{c_iter}_stridx_kernel_launch"%>(&b1,&indexer,g->seed,offset,low,max,high,shift_arg);
         } else {
             cumo_na_iarray_t a1 = cumo_na_make_iarray(&lp->args[0]);
-            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,g->seed,offset,low,max,shift_arg);
+            <%="cumo_#{c_iter}_kernel_launch"%>(&a1,&indexer,g->seed,offset,low,max,high,shift_arg);
         }
     }
     <% end %>
@@ -229,6 +244,7 @@ static VALUE
         rb_raise(rb_eArgError,"high must be larger than low");
     }
     <% end %>
+    g.high = high;
     g.seed = cumo_cuda_rand_seed();
     cumo_na_ndloop3(&ndf, &g, 1, self);
     return self;

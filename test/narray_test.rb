@@ -2682,6 +2682,42 @@ class NArrayTest < Test::Unit::TestCase
       end
     end
 
+    # A draw is a uniform number times the span, plus low. Both the product and
+    # the sum round to the nearest value the type holds, which is the upper
+    # bound itself once low is far enough from zero.
+    far_ranges = [
+      [Cumo::HFloat, 1000.0, 1001.0],
+      [Cumo::BFloat, 1000.0, 1001.0],
+      [Cumo::SFloat, 1_000_000.0, 1_000_001.0],
+      [Cumo::DFloat, 1e15, 1e15 + 1],
+      [Cumo::RObject, 1e15, 1e15 + 1],
+      [Cumo::SComplex, Complex(1e6, 1e6), Complex(1e6 + 1, 1e6 + 1)],
+      [Cumo::DComplex, Complex(1e15, 1e15), Complex(1e15 + 1, 1e15 + 1)],
+    ]
+
+    far_ranges.each do |dtype, low, high|
+      test "#{dtype}#rand leaves out a bound far from zero" do
+        drawn = dtype.new(2000).rand(low, high).to_a
+        values = drawn.flat_map { |x| x.is_a?(Complex) ? [x.real, x.imag] : [x] }
+        lo = low.is_a?(Complex) ? low.real : low
+        hi = high.is_a?(Complex) ? high.real : high
+        assert_equal(0, values.count { |x| x >= hi })
+        assert_equal(0, values.count { |x| x < lo })
+      end
+
+      test "#{dtype}#rand answers low for a range with nothing in it" do
+        assert_equal([low] * 4, dtype.new(4).rand(low, low).to_a)
+      end
+    end
+
+    # The span of this one is wider than bfloat16 reaches, so every draw lands
+    # on the bound and takes the largest value below it.
+    test "BFloat#rand leaves out a bound its span cannot reach" do
+      drawn = Cumo::BFloat.new(256).rand(-3e38, 3e38).to_a
+      assert_equal(0, drawn.count { |x| x >= 3e38 })
+      assert_equal(0, drawn.count { |x| x < -3e38 })
+    end
+
     test "rand over a view" do
       a = Cumo::DFloat.new(8, 8).seq
       a[1..6, 1..6].rand
