@@ -185,8 +185,8 @@ extern "C" {
 void cumo_cuda_runtime_check_kernel_launch(void);
 // The stream every launch and copy goes to. It is 0 until Stream#with says
 // otherwise, and thread local, so one thread's choice is not another's. It
-// raises for a stream that has been destroyed, so a caller holding scratch
-// passes it to the forms below that free what they hold before they raise.
+// raises for a stream that has been destroyed, from where it is read, which
+// is ahead of the forms below that free what a caller holds.
 struct CUstream_st* cumo_cuda_stream(void);
 // Call before any CUB or Thrust algorithm. Defined in cuda/cub.cu, which says why.
 void cumo_cuda_cub_prime_ptx_version(void);

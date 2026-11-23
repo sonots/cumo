@@ -609,10 +609,10 @@ static VALUE
 call_ensure(VALUE arg)
 {
     cusolver_call_t *c = (cusolver_call_t*)arg;
-    if (c->ctx.scratch != NULL) { cudaEventRecord(c->ctx.scratch->done, cumo_cuda_stream_no_raise()); }
+    if (c->ctx.scratch != NULL) { cudaEventRecord(c->ctx.scratch->done, cumo_cuda_stream_no_raise(NULL)); }
     cumo_cuda_runtime_return_scratch(c->loose_work, c->loose_work != NULL, NULL);
     if (c->h_pinned) {
-        cudaStreamSynchronize(cumo_cuda_stream_no_raise());
+        cudaStreamSynchronize(cumo_cuda_stream_no_raise(NULL));
         cudaGetLastError();
     } else {
         ruby_xfree(c->h_work);

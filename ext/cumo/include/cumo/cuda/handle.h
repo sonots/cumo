@@ -23,7 +23,8 @@ typedef struct {
     rb_nativethread_lock_t lock;
     // The driver hands an address out again soon after a destroy, so what a
     // handle is numbered on the way in is what tells it from the one that
-    // held the same address before it.
+    // held the same address before it. The current stream of a thread is
+    // compared this way; a handle that Ruby holds is not.
     size_t serials;
 } cumo_cuda_handle_set_t;
 
@@ -94,6 +95,30 @@ cumo_cuda_handle_take(cumo_cuda_handle_set_t *set, VALUE v, const char *what)
     rb_nativethread_lock_unlock(&set->lock);
 
     if (!found) {
+        rb_raise(rb_eArgError, "not a live %s", what);
+    }
+    return handle;
+}
+
+// Same, and only for the handle that is still the one the serial was read for:
+// an address goes back to the driver on a destroy and comes out of the next
+// create, so what holds it now may no longer be what the caller looked at.
+static inline size_t
+cumo_cuda_handle_take_serial(cumo_cuda_handle_set_t *set, VALUE v, size_t serial, const char *what)
+{
+    size_t handle = NUM2SIZET(v);
+    st_data_t key = (st_data_t)handle;
+    st_data_t found = 0;
+
+    rb_nativethread_lock_lock(&set->lock);
+    if (st_lookup(set->table, key, &found) && (size_t)found == serial) {
+        st_delete(set->table, &key, 0);
+    } else {
+        found = 0;
+    }
+    rb_nativethread_lock_unlock(&set->lock);
+
+    if (found == 0) {
         rb_raise(rb_eArgError, "not a live %s", what);
     }
     return handle;

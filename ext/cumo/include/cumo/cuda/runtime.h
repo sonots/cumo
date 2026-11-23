@@ -17,12 +17,14 @@ extern VALUE cumo_cuda_eRuntimeError;
 
 // The stream every launch and copy of this thread goes to. It raises
 // ArgumentError for a stream that has been destroyed, which only a thread of
-// another Ractor can be left holding, so a caller that is holding scratch
-// passes it to the forms that free what they hold before they raise.
+// another Ractor can be left holding. The raise leaves through longjmp from
+// wherever the stream is read, which for a launch is while its arguments are
+// being evaluated, so it is ahead of the forms that free what a caller holds.
 cudaStream_t cumo_cuda_stream(void);
 // The same for a wait or a copy on a path that must not raise, such as a
-// handler that may be unwinding. See the definition.
-cudaStream_t cumo_cuda_stream_no_raise(void);
+// handler that may be unwinding. See the definition. status, when it is given,
+// is handed what the wait for a stream that is gone answered.
+cudaStream_t cumo_cuda_stream_no_raise(cudaError_t *status);
 void cumo_cuda_stream_set(cudaStream_t stream);
 // The stream an Integer handle names: 0, or one this process created.
 cudaStream_t cumo_cuda_stream_get(VALUE stream);
@@ -108,16 +110,23 @@ cumo_cuda_launch_epoch_now(void)
 // unless both are idle the whole device is waited for. The idle check is what
 // keeps an each, which asks per element, from waiting per element.
 static inline int
+cumo_cuda_runtime_streams_idle_on(cudaStream_t stream)
+{
+    return cudaStreamQuery(0) == cudaSuccess && cudaStreamQuery(stream) == cudaSuccess;
+}
+
+static inline int
 cumo_cuda_runtime_streams_idle(void)
 {
-    return cudaStreamQuery(0) == cudaSuccess && cudaStreamQuery(cumo_cuda_stream_no_raise()) == cudaSuccess;
+    return cumo_cuda_runtime_streams_idle_on(cumo_cuda_stream_no_raise(NULL));
 }
 
 static inline int
 cumo_cuda_runtime_sync_if_busy(void)
 {
-    if (cumo_cuda_stream_no_raise() != 0) {
-        if (cumo_cuda_runtime_streams_idle()) {
+    cudaStream_t stream = cumo_cuda_stream_no_raise(NULL);
+    if (stream != 0) {
+        if (cumo_cuda_runtime_streams_idle_on(stream)) {
             return 0;
         }
         cumo_cuda_runtime_device_synchronize();
@@ -137,9 +146,12 @@ cumo_cuda_runtime_sync_if_busy(void)
 static inline cudaError_t
 cumo_cuda_runtime_memcpy_to_pinned(void *dst, const void *src, size_t bytes)
 {
-    cudaStream_t stream = cumo_cuda_stream_no_raise();
-    cudaError_t status;
-    if (stream != 0 && !cumo_cuda_runtime_streams_idle()) {
+    cudaError_t status = cudaSuccess;
+    cudaStream_t stream = cumo_cuda_stream_no_raise(&status);
+    if (status != cudaSuccess) { return status; }
+    // The one read above throughout: another Ractor can let the stream go
+    // while this runs, and a wait put in for it belongs with the copy.
+    if (stream != 0 && !cumo_cuda_runtime_streams_idle_on(stream)) {
         cumo_atomic_size_fetch_add(&cumo_cuda_sync_epoch, 1);
         status = cudaDeviceSynchronize();
         if (status != cudaSuccess) { return status; }

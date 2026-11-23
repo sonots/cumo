@@ -39,7 +39,8 @@ class NArrayRactorTest < CumoTestBase
       end
       assert_equal(:destroyed, Timeout.timeout(60) { r.respond_to?(:take) ? r.take : r.value })
       assert_raise(ArgumentError) { a.seq }
-      assert_raise(ArgumentError) { Cumo::SFloat.new(16).seq }
+      # the pool asks for the stream of its own, before any launch
+      assert_raise(ArgumentError) { Cumo::SFloat.new(16).allocate }
       assert_equal(handle, Cumo::CUDA::Runtime.current_stream)
       Cumo::CUDA::Runtime.current_stream = 0
       assert_equal(120.0, a.seq.sum.to_f)
@@ -62,17 +63,28 @@ class NArrayRactorTest < CumoTestBase
         Cumo::CUDA::Runtime.cudaStreamDestroy(h)
         # Which address a create answers with is the driver's to pick, so it
         # is asked until it picks the one that was let go.
+        found = nil
         64.times do
           again = Cumo::CUDA::Runtime.cudaStreamCreateWithFlags(flags)
-          break again if again == h
+          if again == h
+            found = again
+            break
+          end
           Cumo::CUDA::Runtime.cudaStreamDestroy(again)
         end
+        found
       end
       reused = Timeout.timeout(60) { r.respond_to?(:take) ? r.take : r.value }
-      omit("the driver did not hand the address out again") unless reused == handle
+      omit("the driver did not hand the address out again") if reused.nil?
       assert_raise(ArgumentError) { a.seq }
+      Cumo::CUDA::Runtime.current_stream = 0
+      # and the binding left on the address does not stand in the way of the
+      # stream that holds it now
+      assert_nil(Cumo::CUDA::Runtime.cudaStreamDestroy(reused))
+      reused = nil
     ensure
       Cumo::CUDA::Runtime.current_stream = 0
+      Cumo::CUDA::Runtime.cudaStreamDestroy(reused) if reused.is_a?(Integer)
       release_destroyed_stream(stream, handle)
     end
 
