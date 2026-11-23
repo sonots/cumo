@@ -84,6 +84,11 @@ check_status(nvrtcResult status)
     }
 }
 
+/*
+  The version of NVRTC.
+
+  @return [Array<Integer>] [major, minor]
+ */
 static VALUE
 rb_nvrtcVersion(VALUE self)
 {
@@ -172,6 +177,16 @@ nvrtcCreateProgram_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  Creates a program from CUDA source, which NVRTCProgram wraps.
+
+  @param src [String] the CUDA source.
+  @param name [String] the name of the source, for messages.
+  @param headers [Array<String>] the sources of headers.
+  @param includeNames [Array<String>] the name that #include uses for each of headers, as many as headers.
+  @return [Integer] the program handle.
+  @raise [ArgumentError] when headers and includeNames differ in length.
+ */
 static VALUE
 rb_nvrtcCreateProgram(
         VALUE self,
@@ -236,6 +251,12 @@ nvrtcDestroyProgram_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  Destroys a program.
+
+  @param prog [Integer] a program handle.
+  @return [nil]
+ */
 static VALUE
 rb_nvrtcDestroyProgram(VALUE self, VALUE prog)
 {
@@ -265,6 +286,14 @@ nvrtcCompileProgram_without_gvl_cb(void *param)
     return (void *)status;
 }
 
+/*
+  Compiles a program.
+
+  @param prog [Integer] a program handle.
+  @param options [Array<String>] NVRTC options.
+  @return [nil]
+  @raise [Cumo::CUDA::NVRTCError] when the compile fails, whose log nvrtcGetProgramLog gives.
+ */
 static VALUE
 rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
 {
@@ -294,6 +323,13 @@ rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
     return Qnil;
 }
 
+/*
+  The PTX of a compiled program, with the NUL that ends it, as cuLinkAddData
+  takes PTX.
+
+  @param prog [Integer] a program handle.
+  @return [String]
+ */
 static VALUE
 rb_nvrtcGetPTX(VALUE self, VALUE prog)
 {
@@ -354,6 +390,12 @@ rb_nvrtcGetLoweredName(VALUE self, VALUE prog, VALUE name_expression)
     return rb_str_new_cstr(lowered);
 }
 
+/*
+  The log of the last compile of a program, which ends with a NUL.
+
+  @param prog [Integer] a program handle.
+  @return [String]
+ */
 static VALUE
 rb_nvrtcGetProgramLog(VALUE self, VALUE prog)
 {
@@ -379,6 +421,12 @@ Init_cumo_cuda_nvrtc()
 {
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
+    /*
+      Document-module: Cumo::CUDA::NVRTC
+
+      The functions of NVRTC under their own names, with program handles as
+      Integers. NVRTCProgram and Compiler wrap them.
+    */
     mNVRTC = rb_define_module_under(mCUDA, "NVRTC");
     /*
       Document-class: Cumo::CUDA::NVRTCError

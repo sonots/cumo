@@ -650,6 +650,7 @@ check_pivots(const int64_t *d_ipiv, int64_t n)
     with L and U
   @return [Array] the pivot indices, 1-based, as a Cumo::Int64 of length
     min(m, n), and the info cuSOLVER reports
+  @private
  */
 static VALUE
 rb_cusolver_getrf(VALUE self, VALUE a)
@@ -674,22 +675,24 @@ rb_cusolver_getrf(VALUE self, VALUE a)
     return rb_assoc_new(ipiv, INT2NUM(c.info));
 }
 
+static int64_t check_square_matrix(VALUE a, const char *name);
+
 /*
   Solves op(A) X = B in place with cusolverDnXgetrs, from the factors getrf
   answered.
 
-  @param lu [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
-    contiguous, of shape [n, n]: the column-major factors
-  @param ipiv [Cumo::Int64] contiguous, of length n, each in 1..n
-  @param b [Cumo::NArray] of the class of lu, contiguous, of shape [n] or
-    [nrhs, n]: the column-major right-hand sides, overwritten with X
-  @param trans [String] "N", "T" or "C"
-  @param check [Boolean] whether to read ipiv back and check that each is in
-    1..n, true by default; pivots getrf has just answered need not be
-  @return [nil]
+  @overload getrs(lu, ipiv, b, trans, check = true)
+    @param lu [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+      contiguous, of shape [n, n]: the column-major factors
+    @param ipiv [Cumo::Int64] contiguous, of length n, each in 1..n
+    @param b [Cumo::NArray] of the class of lu, contiguous, of shape [n] or
+      [nrhs, n]: the column-major right-hand sides, overwritten with X
+    @param trans [String] "N", "T" or "C"
+    @param check [Boolean] whether to read ipiv back and check that each is in
+      1..n, true by default; pivots getrf has just answered need not be
+    @return [nil]
+  @private
  */
-static int64_t check_square_matrix(VALUE a, const char *name);
-
 static VALUE
 rb_cusolver_getrs(int argc, VALUE *argv, VALUE self)
 {
@@ -761,6 +764,7 @@ parse_uplo(VALUE uplo)
 
   @param uplo [String, Integer]
   @return [String] "U" or "L"
+  @private
  */
 static VALUE
 rb_cusolver_uplo(VALUE self, VALUE uplo)
@@ -791,6 +795,7 @@ check_square_matrix(VALUE a, const char *name)
     @param want_info [Boolean] whether to wait for the info cuSOLVER reports,
       true by default
     @return [Integer, nil] the info cuSOLVER reports, or nil if it is not read
+  @private
  */
 static VALUE
 rb_cusolver_potrf(int argc, VALUE *argv, VALUE self)
@@ -822,6 +827,7 @@ rb_cusolver_potrf(int argc, VALUE *argv, VALUE self)
     [nrhs, n]: the column-major right-hand sides, overwritten with X
   @param uplo [String] "U" or "L"
   @return [nil]
+  @private
  */
 static VALUE
 rb_cusolver_potrs(VALUE self, VALUE a, VALUE b, VALUE uplo)
@@ -860,6 +866,7 @@ rb_cusolver_potrs(VALUE self, VALUE a, VALUE b, VALUE uplo)
     the inverse
   @param uplo [String] "U" or "L"
   @return [Integer] the info cuSOLVER reports
+  @private
  */
 static VALUE
 rb_cusolver_potri(VALUE self, VALUE a, VALUE uplo)
@@ -924,6 +931,7 @@ parse_eigen_args(cusolver_call_t *c, VALUE a, VALUE w, VALUE vectors, VALUE il, 
   @param iu [Integer, nil] 1-based
   @return [Array] the number of eigenvalues found, and the info cuSOLVER
     reports
+  @private
  */
 static VALUE
 rb_cusolver_syevd(VALUE self, VALUE a, VALUE w, VALUE vectors, VALUE il, VALUE iu)
@@ -957,6 +965,7 @@ rb_cusolver_syevd(VALUE self, VALUE a, VALUE w, VALUE vectors, VALUE il, VALUE i
   @param iu [Integer, nil] 1-based
   @return [Array] the number of eigenvalues found, and the info cuSOLVER
     reports
+  @private
  */
 static VALUE
 rb_cusolver_sygvd(VALUE self, VALUE a, VALUE b, VALUE w, VALUE vectors, VALUE il, VALUE iu)
@@ -1005,6 +1014,7 @@ check_shape(VALUE x, VALUE klass, int64_t rows, int64_t cols, const char *name)
     column-major V^H, or nil for "N"
   @param job [String] "A", "S" or "N", for U and V^H alike
   @return [Integer] the info cuSOLVER reports
+  @private
  */
 static VALUE
 rb_cusolver_gesvd(VALUE self, VALUE a, VALUE s, VALUE u, VALUE vt, VALUE job)
@@ -1051,6 +1061,9 @@ rb_cusolver_gesvd(VALUE self, VALUE a, VALUE s, VALUE u, VALUE vt, VALUE job)
     return INT2NUM(c.info);
 }
 
+/*
+  @private
+ */
 static VALUE
 rb_cusolver_gesvdj_batched(VALUE self, VALUE a, VALUE s)
 {
@@ -1100,6 +1113,7 @@ check_tau(VALUE tau, VALUE a, int64_t k)
   @param tau [Cumo::NArray] of the class of a, contiguous, of length
     min(m, n): filled with the scalar factors of the reflectors
   @return [nil]
+  @private
  */
 static VALUE
 rb_cusolver_geqrf(VALUE self, VALUE a, VALUE tau)
@@ -1129,6 +1143,7 @@ rb_cusolver_geqrf(VALUE self, VALUE a, VALUE tau)
     column-major reflectors, overwritten with Q
   @param tau [Cumo::NArray] of the class of a, of length k
   @return [nil]
+  @private
  */
 static VALUE
 rb_cusolver_orgqr(VALUE self, VALUE a, VALUE tau)
@@ -1191,6 +1206,7 @@ geev_body(VALUE arg)
     [n, n]: the column-major right eigenvectors, packed as LAPACK packs
     them for a real a, or nil for none
   @return [Integer] the info cuSOLVER reports
+  @private
  */
 static VALUE
 rb_cusolver_geev(VALUE self, VALUE a, VALUE w, VALUE vr)
@@ -1304,6 +1320,7 @@ sytrf_body(VALUE arg)
     Cumo::Int32 from the legacy sytrf, and the info cuSOLVER reports
   @raise [NotImplementedError] for a Hermitian a where cuSOLVER has no
     Xhetrf
+  @private
  */
 static VALUE
 rb_cusolver_sytrf(VALUE self, VALUE a, VALUE uplo, VALUE hermitian)
@@ -1396,6 +1413,7 @@ Init_cumo_cuda_cusolver(void)
     rb_define_singleton_method(mCusolver, "sygvd", rb_cusolver_sygvd, 6);
     rb_define_singleton_method(mCusolver, "gesvd", rb_cusolver_gesvd, 5);
     rb_define_singleton_method(mCusolver, "gesvdj_batched", rb_cusolver_gesvdj_batched, 2);
+    /* @private */
     rb_define_const(mCusolver, "BATCHED_SVD_MAX", INT2FIX(CUSOLVER_BATCHED_SVD_MAX));
     rb_define_singleton_method(mCusolver, "geqrf", rb_cusolver_geqrf, 2);
     rb_define_singleton_method(mCusolver, "orgqr", rb_cusolver_orgqr, 2);
