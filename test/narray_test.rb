@@ -3640,10 +3640,14 @@ class NArrayTest < Test::Unit::TestCase
       assert_equal([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]], a.to_a)
     end
 
-    test "takes a nested Ruby Array for the index array" do
+    test "takes a Ruby Array of rows for the index array" do
       a = Cumo::DFloat.new(5).seq
       a[[[0, 1], [2, 3]]] = 99
       assert_equal([99, 99, 99, 99, 4], a.to_a)
+      # Cumo::NArray[] answers two dimensions for a row of NArrays as well
+      b = Cumo::DFloat.new(6).seq
+      b[[Cumo::Int32[0, 1], Cumo::Int32[2, 3]]] = 9
+      assert_equal([9, 9, 9, 9, 4, 5], b.to_a)
     end
 
     test "spreads the value over the shape of the index array" do
@@ -3712,6 +3716,13 @@ class NArrayTest < Test::Unit::TestCase
       c = Cumo::DFloat.new(2, 2).seq
       c[true, true] = [[7, 8]]
       assert_equal([[7, 8], [0, 0]], c.to_a)
+      # A flat one goes in as it does for a selection of the same shape, which
+      # is the shape of the index array
+      d = Cumo::DFloat.new(5).seq
+      d[Cumo::Int32[[0, 1], [2, 3]]] = [1, 2]
+      e = Cumo::DFloat.zeros(2, 2)
+      e[true, true] = [1, 2]
+      assert_equal(e.to_a.flatten + [4], d.to_a)
     end
 
     # A Bit subscript is a mask, which selects where it is true whatever its

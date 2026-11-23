@@ -48,10 +48,18 @@ static VALUE
         }
         if (argc == 1) {
             idx = argv[0];
-            // Only a nested Ruby Array becomes an index array of more than one
-            // dimension, so only that one is worth building here.
-            if (RB_TYPE_P(idx, T_ARRAY) && RARRAY_LEN(idx) > 0 && RB_TYPE_P(RARRAY_AREF(idx, 0), T_ARRAY)) {
-                idx = rb_apply(cumo_cNArray, rb_intern("[]"), idx);
+            if (RB_TYPE_P(idx, T_ARRAY)) {
+                long i;
+                // Only an Array or an NArray among the elements can make
+                // NArray[] answer more than one dimension, and building it for
+                // a plain list of indices would be work for nothing.
+                for (i = 0; i < RARRAY_LEN(idx); ++i) {
+                    VALUE e = RARRAY_AREF(idx, i);
+                    if (RB_TYPE_P(e, T_ARRAY) || CumoIsNArray(e)) {
+                        idx = rb_apply(cumo_cNArray, rb_intern("[]"), idx);
+                        break;
+                    }
+                }
             }
             if (!CumoIsNArray(idx) || rb_obj_is_kind_of(idx, cumo_cBit) || CUMO_RNARRAY_NDIM(idx) <= 1) {
                 idx = Qnil;
