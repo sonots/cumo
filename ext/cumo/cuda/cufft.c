@@ -124,7 +124,7 @@ check_call(cufftResult status)
 }
 
 /*
-  Returns the version of the cuFFT library cumo is linked with.
+  Returns the version of the cuFFT library cumo loads on its first use.
 
   @return [Integer] the version cufftGetVersion reports
  */

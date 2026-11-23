@@ -345,8 +345,8 @@ An integer or `Bit` matrix is computed in `DFloat`, as numo-linalg-alt does, and
 
 Cumo looks for cuSOLVER when it is built.
 Without it, the functions that need it raise `NotImplementedError`, and `Cumo::CUDA::Cusolver.available?` answers whether it is there.
-`eig` and `eigvals` also need `cusolverDnXgeev`, which CUDA 11 does not have.
-`ldl` of a Hermitian complex matrix needs `cusolverDnXhetrf`, which CUDA 11 and 12 do not have.
+`eig` and `eigvals` also need `cusolverDnXgeev`, which CUDA has from 12.6 Update 2.
+`ldl` of a Hermitian complex matrix needs `cusolverDnXhetrf`, which CUDA has from 13.4.
 
 Cumo differs from numo-linalg-alt in a few places on purpose:
 
@@ -389,8 +389,8 @@ A thread keeps up to 16 cuFFT plans for each device, and reuses one when a trans
 A thread's plans also go when it ends, and when an allocation it makes from the memory pool runs out of memory.
 
 `require "cumo/pocketfft"` brings in `Cumo::Pocketfft`, the functions of `Numo::Pocketfft` from [numo-pocketfft](https://github.com/yoshoku/numo-pocketfft).
-They keep its single positional argument, its double precision results and the `ArgumentError`s it raises, so code written for numo-pocketfft runs on the GPU after the replacement of `Numo` with `Cumo` above.
-A 0-dimensional array raises `Cumo::NArray::DimensionError`, where numo-pocketfft fails on it in a different way in each function.
+They keep its positional arguments, its double precision results and the `ArgumentError`s it raises, so code written for numo-pocketfft runs on the GPU after the replacement of `Numo` with `Cumo` above.
+A 0-dimensional array raises that `ArgumentError` in the 1- and 2-dimensional functions and `Cumo::NArray::DimensionError` in `fftn`, `ifftn`, `rfftn` and `irfftn`, where numo-pocketfft raises `NoMemoryError` in `fftn` and `rfftn`.
 
 ### Searching A Sorted Array
 

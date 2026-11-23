@@ -80,10 +80,10 @@ module Cumo::CUDA
       end
     end
 
-    # name_expressions: names such as "kernel<float>" that the Module then
-    # answers get_function for. Their mangled names are cached with the cubin.
-    # The same source, options and device answer the same Module for the
-    # rest of the process.
+    # name_expressions: names such as "kernel<float>" that get_function of
+    # the Module then accepts. Their mangled names are cached with the cubin.
+    # The same arguments on the same device return the same Module until
+    # {.clear_modules} or {Module#unload}.
     def compile_with_cache(source, options: [], arch: nil, cache_dir: nil, extra_source: nil, name_expressions: [])
       # NVRTC does not use extra_source. extra_source is used for cache key.
       cache_dir ||= get_cache_dir

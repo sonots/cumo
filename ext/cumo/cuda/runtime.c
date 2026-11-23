@@ -440,6 +440,7 @@ rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
   destroyed.
 
   @param [Integer] stream
+  @raise [ArgumentError] if the stream is current in a thread.
   @raise [Cumo::CUDA::RuntimeError]
  */
 static VALUE
