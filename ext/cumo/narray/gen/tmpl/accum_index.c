@@ -44,9 +44,11 @@ static void
   @overload <%=name%>(axis:nil)
 <% end %>
     @param [Numeric,Array,Range] axis  Affected dimensions.
-    @return [Integer,Cumo::Int] returns result index of <%=name%>.
+    @return [Cumo::Int32,Cumo::Int64] returns result index of <%=name%>, an Int64 if self has 2**32 or more elements.
   @example
-      Cumo::NArray[3,4,1,2].min_index => 3
+      Cumo::NArray[3,4,1,2].<%=name%>
+      # => Cumo::Int32#shape=[]
+      # <% if name == 'min_index' %>2<% else %>1<% end %>
  */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

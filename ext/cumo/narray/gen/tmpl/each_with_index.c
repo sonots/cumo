@@ -40,7 +40,7 @@ static void
   passing that element and indices along each axis as parameters.
   @overload <%=name%>
   For a block `{|x,i,j,...| ... }`,
-  @yieldparam [Numeric] x  an element
+  @yieldparam [<%= is_object ? 'Object' : 'Numeric' %>] x  an element
   @yieldparam [Integer] i,j,...  multitimensional indices
   @return [Cumo::NArray] self
   @see #each

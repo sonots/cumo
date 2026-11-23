@@ -335,9 +335,8 @@ static void
   end
 %>
 <%
- args_v = "a, b, [c, alpha:1, beta:0]"
+ args_v = "b, c = nil, alpha: 1, beta: 0"
  params = [
-   mat("a"),
    mat("b"),
    mat("c","optional",:inplace),
    opt("alpha"),
@@ -346,7 +345,7 @@ static void
 %>
   @overload <%=name%>(<%=args_v%>)
     <%=params%>
-    @return [<%=class_name%>] returns c = alpha\*op( A )\*op( B ) + beta\*C.
+    @return [Cumo::<%=class_name%>] returns c = alpha \* self \* b + beta \* c, the matrix product of self and b over their last two axes.
 <%=description%>
 */
 static VALUE

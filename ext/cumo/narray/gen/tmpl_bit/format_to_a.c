@@ -31,8 +31,9 @@ static void
 
 /*
   Format elements into strings.
-  @overload <%=name%> format
-    @param [String] format
+  @overload <%=name%>(format = nil)
+    @param [String,nil] format  a format String#% applies to each element.
+      nil, the default, uses the format of the class.
     @return [Array] array of formatted strings.
 */
 static VALUE

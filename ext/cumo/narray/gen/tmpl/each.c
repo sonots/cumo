@@ -34,7 +34,7 @@ static void
   @overload <%=name%>
     @return [Cumo::NArray] self
   For a block `{|x| ... }`,
-  @yieldparam [Numeric] x  an element of NArray.
+  @yieldparam [<%= is_object ? 'Object' : 'Numeric' %>] x  an element of NArray.
   @see #each_with_index
   @see #map
 */

@@ -1,8 +1,8 @@
 /*
-  Array element referenece or slice view.
-  @overload [](dim0,...,dimL)
+  Array element reference or slice view.
+  @overload aref_cpu(dim0,...,dimL)
     @param [Numeric,Range,etc] dim0,...,dimL  Multi-dimensional Index.
-    @return [Numeric,NArray::<%=class_name%>] Element object or NArray view.
+    @return [Numeric,Cumo::<%=class_name%>] Element object or NArray view.
   --- Returns the element at +dim0+, +dim1+, ... are Numeric indices
   for each dimension, or returns a NArray View as a sliced subarray if
   +dim0+, +dim1+, ... includes other than Numeric index, e.g., Range
@@ -15,15 +15,15 @@
        [5, 6, 7, 8, 9],
        [10, 11, 12, 13, 14],
        [15, 16, 17, 18, 19]]
-      a[1,1]
+      a.aref_cpu(1,1)
       => 6.0
-      a[1..3,1]
-      => Cumo::DFloat#shape=[3]
+      a.aref_cpu(1..3,1)
+      => Cumo::DFloat(view)#shape=[3]
       [6, 11, 16]
-      a[1,[1,3,4]]
-      => Cumo::DFloat#shape=[3]
+      a.aref_cpu(1,[1,3,4])
+      => Cumo::DFloat(view)#shape=[3]
       [6, 8, 9]
-      a[true,2].fill(99)
+      a.aref_cpu(true,2).fill(99)
       a
       => Cumo::DFloat#shape=[4,5]
       [[0, 1, 99, 3, 4],

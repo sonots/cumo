@@ -45,7 +45,7 @@ static void
   @overload <%=name%>(axis:nil)
 <% end %>
     @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
-    @return [Integer,Cumo::Int] returns result index of <%=name%>.
+    @return [Cumo::Int32,Cumo::Int64,Integer] returns result index of <%=name%>, an Int64 if self has 2**32 or more elements, and 0 for a 0-dimensional self.
   @example
       Cumo::NArray[3,4,1,2].sort_index # => Cumo::Int32[2,3,0,1]
 */

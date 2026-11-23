@@ -43,9 +43,11 @@ static void
   @overload <%=name%>(axis:nil)
 <% end %>
     @param [Numeric,Array,Range] axis  Finds <%=name[3..5]%>imum values along the axis and returns indices along the axis.
-    @return [Integer,Cumo::Int] returns result indices.
+    @return [Cumo::Int32,Cumo::Int64,Integer] returns result indices, an Int64 if self has 2**32 or more elements, and 0 for a 0-dimensional self.
   @example
-      Cumo::NArray[3,4,1,2].<%=name%> => <% if name == 'argmin' %>2<% else %>1<% end %>
+      Cumo::NArray[3,4,1,2].<%=name%>
+      # => Cumo::Int32#shape=[]
+      # <% if name == 'argmin' %>2<% else %>1<% end %>
  */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
