@@ -793,6 +793,7 @@ A kernel may write any NArray it is handed, so a frozen one is refused, and one 
 Every kernel and copy Cumo issues goes to the current stream of the thread, which is the null stream until a `Cumo::CUDA::Stream` is used.
 `Stream#with` runs a block on a stream of its own, waits for everything the block queued, and puts the previous stream back, so what the block produced is complete when it returns.
 The block's work is ordered after what the previous stream had queued, so an input still being computed when the block starts is read complete.
+`Stream.null.with` does not make the host wait, and the previous stream is ordered after what the block queued on the null stream instead, as later work on the null stream already is.
 
 ```ruby
 s = Cumo::CUDA::Stream.new(non_blocking: true)
