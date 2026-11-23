@@ -15,6 +15,7 @@ module Cumo::CUDA
 
     # A handle may be given out again after a destroy, so an event that is
     # still owned by a live object is not the one this finalizer was for.
+    # @private
     def self.finalizer(ptr)
       proc { Runtime.cudaEventDestroy(ptr) rescue nil unless LIVE[ptr] }
     end

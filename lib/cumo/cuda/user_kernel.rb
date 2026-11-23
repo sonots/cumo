@@ -4,7 +4,9 @@ module Cumo::CUDA
   # What ElementwiseKernel and ReductionKernel share: the parameter syntax,
   # the dtype table, how a type letter is resolved and how arguments are
   # broadcast and handed to the launch.
+  # @private
   module UserKernel
+    # @private
     Param = Struct.new(:type, :name, :raw)
 
     TYPES = {

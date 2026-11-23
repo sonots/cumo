@@ -22,6 +22,7 @@ module Cumo::CUDA
 
     # The state is shared with the finalizer, so a copy still in flight when
     # the buffer is dropped is waited for before the memory goes.
+    # @private
     def self.finalizer(state)
       proc do
         ptr, event = state

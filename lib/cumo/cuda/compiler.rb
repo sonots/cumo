@@ -15,6 +15,7 @@ module Cumo::CUDA
     @@modules ||= {}
     @@arch_by_device ||= {}
 
+    # @private
     def self.valid_kernel_name?(name)
       VALID_KERNEL_NAME.match?(name)
     end

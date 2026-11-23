@@ -690,6 +690,7 @@ rb_cudaFreeHost(VALUE self, VALUE buffer)
 
   @param [Integer] buffer
   @return [Integer]
+  @private
  */
 static VALUE
 rb_pinned_size(VALUE self, VALUE buffer)
@@ -714,6 +715,7 @@ pinned_range(size_t size, size_t offset, size_t len)
   @param [Integer] offset
   @param [Integer] length
   @return [String]
+  @private
  */
 static VALUE
 rb_pinned_read(VALUE self, VALUE buffer, VALUE offset, VALUE length)
@@ -731,6 +733,7 @@ rb_pinned_read(VALUE self, VALUE buffer, VALUE offset, VALUE length)
   @param [Integer] offset
   @param [String] bytes
   @return [Integer] the number of bytes written
+  @private
  */
 static VALUE
 rb_pinned_write(VALUE self, VALUE buffer, VALUE offset, VALUE bytes)
@@ -791,6 +794,7 @@ stream_or_current(VALUE stream)
   @param [Cumo::NArray] narray contiguous, and of the buffer's size
   @param [Integer, nil] stream nil for the current stream
   @raise [Cumo::CUDA::RuntimeError]
+  @private
  */
 static VALUE
 rb_memcpy_pinned_to_narray(VALUE self, VALUE buffer, VALUE narray, VALUE stream)
@@ -810,6 +814,7 @@ rb_memcpy_pinned_to_narray(VALUE self, VALUE buffer, VALUE narray, VALUE stream)
   @param [Integer] buffer
   @param [Integer, nil] stream nil for the current stream
   @raise [Cumo::CUDA::RuntimeError]
+  @private
  */
 static VALUE
 rb_memcpy_narray_to_pinned(VALUE self, VALUE narray, VALUE buffer, VALUE stream)

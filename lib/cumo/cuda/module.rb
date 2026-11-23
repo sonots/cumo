@@ -32,6 +32,7 @@ module Cumo::CUDA
 
     # A module nobody holds any more goes back to the driver. At exit the
     # context may be gone already, so a failure there is dropped.
+    # @private
     def self.unloader(ptr)
       proc do
         Driver.cuModuleUnload(ptr)

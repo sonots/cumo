@@ -1363,6 +1363,7 @@ module Cumo
     end
 
 
+    # @private
     @@warn_slow_dot = false
 
     # The dtypes whose dot reaches cuBLAS through gemm. Every other dtype falls

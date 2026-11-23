@@ -480,6 +480,7 @@ kernel_arg_is_narray(VALUE v)
 /*
   @param [Cumo::NArray] narray
   @return [Array, nil] [address, strides in elements, first byte, last byte + 1], nil for an index view
+  @private
  */
 static VALUE
 rb_narray_view_layout(VALUE self, VALUE narray)
