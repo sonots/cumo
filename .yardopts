@@ -2,6 +2,7 @@
 --exclude ext/cumo/narray/gen/
 -e ext/cumo/narray/gen/cogen_runner.rb
 lib/**/*.rb
+ext/cumo/narray/narray.c
 ext/**/*.c
 ext/**/*.cpp
 tmp/yard/types/*.c

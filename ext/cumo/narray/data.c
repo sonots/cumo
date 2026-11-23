@@ -148,6 +148,15 @@ iter_swap_byte_indexer(cumo_na_loop_t *const lp)
     cumo_iter_swap_byte_indexer_kernel_launch(&a1, &a2, &indexer, (ssize_t)lp->args[0].elmsz);
 }
 
+/*
+  Answers a copy with the bytes of each element reversed, and flags it as
+  byte-swapped. Elements are still read in the host's order, so the copy
+  holds other numbers until it is swapped back. It makes binary data in the
+  other byte order for to_binary.
+
+  @return [Cumo::NArray]
+  @raise [TypeError] for Cumo::RObject.
+*/
 static VALUE
 cumo_na_swap_byte(VALUE self)
 {
@@ -178,6 +187,12 @@ cumo_na_swap_byte(VALUE self)
 }
 
 
+/*
+  Answers self if its bytes are in network order (big-endian), and a copy made by
+  swap_byte otherwise.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_to_network(VALUE self)
 {
@@ -187,6 +202,12 @@ cumo_na_to_network(VALUE self)
     return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
+/*
+  Answers self if its bytes are in VAX order (little-endian), and a copy made by
+  swap_byte otherwise.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_to_vacs(VALUE self)
 {
@@ -196,6 +217,12 @@ cumo_na_to_vacs(VALUE self)
     return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
+/*
+  Answers self if its bytes are in the host's order, and a copy made by
+  swap_byte otherwise.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_to_host(VALUE self)
 {
@@ -205,6 +232,12 @@ cumo_na_to_host(VALUE self)
     return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
+/*
+  Answers self if its bytes are swapped from the host's order, and a copy
+  made by swap_byte otherwise.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_to_swapped(VALUE self)
 {
@@ -317,6 +350,21 @@ cumo_na_transpose_map(VALUE self, int *map)
 
 #define SWAP(a,b,tmp) {tmp=a;a=b;b=tmp;}
 
+/*
+  Answers a view with the axes in another order. Without arguments it
+  reverses every axis. Non-negative axes reorder the first axes, so
+  transpose(1, 0) swaps the first two, and negative ones reorder the last
+  axes, so transpose(-1, -2) swaps the last two.
+
+  @overload transpose(*axes)
+    @param [Integer] axes  The new order of the first or the last axes.
+  @return [Cumo::NArray] a view of self.
+  @example
+    x = Cumo::DFloat.new(2, 3, 4).seq
+    x.transpose.shape          # => [4, 3, 2]
+    x.transpose(1, 0).shape    # => [3, 2, 4]
+    x.transpose(-1, -2).shape  # => [2, 4, 3]
+*/
 static VALUE
 cumo_na_transpose(int argc, VALUE *argv, VALUE self)
 {

@@ -423,6 +423,16 @@ cumo_na_composition3(VALUE obj, VALUE *ptype, VALUE *pshape, VALUE *pnary)
 }
 
 
+/*
+  The shape of the NArray that cast would make from a nested Array.
+  An NArray or a number gives [].
+
+  @overload array_shape(ary)
+    @param [Array] ary
+    @return [Array<Integer>]
+  @example
+    Cumo::NArray.array_shape([[1, 2, 3], [4, 5, 6]])  # => [2, 3]
+*/
 static VALUE
 cumo_na_s_array_shape(VALUE mod, VALUE ary)
 {
@@ -474,6 +484,19 @@ cumo_na_ary_composition_dtype(VALUE ary)
     return type;
 }
 
+/*
+  The class of the NArray that cast would make from obj.
+
+  @overload array_type(obj)
+    @param [Object] obj
+    @return [Class]
+  @example
+    Cumo::NArray.array_type([1, 2, 3])            # => Cumo::Int32
+    Cumo::NArray.array_type([1.5])                # => Cumo::DFloat
+    Cumo::NArray.array_type([0, 1, 2i])           # => Cumo::DComplex
+    Cumo::NArray.array_type([true, false])        # => Cumo::Bit
+    Cumo::NArray.array_type(Cumo::DFloat[1, 2])   # => Cumo::DFloat
+*/
 static VALUE
 cumo_na_s_array_type(VALUE mod, VALUE ary)
 {

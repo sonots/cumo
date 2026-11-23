@@ -102,6 +102,12 @@ cumo_na_debug_info_naview(VALUE self)
 }
 
 
+/*
+  Prints how self is laid out, such as its class, flags, shape, strides and
+  data pointer, to standard output, for debugging.
+
+  @return [nil]
+*/
 VALUE
 cumo_na_debug_info(VALUE self)
 {
@@ -1618,15 +1624,19 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
 
 //----------------------------------------------------------------------
 
-/*
- *  call-seq:
- *     narray.reverse([dim0,dim1,..]) => narray
- *     narray.reverse(axis: [dim0,dim1,..]) => narray
- *
- *  Return reversed view along specified dimeinsion
- */
 void cumo_na_index_reverse_kernel_launch(size_t *idx, size_t *idx1, uint64_t n);
 
+/*
+  Answers a view that reverses the order along the given axes, or along
+  every axis when none is given.
+
+  @overload reverse(*axes)
+  @overload reverse(axis: axes)
+  @return [Cumo::NArray] a view of self.
+  @example
+    y = Cumo::DFloat.new(2, 3).seq  # [[0, 1, 2], [3, 4, 5]]
+    y.reverse(1)                    # [[2, 1, 0], [5, 4, 3]]
+*/
 static VALUE
 cumo_na_reverse(int argc, VALUE *argv, VALUE self)
 {
@@ -2568,6 +2578,13 @@ static VALUE cumo_na_out_of_place_bang( VALUE self )
 
 int cumo_na_debug_flag=0;
 
+/*
+  Turns on or off the debugging output that Cumo prints for indexing, the
+  loops over arrays and gemm.
+
+  @overload debug=(flag)
+    @param [Boolean] flag
+*/
 static VALUE cumo_na_debug_set(VALUE mod, VALUE flag)
 {
     cumo_na_debug_flag = RTEST(flag);
@@ -2576,11 +2593,22 @@ static VALUE cumo_na_debug_set(VALUE mod, VALUE flag)
 
 static double cumo_na_profile_value=0;
 
+/*
+  A number kept for API compatibility with Numo. Cumo does not use it.
+
+  @return [Float]
+*/
 static VALUE cumo_na_profile(VALUE mod)
 {
     return rb_float_new(cumo_na_profile_value);
 }
 
+/*
+  Sets the number that profile answers.
+
+  @overload profile=(val)
+    @param [Numeric] val
+*/
 static VALUE cumo_na_profile_set(VALUE mod, VALUE val)
 {
     cumo_na_profile_value = NUM2DBL(val);
@@ -2739,10 +2767,35 @@ Init_cumo_narray()
 #endif
     rb_cArithSeq = rb_path2class("Enumerator::ArithmeticSequence");
 
+    /*
+      Document-class: Cumo::NArray::CastError
+
+      Raised when an object cannot be converted to an NArray or cast to a type.
+    */
     cumo_na_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
+    /*
+      Document-class: Cumo::NArray::ShapeError
+
+      Raised when the shape of an array does not fit an operation.
+    */
     cumo_na_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);
+    /*
+      Document-class: Cumo::NArray::OperationError
+
+      Raised when an operation cannot be done with its arguments, such as clip with min greater than max.
+    */
     cumo_na_eOperationError = rb_define_class_under(cNArray, "OperationError", rb_eStandardError);
+    /*
+      Document-class: Cumo::NArray::DimensionError
+
+      Raised when an axis or a number of dimensions is out of range.
+    */
     cumo_na_eDimensionError = rb_define_class_under(cNArray, "DimensionError", rb_eStandardError);
+    /*
+      Document-class: Cumo::NArray::ValueError
+
+      Raised when a value cannot be used, such as a negative integer power of an integer.
+    */
     cumo_na_eValueError = rb_define_class_under(cNArray, "ValueError", rb_eStandardError);
 
     rb_define_singleton_method(cNArray, "debug=", cumo_na_debug_set, 1);

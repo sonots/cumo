@@ -4,6 +4,7 @@ require_relative '../version'
 
 module Cumo
   class NArray
+    # The version of Cumo, the same as Cumo::VERSION.
     VERSION = Cumo::VERSION
 
     # Copies a host buffer into this array. A Cumo::CUDA::PinnedMemory is
@@ -37,6 +38,7 @@ module Cumo
       end
     end
 
+    # Answers an unallocated array of the same class and shape as self.
     def new_narray
       self.class.new(*shape)
     end
@@ -112,6 +114,8 @@ module Cumo
       end
     end
 
+    # Converts an array of one element to an Integer.
+    # @raise [TypeError] unless self has exactly one element.
     def to_i
       if size == 1
         self[0].extract_cpu.to_i
@@ -121,6 +125,8 @@ module Cumo
       end
     end
 
+    # Converts an array of one element to a Float.
+    # @raise [TypeError] unless self has exactly one element.
     def to_f
       if size == 1
         self[0].extract_cpu.to_f
@@ -130,6 +136,8 @@ module Cumo
       end
     end
 
+    # Converts an array of one element to a Complex.
+    # @raise [TypeError] unless self has exactly one element.
     def to_c
       if size == 1
         Complex(self[0].extract_cpu)
@@ -156,6 +164,10 @@ module Cumo
       end
     end
 
+    # Converts a to an NArray. An NArray is answered as it is, except that a
+    # 0-dimensional one becomes a 1-dimensional view. A number or a Range
+    # becomes the 1-dimensional array that self[a] makes, and anything else
+    # is cast.
     def self.asarray(a)
       case a
       when NArray
@@ -838,6 +850,12 @@ module Cumo
       end
     end
 
+    # Splits self along the first axis, as split(indices_or_sections, axis: 0) does.
+    def vsplit(indices_or_sections)
+      split(indices_or_sections, axis:0)
+    end
+
+    # Splits self along the second axis, as split(indices_or_sections, axis: 1) does.
     # @example
     #   x = Cumo::DFloat.new(4,4).seq
     #   # => Cumo::DFloat#shape=[4,4]
@@ -870,15 +888,11 @@ module Cumo
     #   #  [11],
     #   #  [15]],
     #   #  Cumo::DFloat(view)#shape=[4,0][]]
-
-    def vsplit(indices_or_sections)
-      split(indices_or_sections, axis:0)
-    end
-
     def hsplit(indices_or_sections)
       split(indices_or_sections, axis:1)
     end
 
+    # Splits self along the third axis, as split(indices_or_sections, axis: 2) does.
     def dsplit(indices_or_sections)
       split(indices_or_sections, axis:2)
     end
@@ -1485,9 +1499,9 @@ module Cumo
 
     # Percentile
     #
-    # @param q [Numo::NArray]
+    # @param q [Numeric]
     # @param axis [Integer] applied axis
-    # @return [Numo::NArray]  return percentile
+    # @return [Cumo::NArray]  return percentile
     def percentile(q, axis: nil)
       raise ArgumentError, "q is out of range" if q < 0 || q > 100
 
