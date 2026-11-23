@@ -962,7 +962,7 @@ Cumo::CUDA::MemoryPool.used_bytes    #=> 4194304
 
 ## Documentation
 
-See https://github.com/ruby-numo/numo-narray#documentation, replacing Numo with Cumo.
+See https://gemdocs.org/gems/cumo/ for the API reference.
 
 ## Contributions
 
