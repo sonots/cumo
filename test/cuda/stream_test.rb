@@ -125,6 +125,7 @@ module Cumo::CUDA
     SLOW_FILL = ElementwiseKernel.new("T x, int32 spins", "T y",
                                       "T acc = x; for (int k = 0; k < spins; k++) { acc = acc * 1.0000001f + 1e-7f; } y = acc > 0 ? 42 : 43",
                                       "slow_fill")
+    ADD_ONE = ElementwiseKernel.new("T y", "T z", "z = y + 1", "add_one")
 
     test "a host read inside a Stream#with waits for work queued on the null stream" do
       s = Stream.new(non_blocking: true)
@@ -205,13 +206,34 @@ module Cumo::CUDA
     # The block's kernels are ordered after what the previous stream had
     # queued, so an input still being written on the null stream is read
     # complete. The kernel spins before it writes, so a block that did not
-    # wait would read the zeros.
+    # wait would read the zeros. z is allocated and add_one is compiled
+    # beforehand, since either in the block would wait by itself.
     test "Stream#with orders the block after what the null stream had queued" do
       x = Cumo::SFloat.new(4096).fill(1)
       y = Cumo::SFloat.zeros(4096)
-      SLOW_FILL.call(x, 20_000_000, y)
+      z = Cumo::SFloat.zeros(4096)
       s = Stream.new(non_blocking: true)
-      z = s.with { y + 1 }
+      ADD_ONE.call(y, z)
+      z.fill(0)
+      SLOW_FILL.call(x, 20_000_000, y)
+      s.with { ADD_ONE.call(y, z) }
+      assert_equal([43.0] * 3, z[0...3].to_a)
+    end
+
+    # The host does not wait for a Stream.null.with block, and a non-blocking
+    # stream is not ordered after the null stream by itself, so the stream has
+    # to wait for the block's work before its next kernel reads it.
+    test "work after Stream.null.with on a non-blocking stream reads what the block wrote" do
+      x = Cumo::SFloat.new(4096).fill(1)
+      y = Cumo::SFloat.zeros(4096)
+      z = Cumo::SFloat.zeros(4096)
+      s = Stream.new(non_blocking: true)
+      ADD_ONE.call(y, z)
+      z.fill(0)
+      s.with do
+        Stream.null.with { SLOW_FILL.call(x, 20_000_000, y) }
+        ADD_ONE.call(y, z)
+      end
       assert_equal([43.0] * 3, z[0...3].to_a)
     end
 

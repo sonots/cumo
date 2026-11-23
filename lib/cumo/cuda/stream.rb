@@ -66,7 +66,7 @@ module Cumo::CUDA
     # is ordered after what the previous stream had queued, and nothing the
     # block started is left running once it returns. The null stream is the
     # exception. The host does not wait for it, and the previous stream is
-    # ordered after the block's work instead.
+    # ordered after what the block queued on the null stream instead.
     def with
       before = Stream.current
       if before.handle != handle
