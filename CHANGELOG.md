@@ -1,3 +1,9 @@
+# 0.16.1 (2026/11/23)
+
+Changes:
+
+* The gem links its documentation to the page of its own version on gemdocs.org, since rubydoc.info is down (PR #664)
+
 # 0.16.0 (2026/11/22)
 
 Breaking changes:
