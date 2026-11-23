@@ -28,6 +28,9 @@ static cumo_cuda_handle_set_t events;
 // Pinned host buffers this process allocated, each with its size as the value.
 static cumo_cuda_handle_set_t pinned;
 
+// Whether a live thread of the calling Ractor has this stream current, which is
+// all Thread.list answers for. Scanning it needs nothing kept at thread exit,
+// which counting the holders would, to not refuse a stream a dead one held.
 static int
 stream_in_use_p(cudaStream_t stream)
 {
@@ -436,19 +439,22 @@ rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
 }
 
 /*
-  Destroys a stream. A stream that is current in any thread cannot be
-  destroyed.
+  Destroys a stream. A stream that is current in a live thread of the calling
+  Ractor cannot be destroyed. A thread of another Ractor is out of reach,
+  since a Ractor sees its own threads only, and destroying a stream such a
+  thread has current takes the process down on its next launch.
 
   @param [Integer] stream
-  @raise [ArgumentError] if the stream is current in a thread, or is not a
-    live stream, such as 0 or one already destroyed.
+  @raise [ArgumentError] if the stream is current in a live thread of the
+    calling Ractor, or is not a live stream, such as 0 or one already
+    destroyed.
   @raise [Cumo::CUDA::RuntimeError]
  */
 static VALUE
 rb_cudaStreamDestroy(VALUE self, VALUE stream)
 {
     if (stream_in_use_p((cudaStream_t)NUM2SIZET(stream))) {
-        rb_raise(rb_eArgError, "a stream that is current in a thread cannot be destroyed");
+        rb_raise(rb_eArgError, "a stream that is current in a thread of this Ractor cannot be destroyed");
     }
     cumo_cuda_runtime_check_status(cudaStreamDestroy((cudaStream_t)cumo_cuda_handle_take(&streams, stream, "cudaStream_t")));
     return Qnil;

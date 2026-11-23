@@ -237,7 +237,7 @@ module Cumo::CUDA
       assert_equal([43.0] * 3, z[0...3].to_a)
     end
 
-    test "a stream that is current in another thread cannot be destroyed there or here" do
+    test "a stream that is current in another thread of this Ractor cannot be destroyed there or here" do
       s = Stream.new(non_blocking: true)
       s.use
       assert_raise(ArgumentError) { Thread.new { Thread.current.report_on_exception = false; s.destroy }.value }

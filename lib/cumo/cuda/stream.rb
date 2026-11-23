@@ -112,8 +112,9 @@ module Cumo::CUDA
       self
     end
 
-    # Waits for the stream, hands its pooled memory back, and destroys it. A
-    # stream that is current in a thread is refused, and stays usable.
+    # Waits for the stream, destroys it, and hands back the memory the pool
+    # holds for it. The null stream is left as it is. A stream that is current
+    # in a thread is refused, and stays usable.
     def destroy
       return if @ptr.nil? || null?
       Runtime.cudaStreamSynchronize(@ptr)
