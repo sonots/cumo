@@ -7,8 +7,9 @@
 
   --- Replaces the element(s) the indices select, one index, range, array or
   true for each dimension. Broadcasting mechanism is applied. A single index
-  array of more than one dimension selects a place for each of its elements,
-  counting them in order, and the value broadcasts to its shape.
+  array of more than one dimension gives a place in the flattened receiver for
+  each of its elements, and the value goes in as #store puts it into an array
+  of the shape of that index array.
 
   @example
       a = Cumo::DFloat.new(3,4).seq
@@ -81,19 +82,27 @@ static VALUE
             // An index array of more than one dimension selects into a new
             // array rather than a view, so it goes in flattened, and a store
             // through the array it selects into would be lost with it. A value
-            // with a shape of its own is written into the shape of the index
-            // by the same store first, so a shape that does not fit is taken
-            // the way every other subscript takes it.
+            // with a shape of its own goes through the same store into the
+            // shape of the index, so a shape that does not fit is taken the
+            // way every other subscript takes it.
             VALUE val = argv[argc], sub;
 
+            sub = cumo_na_flatten(idx);
+            nd = cumo_na_get_result_dimension(self, 1, &sub, sizeof(dtype), &pos);
+            // Before the value, so that an index out of range is answered
+            // first, as it is for every other subscript.
+            a = cumo_na_aref_main(1, &sub, self, 0, nd, pos);
             if (RB_TYPE_P(val, T_ARRAY) || (CumoIsNArray(val) && CUMO_RNARRAY_NDIM(val) > 0)) {
                 VALUE spread = cumo_na_new(cT, CUMO_RNARRAY_NDIM(idx), CUMO_RNARRAY_SHAPE(idx));
                 <%=c_func.sub(/_aset/,"_store")%>(spread, val);
+                // A value with nothing in it leaves the array it is stored
+                // into as it was, so nothing goes out to the receiver either.
+                // A shape that does not broadcast has raised above.
+                if (CumoIsNArray(val) && CUMO_RNARRAY_SIZE(val) == 0) {
+                    return argv[argc];
+                }
                 val = cumo_na_flatten(spread);
             }
-            sub = cumo_na_flatten(idx);
-            nd = cumo_na_get_result_dimension(self, 1, &sub, sizeof(dtype), &pos);
-            a = cumo_na_aref_main(1, &sub, self, 0, nd, pos);
             <%=c_func.sub(/_aset/,"_store")%>(a, val);
         } else {
             nd = cumo_na_get_result_dimension(self, argc, argv, sizeof(dtype), &pos);

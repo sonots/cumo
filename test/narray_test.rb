@@ -3648,6 +3648,11 @@ class NArrayTest < Test::Unit::TestCase
       b = Cumo::DFloat.new(6).seq
       b[[Cumo::Int32[0, 1], Cumo::Int32[2, 3]]] = 9
       assert_equal([9, 9, 9, 9, 4, 5], b.to_a)
+      # and for one whose first element is not the row, where it pads the
+      # places with zeros as Cumo::NArray[] does
+      c = Cumo::DFloat.new(5).seq
+      c[[0, [1, 2]]] = 9
+      assert_equal([9, 9, 9, 3, 4], c.to_a)
     end
 
     test "spreads the value over the shape of the index array" do
@@ -3673,6 +3678,30 @@ class NArrayTest < Test::Unit::TestCase
       assert_raise(IndexError) { a[Cumo::Int32[[0, 1], [2, 9]]] = 1 }
       assert_raise(RuntimeError) { a.freeze[Cumo::Int32[[0, 1], [2, 3]]] = 1 }
       assert_equal([0, 1, 2, 3, 4], a.to_a)
+    end
+
+    # A value with nothing in it leaves the array it is stored into as it was,
+    # and the receiver is no different.
+    test "a value with nothing in it writes nothing" do
+      a = Cumo::DFloat[7, 8]
+      a[Cumo::Int32[[0], [1]]] = Cumo::DFloat[]
+      assert_equal([7, 8], a.to_a)
+      b = Cumo::Bit[1, 1]
+      b[Cumo::Int32[[0], [1]]] = Cumo::Bit[]
+      assert_equal([1, 1], b.to_a)
+      c = Cumo::RObject[7, 8]
+      c[Cumo::Int32[[0], [1]]] = Cumo::RObject[]
+      assert_equal([7, 8], c.to_a)
+      # one whose shape does not broadcast is refused, as it is elsewhere
+      d = Cumo::DFloat.new(5).seq
+      assert_raise(Cumo::NArray::ShapeError) { d[Cumo::Int32[[0, 1], [2, 3]]] = Cumo::DFloat.zeros(0, 2) }
+      assert_equal([0, 1, 2, 3, 4], d.to_a)
+    end
+
+    test "an index out of range is answered before the value is read" do
+      a = Cumo::Int32.zeros(1)
+      assert_raise(IndexError) { a[Cumo::Int32[[1]]] = [["bad"]] }
+      assert_raise(IndexError) { a[Cumo::Int32[[1]]] = 5 }
     end
 
     test "an index array with nothing in it writes nothing" do
