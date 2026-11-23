@@ -1,7 +1,38 @@
-#ifdef CUDNN_FOUND
+<% param_class = cudnn_param_class == "cT" ? class_name : "SFloat" %>
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
-// y = x.fixed_batch_norm(gamma, beta, mean, var, eps:, axis:)
+/*
+  Batch normalization for inference, on cuDNN, with the given mean and var
+  in place of those of the batch. It returns
+  gamma * (self - mean) / sqrt(var + eps) + beta.
+  cuDNN normalizes each channel, the elements that share an index on axis 1,
+  over all the other axes. axis has to name those other axes, as [0] for
+  [N, C], [0, 2, 3] for [N, C, H, W] and [0, 2, 3, 4] for five dimensions.
+  Other values, such as the default [0] for four dimensions, also normalize
+  per channel, and expect gamma and the rest to have more elements than they
+  use. gamma, beta and the statistics have C elements in any shape, such as
+  [C] or [1, C, 1, 1]<% if param_class != class_name %>, and are Cumo::SFloat for Cumo::<%=class_name%><% end %>.
+
+  @overload fixed_batch_norm(gamma, beta, mean, var, eps: 2e-5, axis: [0], y: nil)
+    @param [Cumo::<%=param_class%>] gamma  The scale.
+    @param [Cumo::<%=param_class%>] beta  The shift.
+    @param [Cumo::<%=param_class%>] mean  The mean to normalize with, such as the running_mean of batch_norm.
+    @param [Cumo::<%=param_class%>] var  The variance to normalize with, such as the running_var of batch_norm.
+    @param [Float] eps  Added to the variance.
+    @param [Array<Integer>] axis  The axes other than the channel axis.
+    @param [Cumo::<%=class_name%>] y  A contiguous array of the shape of self to write the result into and return.
+    @return [Cumo::<%=class_name%>]
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -134,12 +165,4 @@ FIXED_BATCH_NORM_ERROR:
     return y;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND

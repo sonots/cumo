@@ -1,12 +1,31 @@
-#ifdef CUDNN_FOUND
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
 // cover_all=true is not supported with CUDNN
-// x.pooling_forward(mode, kernel_size, stride: 1, pad: 0, y: nil)
-//CUDNN_POOLING_MAX
-//CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
-//CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
-//CUDNN_POOLING_MAX_DETERMINISTIC
+/*
+  Pooling over windows of kernel_size, on cuDNN. mode is one of the
+  CUDNN_POOLING_* constants of Cumo::CUDA::CUDNN, which max_pool and avg_pool
+  of that module pick. self is (batch, channels, d1, ..., dN) with N of 2 or
+  3, and the result is (batch, channels, o1, ..., oN), where each o is
+  (d + 2 * pad - kernel_size) / stride + 1 rounded down.
+
+  @overload pooling_forward(mode, kernel_size, stride: kernel_size, pad: 0, y: nil)
+    @param [Integer] mode  A CUDNN_POOLING_* constant.
+    @param [Integer,Array<Integer>] kernel_size  The window, for every spatial axis or one per axis.
+    @param [Integer,Array<Integer>] stride  The stride, for every spatial axis or one per axis.
+    @param [Integer,Array<Integer>] pad  The padding on both sides, for every spatial axis or one per axis. Max pooling and the average that excludes padding leave padded positions out, and the average that includes padding counts them as zeros.
+    @param [Cumo::<%=class_name%>] y  A contiguous array of the shape of the result to write the result into and return.
+    @return [Cumo::<%=class_name%>]
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -116,12 +135,4 @@ POLLING_FORWARD_ERROR:
     return y;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND

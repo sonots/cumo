@@ -1,4 +1,13 @@
-#ifdef CUDNN_FOUND
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
 // Everything here holds a descriptor or the workspace, and the two allocations
@@ -70,7 +79,23 @@ static VALUE
 
 // cover_all=true is not supported with CUDNN
 // dilation > 1 is not supported yet
-// x.conv(w, b: nil, stride: 1, pad: 0, y: nil)
+/*
+  Convolves self with the filters w on cuDNN, as a convolution layer does.
+  self is (batch, in_channels, d1, ..., dN) with N of 2 or 3, w is
+  (out_channels, in_channels, k1, ..., kN), and the result is (batch,
+  out_channels, o1, ..., oN), where each o is (d + 2 * pad - k) / stride + 1
+  rounded down.
+
+  @overload conv(w, b: nil, stride: 1, pad: 0, y: nil)
+    @param [Cumo::<%=class_name%>] w  The filters.
+    @param [Cumo::<%=class_name%>] b  A bias shaped [out_channels], added to each output channel.
+    @param [Integer,Array<Integer>] stride  The stride, for every spatial axis or one per axis.
+    @param [Integer,Array<Integer>] pad  The zero padding on both sides, for every spatial axis or one per axis.
+    @param [Cumo::<%=class_name%>] y  A contiguous array of the shape of the result to write the result into and return.
+    @return [Cumo::<%=class_name%>]
+    @raise [Cumo::NArray::ShapeError] when the numbers of dimensions or the in_channels do not match.
+    @raise [RuntimeError] when a filter is larger than the padded input.
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -169,12 +194,4 @@ static VALUE
     return y;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND

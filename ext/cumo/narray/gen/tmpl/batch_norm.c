@@ -1,7 +1,40 @@
-#ifdef CUDNN_FOUND
+<% param_class = cudnn_param_class == "cT" ? class_name : "SFloat" %>
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
-// y = x.batch_norm(gamma, beta, running_mean:, running_var:, eps:, decay:, axis:, mean:, inv_std:)
+/*
+  Batch normalization for training, on cuDNN, with the mean and the variance
+  of this batch. It returns gamma * (self - mean) / sqrt(var + eps) + beta.
+  cuDNN normalizes each channel, the elements that share an index on axis 1,
+  over all the other axes. axis has to name those other axes, as [0] for
+  [N, C], [0, 2, 3] for [N, C, H, W] and [0, 2, 3, 4] for five dimensions.
+  Other values, such as the default [0] for four dimensions, also normalize
+  per channel, and expect gamma and the rest to have more elements than they
+  use. gamma, beta and the statistics have C elements in any shape, such as
+  [C] or [1, C, 1, 1]<% if param_class != class_name %>, and are Cumo::SFloat for Cumo::<%=class_name%><% end %>.
+
+  @overload batch_norm(gamma, beta, running_mean: nil, running_var: nil, mean: nil, inv_std: nil, eps: 2e-5, decay: 0.9, axis: [0], y: nil)
+    @param [Cumo::<%=param_class%>] gamma  The scale.
+    @param [Cumo::<%=param_class%>] beta  The shift.
+    @param [Cumo::<%=param_class%>] running_mean  Updated in place to decay * running_mean + (1 - decay) * mean. Give it with running_var.
+    @param [Cumo::<%=param_class%>] running_var  Updated in place in the same way, with the unbiased variance of this batch.
+    @param [Cumo::<%=param_class%>] mean  An array to write the mean of this batch into, for batch_norm_backward. Give it with inv_std.
+    @param [Cumo::<%=param_class%>] inv_std  An array for cuDNN to save the inverse of the standard deviation into, for batch_norm_backward.
+    @param [Float] eps  Added to the variance.
+    @param [Float] decay  How much of the running statistics is kept.
+    @param [Array<Integer>] axis  The axes other than the channel axis.
+    @param [Cumo::<%=class_name%>] y  A contiguous array of the shape of self to write the result into and return.
+    @return [Cumo::<%=class_name%>]
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -188,12 +221,4 @@ BATCH_NORM_ERROR:
     return y;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND

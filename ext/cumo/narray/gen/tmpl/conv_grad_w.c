@@ -1,4 +1,13 @@
-#ifdef CUDNN_FOUND
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
 static void
@@ -86,7 +95,19 @@ static VALUE
 }
 
 // cover_all=true is not supported with CUDNN
-// gw = x.conv_grad_w(gy, w_shape, stride: 1, pad: 0, gw: nil)
+/*
+  The gradient of conv with respect to its filters, on cuDNN. self is the
+  input of conv, with N of 2 or 3 spatial axes, and gy the gradient of its
+  result.
+
+  @overload conv_grad_w(gy, w_shape, stride: 1, pad: 0, gw: nil)
+    @param [Cumo::<%=class_name%>] gy  The gradient of the result of conv.
+    @param [Array<Integer>] w_shape  The shape of the filters.
+    @param [Integer,Array<Integer>] stride  The stride, for every spatial axis or one per axis.
+    @param [Integer,Array<Integer>] pad  The zero padding on both sides, for every spatial axis or one per axis.
+    @param [Cumo::<%=class_name%>] gw  A contiguous array of the shape w_shape to write the result into and return.
+    @return [Cumo::<%=class_name%>] the gradient, shaped w_shape.
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -180,12 +201,4 @@ static VALUE
     return gw;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND

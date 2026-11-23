@@ -1,12 +1,30 @@
-#ifdef CUDNN_FOUND
+// The stub comes first so that the function yard documents is the one below.
+#ifndef CUDNN_FOUND
+#include "cumo/cuda/cudnn.h"
+
+static VALUE
+<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
+{
+    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
+}
+#else // CUDNN_FOUND
 
 
 // cover_all=true is not supported with CUDNN
-// gy = x.pooling_backward(mode, y, kernel_size, stride: 1, pad: 0)
-//CUDNN_POOLING_MAX
-//CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
-//CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
-//CUDNN_POOLING_MAX_DETERMINISTIC
+/*
+  The gradient of pooling_forward, on cuDNN. self is the input of
+  pooling_forward, y its result and gy the gradient of y.
+
+  @overload pooling_backward(mode, y, gy, kernel_size, stride: kernel_size, pad: 0, gx: nil)
+    @param [Integer] mode  The mode given to pooling_forward.
+    @param [Cumo::<%=class_name%>] y  The result of pooling_forward.
+    @param [Cumo::<%=class_name%>] gy  The gradient of y.
+    @param [Integer,Array<Integer>] kernel_size  The kernel_size given to pooling_forward.
+    @param [Integer,Array<Integer>] stride  The stride, for every spatial axis or one per axis.
+    @param [Integer,Array<Integer>] pad  The padding on both sides, for every spatial axis or one per axis. Max pooling and the average that excludes padding leave padded positions out, and the average that includes padding counts them as zeros.
+    @param [Cumo::<%=class_name%>] gx  A contiguous array of the shape of self to write the result into and return.
+    @return [Cumo::<%=class_name%>] the gradient, shaped like self.
+*/
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
 {
@@ -129,12 +147,4 @@ POOLING_BACKAWARD_ERROR:
     return gx;
 }
 
-#else // CUDNN_FOUND
-#include "cumo/cuda/cudnn.h"
-
-static VALUE
-<%=c_func(-1)%>(int argc, VALUE argv[], VALUE self)
-{
-    rb_raise(cumo_cuda_eCUDNNError, "cuDNN is not available");
-}
 #endif // CUDNN_FOUND
