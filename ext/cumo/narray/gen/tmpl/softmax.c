@@ -5,7 +5,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *py, uint64_t rows, uint
   summing to one: y = exp(x - max) / sum(exp(x - max)), where the maximum is of
   that row and is subtracted so that exp cannot overflow.
   @overload softmax
-  Answers a new array: inplace! is not honoured.
+  Returns a new array: inplace! is not honoured.
   @return [Cumo::<%=class_name%>] returns the softmax, shaped like self.
 */
 static VALUE

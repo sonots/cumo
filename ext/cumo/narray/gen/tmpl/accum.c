@@ -56,9 +56,9 @@ static void
 <% else %>
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
+    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis. It can also be given as positional arguments.
     @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
-    @return [Cumo::<%= {'cT' => class_name, 'cRT' => real_class_name}.fetch(result_class) { result_class.delete_prefix('cumo_c') } %>] returns result of <%=name%>.
+    @return [Cumo::<%= {'cT' => class_name, 'cRT' => real_class_name}.fetch(result_class) { result_class.delete_prefix('cumo_c') } %>, Numeric] returns result of <%=name%>, a Ruby number when the result is 0-dimensional under compatible mode.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

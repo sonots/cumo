@@ -4,12 +4,12 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *pq, char *ps, uint64_t 
   Quantizes self to 8-bit integers, one scale per row of the last axis.
   Each row is taken on its own: the scale is the largest magnitude in it over
   127, and the row is that scale's multiples, rounded to nearest with ties away
-  from zero. A row of zeros answers a scale of zero and a row of zeros, which
+  from zero. A row of zeros gives a scale of zero and a row of zeros, which
   stands for the same values either way. A row holding an infinity or a NaN
-  answers that in its scale and a row of zeros, since neither has a value 8 bits
+  gives that in its scale and a row of zeros, since neither has a value 8 bits
   could stand for.
   @overload quantize_symmetric
-  Answers new arrays: inplace! is not honoured.
+  Returns new arrays: inplace! is not honoured.
   @return [Array] returns [quantized, scale], where quantized is a
     Cumo::Int8 shaped like self and scale is shaped like self without its last
     axis. The scale is the class the reduction accumulates in, which is

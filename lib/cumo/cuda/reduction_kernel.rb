@@ -51,7 +51,7 @@ module Cumo::CUDA
       @finals = {}
     end
 
-    # Reduces along axis:, every axis when it is nil, and answers the output
+    # Reduces along axis:, every axis when it is nil, and returns the output
     # or the outputs as an Array. keepdims: keeps the reduced axes as length
     # one. Outputs may be given after the inputs.
     def call(*args, axis: nil, keepdims: false)

@@ -40,8 +40,8 @@ static void
 /*
   Calculate polynomial.
     `x.poly(a0,a1,a2,...,an) = a0 + a1*x + a2*x**2 + ... + an*x**n`
-  @overload <%=name%> a0, a1, ..., an
-    @param [Cumo::NArray,Numeric] a0,a1,...,an
+  @overload <%=name%>(*coefficients)
+    @param [Cumo::NArray,Numeric] coefficients  a0, a1, ..., an.
     @return [Cumo::<%=class_name%>,Numeric] a Ruby number when the result is 0-dimensional under compatible mode.
 */
 static VALUE

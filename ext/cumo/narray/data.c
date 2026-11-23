@@ -510,8 +510,8 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
   Change the shape of self NArray without coping.
   Raise exception if self is non-contiguous.
 
-  @overload  reshape!(size0,size1,...)
-    @param sizeN [Integer] new shape
+  @overload  reshape!(*shape)
+    @param shape [Integer] new shape
     @return [Cumo::NArray] return self.
 */
 static VALUE
@@ -567,8 +567,8 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
   Copy and change the shape of NArray.
   Returns a copied NArray.
 
-  @overload  reshape(size0,size1,...)
-    @param sizeN [Integer] new shape
+  @overload  reshape(*shape)
+    @param shape [Integer] new shape
     @return [Cumo::NArray] a copy carrying the new shape.
 */
 static VALUE
@@ -735,7 +735,7 @@ void cumo_na_diagonal_stride_index_kernel_launch(size_t *idx, ssize_t s0, size_t
 
 /*
   Returns a diagonal view of NArray
-  @overload  diagonal([offset,axes])
+  @overload  diagonal(offset = 0, axes = [-2, -1])
     @param [Integer] offset  Diagonal offset from the main diagonal.
       The default is 0. k>0 for diagonals above the main diagonal,
       and k<0 for diagonals below the main diagonal.

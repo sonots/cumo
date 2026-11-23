@@ -1,7 +1,7 @@
 /*
   Array element reference or slice view.
-  @overload aref_cpu(dim0,...,dimL)
-    @param [Numeric,Range,etc] dim0,...,dimL  Multi-dimensional Index.
+  @overload aref_cpu(*indices)
+    @param [Numeric,Range,Array,true,false,Cumo::NArray] indices  Multi-dimensional Index.
     @return [Integer,Cumo::Bit] Element value or NArray view.
 
   --- Returns the element at +dim0+, +dim1+, ... are Numeric indices

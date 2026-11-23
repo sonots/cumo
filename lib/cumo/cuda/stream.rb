@@ -101,7 +101,7 @@ module Cumo::CUDA
       Runtime.cudaStreamQuery(handle)
     end
 
-    # Records an event after everything queued so far, and answers it.
+    # Records an event after everything queued so far, and returns it.
     def record(event = nil)
       (event || Event.new).record(self)
     end

@@ -1,7 +1,7 @@
 /*
   Array element(s) set.
-  @overload []=(dim0,..,dimL,val)
-    @param [Numeric,Range,etc] dim0,..,dimL  Multi-dimensional Index.
+  @overload []=(*indices, val)
+    @param [Numeric,Range,Array,true,false,Cumo::NArray] indices  Multi-dimensional Index.
     @param [Numeric,Cumo::NArray,etc] val  Value(s) to be set to self.
     @return [Numeric,Cumo::NArray,Array] returns val (last argument) as given.
 

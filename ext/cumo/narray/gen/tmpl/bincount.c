@@ -131,7 +131,7 @@ static VALUE
   Count the number of occurrences of each non-negative integer value.
   Only Integer-types has this method.
 
-  @overload <%=name%>([weight], minlength:nil)
+  @overload <%=name%>(weight = nil, minlength: nil)
     @param [SFloat or DFloat or Array] weight (optional) Array of
       float values. Its size along last axis should be same as that of self.
     @param [Integer] minlength (keyword, optional) Minimum size along

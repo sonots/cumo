@@ -62,7 +62,7 @@ module Cumo::CUDA
 
     attr_accessor :lowered_names
 
-    # Answers the kernel of that name as a Function: the name in the source
+    # Returns the kernel of that name as a Function: the name in the source
     # of a kernel inside extern "C", a name expression given at compile
     # time such as "kernel<float>", or a mangled name.
     def get_function(name)

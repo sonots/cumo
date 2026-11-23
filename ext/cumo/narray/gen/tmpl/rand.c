@@ -151,9 +151,14 @@ static void
     @param [Numeric] low  lower inclusive boundary of random numbers.
     @param [Numeric] high  upper exclusive boundary of random numbers.
 <% else %>
-  @overload rand([[low],high])
-    @param [Numeric] low  lower inclusive boundary of random numbers. (default=0)
-    @param [Numeric] high  upper exclusive boundary of random numbers. (default=1 or 1+1i for complex types)
+  @overload rand
+    @return [Cumo::<%=class_name%>] self, filled from 0 up to 1, or up to 1+1i for complex types.
+  @overload rand(high)
+    @param [Numeric] high  upper exclusive boundary of random numbers.
+    @return [Cumo::<%=class_name%>] self.
+  @overload rand(low, high)
+    @param [Numeric] low  lower inclusive boundary of random numbers.
+    @param [Numeric] high  upper exclusive boundary of random numbers.
 <% end %>
     @return [Cumo::<%=class_name%>] self.
   @example

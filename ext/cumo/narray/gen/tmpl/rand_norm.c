@@ -26,7 +26,7 @@ static void
 /*
   Generates random numbers from the normal distribution on self narray
   using Box-Muller Transformation.
-  @overload rand_norm([mu,[sigma]])
+  @overload rand_norm(mu = 0, sigma = 1)
     @param [Numeric] mu  mean of normal distribution. (default=0)
     @param [Numeric] sigma  standard deviation of normal distribution. (default=1)
     @return [Cumo::<%=class_name%>] self.

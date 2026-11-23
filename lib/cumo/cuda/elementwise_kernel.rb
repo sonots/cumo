@@ -40,7 +40,7 @@ module Cumo::CUDA
       @functions = {}
     end
 
-    # Applies the kernel and answers the output, or the outputs as an Array
+    # Applies the kernel and returns the output, or the outputs as an Array
     # when there are several. Outputs may be given after the inputs. size:
     # is the element count when no argument decides it. A raw output has to
     # be given unless size: is.

@@ -189,7 +189,7 @@ module Cumo
     end
 
     # Solves A X = B, A^T X = B or A^H X = B from the LU factorization of A
-    # that lu_fact answers.
+    # that lu_fact returns.
     #
     # @param lu [Cumo::NArray] the square matrix of factors
     # @param ipiv [Cumo::NArray] the 1-based pivot indices
@@ -217,7 +217,7 @@ module Cumo
     # factors, as scipy.linalg.lu does.
     #
     # @param a [Cumo::NArray] 2-dimensional, of shape [m, n]
-    # @param permute_l [Boolean] whether to answer P L in place of P and L
+    # @param permute_l [Boolean] whether to return P L in place of P and L
     # @return [Array<Cumo::NArray>] P, L and U, or P L and U
     def lu(a, permute_l: false)
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
@@ -248,7 +248,7 @@ module Cumo
     end
 
     # Computes the inverse of a matrix from the LU factorization lu_fact
-    # answers.
+    # returns.
     #
     # @param lu [Cumo::NArray] the square matrix of factors
     # @param ipiv [Cumo::NArray] the 1-based pivot indices
@@ -374,7 +374,7 @@ module Cumo
     end
 
     # Computes the inverse of a Hermitian positive definite matrix from the
-    # factor cho_fact answers, as LAPACK's potri does: only the uplo triangle
+    # factor cho_fact returns, as LAPACK's potri does: only the uplo triangle
     # holds the inverse.
     #
     # @param a [Cumo::NArray] the factor
@@ -405,7 +405,7 @@ module Cumo
       from_column_major(inv)
     end
 
-    # Solves A X = B from the Cholesky factor of A that cho_fact answers.
+    # Solves A X = B from the Cholesky factor of A that cho_fact returns.
     #
     # @param a [Cumo::NArray] the factor
     # @param b [Cumo::NArray] 1- or 2-dimensional
@@ -488,7 +488,7 @@ module Cumo
     # transpose, whose eigenvalues are matched to the eigenvalues of the
     # matrix. For an eigenvalue that is ill-conditioned, as in a defective
     # matrix, the left eigenvector then belongs to an eigenvalue that
-    # differs from the one answered by about its rounding error.
+    # differs from the one returned by about its rounding error.
     #
     # @param a [Cumo::NArray] the square matrix
     # @param left [Boolean] whether to compute the left eigenvectors
@@ -662,7 +662,7 @@ module Cumo
     #   2-dimensional unless ord is nil
     # @param keepdims [Boolean] whether the normed axes are left with size one
     # @return [Float, Integer, Complex, Cumo::NArray] a scalar, which waits for
-    #   the GPU, where numo-linalg-alt answers one
+    #   the GPU, where numo-linalg-alt returns one
     def norm(a, ord = nil, axis: nil, keepdims: false)
       a = NArray.asarray(a) unless a.is_a?(NArray)
       return 0.0 if a.empty?
@@ -704,7 +704,7 @@ module Cumo
     #   or an ord of the matrix norm: 'fro', 'nuc', 1, -1, 'inf', '-inf' or
     #   an infinite Numeric
     # @return [Cumo::NArray, Float] zero-dimensional for nil, 2, -2 and 'fro',
-    #   as numo-linalg-alt answers, and a Float for the others
+    #   as numo-linalg-alt returns, and a Float for the others
     def cond(a, ord = nil)
       if ord.nil? || ord == 2 || ord == -2
         svals = svdvals(a)
@@ -770,7 +770,7 @@ module Cumo
     # @param mode [String] 'reduce' for Q of shape [m, m] and R of [m, n],
     #   'r' for R alone, 'economic' for [m, k] and [k, n] with k = min(m, n),
     #   'raw' for the Householder vectors and their factors as LAPACK's geqrf
-    #   answers them
+    #   returns them
     # @return [Array<Cumo::NArray>, Cumo::NArray] Q and R, R, or the vectors
     #   and the factors
     def qr(a, mode: 'reduce')

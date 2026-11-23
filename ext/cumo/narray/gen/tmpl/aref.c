@@ -3,9 +3,9 @@ static VALUE
 
 /*
   Array element reference or slice view.
-  @overload [](dim0,...,dimL)
-    @param [Numeric,Range,etc] dim0,...,dimL  Multi-dimensional Index.
-    @return [Cumo::<%=class_name%>] NArray view. An integer index array of two or more dimensions gives a copy.
+  @overload [](*indices)
+    @param [Numeric,Range,Array,true,false,Cumo::NArray] indices  Multi-dimensional Index.
+    @return [Cumo::<%=class_name%>, <%= is_object ? 'Object' : 'Numeric' %>] NArray view, or the element as a Ruby object under compatible mode. An integer index array of two or more dimensions gives a copy.
 
   --- Returns the element at +dim0+, +dim1+, ... are Numeric indices
   for each dimension, or returns a NArray View as a sliced subarray if

@@ -6,8 +6,8 @@ module Cumo::CUDA
   # CUDA source to compile with NVRTC, as Compiler does. Call destroy when it
   # is no longer needed.
   class NVRTCProgram
-    # name_expressions: names such as "kernel<float>" whose mangled names
-    # lowered_name answers once the program is compiled.
+    # name_expressions: names such as `kernel<float>` whose mangled names
+    # lowered_name returns once the program is compiled.
     def initialize(src, name: "default_program", headers: [], include_names: [], name_expressions: [])
       @ptr = nil
       @src = src # should be UTF-8

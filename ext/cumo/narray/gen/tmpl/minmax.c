@@ -44,9 +44,9 @@ static void
 <% else %>
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-    @param [Numeric,Array,Range] axis  Finds min-max along the axis.
+    @param [Numeric,Array,Range] axis  Finds min-max along the axis. It can also be given as positional arguments.
     @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-    @return [Cumo::<%=class_name%>,Cumo::<%=class_name%>] min and max of self.
+    @return [Array(Cumo::<%=class_name%>, Cumo::<%=class_name%>)] min and max of self, each a Ruby number when the result is 0-dimensional under compatible mode.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

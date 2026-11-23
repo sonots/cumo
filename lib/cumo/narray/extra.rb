@@ -24,8 +24,8 @@ module Cumo
     end
 
     # Copies this array to the host. Into a Cumo::CUDA::PinnedMemory it is
-    # asynchronous on the current stream, or on stream:, and answers the
-    # buffer; with nothing to copy into it answers the bytes as a String.
+    # asynchronous on the current stream, or on stream:, and returns the
+    # buffer; with nothing to copy into it returns the bytes as a String.
     def get(out = nil, stream: nil)
       case out
       when nil
@@ -1286,10 +1286,10 @@ module Cumo
     #   # [0, 3, 4]
     #
     # @param v [Numeric, Array, Cumo::NArray] the values to place.
-    # @param side ["left", "right"] "left" answers the first place each value
+    # @param side ["left", "right"] "left" returns the first place each value
     #   can go, and "right" the last.
     # @param sorter [Cumo::NArray, Array, nil] the indices that sort self, as
-    #   argsort answers them, for a self that is not sorted itself.
+    #   argsort returns them, for a self that is not sorted itself.
     # @return [Cumo::Int64, Integer] the places, shaped as v. An Integer under
     #   compatible mode when v is a number.
     def searchsorted(v, side: "left", sorter: nil)
@@ -1396,7 +1396,7 @@ module Cumo
 
     # Dot product of two arrays.
     # @param b [Cumo::NArray]
-    # @return [Cumo::NArray]  return dot product
+    # @return [Cumo::NArray, Numeric]  return dot product, a Ruby number when the result is 0-dimensional under compatible mode
 
     def dot(b)
       t = self.class::UPCAST[b.class]
@@ -1459,7 +1459,7 @@ module Cumo
     # Same as `(a*b).sum(axis:-1)`.
     # @param b [Cumo::NArray]
     # @param axis [Integer] applied axis
-    # @return [Cumo::NArray]  return (a*b).sum(axis:axis)
+    # @return [Cumo::NArray, Numeric]  return (a*b).sum(axis:axis), a Ruby number when the result is 0-dimensional under compatible mode
 
     def inner(b, axis:-1)
       mulsum(b, axis:axis)
@@ -1579,8 +1579,8 @@ module Cumo
     # Compute a covariance matrix.
     #
     # @param y [Cumo::NArray] (optional) If not nil, the covariance matrix of `self` and `y` is computed.
-    # @param ddof [Integer] (optional) Delta degrees of freedom, 0 or 1. The divisor used in calculations is `N - ddof`,
-    #   where `N` represents the number of observations.
+    # @param ddof [Integer] (optional) Delta degrees of freedom, 0 or 1. Without weights the divisor is `N - ddof`,
+    #   where `N` represents the number of observations. With weights it follows numpy.cov.
     # @param fweights [Cumo::NArray] (optional) 1-D array of integer frequency weights.
     # @param aweights [Cumo::NArray] (optional) 1-D array of observation vector weights.
     # @return [Cumo::NArray, Float]  return covariance matrix, a Float under

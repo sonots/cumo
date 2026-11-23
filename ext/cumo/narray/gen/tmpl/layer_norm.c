@@ -4,7 +4,7 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(char *px, char *pg, char *pb, char *py,
   Normalizes self along its last axis, then scales by gamma and shifts by beta.
   Each row is taken on its own: y = (x - mean) / sqrt(var + eps) * gamma + beta,
   where mean and var are of that row and var divides by the row length.
-  Answers a new array: inplace! is not honoured.
+  Returns a new array: inplace! is not honoured.
   @overload layer_norm(gamma, beta, eps:1e-5)
     @param [Cumo::<%=class_name%>] gamma  scale, one-dimensional and as long as the last axis.
     @param [Cumo::<%=class_name%>] beta  shift, one-dimensional and as long as the last axis.
