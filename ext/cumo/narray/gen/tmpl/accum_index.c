@@ -43,9 +43,9 @@ static void
 <% else %>
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-    @param [Numeric,Array,Range] axis  Affected dimensions. It can also be given as positional arguments.
-    @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
-    @return [Cumo::Int32,Cumo::Int64,Integer] returns result index of <%=name%>, an Int64 if self has 2**32 or more elements<% if is_object %>, and 0 for a 0-dimensional self<% end %>. It is an Integer when the result is 0-dimensional under compatible mode.
+    @param [Numeric,Array,Range] axis  Affected dimensions. One or more Integers can also be given as positional arguments, where an Array is not accepted.
+    @param [Boolean] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
+    @return [Cumo::Int32,Cumo::Int64,Integer] returns result index of <%=name%>, an Int64 if self has 2**32 or more elements<% if is_object %>, and 0 for a 0-dimensional self<% else %>. It is an Integer when the result is 0-dimensional under compatible mode<% end %>.
   @example
       Cumo::NArray[3,4,1,2].<%=name%>
       # => Cumo::Int32#shape=[]

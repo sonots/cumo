@@ -131,12 +131,12 @@ static VALUE
   Count the number of occurrences of each non-negative integer value.
   Only Integer-types has this method.
 
-  @overload <%=name%>(weight = nil, minlength: nil)
-    @param [SFloat or DFloat or Array] weight (optional) Array of
+  @overload <%=name%>(weight = nil, minlength: 0)
+    @param [Cumo::SFloat,Cumo::DFloat,Array] weight (optional) Array of
       float values. Its size along last axis should be same as that of self.
     @param [Integer] minlength (keyword, optional) Minimum size along
-      last axis for the output array.
-    @return [UInt32 or UInt64 or SFloat or DFloat]
+      last axis for the output array. nil is not accepted.
+    @return [Cumo::UInt32,Cumo::UInt64,Cumo::SFloat,Cumo::DFloat]
       Returns Float NArray if weight array is supplied,
       otherwise returns UInt32 or UInt64 depending on the size along last axis.
   @example

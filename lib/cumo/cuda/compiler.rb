@@ -49,8 +49,8 @@ module Cumo::CUDA
       dir
     end
 
-    # With name_expressions: returns the PTX and a Hash of each expression
-    # to its mangled name; without, the PTX.
+    # With name_expressions that are not empty, it returns the PTX and a Hash
+    # of each expression to its mangled name. Otherwise it returns the PTX.
     def compile_using_nvrtc(source, options: [], arch: nil, name_expressions: nil)
       arch ||= get_arch
       options += ["-arch=#{arch}"]

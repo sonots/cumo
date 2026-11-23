@@ -511,7 +511,8 @@ cumo_na_check_reshape(int argc, VALUE *argv, VALUE self, size_t *shape)
   Raise exception if self is non-contiguous.
 
   @overload  reshape!(*shape)
-    @param shape [Integer] new shape
+    @param shape [Integer,nil,true] new shape, at least one size. nil or true
+      in one place takes the size the others leave.
     @return [Cumo::NArray] return self.
 */
 static VALUE
@@ -568,7 +569,8 @@ cumo_na_reshape_bang(int argc, VALUE *argv, VALUE self)
   Returns a copied NArray.
 
   @overload  reshape(*shape)
-    @param shape [Integer] new shape
+    @param shape [Integer,nil,true] new shape, at least one size. nil or true
+      in one place takes the size the others leave.
     @return [Cumo::NArray] a copy carrying the new shape.
 */
 static VALUE

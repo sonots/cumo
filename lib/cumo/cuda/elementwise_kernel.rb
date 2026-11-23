@@ -41,7 +41,8 @@ module Cumo::CUDA
     end
 
     # Applies the kernel and returns the output, or the outputs as an Array
-    # when there are several. Outputs may be given after the inputs. size:
+    # when there are several. The Array is empty for a kernel that declares no
+    # output. Outputs may be given after the inputs. size:
     # is the element count when no argument decides it. A raw output has to
     # be given unless size: is.
     def call(*args, size: nil)

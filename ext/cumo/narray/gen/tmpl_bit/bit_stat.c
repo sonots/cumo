@@ -10,9 +10,9 @@ static void
 /*
   <%=name%> of self, where a set bit counts as one and a clear bit as zero.
   @overload <%=op_map%>(axis:nil, keepdims:false)
-    @param [Integer,Array,Range] axis  axes to be reduced. It can also be given as positional arguments.
+    @param [Integer,Array,Range] axis  axes to be reduced. One or more Integers can also be given as positional arguments, where an Array is not accepted.
     @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-    @return [Cumo::DFloat] returns result of <%=name%>.
+    @return [Cumo::DFloat, Float] returns result of <%=name%>, a Float when the result is 0-dimensional under compatible mode.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

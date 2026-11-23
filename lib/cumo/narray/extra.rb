@@ -25,7 +25,8 @@ module Cumo
 
     # Copies this array to the host. Into a Cumo::CUDA::PinnedMemory it is
     # asynchronous on the current stream, or on stream:, and returns the
-    # buffer; with nothing to copy into it returns the bytes as a String.
+    # buffer; with nothing to copy into it returns the bytes as a String, which
+    # Cumo::RObject has no to_binary for.
     def get(out = nil, stream: nil)
       case out
       when nil
@@ -1396,7 +1397,9 @@ module Cumo
 
     # Dot product of two arrays.
     # @param b [Cumo::NArray]
-    # @return [Cumo::NArray, Numeric]  return dot product, a Ruby number when the result is 0-dimensional under compatible mode
+    # @return [Cumo::NArray, Numeric]  return dot product, a Ruby number under
+    #   compatible mode where the result is 0-dimensional and not a product of
+    #   two 0-dimensional arrays
 
     def dot(b)
       t = self.class::UPCAST[b.class]
@@ -1456,10 +1459,11 @@ module Cumo
     end
 
     # Inner product of two arrays.
-    # Same as `(a*b).sum(axis:-1)`.
+    # Same as `mulsum(b, axis: axis)`, which accumulates in the dtype of the
+    # product, where `(a*b).sum(axis: axis)` widens an integer dtype first.
     # @param b [Cumo::NArray]
     # @param axis [Integer] applied axis
-    # @return [Cumo::NArray, Numeric]  return (a*b).sum(axis:axis), a Ruby number when the result is 0-dimensional under compatible mode
+    # @return [Cumo::NArray, Numeric]  return mulsum(b, axis: axis), a Ruby number when the result is 0-dimensional under compatible mode
 
     def inner(b, axis:-1)
       mulsum(b, axis:axis)
@@ -1580,7 +1584,8 @@ module Cumo
     #
     # @param y [Cumo::NArray] (optional) If not nil, the covariance matrix of `self` and `y` is computed.
     # @param ddof [Integer] (optional) Delta degrees of freedom, 0 or 1. Without weights the divisor is `N - ddof`,
-    #   where `N` represents the number of observations. With weights it follows numpy.cov.
+    #   where `N` represents the number of observations. Weights change the
+    #   divisor, and an integer weight keeps the division integer.
     # @param fweights [Cumo::NArray] (optional) 1-D array of integer frequency weights.
     # @param aweights [Cumo::NArray] (optional) 1-D array of observation vector weights.
     # @return [Cumo::NArray, Float]  return covariance matrix, a Float under

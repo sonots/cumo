@@ -144,12 +144,12 @@ static VALUE
   @overload <%=op_map%>(other, axis:nil, keepdims:false)
 <% end %>
     @param [Cumo::NArray] other
-    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis. It can also be given as positional arguments.
+    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis. One or more Integers can also be given as positional arguments, where an Array is not accepted.
     @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
 <% if is_float %>
     @param [TrueClass] nan (keyword) If true, apply NaN-aware algorithm (avoid NaN if exists).
 <% end %>
-    @return [Cumo::NArray, Numeric] <%=name%> of self and other, a Ruby number when the result is 0-dimensional under compatible mode.
+    @return [Cumo::NArray, <%= is_object ? 'Object' : 'Numeric' %>] <%=name%> of self and other, <%= is_object ? 'the stored object' : 'a Ruby number' %> when the result is 0-dimensional under compatible mode.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
