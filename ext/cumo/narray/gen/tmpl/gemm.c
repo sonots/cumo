@@ -19,6 +19,10 @@
   num_to_scalar = acc_type.empty? ? 'm_num_to_data' : "(#{acc_type})NUM2DBL"
   scalar_one = acc_one
   scalar_zero = acc_zero
+  # Whether the scalar cuBLAS receives is zero, which is the one value it reads
+  # no c for. The Ruby object it came from cannot answer this: another kind of
+  # number rounds to zero on the way in, and == is the caller's to define.
+  beta_is_zero = is_complex ? 'c_is_zero(g.beta)' : '(g.beta == 0)'
 %>
 
 #define ROW_SIZE(na) ((na)->shape[(na)->ndim-2])
@@ -346,6 +350,7 @@ static void
   @overload <%=name%>(<%=args_v%>)
     <%=params%>
     @return [Cumo::<%=class_name%>] returns alpha \* self \* b + beta \* c, the matrix product of self and b over their last two axes. An inplace c receives the result, and any other c is left as it is.
+    @raise [ArgumentError] when c is not given and beta does not reach cuBLAS as zero, since there is no c for it to scale. A beta too small for this class to hold reaches it as zero, and scales nothing.
 <%=description%>
 */
 static VALUE
@@ -403,6 +408,14 @@ static VALUE
 
     if (c == Qnil) { // c is not given.
         cumo_narray_t *nbase = a_batch >= b_batch ? na : nb;
+        // cuBLAS reads c where beta is not zero, and the allocation below does
+        // not fill it, so beta would scale whatever the memory pool left there.
+        if (!<%=beta_is_zero%>) {
+            rb_raise(rb_eArgError, "beta scales c, which is not given");
+        }
+        // A negative zero compares equal to zero but is another bit pattern, so
+        // the scalar handed over is the plain one cuBLAS reads no c for.
+        g.beta = <%=scalar_zero%>;
         int ndim = CUMO_NA_NDIM(nbase);
         size_t *shape = ALLOCA_N(size_t, ndim);
         memcpy(shape, CUMO_NA_SHAPE(nbase), sizeof(size_t) * (ndim - 2)); // batch dimensions

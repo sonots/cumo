@@ -1527,6 +1527,28 @@ class NArrayTest < Test::Unit::TestCase
           arg.define_singleton_method(:dup) { small }
           assert_raise(Cumo::NArray::ShapeError) { dtype.new(4, 4).seq.gemm(arg) }
         end
+        # cuBLAS reads c where beta is not zero, and a c that was not given is
+        # allocated without being filled, so beta scaled whatever the memory
+        # pool had left there.
+        test "matrix.gemm(matrix) refuses a beta with no c to scale" do
+          a = dtype.new(2, 2).seq
+          assert_raise(ArgumentError) { a.gemm(a, beta: 1) }
+          assert_raise(ArgumentError) { a.gemm(a, nil, beta: 1) }
+          assert_raise(ArgumentError) { a.gemm(a, beta: -1) }
+          if [Cumo::DComplex, Cumo::SComplex].include?(dtype)
+            assert_raise(ArgumentError) { a.gemm(a, beta: Complex(0, 1)) }
+          end
+          # the shapes are answered first, since that is what the caller has
+          # to put right either way
+          assert_raise(Cumo::NArray::ShapeError) { a.gemm(dtype.new(3, 3).seq, beta: 1) }
+          # a beta cuBLAS receives as zero reads no c, so the call is taken.
+          # The second one is a Rational no float holds, which arrives as zero.
+          assert { a.gemm(a, beta: 0) == a.gemm(a) }
+          assert { a.gemm(a, beta: Rational(1, 10**400)) == a.gemm(a) }
+          # a c of its own is taken as before
+          assert { a.gemm(a, dtype.zeros(2, 2), beta: 1) == a.gemm(a) }
+          assert { a.gemm(a, dtype.ones(2, 2), beta: 2) == a.gemm(a) + 2 }
+        end
         test "matrix.gemm(matrix) rejects an inplace c that is not contiguous" do
           a = dtype.new(4, 4).seq
           b = dtype.new(4, 4).seq

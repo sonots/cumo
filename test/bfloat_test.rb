@@ -172,6 +172,13 @@ class BFloatTest < Test::Unit::TestCase
     assert_equal [[19.0, 22.0], [43.0, 50.0]], a.dot(b).to_a
   end
 
+  test "gemm refuses a beta with no c to scale" do
+    a = dtype.cast([[1.0, 2.0], [3.0, 4.0]])
+    assert_raise(ArgumentError) { a.gemm(a, beta: 1) }
+    assert_equal a.gemm(a).to_a, a.gemm(a, beta: 0).to_a
+    assert_equal a.gemm(a).to_a, a.gemm(a, beta: 1e-50).to_a
+  end
+
   test "gemm accumulates in float, so a product past 256 survives" do
     # 300 * 300 is 90000, which a bfloat16 accumulator cannot hold at all.
     a = dtype.cast([[300.0]])
