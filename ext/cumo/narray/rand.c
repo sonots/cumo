@@ -47,6 +47,17 @@ cumo_na_seed(u_int64_t seed)
     cumo_atomic_size_store(&cumo_cuda_rand_offset_value, 0);
 }
 
+/*
+  Sets the seed of the random number generator, so that the same seed draws
+  the same numbers from rand and rand_norm. Without an argument it makes one
+  from the time, the process id and a counter.
+
+  @overload srand
+    @return [nil]
+  @overload srand(seed)
+    @param [Integer] seed
+    @return [nil]
+*/
 static VALUE
 cumo_na_s_srand(int argc, VALUE *argv, VALUE obj)
 {

@@ -102,6 +102,12 @@ iter_copy_bytes_indexer(cumo_na_loop_t *const lp)
     }
 }
 
+/*
+  Returns a copy of self that shares no memory with it, as dup does.
+
+  @return [Cumo::NArray]
+  @deprecated Use dup.
+*/
 VALUE
 cumo_na_copy(VALUE self)
 {
@@ -148,6 +154,16 @@ iter_swap_byte_indexer(cumo_na_loop_t *const lp)
     cumo_iter_swap_byte_indexer_kernel_launch(&a1, &a2, &indexer, (ssize_t)lp->args[0].elmsz);
 }
 
+/*
+  Returns a copy with the bytes of each element reversed, or self with its
+  own bytes reversed when self is inplace. The byte order flag of the result
+  is flipped, so swapping twice returns to the host's order. Elements are
+  still read in the host's order, so ones wider than a byte read as other
+  numbers until they are swapped back. It makes binary data in the other
+  byte order for to_binary. Cumo::RObject does not have it.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_swap_byte(VALUE self)
 {
@@ -178,6 +194,12 @@ cumo_na_swap_byte(VALUE self)
 }
 
 
+/*
+  Returns self if its bytes are in network order (big-endian), and swap_byte of self
+  otherwise.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_to_network(VALUE self)
 {
@@ -187,6 +209,12 @@ cumo_na_to_network(VALUE self)
     return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
+/*
+  Returns self if its bytes are in VAX order (little-endian), and swap_byte of self
+  otherwise.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_to_vacs(VALUE self)
 {
@@ -196,6 +224,12 @@ cumo_na_to_vacs(VALUE self)
     return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
+/*
+  Returns self if its bytes are in the host's order, and swap_byte of self
+  otherwise.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_to_host(VALUE self)
 {
@@ -205,6 +239,12 @@ cumo_na_to_host(VALUE self)
     return rb_funcall(self, cumo_id_swap_byte, 0);
 }
 
+/*
+  Returns self if its bytes are swapped from the host's order, and
+  swap_byte of self otherwise.
+
+  @return [Cumo::NArray]
+*/
 static VALUE
 cumo_na_to_swapped(VALUE self)
 {
@@ -317,6 +357,22 @@ cumo_na_transpose_map(VALUE self, int *map)
 
 #define SWAP(a,b,tmp) {tmp=a;a=b;b=tmp;}
 
+/*
+  Returns a view with the axes in another order. Without arguments it
+  reverses the order of the axes. k arguments reorder the first k axes when
+  they are all non-negative, so transpose(1, 0) swaps the first two, and the
+  last k axes when they are all negative, so transpose(-1, -2) swaps the
+  last two.
+
+  @overload transpose(*axes)
+    @param [Integer] axes  The new order of the first or the last axes.
+  @return [Cumo::NArray] a view of self.
+  @example
+    x = Cumo::DFloat.new(2, 3, 4).seq
+    x.transpose.shape          # => [4, 3, 2]
+    x.transpose(1, 0).shape    # => [3, 2, 4]
+    x.transpose(-1, -2).shape  # => [2, 4, 3]
+*/
 static VALUE
 cumo_na_transpose(int argc, VALUE *argv, VALUE self)
 {
@@ -657,6 +713,12 @@ cumo_na_flatten_dim(VALUE self, int sd)
     return view;
 }
 
+/*
+  Returns a 1-dimensional view of the elements of self in their order, which
+  shares memory with self.
+
+  @return [Cumo::NArray] a view of self.
+*/
 VALUE
 cumo_na_flatten(VALUE self)
 {
@@ -1022,7 +1084,7 @@ cumo_na_zero_above_diagonal(VALUE self, VALUE vk)
 void
 Init_cumo_na_data(void)
 {
-    rb_define_method(cNArray, "copy", cumo_na_copy, 0); // deprecated
+    rb_define_method(cNArray, "copy", cumo_na_copy, 0);
 
     rb_define_method(cNArray, "flatten", cumo_na_flatten, 0);
     rb_define_private_method(cNArray, "concatenate_parts", cumo_na_concat_parts, 2);
