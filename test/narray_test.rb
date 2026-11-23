@@ -2684,10 +2684,12 @@ class NArrayTest < Test::Unit::TestCase
 
     # A draw is a uniform number times the span, plus low. Both the product and
     # the sum round to the nearest value the type holds, which is the upper
-    # bound itself once low is far enough from zero.
+    # bound itself once low is far enough from zero. The bfloat16 range is
+    # wider because its steps around 1000 are, and a narrower one would hold
+    # one value and never round up to the bound.
     far_ranges = [
       [Cumo::HFloat, 1000.0, 1001.0],
-      [Cumo::BFloat, 1000.0, 1001.0],
+      [Cumo::BFloat, 1000.0, 1008.0],
       [Cumo::SFloat, 1_000_000.0, 1_000_001.0],
       [Cumo::DFloat, 1e15, 1e15 + 1],
       [Cumo::RObject, 1e15, 1e15 + 1],
@@ -2695,27 +2697,60 @@ class NArrayTest < Test::Unit::TestCase
       [Cumo::DComplex, Complex(1e15, 1e15), Complex(1e15 + 1, 1e15 + 1)],
     ]
 
+    def assert_within(low, high, drawn)
+      values = drawn.flat_map { |x| x.is_a?(Complex) ? [x.real, x.imag] : [x] }
+      lo = low.is_a?(Complex) ? low.real : low
+      hi = high.is_a?(Complex) ? high.real : high
+      # A NaN answers false to both, so the count has to be of what is inside.
+      assert_equal(values.size, values.count { |x| x >= lo && x < hi })
+    end
+
     far_ranges.each do |dtype, low, high|
       test "#{dtype}#rand leaves out a bound far from zero" do
-        drawn = dtype.new(2000).rand(low, high).to_a
-        values = drawn.flat_map { |x| x.is_a?(Complex) ? [x.real, x.imag] : [x] }
-        lo = low.is_a?(Complex) ? low.real : low
-        hi = high.is_a?(Complex) ? high.real : high
-        assert_equal(0, values.count { |x| x >= hi })
-        assert_equal(0, values.count { |x| x < lo })
+        Cumo::NArray.srand(7)
+        assert_within(low, high, dtype.new(2000).rand(low, high).to_a)
       end
 
       test "#{dtype}#rand answers low for a range with nothing in it" do
+        Cumo::NArray.srand(7)
         assert_equal([low] * 4, dtype.new(4).rand(low, low).to_a)
       end
     end
 
-    # The span of this one is wider than bfloat16 reaches, so every draw lands
-    # on the bound and takes the largest value below it.
-    test "BFloat#rand leaves out a bound its span cannot reach" do
-      drawn = Cumo::BFloat.new(256).rand(-3e38, 3e38).to_a
-      assert_equal(0, drawn.count { |x| x >= 3e38 })
-      assert_equal(0, drawn.count { |x| x < -3e38 })
+    # The span of each of these is wider than the type holds, so a draw cannot
+    # be taken from it. The bounds are weighted instead, which both keeps the
+    # draw inside them and leaves it spread. The bounds are the largest value
+    # of the type, since a bound it has to round would move on the way in.
+    [Cumo::BFloat, Cumo::SFloat, Cumo::DFloat].map { |t| [t, -t::MAX, t::MAX] }.each do |dtype, low, high|
+      test "#{dtype}#rand spreads over a range wider than its span" do
+        Cumo::NArray.srand(7)
+        drawn = dtype.new(2000).rand(low, high).to_a
+        assert_within(low, high, drawn)
+        assert_operator(drawn.uniq.size, :>, 100)
+      end
+    end
+
+    # The sum goes through a Float, which cannot tell these two bounds apart,
+    # so every draw reaches the upper one and the only value left is low.
+    test "RObject#rand answers low for bounds no Float lies between" do
+      Cumo::NArray.srand(7)
+      low = 2**54 - 1
+      assert_equal([low] * 4, Cumo::RObject.new(4).rand(low, 2**54).to_a)
+    end
+
+    [[0, Float::INFINITY], [-1e308, 1e308], [0, 10**400]].each do |low, high|
+      test "RObject#rand answers numbers below a bound no Float can reach, #{low} to #{high.class}" do
+        Cumo::NArray.srand(7)
+        drawn = Cumo::RObject.new(4).rand(low, high).to_a
+        assert_equal(drawn.size, drawn.count { |x| x >= low && x < high })
+      end
+    end
+
+    # The bounds of these do not answer <, so the draw is left as it was.
+    test "RObject#rand takes bounds that do not compare" do
+      Cumo::NArray.srand(7)
+      drawn = Cumo::RObject.new(8).rand(Complex(1, 2), Complex(2, 2)).to_a
+      assert_equal(drawn.size, drawn.count { |x| x.imag == 2 && x.real >= 1 && x.real < 2 })
     end
 
     test "rand over a view" do

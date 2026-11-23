@@ -86,6 +86,32 @@ void <%="cumo_#{c_iter}_kernel_launch"%>(cumo_na_iarray_t* a1, cumo_na_indexer_t
 void <%="cumo_#{c_iter}_stridx_kernel_launch"%>(cumo_na_iarray_stridx_t* a1, cumo_na_indexer_t* indexer, uint64_t seed, uint64_t offset, dtype low, <%=rand_type%> max, <%=high_type%> high, int shift);
 <% end %>
 
+<% if is_object %>
+// Only a Float or an Integer bound can be compared with a draw, which goes
+// through a Float, and stepped below without a conversion. A bound of any
+// other kind is left as it was.
+static inline int
+<%=c_iter%>_real_p(dtype v)
+{
+    return RB_FLOAT_TYPE_P(v) || RB_INTEGER_TYPE_P(v);
+}
+
+// A draw that rounds up to the upper bound, which rand does not include,
+// takes the largest Float below it instead, or low where even that is out of
+// the range. That value carries the weight of every draw that rounded up to
+// the bound, as it does on the device.
+static dtype
+<%=c_iter%>_value(dtype low, dtype max, dtype high, dtype top, int bounded)
+{
+    dtype x = m_add(<%=m_rand%>,low);
+
+    if (bounded && m_ge(x,high)) {
+        return top;
+    }
+    return x;
+}
+<% end %>
+
 static void
 <%=c_iter%>(cumo_na_loop_t *const lp)
 {
@@ -108,28 +134,27 @@ static void
         ssize_t  s1;
         size_t  *idx1;
         dtype x;
-        // The sum goes through a Float, which can round up to the upper bound
-        // that rand does not include. An object has no neighbour below that
-        // bound to step to, so such a draw is dropped and another taken. A
-        // range that does not rise would drop every draw, and is left as it was.
-        int bounded = m_lt(low, high);
+        int bounded = <%=c_iter%>_real_p(low) && <%=c_iter%>_real_p(high) && m_lt(low, high);
+        dtype top = low;
 
+        if (bounded) {
+            top = DBL2NUM(nextafter(NUM2DBL(high), -HUGE_VAL));
+            if (m_lt(top, low)) {
+                top = low;
+            }
+        }
         CUMO_INIT_COUNTER(lp, i);
         CUMO_INIT_PTR_IDX(lp, 0, p1, s1, idx1);
         CUMO_SHOW_SYNCHRONIZE_FIXME_WARNING_ONCE("<%=name%>", "<%=type_name%>");
         cumo_cuda_runtime_device_synchronize();
         if (idx1) {
             for (; i--;) {
-                do {
-                    x = m_add(<%=m_rand%>,low);
-                } while (bounded && m_ge(x,high));
+                x = <%=c_iter%>_value(low, max, high, top, bounded);
                 CUMO_SET_DATA_INDEX(p1,idx1,dtype,x);
             }
         } else {
             for (; i--;) {
-                do {
-                    x = m_add(<%=m_rand%>,low);
-                } while (bounded && m_ge(x,high));
+                x = <%=c_iter%>_value(low, max, high, top, bounded);
                 CUMO_SET_DATA_STRIDE(p1,s1,dtype,x);
             }
         }

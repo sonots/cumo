@@ -31,12 +31,16 @@ next_below = is_double_precision ? "nextafter" : "nextafterf"
 
 <% if !is_int && acc_type.empty? %>
 // The product and the sum round to the nearest value the type holds, which
-// can be the upper bound rand does not include, so a draw that reaches it
-// takes the neighbour below. A range that does not rise is left as it was.
+// can be the upper bound rand does not include. Such a draw takes the
+// neighbour below the bound, which carries the weight of every draw that
+// rounded up to it. A range that does not rise is left alone.
 __device__ static rtype
-<%="cumo_#{c_iter}_component"%>(curandStatePhilox4_32_10_t *st, rtype low, rtype max, rtype high)
+<%="cumo_#{c_iter}_component"%>(curandStatePhilox4_32_10_t *st, rtype low, rtype span, rtype high)
 {
-    rtype v = cumo_rand_uniform(st) * max + low;
+    rtype u = cumo_rand_uniform(st);
+    // A span the type cannot hold leaves every draw infinite, or NaN where u
+    // is zero, so the bounds are weighted instead. That never leaves them.
+    rtype v = isfinite(span) ? (u * span + low) : ((1 - u) * low + u * high);
     if (low < high && v >= high) {
         v = <%=next_below%>(high, low);
     }
@@ -68,10 +72,11 @@ __device__ static dtype
     //<% elsif !acc_type.empty? %>
     // Rounding the float into the element type can land on or past the upper
     // bound, which rand does not include, so such a draw takes the largest
-    // value the type holds below it. A range that does not rise is left as it
-    // was.
+    // value the type holds below it. A range that does not rise is left alone.
     <%=acc_type%> flow = <%=to_acc%>(low);
-    dtype h = <%=from_acc%>(cumo_rand_uniform(st) * max + flow);
+    <%=acc_type%> u = cumo_rand_uniform(st);
+    <%=acc_type%> v = isfinite(max) ? (u * max + flow) : ((1 - u) * flow + u * high);
+    dtype h = <%=from_acc%>(v);
     if (flow < high && <%=to_acc%>(h) >= high) {
         h = <%=from_acc%>(high);
         if (<%=to_acc%>(h) >= high) {
