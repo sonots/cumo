@@ -43,11 +43,37 @@ stream_in_use_p(cudaStream_t stream)
     return 0;
 }
 
-cudaStream_t
-cumo_cuda_stream(void)
+// A destroy reaches the live set, but not the threads of another Ractor that
+// have the handle current, and the driver reads freed memory from a launch on
+// it. Asking the set on every launch would take its lock, so a launch asks
+// only when a stream it has not seen live since the last destroy comes up.
+static size_t stream_destroy_epoch = 0;
+static __thread cudaStream_t stream_seen_live = 0;
+static __thread size_t stream_seen_live_epoch = 0;
+
+static cudaStream_t
+current_stream_raw(void)
 {
     VALUE v = rb_ivar_get(rb_thread_current(), current_stream_id());
     return NIL_P(v) ? 0 : (cudaStream_t)NUM2SIZET(v);
+}
+
+cudaStream_t
+cumo_cuda_stream(void)
+{
+    cudaStream_t stream = current_stream_raw();
+    size_t epoch;
+
+    if (stream == 0) { return 0; }
+    epoch = cumo_atomic_size_load(&stream_destroy_epoch);
+    if (stream != stream_seen_live || epoch != stream_seen_live_epoch) {
+        if (!cumo_cuda_handle_set_live_p(&streams, (size_t)stream)) {
+            rb_raise(rb_eArgError, "the current stream has been destroyed");
+        }
+        stream_seen_live = stream;
+        stream_seen_live_epoch = epoch;
+    }
+    return stream;
 }
 
 void
@@ -456,7 +482,11 @@ rb_cudaStreamDestroy(VALUE self, VALUE stream)
     if (stream_in_use_p((cudaStream_t)NUM2SIZET(stream))) {
         rb_raise(rb_eArgError, "a stream that is current in a thread of this Ractor cannot be destroyed");
     }
-    cumo_cuda_runtime_check_status(cudaStreamDestroy((cudaStream_t)cumo_cuda_handle_take(&streams, stream, "cudaStream_t")));
+    cudaStream_t handle = (cudaStream_t)cumo_cuda_handle_take(&streams, stream, "cudaStream_t");
+
+    // Every thread asks the live set for its current stream again from here.
+    cumo_atomic_size_fetch_add(&stream_destroy_epoch, 1);
+    cumo_cuda_runtime_check_status(cudaStreamDestroy(handle));
     return Qnil;
 }
 
@@ -617,7 +647,7 @@ rb_cudaStreamSynchronize(VALUE self, VALUE stream)
 static VALUE
 rb_current_stream(VALUE self)
 {
-    return SIZET2NUM((size_t)cumo_cuda_stream());
+    return SIZET2NUM((size_t)current_stream_raw());
 }
 
 /*

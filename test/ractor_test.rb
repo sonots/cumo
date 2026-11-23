@@ -24,6 +24,24 @@ class NArrayRactorTest < CumoTestBase
       assert_equal([[1], [2]], Timeout.timeout(60) { r.respond_to?(:take) ? r.take : r.value })
     end
 
+    # A destroy reaches the live set, but not the threads of another Ractor
+    # that have the handle current, and a launch on the released stream took
+    # the process down with it.
+    def test_launch_on_a_stream_another_ractor_destroyed
+      stream = Cumo::CUDA::Stream.new(non_blocking: true)
+      handle = stream.handle
+      stream.use
+      r = Ractor.new(handle) do |h|
+        Cumo::CUDA::Runtime.cudaStreamDestroy(h)
+        :destroyed
+      end
+      assert_equal(:destroyed, Timeout.timeout(60) { r.respond_to?(:take) ? r.take : r.value })
+      assert_raise(ArgumentError) { Cumo::SFloat.new(16).seq }
+      # and the thread goes on once it stops naming the stream
+      Cumo::CUDA::Runtime.current_stream = 0
+      assert_equal(120.0, Cumo::SFloat.new(16).seq.sum.to_f)
+    end
+
     data(:dtype, TYPES, keep: true)
     def test_non_frozen(data)
       dtype = data.fetch(:dtype)

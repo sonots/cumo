@@ -38,19 +38,26 @@ cumo_cuda_handle_set_add(cumo_cuda_handle_set_t *set, size_t handle)
     rb_nativethread_lock_unlock(&set->lock);
 }
 
+// Whether the handle is one this process created and has not destroyed.
+static inline int
+cumo_cuda_handle_set_live_p(cumo_cuda_handle_set_t *set, size_t handle)
+{
+    int found;
+
+    rb_nativethread_lock_lock(&set->lock);
+    found = st_lookup(set->table, (st_data_t)handle, 0);
+    rb_nativethread_lock_unlock(&set->lock);
+    return found;
+}
+
 // Raises unless the Integer names a handle this process created and has not
 // destroyed. NUM2SIZET rejects non-Integers first.
 static inline size_t
 cumo_cuda_handle_get(cumo_cuda_handle_set_t *set, VALUE v, const char *what)
 {
     size_t handle = NUM2SIZET(v);
-    int found;
 
-    rb_nativethread_lock_lock(&set->lock);
-    found = st_lookup(set->table, (st_data_t)handle, 0);
-    rb_nativethread_lock_unlock(&set->lock);
-
-    if (!found) {
+    if (!cumo_cuda_handle_set_live_p(set, handle)) {
         rb_raise(rb_eArgError, "not a live %s", what);
     }
     return handle;
