@@ -9,6 +9,13 @@ module Cumo::CUDA
       assert { Device.new.id.is_a?(Integer) }
     end
 
+    def test_current_id
+      assert { Device.current_id == Runtime.cudaGetDevice }
+      Device.new(0).with do
+        assert { Device.current_id == 0 }
+      end
+    end
+
     def test_use
       assert_nothing_raised { Device.new(0).use }
     end
