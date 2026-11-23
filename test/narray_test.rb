@@ -1535,8 +1535,17 @@ class NArrayTest < Test::Unit::TestCase
           assert_raise(ArgumentError) { a.gemm(a, beta: 1) }
           assert_raise(ArgumentError) { a.gemm(a, nil, beta: 1) }
           assert_raise(ArgumentError) { a.gemm(a, beta: -1) }
-          # a beta of zero scales nothing, and a c of its own is taken as before
+          if [Cumo::DComplex, Cumo::SComplex].include?(dtype)
+            assert_raise(ArgumentError) { a.gemm(a, beta: Complex(0, 1)) }
+          end
+          # the shapes are answered first, since that is what the caller has
+          # to put right either way
+          assert_raise(Cumo::NArray::ShapeError) { a.gemm(dtype.new(3, 3).seq, beta: 1) }
+          # a beta cuBLAS receives as zero reads no c, so the call is taken.
+          # The second one is a Rational no float holds, which arrives as zero.
           assert { a.gemm(a, beta: 0) == a.gemm(a) }
+          assert { a.gemm(a, beta: Rational(1, 10**400)) == a.gemm(a) }
+          # a c of its own is taken as before
           assert { a.gemm(a, dtype.zeros(2, 2), beta: 1) == a.gemm(a) }
           assert { a.gemm(a, dtype.ones(2, 2), beta: 2) == a.gemm(a) + 2 }
         end

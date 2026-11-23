@@ -19,6 +19,10 @@
   num_to_scalar = acc_type.empty? ? 'm_num_to_data' : "(#{acc_type})NUM2DBL"
   scalar_one = acc_one
   scalar_zero = acc_zero
+  # Whether the scalar cuBLAS receives is zero, which is the one value it reads
+  # no c for. The Ruby object it came from cannot answer this: another kind of
+  # number rounds to zero on the way in, and == is the caller's to define.
+  beta_is_zero = is_complex ? 'c_is_zero(g.beta)' : '(g.beta == 0)'
 %>
 
 #define ROW_SIZE(na) ((na)->shape[(na)->ndim-2])
@@ -346,7 +350,7 @@ static void
   @overload <%=name%>(<%=args_v%>)
     <%=params%>
     @return [Cumo::<%=class_name%>] returns alpha \* self \* b + beta \* c, the matrix product of self and b over their last two axes. An inplace c receives the result, and any other c is left as it is.
-    @raise [ArgumentError] when beta is not zero and c is not given, since there is no c for it to scale.
+    @raise [ArgumentError] when c is not given and beta does not reach cuBLAS as zero, since there is no c for it to scale. A beta of another type that rounds to zero on the way in, such as 1e-50 in single precision, scales nothing and is taken.
 <%=description%>
 */
 static VALUE
@@ -367,13 +371,6 @@ static VALUE
     g.alpha = RTEST(alpha) ? <%=num_to_scalar%>(alpha) : <%=scalar_one%>;
     beta = cumo_cuda_cublas_option_value(opts[1],Qnil);
     g.beta = RTEST(beta) ? <%=num_to_scalar%>(beta) : <%=scalar_zero%>;
-
-    // cuBLAS reads c where beta is not zero, and a c that was not given is
-    // allocated below without being filled, so beta would scale whatever the
-    // memory pool left there.
-    if (c == Qnil && RTEST(beta) && !rb_equal(beta, INT2FIX(0))) {
-        rb_raise(rb_eArgError, "beta scales c, which is not given");
-    }
 
     // b is handed to cuBLAS as a raw pointer of this dtype, so another dtype would be
     // reinterpreted, and a narrower one read past its end.
@@ -411,6 +408,11 @@ static VALUE
 
     if (c == Qnil) { // c is not given.
         cumo_narray_t *nbase = a_batch >= b_batch ? na : nb;
+        // cuBLAS reads c where beta is not zero, and the allocation below does
+        // not fill it, so beta would scale whatever the memory pool left there.
+        if (!<%=beta_is_zero%>) {
+            rb_raise(rb_eArgError, "beta scales c, which is not given");
+        }
         int ndim = CUMO_NA_NDIM(nbase);
         size_t *shape = ALLOCA_N(size_t, ndim);
         memcpy(shape, CUMO_NA_SHAPE(nbase), sizeof(size_t) * (ndim - 2)); // batch dimensions

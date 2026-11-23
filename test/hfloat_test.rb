@@ -551,6 +551,18 @@ class HFloatTest < Test::Unit::TestCase
                                                     alpha: 1.0 + 2.0**-11).to_a.first.first
     end
 
+    # cuBLAS reads c where beta is not zero, and a c that was not given is
+    # allocated without being filled. The scalar it receives is a float here,
+    # so a beta that rounds to zero on the way in scales nothing.
+    test "beta with no c to scale is refused" do
+      a = seq_mod(dtype, [4, 6], 4)
+      b = seq_mod(dtype, [6, 3], 5)
+      assert_raise(ArgumentError) { a.gemm(b, beta: 1) }
+      assert_raise(ArgumentError) { a.gemm(b, nil, beta: 1) }
+      assert_equal a.gemm(b).to_a, a.gemm(b, beta: 0).to_a
+      assert_equal a.gemm(b).to_a, a.gemm(b, beta: 1e-50).to_a
+    end
+
     test "beta accumulates into the c it is given" do
       a = seq_mod(dtype, [4, 6], 4)
       b = seq_mod(dtype, [6, 3], 5)
