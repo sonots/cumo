@@ -3624,6 +3624,80 @@ class NArrayTest < Test::Unit::TestCase
     end
   end
 
+  # Such an index array selects into a new array rather than a view, so the
+  # store used to land in that array and go nowhere. It goes in flattened
+  # instead, with the value spread over its shape, as add_at does.
+  sub_test_case "[]= with an index array of more than one dimension" do
+    test "writes at every element of the index array" do
+      a = Cumo::DFloat.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = 99
+      assert_equal([99, 99, 99, 99, 4], a.to_a)
+    end
+
+    test "counts the elements of a receiver of more than one dimension" do
+      a = Cumo::DFloat.zeros(3, 4)
+      a[Cumo::Int32[[0, 5], [11, 1]]] = 1
+      assert_equal([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]], a.to_a)
+    end
+
+    test "takes a nested Ruby Array for the index array" do
+      a = Cumo::DFloat.new(5).seq
+      a[[[0, 1], [2, 3]]] = 99
+      assert_equal([99, 99, 99, 99, 4], a.to_a)
+    end
+
+    test "spreads the value over the shape of the index array" do
+      a = Cumo::DFloat.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = Cumo::DFloat[[10, 11], [12, 13]]
+      assert_equal([10, 11, 12, 13, 4], a.to_a)
+      b = Cumo::DFloat.new(5).seq
+      b[Cumo::Int32[[0, 1], [2, 3]]] = Cumo::DFloat[[7, 8]]
+      assert_equal([7, 8, 7, 8, 4], b.to_a)
+      c = Cumo::DFloat.new(5).seq
+      assert_raise(Cumo::NArray::ShapeError) { c[Cumo::Int32[[0, 1], [2, 3]]] = Cumo::DFloat[1, 2, 3] }
+    end
+
+    test "writes through a view into the array it views" do
+      base = Cumo::DFloat.new(4, 4).seq
+      base[0..1, 0..1][Cumo::Int32[[0, 1], [2, 3]]] = 99
+      assert_equal([[99, 99], [99, 99]], base[0..1, 0..1].to_a)
+      assert_equal(2.0, base[0, 2].to_f)
+    end
+
+    test "answers the errors the other subscripts do" do
+      a = Cumo::DFloat.new(5).seq
+      assert_raise(IndexError) { a[Cumo::Int32[[0, 1], [2, 9]]] = 1 }
+      assert_raise(RuntimeError) { a.freeze[Cumo::Int32[[0, 1], [2, 3]]] = 1 }
+      assert_equal([0, 1, 2, 3, 4], a.to_a)
+    end
+
+    test "an index array with nothing in it writes nothing" do
+      a = Cumo::DFloat.new(3).seq
+      a[Cumo::Int32.zeros(0, 2)] = 9
+      assert_equal([0, 1, 2], a.to_a)
+    end
+
+    test "Bit takes one too" do
+      a = Cumo::Bit.new(6).fill(0)
+      a[Cumo::Int32[[0, 1], [4, 5]]] = 1
+      assert_equal([1, 1, 0, 0, 1, 1], a.to_a)
+    end
+
+    test "RObject takes one too" do
+      a = Cumo::RObject.new(5).seq
+      a[Cumo::Int32[[0, 1], [2, 3]]] = 99
+      assert_equal([99, 99, 99, 99, 4], a.to_a)
+    end
+
+    # A Bit subscript is a mask, which selects where it is true whatever its
+    # shape, and already wrote through a view.
+    test "a Bit mask of more than one dimension selects where it is true" do
+      a = Cumo::DFloat.new(2, 3).seq
+      a[Cumo::Bit[[1, 0, 1], [0, 1, 0]]] = 99
+      assert_equal([[99, 1, 99], [3, 99, 5]], a.to_a)
+    end
+  end
+
   # These all run a host loop over managed memory, so they read whatever the
   # last kernel has written so far unless they synchronize first. The arrays
   # are large enough that the kernel filling them is still in flight.
