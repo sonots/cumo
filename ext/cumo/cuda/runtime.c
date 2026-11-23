@@ -603,6 +603,7 @@ rb_cudaStreamSynchronize(VALUE self, VALUE stream)
   0 until set.
 
   @return [Integer]
+  @private
  */
 static VALUE
 rb_current_stream(VALUE self)
@@ -615,6 +616,7 @@ rb_current_stream(VALUE self)
 
   @param [Integer] stream a stream this process created, or 0
   @return [Integer] the stream
+  @private
  */
 static VALUE
 rb_current_stream_set(VALUE self, VALUE stream)

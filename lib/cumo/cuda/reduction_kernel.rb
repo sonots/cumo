@@ -24,6 +24,7 @@ module Cumo::CUDA
     MIN_PER_THREAD = 16
     OPERANDS = %w[a b].freeze
     DTYPE_OF_CTYPE = CTYPE.invert.freeze
+    private_constant :BLOCK, :MAX_GRID, :WANT_BLOCKS, :MIN_PER_THREAD, :OPERANDS, :DTYPE_OF_CTYPE
 
     attr_reader :name
 

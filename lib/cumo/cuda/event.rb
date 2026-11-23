@@ -10,6 +10,7 @@ module Cumo::CUDA
   #   Cumo::CUDA.get_elapsed_time(start, stop)   # => milliseconds
   class Event
     LIVE = ObjectSpace::WeakMap.new
+    private_constant :LIVE
 
     attr_reader :ptr
 

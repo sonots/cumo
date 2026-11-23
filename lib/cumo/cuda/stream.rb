@@ -10,6 +10,7 @@ module Cumo::CUDA
   # Fibers share a thread's current stream.
   class Stream
     LIVE = ObjectSpace::WeakMap.new
+    private_constant :LIVE
 
     attr_reader :ptr
 

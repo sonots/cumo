@@ -12,6 +12,7 @@ module Cumo::CUDA
   # free and the next copy, so the bytes read are the copy's.
   class PinnedMemory
     LIVE = ObjectSpace::WeakMap.new
+    private_constant :LIVE
 
     attr_reader :bytesize
 
@@ -78,6 +79,7 @@ module Cumo::CUDA
 
     # Queues a copy between the buffer and an array on a stream, the current
     # one when nil, and records where it ends. NArray#set and #get call this.
+    # @private
     def copy(narray, direction, stream)
       raise TypeError, "stream: takes a Stream, got a #{stream.class}" unless stream.nil? || stream.is_a?(Stream)
       synchronize

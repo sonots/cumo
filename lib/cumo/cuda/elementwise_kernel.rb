@@ -26,6 +26,7 @@ module Cumo::CUDA
 
     BLOCK = 256
     MAX_GRID = 65_535
+    private_constant :BLOCK, :MAX_GRID
 
     attr_reader :name
 
