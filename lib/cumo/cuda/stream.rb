@@ -10,6 +10,7 @@ module Cumo::CUDA
   # Fibers share a thread's current stream.
   class Stream
     LIVE = ObjectSpace::WeakMap.new
+    private_constant :LIVE
 
     attr_reader :ptr
 
@@ -26,6 +27,7 @@ module Cumo::CUDA
 
     # A handle may be given out again after a destroy, so a stream that is
     # still owned by a live object is not the one this finalizer was for.
+    # @private
     def self.finalizer(ptr)
       proc do
         unless LIVE[ptr]

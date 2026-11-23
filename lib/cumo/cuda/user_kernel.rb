@@ -36,6 +36,7 @@ module Cumo::CUDA
     HALF_BITS = { Cumo::HFloat => [5, 10], Cumo::BFloat => [8, 7] }.freeze
 
     RESERVED = /\A(i|n)\z|\A_/
+    private_constant :Param, :TYPES, :CTYPE, :PACK, :INT_RANGE, :HEADERS, :HALF_BITS, :RESERVED
 
     private
 
@@ -258,4 +259,5 @@ module Cumo::CUDA
       mod.get_function(name)
     end
   end
+  private_constant :UserKernel
 end

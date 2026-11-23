@@ -9,12 +9,14 @@ require 'json'
 module Cumo::CUDA
   class Compiler
     VALID_KERNEL_NAME = /\A[a-zA-Z_][a-zA-Z_0-9]*\z/
+    private_constant :VALID_KERNEL_NAME
     DEFAULT_CACHE_DIR = File.expand_path('~/.cumo/kernel_cache')
 
     @@empty_file_preprocess_cache ||= {}
     @@modules ||= {}
     @@arch_by_device ||= {}
 
+    # @private
     def self.valid_kernel_name?(name)
       VALID_KERNEL_NAME.match?(name)
     end
@@ -25,6 +27,7 @@ module Cumo::CUDA
       @@modules.clear
     end
 
+    # @private
     def self.remove_module(mod)
       @@modules.delete_if { |_, m| m.equal?(mod) }
     end

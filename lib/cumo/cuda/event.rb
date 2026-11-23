@@ -10,11 +10,13 @@ module Cumo::CUDA
   #   Cumo::CUDA.get_elapsed_time(start, stop)   # => milliseconds
   class Event
     LIVE = ObjectSpace::WeakMap.new
+    private_constant :LIVE
 
     attr_reader :ptr
 
     # A handle may be given out again after a destroy, so an event that is
     # still owned by a live object is not the one this finalizer was for.
+    # @private
     def self.finalizer(ptr)
       proc { Runtime.cudaEventDestroy(ptr) rescue nil unless LIVE[ptr] }
     end
