@@ -1,3 +1,11 @@
+/*
+  Allocates the memory of an array made by new, which has none until then.
+  The elements are not initialized. An empty array gets no memory. On a view
+  it allocates the array the view looks into. An array that has its memory
+  already keeps it.
+
+  @return [Cumo::<%=class_name%>] self
+*/
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {

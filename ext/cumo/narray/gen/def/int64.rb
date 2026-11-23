@@ -3,6 +3,7 @@
 set name:                "int64"
 set type_name:           "int64"
 set full_class_name:     "Cumo::Int64"
+set description:         "64-bit signed integer N-dimensional array class."
 set class_name:          "Int64"
 set class_var:           "cT"
 set ctype:               "int64_t"

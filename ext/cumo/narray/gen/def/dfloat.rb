@@ -3,6 +3,7 @@
 set name:                "dfloat"
 set type_name:           "dfloat"
 set full_class_name:     "Cumo::DFloat"
+set description:         "Double precision floating point number (64-bit float) N-dimensional array class."
 set class_name:          "DFloat"
 set class_alias:         "Float64"
 set class_var:           "cT"

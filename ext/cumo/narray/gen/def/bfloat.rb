@@ -3,6 +3,7 @@
 set name:                "bfloat"
 set type_name:           "bfloat"
 set full_class_name:     "Cumo::BFloat"
+set description:         "Brain floating point number (bfloat16, a 16-bit float with the exponent range of a 32-bit float) N-dimensional array class."
 set class_name:          "BFloat"
 set class_alias:         "BFloat16"
 set class_var:           "cT"

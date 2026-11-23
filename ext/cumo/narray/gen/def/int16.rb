@@ -3,6 +3,7 @@
 set name:                "int16"
 set type_name:           "int16"
 set full_class_name:     "Cumo::Int16"
+set description:         "16-bit signed integer N-dimensional array class."
 set class_name:          "Int16"
 set class_var:           "cT"
 set ctype:               "int16_t"
