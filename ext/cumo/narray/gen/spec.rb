@@ -414,8 +414,10 @@ end
 # cudnn
 if is_float && !is_complex && !is_object && !cudnn_dtype.empty?
   def_method "conv"
-  def_method "conv_transpose" # conv_backward_data
-  def_method "conv_grad_w" # conv_backward_filter
+  def_method "conv_transpose"
+  def_alias "conv_backward_data", "conv_transpose"
+  def_method "conv_grad_w"
+  def_alias "conv_backward_filter", "conv_grad_w"
   def_method "batch_norm"
   def_method "batch_norm_backward"
   def_method "fixed_batch_norm"

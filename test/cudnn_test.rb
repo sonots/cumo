@@ -265,6 +265,28 @@ class CUDNNTest < Test::Unit::TestCase
       end
     end
 
+    sub_test_case "the names cuDNN gives the convolution gradients" do
+      setup do
+        @x = dtype.ones(2, 3, 5, 3)
+        @w = dtype.ones(3, 2, 2, 3)
+        @conv_x = dtype.ones(2, 3, 10, 7)
+        @gy = dtype.ones(2, 2, 9, 5)
+        @w_shape = [2, 3, 2, 3]
+      end
+
+      test "x.conv_backward_data(w) is x.conv_transpose(w) #{dtype}" do
+        assert { @x.conv_backward_data(@w) == @x.conv_transpose(@w) }
+      end
+
+      test "x.conv_backward_data(w, stride:, pad:) is x.conv_transpose(w, stride:, pad:) #{dtype}" do
+        assert { @x.conv_backward_data(@w, stride: 2, pad: 1) == @x.conv_transpose(@w, stride: 2, pad: 1) }
+      end
+
+      test "x.conv_backward_filter(gy, w_shape) is x.conv_grad_w(gy, w_shape) #{dtype}" do
+        assert { @conv_x.conv_backward_filter(@gy, @w_shape) == @conv_x.conv_grad_w(@gy, @w_shape) }
+      end
+    end
+
     sub_test_case "batch_norm" do
       setup do
         @batch_size = 2
