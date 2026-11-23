@@ -675,23 +675,22 @@ rb_cusolver_getrf(VALUE self, VALUE a)
     return rb_assoc_new(ipiv, INT2NUM(c.info));
 }
 
+static int64_t check_square_matrix(VALUE a, const char *name);
+
 /*
   Solves op(A) X = B in place with cusolverDnXgetrs, from the factors getrf
   answered.
 
-  @param lu [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
-    contiguous, of shape [n, n]: the column-major factors
-  @param ipiv [Cumo::Int64] contiguous, of length n, each in 1..n
-  @param b [Cumo::NArray] of the class of lu, contiguous, of shape [n] or
-    [nrhs, n]: the column-major right-hand sides, overwritten with X
-  @param trans [String] "N", "T" or "C"
-  @param check [Boolean] whether to read ipiv back and check that each is in
-    1..n, true by default; pivots getrf has just answered need not be
-  @return [nil]
- */
-static int64_t check_square_matrix(VALUE a, const char *name);
-
-/*
+  @overload getrs(lu, ipiv, b, trans, check = true)
+    @param lu [Cumo::SFloat, Cumo::DFloat, Cumo::SComplex, Cumo::DComplex]
+      contiguous, of shape [n, n]: the column-major factors
+    @param ipiv [Cumo::Int64] contiguous, of length n, each in 1..n
+    @param b [Cumo::NArray] of the class of lu, contiguous, of shape [n] or
+      [nrhs, n]: the column-major right-hand sides, overwritten with X
+    @param trans [String] "N", "T" or "C"
+    @param check [Boolean] whether to read ipiv back and check that each is in
+      1..n, true by default; pivots getrf has just answered need not be
+    @return [nil]
   @private
  */
 static VALUE

@@ -183,8 +183,9 @@ nvrtcCreateProgram_without_gvl_cb(void *param)
   @param src [String] the CUDA source.
   @param name [String] the name of the source, for messages.
   @param headers [Array<String>] the sources of headers.
-  @param includeNames [Array<String>] the name that includes each of headers.
+  @param includeNames [Array<String>] the name that #include uses for each of headers, as many as headers.
   @return [Integer] the program handle.
+  @raise [ArgumentError] when headers and includeNames differ in length.
  */
 static VALUE
 rb_nvrtcCreateProgram(
@@ -323,7 +324,8 @@ rb_nvrtcCompileProgram(VALUE self, VALUE prog, VALUE options)
 }
 
 /*
-  The PTX of a compiled program.
+  The PTX of a compiled program, with the NUL that ends it, as cuLinkAddData
+  takes PTX.
 
   @param prog [Integer] a program handle.
   @return [String]
@@ -389,7 +391,7 @@ rb_nvrtcGetLoweredName(VALUE self, VALUE prog, VALUE name_expression)
 }
 
 /*
-  The log of the last compile of a program.
+  The log of the last compile of a program, which ends with a NUL.
 
   @param prog [Integer] a program handle.
   @return [String]

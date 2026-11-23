@@ -37,8 +37,9 @@ check_status(CUresult status)
 
 /*
   Creates a context on the device and makes it current in the calling
-  thread. Cumo runs on the primary context of the device, so this is a
-  separate one.
+  thread. Cumo runs on the primary context of the device, so kernels it
+  loaded before fail in this thread with CUDA_ERROR_INVALID_HANDLE, and
+  nothing here makes the primary context current again.
 
   @param flags [Integer]
   @param dev [Integer] a device handle from cuDeviceGet.
@@ -131,7 +132,7 @@ cuLinkAddData_without_gvl_cb(void *param)
 
   @param state [Integer] a link state handle.
   @param type [Integer] one of the CU_JIT_INPUT_* constants.
-  @param data [String]
+  @param data [String] for PTX, text that ends with a NUL, as nvrtcGetPTX returns it.
   @param name [String]
   @return [nil]
  */
@@ -325,8 +326,9 @@ cuModuleGetFunction_without_gvl_cb(void *param)
 }
 
 /*
-  The function handle of the kernel of that name in a module. A C++ kernel
-  is found by its mangled name.
+  The function handle of the kernel of that name in a module. A kernel
+  declared extern "C" is found by its name, and any other C++ kernel by
+  its mangled name.
 
   @param hmod [Integer] a module handle.
   @param name [String]
@@ -656,11 +658,18 @@ check_params(CUfunction f, long n, const size_t *given)
 #endif
 
 /*
-  Launches a kernel, as Function#launch does.
+  Launches a kernel, as {Cumo::CUDA::Function#launch} does.
 
   @param hfunc [Integer] a function handle from cuModuleGetFunction.
-  @param stream [Integer, nil] a stream handle, nil for the current stream.
-  @param args [Array] the arguments of the kernel, each an NArray, an Integer, a Float or a String of packed bytes.
+  @param grid_x [Integer] the number of blocks along x.
+  @param grid_y [Integer] the number of blocks along y.
+  @param grid_z [Integer] the number of blocks along z.
+  @param block_x [Integer] the number of threads in a block along x.
+  @param block_y [Integer] the number of threads in a block along y.
+  @param block_z [Integer] the number of threads in a block along z.
+  @param shared_mem [Integer] the dynamic shared memory of a block, in bytes.
+  @param stream [Integer, nil] a stream handle that Cumo created, or nil for the current stream.
+  @param args [Array] the arguments of the kernel. A contiguous, writable NArray other than Bit and RObject is passed as its device pointer, an Integer as a 64-bit integer, a Float as a double, and a String as its bytes, which any other type takes.
   @return [nil]
  */
 static VALUE
