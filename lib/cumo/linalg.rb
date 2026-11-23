@@ -15,8 +15,9 @@ module Cumo
     end
   end
 
-  # Linear algebra on the GPU, with the functions of Numo::Linalg from
-  # numo-linalg-alt under the same names, arguments and errors.
+  # Linear algebra on the GPU, with 32 of the functions of Numo::Linalg from
+  # numo-linalg-alt under the same names and arguments. The README lists the
+  # main differences.
   module Linalg
     # Raised where Numo::Linalg raises Numo::Linalg::LapackError.
     class LapackError < StandardError; end
@@ -429,14 +430,16 @@ module Cumo
 
     # Computes the eigenvalues and eigenvectors of a Hermitian matrix, or of
     # the generalized problem A x = lambda B x with B positive definite. The
-    # upper triangles are read, and uplo: and turbo: are accepted and ignored,
-    # as numo-linalg-alt does.
+    # upper triangles are read. uplo: is accepted and ignored, as
+    # numo-linalg-alt does. turbo: is ignored too, since syevd and sygvd of
+    # cuSOLVER are used either way.
     #
     # @param a [Cumo::NArray] the square matrix
     # @param b [Cumo::NArray, nil] the square matrix B, or nil
     # @param vals_only [Boolean] whether to leave the eigenvectors out
-    # @param vals_range [Range, Array, nil] the indices of the eigenvalues to
-    #   answer, 0-based, in ascending order of the eigenvalues
+    # @param vals_range [Range, Array, nil] the first and the last index of the
+    #   eigenvalues to return, 0-based, in ascending order of the eigenvalues.
+    #   Only the first and the last element of an Array are read.
     # @return [Array] the eigenvalues in ascending order, and the eigenvectors
     #   in the columns of a matrix, or nil
     def eigh(a, b = nil, vals_only: false, vals_range: nil, uplo: 'U', turbo: false)
@@ -494,7 +497,7 @@ module Cumo
     #   the right eigenvectors, each nil when not computed and complex only
     #   when an eigenvalue is
     # @raise [NotImplementedError] if the cuSOLVER Cumo is built with has no
-    #   cusolverDnXgeev, which CUDA 11 does not have
+    #   cusolverDnXgeev, which CUDA has from 12.6 Update 2
     def eig(a, left: false, right: true)
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
       raise ArgumentError, 'input array a must be square' if a.shape[0] != a.shape[1]
@@ -516,8 +519,8 @@ module Cumo
     # @return [Array] the permuted triangular factor, D, and the
     #   permutation, a Cumo::Int32, that makes the factor triangular
     # @raise [NotImplementedError] for a Hermitian complex matrix if the
-    #   cuSOLVER Cumo is built with has no cusolverDnXhetrf, which CUDA 11
-    #   and 12 do not have
+    #   cuSOLVER Cumo is built with has no cusolverDnXhetrf, which CUDA has
+    #   from 13.4
     def ldl(a, uplo: 'U', hermitian: true)
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
@@ -544,7 +547,7 @@ module Cumo
     # @param a [Cumo::NArray] the square matrix
     # @return [Cumo::SComplex, Cumo::DComplex]
     # @raise [NotImplementedError] if the cuSOLVER Cumo is built with has no
-    #   cusolverDnXgeev, which CUDA 11 does not have
+    #   cusolverDnXgeev, which CUDA has from 12.6 Update 2
     def eigvals(a)
       raise NArray::ShapeError, 'input array a must be 2-dimensional' if a.ndim != 2
       raise NArray::ShapeError, 'input array a must be square' if a.shape[0] != a.shape[1]
@@ -722,8 +725,9 @@ module Cumo
     # @param a [Cumo::NArray] 2-dimensional, of shape [m, n]
     # @param b [Cumo::NArray] 1- or 2-dimensional, with m rows
     # @param driver [String] accepted and ignored, as numo-linalg-alt does
-    # @param rcond [Float, nil] singular values below rcond times the largest
-    #   count as zero; the machine epsilon when nil or negative
+    # @param rcond [Float, nil] singular values not above rcond times the
+    #   largest count as zero. nil, zero, a negative value and 1 or more give
+    #   EPSILON / 2 of the class, the machine precision LAPACK's gelsd uses
     # @return [Array] x, the squared residuals when m > n and A has rank n,
     #   the rank, and the singular values
     def lstsq(a, b, driver: 'lsd', rcond: nil)

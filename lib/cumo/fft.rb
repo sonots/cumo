@@ -6,8 +6,11 @@ module Cumo
   # Discrete Fourier transforms on the GPU through cuFFT, with the functions
   # and arguments of numpy.fft.
   #
-  # Single precision stays single: an SFloat, SComplex, HFloat or BFloat input
-  # gives an SComplex, and every other type a DComplex.
+  # Single precision stays single. An SFloat, SComplex, HFloat or BFloat input
+  # gives an SComplex, or an SFloat from a transform with real output. Every
+  # other type gives a DComplex or a DFloat. fftconvolve is single only when
+  # both inputs are. fftshift and ifftshift keep the class of their input, and
+  # a transform over no axes returns its input as it is.
   module FFT
     NORMS = %w[backward ortho forward].freeze
     private_constant :NORMS

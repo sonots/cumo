@@ -4,11 +4,15 @@ require 'cumo/fft'
 
 module Cumo
   # The functions of Numo::Pocketfft from numo-pocketfft, computed on the GPU
-  # by Cumo::FFT. As there, they take one array and nothing else, the 1- and
-  # 2-dimensional ones take only 1- and 2-dimensional arrays, the input is
-  # cast to double precision, and what numo-pocketfft refuses raises the same
-  # ArgumentError. A 0-dimensional array raises DimensionError, where
-  # numo-pocketfft fails on it in a different way in each function.
+  # by Cumo::FFT. As there, each takes one array and nothing else, except
+  # fftconvolve, which takes two. The 1- and 2-dimensional ones take only 1-
+  # and 2-dimensional arrays. The input is cast to double precision, except
+  # that fftconvolve returns a * b as it is when every axis of both has one
+  # element. What numo-pocketfft refuses raises the same error.
+  #
+  # A 0-dimensional array raises that ArgumentError in the 1- and
+  # 2-dimensional functions. It raises DimensionError in fftn, ifftn, rfftn
+  # and irfftn. numo-pocketfft fails on it in other ways in fftn and rfftn.
   module Pocketfft
     DIMENSIONS = { 1 => 'one', 2 => 'two' }.freeze
     private_constant :DIMENSIONS
@@ -102,8 +106,9 @@ module Cumo
     # Convolves two N-dimensional arrays through the discrete Fourier transform.
     # @param a [Cumo::NArray] first input array
     # @param b [Cumo::NArray] second input array, with as many dimensions as a
-    # @return [Cumo::DFloat, Cumo::DComplex] the full discrete linear convolution,
-    #   or a * b when every axis of both has one element
+    # @return [Cumo::NArray] the full discrete linear convolution, a
+    #   Cumo::DFloat or a Cumo::DComplex, or a * b in the class it has when every
+    #   axis of both has one element
     def fftconvolve(a, b)
       raise ArgumentError, 'Expect class of input array to be Cumo::NArray.' unless a.is_a?(NArray) && b.is_a?(NArray)
       raise ArgumentError, 'Expect input array to be non-empty.' if a.empty? || b.empty?
