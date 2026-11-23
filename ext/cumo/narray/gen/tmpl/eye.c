@@ -45,7 +45,7 @@ static void
 
 /*
   Eye: Set a value to diagonal components, set 0 to non-diagonal components.
-  @overload <%=name%>([element,offset])
+  @overload <%=name%>(element = 1, offset = 0)
     @param [Numeric] element  Diagonal element to be stored. Default is 1.
     @param [Integer] offset Diagonal offset from the main diagonal.  The
         default is 0. k>0 for diagonals above the main diagonal, and k<0

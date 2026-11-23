@@ -76,9 +76,10 @@ static VALUE cumo_na_mathcast(int argc, VALUE *argv)
 /*
   Dispatches method to Math module of upcasted type,
   eg, Cumo::DFloat::Math.
-  @overload method_missing(name,x,...)
+  @overload method_missing(name, arg, *rest)
     @param [Symbol] name  method name.
-    @param [NArray,Numeric] x  input array.
+    @param [NArray,Numeric,Array] arg  input array.
+    @param [NArray,Numeric,Array] rest  further input arrays.
     @return [NArray] result.
 */
 static VALUE cumo_na_math_method_missing(int argc, VALUE *argv, VALUE mod)
@@ -109,7 +110,7 @@ static VALUE cumo_na_math_method_missing(int argc, VALUE *argv, VALUE mod)
 
 /*
   Tells whether method_missing would find the method, so that respond_to?
-  answers for sqrt and gelu the way it does for a defined method.
+  returns true for sqrt and gelu, as it does for a defined method.
   The dtype decides which Math module a call lands in and respond_to? is not
   given one, so this asks the module that a call can reach with the widest set
   of methods. Every other module a call can reach defines a subset of those.

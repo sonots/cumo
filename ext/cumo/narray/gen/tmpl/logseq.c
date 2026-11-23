@@ -71,7 +71,7 @@ static void
   where i is 1-dimensional index.
   Applicable classes: DFloat, SFloat, HFloat, BFloat, DComplex, SComplex, RObject.
 
-  @overload logseq(beg,step,[base])
+  @overload logseq(beg, step, base = 10)
     @param [Numeric] beg  The beginning of sequence.
     @param [Numeric] step  The step of sequence.
     @param [Numeric] base  The base of log space. (default=10)

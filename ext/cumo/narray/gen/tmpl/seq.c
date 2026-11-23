@@ -78,7 +78,7 @@ static void
   Set linear sequence of numbers to self. The sequence is obtained from
      beg+i*step
   where i is 1-dimensional index.
-  @overload seq([beg,[step]])
+  @overload seq(beg = 0, step = 1)
     @param [Numeric] beg  beginning of sequence. (default=0)
     @param [Numeric] step  step of sequence. (default=1)
     @return [Cumo::<%=class_name%>] self.

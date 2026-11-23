@@ -14,12 +14,13 @@ static void
 <% when /^all/ %>
   Return true if all of bits are one (true).
 <% end %>
-  Reduced whole with no argument, answer true or false. An axis named by an
-  argument or the axis keyword, or a [:sum, true] mark on the receiver, answers
-  the Bit it reduced to. An empty list names no axis.
+  With no argument, it reduces the whole and returns true or false. An axis
+  named by an argument or the axis keyword, or a [:sum, true] mark on the
+  receiver, returns the Bit it reduced to, or true or false where the mark
+  leaves no axis. An empty list names no axis.
   @overload <%=op_map%>(axis:nil, keepdims:false)
-    @param [Integer,Array,Range] axis (keyword) axes to be reduced.
-    @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
+    @param [Integer,Array,Range] axis  axes to be reduced. Integers and Ranges can also be given as positional arguments, where an Array is not accepted.
+    @param [Boolean] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
     @return [TrueClass,FalseClass,Cumo::Bit] .
 */
 static VALUE

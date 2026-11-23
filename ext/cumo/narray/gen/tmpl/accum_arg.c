@@ -37,13 +37,14 @@ static void
 /*
   <%=name%>. Returns an index of the <%=name[3..5]%>imum value along the axis. See also `<%=name[3..5]%>_index`.
 <% if is_float %>
-  @overload <%=name%>(axis:nil, nan:false)
+  @overload <%=name%>(axis:nil, keepdims:false, nan:false)
     @param [TrueClass] nan  If true, apply NaN-aware algorithm (return NaN position if exist).
 <% else %>
-  @overload <%=name%>(axis:nil)
+  @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-    @param [Numeric,Array,Range] axis  Finds <%=name[3..5]%>imum values along the axis and returns indices along the axis.
-    @return [Cumo::Int32,Cumo::Int64,Integer] returns result indices, an Int64 if self has 2**32 or more elements, and 0 for a 0-dimensional self.
+    @param [Numeric,Array,Range] axis  Finds <%=name[3..5]%>imum values along the axis and returns indices along the axis. Integers and Ranges can also be given as positional arguments, where an Array is not accepted.
+    @param [Boolean] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
+    @return [Cumo::Int32,Cumo::Int64,Integer] returns result indices, an Int64 if self has 2**32 or more elements, and 0 for a 0-dimensional self<% unless is_object %>. It is an Integer when the result is 0-dimensional under compatible mode<% end %>.
   @example
       Cumo::NArray[3,4,1,2].<%=name%>
       # => Cumo::Int32#shape=[]

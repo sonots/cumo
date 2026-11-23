@@ -35,7 +35,7 @@ module Cumo
     end
 
     # Computes the one-dimensional discrete Fourier transform of a real input,
-    # answering the n / 2 + 1 non-negative frequencies.
+    # returning the n / 2 + 1 non-negative frequencies.
     # @param (see .fft)
     # @return [Cumo::SComplex, Cumo::DComplex]
     # @raise [TypeError] if the input is complex
@@ -88,7 +88,7 @@ module Cumo
     end
 
     # Computes the two-dimensional discrete Fourier transform of a real input.
-    # The last of the axes answers its s / 2 + 1 non-negative frequencies.
+    # The last of the axes returns its s / 2 + 1 non-negative frequencies.
     # @param (see .fft2)
     # @return [Cumo::SComplex, Cumo::DComplex]
     # @raise [TypeError] if the input is complex
@@ -107,7 +107,7 @@ module Cumo
     end
 
     # Computes the N-dimensional discrete Fourier transform of a real input.
-    # The last of the axes answers its s / 2 + 1 non-negative frequencies.
+    # The last of the axes returns its s / 2 + 1 non-negative frequencies.
     # @param (see .fftn)
     # @return [Cumo::SComplex, Cumo::DComplex]
     # @raise [TypeError] if the input is complex
@@ -126,7 +126,7 @@ module Cumo
     end
 
     # Computes the discrete Fourier transform of a signal with Hermitian
-    # symmetry, from the half of it, answering its spectrum, which is real.
+    # symmetry, from the half of it, returning its spectrum, which is real.
     # @param a [Cumo::NArray] input array, the half of a Hermitian signal
     # @param n [Integer, nil] length of the output along the axis; 2 * (m - 1) for an input of m points by default
     # @param axis [Integer] axis to transform
@@ -151,7 +151,7 @@ module Cumo
       out
     end
 
-    # Answers the sample frequencies of an n-point discrete Fourier
+    # Returns the sample frequencies of an n-point discrete Fourier
     # transform, in cycles per unit of the sample spacing d.
     # @param n [Integer] window length
     # @param d [Numeric] sample spacing
@@ -164,7 +164,7 @@ module Cumo
       k * scale
     end
 
-    # Answers the sample frequencies of an n-point rfft.
+    # Returns the sample frequencies of an n-point rfft.
     # @param (see .fftfreq)
     # @return [Cumo::DFloat]
     def rfftfreq(n, d: 1.0)
@@ -188,7 +188,7 @@ module Cumo
     end
 
     # Convolves two N-dimensional arrays through the discrete Fourier
-    # transform, answering their full discrete linear convolution, as
+    # transform, returning their full discrete linear convolution, as
     # scipy.signal.fftconvolve does in its "full" mode.
     # @param a [Cumo::NArray] first input
     # @param b [Cumo::NArray] second input, with as many dimensions as a

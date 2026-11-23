@@ -2,9 +2,9 @@ static VALUE
 <%=c_func(0)%>_cpu(VALUE self);
 
 /*
-  Returns self.
+  Returns self, which holds the bit of a 0-dimensional array.
   @overload extract
-    @return [Cumo::Bit]
+    @return [Cumo::Bit, Integer] self, or its element as an Integer for a 0-dimensional self under compatible mode.
   --- Note that Cumo::Bit always returns Cumo::Bit and does not
   return a Ruby Integer as Numo::Bit does to avoid
   synchronization between CPU and GPU for performance.

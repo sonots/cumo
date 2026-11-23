@@ -3,11 +3,11 @@ static VALUE
 
 /*
   Array indexing.
-  @overload [](dim0,...,dimL)
-    @param [Numeric,Range,Array,Cumo::Bit,Cumo::Int32,Cumo::Int64] dim0,...,dimL  Multi-dimensional Index.
+  @overload [](*indices)
+    @param [Numeric,Range,Array,Cumo::Bit,Cumo::Int32,Cumo::Int64] indices  Multi-dimensional Index.
     @return [Cumo::Bit,Integer] NArray view, or an Integer for an element under compatible mode.
 
-  --- Returns a 0-dimensional view of the element at `dim0`, `dim1`, ... if they are Numeric indices for each dimension, or a NArray View as a sliced array if `dim0`, `dim1`, ... includes other than Numeric index, e.g., Range or Array or true.
+  --- With one Numeric index for each dimension, it returns a 0-dimensional view of the element there. With anything else among the indices, e.g., a Range or an Array or true, it returns a NArray View as a sliced array.
 
   Note that Cumo::NArray always returns NArray and does not return a Ruby numeric object as Numo::NArray does to avoid synchronization between GPU and CPU for performance. Call Cumo.enable_compatible_mode to make this method behave compatibly with Numo, or you can use `aref_cpu(*idx)` method instead.
 

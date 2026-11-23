@@ -343,8 +343,8 @@ cumo_na_setup(VALUE self, int ndim, size_t *shape)
   @overload initialize(shape)
     @param [Array] shape (array of sizes along each dimension)
     @return [Cumo::NArray] unallocated narray.
-  @overload initialize(size0, size1, ...)
-    @param [Integer] sizeN (size along Nth-dimension)
+  @overload initialize(*sizes)
+    @param [Integer] sizes (size along each dimension)
     @return [Cumo::NArray] unallocated narray.
   @return [Cumo::NArray] unallocated narray.
 
@@ -614,7 +614,9 @@ cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
 
 /*
   Returns a NArray whose last two axes hold 1 on the diagonal and 0 elsewhere.
-  With one size n, its shape is (n,n).
+  With one size n, its shape is (n,n). A last dimension of 0 raises
+  ArgumentError. Cumo::Bit answers to this method but has no instance eye to
+  reach, so it raises NoMethodError.
   @overload  eye(n)
     @param [Integer] n  Size of NArray. Creates 2-D NArray with shape=(n,n)
     @return [Cumo::NArray]  created NArray.
@@ -2624,7 +2626,7 @@ static VALUE cumo_na_profile(VALUE mod)
 }
 
 /*
-  Sets the number that profile answers.
+  Sets the number that profile returns.
 
   @overload profile=(val)
     @param [Numeric] val
