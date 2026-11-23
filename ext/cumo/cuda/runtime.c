@@ -960,7 +960,7 @@ Init_cumo_cuda_runtime()
 {
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
-    /* The same module as CUDA, under another name. */
+    /* Cumo\:\:CUDA: The same module as CUDA, under another name. */
     rb_define_const(mCumo, "Cuda", mCUDA);
     /*
       Document-module: Cumo::CUDA::Runtime
@@ -990,9 +990,9 @@ Init_cumo_cuda_runtime()
     rb_define_singleton_method(mRuntime, "cudaStreamSynchronize", rb_cudaStreamSynchronize, 1);
     rb_define_singleton_method(mRuntime, "current_stream", rb_current_stream, 0);
     rb_define_singleton_method(mRuntime, "current_stream=", rb_current_stream_set, 1);
-    /* The flag of cudaStreamCreateWithFlags for a stream that synchronizes implicitly with the legacy default stream. */
+    /* 0x00: The flag of cudaStreamCreateWithFlags for a stream that synchronizes implicitly with the legacy default stream. */
     rb_define_const(mRuntime, "CUDA_STREAM_DEFAULT", UINT2NUM(cudaStreamDefault));
-    /* The flag of cudaStreamCreateWithFlags for a stream that does not synchronize implicitly with the legacy default stream. */
+    /* 0x01: The flag of cudaStreamCreateWithFlags for a stream that does not synchronize implicitly with the legacy default stream. */
     rb_define_const(mRuntime, "CUDA_STREAM_NON_BLOCKING", UINT2NUM(cudaStreamNonBlocking));
     rb_define_singleton_method(mRuntime, "cudaStreamQuery", rb_cudaStreamQuery, 1);
     rb_define_singleton_method(mRuntime, "cudaStreamWaitEvent", rb_cudaStreamWaitEvent, 2);
@@ -1002,11 +1002,11 @@ Init_cumo_cuda_runtime()
     rb_define_singleton_method(mRuntime, "cudaEventSynchronize", rb_cudaEventSynchronize, 1);
     rb_define_singleton_method(mRuntime, "cudaEventQuery", rb_cudaEventQuery, 1);
     rb_define_singleton_method(mRuntime, "cudaEventElapsedTime", rb_cudaEventElapsedTime, 2);
-    /* The flag of cudaEventCreateWithFlags for a default event. */
+    /* 0x00: The flag of cudaEventCreateWithFlags for a default event. */
     rb_define_const(mRuntime, "CUDA_EVENT_DEFAULT", UINT2NUM(cudaEventDefault));
-    /* The flag of cudaEventCreateWithFlags for an event that cudaEventSynchronize waits for by blocking rather than spinning. */
+    /* 0x01: The flag of cudaEventCreateWithFlags for an event that cudaEventSynchronize waits for by blocking rather than spinning. */
     rb_define_const(mRuntime, "CUDA_EVENT_BLOCKING_SYNC", UINT2NUM(cudaEventBlockingSync));
-    /* The flag of cudaEventCreateWithFlags for an event that cannot be timed. */
+    /* 0x02: The flag of cudaEventCreateWithFlags for an event that cannot be timed. */
     rb_define_const(mRuntime, "CUDA_EVENT_DISABLE_TIMING", UINT2NUM(cudaEventDisableTiming));
     cumo_cuda_handle_set_init(&streams);
     cumo_cuda_handle_set_init(&events);
@@ -1017,13 +1017,13 @@ Init_cumo_cuda_runtime()
     rb_define_singleton_method(mRuntime, "pinned_write", rb_pinned_write, 3);
     rb_define_singleton_method(mRuntime, "memcpy_pinned_to_narray", rb_memcpy_pinned_to_narray, 3);
     rb_define_singleton_method(mRuntime, "memcpy_narray_to_pinned", rb_memcpy_narray_to_pinned, 3);
-    /* The flag of cudaHostAlloc for default pinned memory. */
+    /* 0x00: The flag of cudaHostAlloc for default pinned memory. */
     rb_define_const(mRuntime, "CUDA_HOST_ALLOC_DEFAULT", UINT2NUM(cudaHostAllocDefault));
-    /* The flag of cudaHostAlloc for pinned memory that every context sees as pinned. */
+    /* 0x01: The flag of cudaHostAlloc for pinned memory that every context sees as pinned. */
     rb_define_const(mRuntime, "CUDA_HOST_ALLOC_PORTABLE", UINT2NUM(cudaHostAllocPortable));
-    /* The flag of cudaHostAlloc for pinned memory mapped into the address space of the device. */
+    /* 0x02: The flag of cudaHostAlloc for pinned memory mapped into the address space of the device. */
     rb_define_const(mRuntime, "CUDA_HOST_ALLOC_MAPPED", UINT2NUM(cudaHostAllocMapped));
-    /* The flag of cudaHostAlloc for write-combined pinned memory, which the host should only write, since reading it from the host is slow. */
+    /* 0x04: The flag of cudaHostAlloc for write-combined pinned memory, which the host should only write, since reading it from the host is slow. */
     rb_define_const(mRuntime, "CUDA_HOST_ALLOC_WRITE_COMBINED", UINT2NUM(cudaHostAllocWriteCombined));
     cumo_cuda_handle_set_init(&pinned);
 }

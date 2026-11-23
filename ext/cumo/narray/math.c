@@ -155,7 +155,22 @@ Init_cumo_na_math()
     rb_define_singleton_method(cumo_mNMath, "respond_to_missing?", cumo_na_math_respond_to_missing_p, 2);
 
     hCast = rb_hash_new();
-    /* The Math module that NMath uses for each numeric NArray class, a Hash from the class to the module. */
+    /* {
+         Cumo\:\:Int64=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:Int32=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:Int16=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:Int8=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:UInt64=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:UInt32=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:UInt16=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:UInt8=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:DFloat=>Cumo\:\:DFloat\:\:Math,
+         Cumo\:\:DComplex=>Cumo\:\:DComplex\:\:Math,
+         Cumo\:\:SFloat=>Cumo\:\:SFloat\:\:Math,
+         Cumo\:\:HFloat=>Cumo\:\:HFloat\:\:Math,
+         Cumo\:\:BFloat=>Cumo\:\:BFloat\:\:Math,
+         Cumo\:\:SComplex=>Cumo\:\:SComplex\:\:Math
+       }: The Math module that NMath uses for each numeric NArray class, a Hash from the class to the module. */
     rb_define_const(cumo_mNMath, "DISPATCH", hCast);
     rb_hash_aset(hCast, cumo_cInt64,    cumo_mDFloatMath);
     rb_hash_aset(hCast, cumo_cInt32,    cumo_mDFloatMath);

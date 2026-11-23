@@ -138,7 +138,7 @@ Init_cumo_cuda_cudnn(void)
       pages. available? tells whether Cumo was built with cuDNN.
     */
     mCUDNN = rb_define_module_under(mCUDA, "CUDNN");
-    /* The same module as CUDNN, under another name. */
+    /* Cumo\:\:CUDA\:\:CUDNN: The same module as CUDNN, under another name. */
     rb_define_const(mCUDA, "Cudnn", mCUDNN);
     /*
       Document-class: Cumo::CUDA::CUDNNError
@@ -152,13 +152,13 @@ Init_cumo_cuda_cudnn(void)
     cumo_cuda_thread_local_init(&handles, sizeof(cudnnHandle_t));
     init_max_workspace_size();
     rb_define_singleton_method(mCUDNN, "max_workspace_size", rb_cudnn_max_workspace_size, 0);
-    /* Max pooling. */
+    /* 0: Max pooling. */
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX", INT2NUM(CUDNN_POOLING_MAX));
-    /* Max pooling with a deterministic algorithm. */
+    /* 3: Max pooling with a deterministic algorithm. */
     rb_define_const(mCUDNN, "CUDNN_POOLING_MAX_DETERMINISTIC", INT2NUM(CUDNN_POOLING_MAX_DETERMINISTIC));
-    /* Average pooling that counts the padding as zeros. */
+    /* 1: Average pooling that counts the padding as zeros. */
     rb_define_const(mCUDNN, "CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING));
-    /* Average pooling that leaves the padding out. */
+    /* 2: Average pooling that leaves the padding out. */
     rb_define_const(mCUDNN, "CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING", INT2NUM(CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING));
 #endif // CUDNN_FOUND
 }
