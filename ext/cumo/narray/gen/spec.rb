@@ -100,11 +100,13 @@ doc_value = {
   robject: { bits: 64 }
 }[get(:type_name).to_sym]
 raise "spec.rb: no documented constant values for #{get(:type_name)}" if doc_value.nil?
+# A missing entry would quietly put the C expression back in the docs.
+doc_value.default_proc = proc { |_, key| raise "spec.rb: #{get(:type_name)} has no documented #{key}" }
 
 if is_bit
-  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(1)", desc: "1: Element size of #{cn} in bits."
+  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(1)", desc: "#{doc_value[:bits]}: Element size of #{cn} in bits."
   def_const "ELEMENT_BYTE_SIZE", "rb_float_new(1.0/8)", desc: "0.125: Element size of #{cn} in bytes, 1/8 as a Float."
-  def_const "CONTIGUOUS_STRIDE", "INT2FIX(1)", desc: "1: Stride of a contiguous #{cn} array, in bits."
+  def_const "CONTIGUOUS_STRIDE", "INT2FIX(1)", desc: "#{doc_value[:bits]}: Stride of a contiguous #{cn} array, in bits."
 else
   bytes = doc_value[:bits] / 8
   def_const "ELEMENT_BIT_SIZE",  "INT2FIX(sizeof(dtype)*8)", desc: "#{doc_value[:bits]}: Element size of #{cn} in bits."

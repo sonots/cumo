@@ -135,7 +135,9 @@ Init_cumo_cuda_cudnn(void)
       methods are those of DFloat, SFloat, HFloat and BFloat, of which
       max_pool, avg_pool, their backwards, conv_backward_data and
       conv_backward_filter are defined in Ruby and missing from the class
-      pages. available? tells whether Cumo was built with cuDNN.
+      pages. available? tells whether Cumo was built with cuDNN, and
+      max_workspace_size and the CUDNN_POOLING_* constants are defined only in
+      a build that was.
     */
     mCUDNN = rb_define_module_under(mCUDA, "CUDNN");
     /* Cumo\:\:CUDA\:\:CUDNN: The same module as CUDNN, under another name. */
