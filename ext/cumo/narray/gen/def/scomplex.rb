@@ -3,6 +3,7 @@
 set name:                "scomplex"
 set type_name:           "scomplex"
 set full_class_name:     "Cumo::SComplex"
+set description:         "Single precision floating point complex number N-dimensional array class."
 set class_name:          "SComplex"
 set class_alias:         "Complex32"
 set class_var:           "cT"

@@ -19,6 +19,13 @@ static void
     }
 }
 
+/*
+  Sets the <%= name == "set_real" ? "real" : "imaginary" %> part of each element to a1, broadcast to the shape of self, and answers a1.
+
+  @overload <%=name%>(a1)
+    @param [Cumo::NArray,Numeric] a1  The new <%= name == "set_real" ? "real" : "imaginary" %> parts.
+    @return [Cumo::NArray,Numeric] a1
+*/
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE a1)
 {

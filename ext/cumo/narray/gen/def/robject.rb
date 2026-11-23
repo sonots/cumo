@@ -3,6 +3,7 @@
 set name:                "robject"
 set type_name:           "robject"
 set full_class_name:     "Cumo::RObject"
+set description:         "Ruby object N-dimensional array class."
 set class_name:          "RObject"
 set class_var:           "cT"
 set ctype:               "VALUE"

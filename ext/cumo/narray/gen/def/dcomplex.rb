@@ -3,6 +3,7 @@
 set name:                "dcomplex"
 set type_name:           "dcomplex"
 set full_class_name:     "Cumo::DComplex"
+set description:         "Double precision floating point complex number N-dimensional array class."
 set class_name:          "DComplex"
 set class_alias:         "Complex64"
 set class_var:           "cT"

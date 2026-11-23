@@ -3,6 +3,7 @@
 set name:                "hfloat"
 set type_name:           "hfloat"
 set full_class_name:     "Cumo::HFloat"
+set description:         "Half precision floating point number (16-bit float, IEEE 754 binary16) N-dimensional array class."
 set class_name:          "HFloat"
 set class_alias:         "Float16"
 set class_var:           "cT"

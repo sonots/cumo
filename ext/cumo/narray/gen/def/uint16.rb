@@ -3,6 +3,7 @@
 set name:                "uint16"
 set type_name:           "uint16"
 set full_class_name:     "Cumo::UInt16"
+set description:         "16-bit unsigned integer N-dimensional array class."
 set class_name:          "UInt16"
 set class_var:           "cT"
 set ctype:               "u_int16_t"

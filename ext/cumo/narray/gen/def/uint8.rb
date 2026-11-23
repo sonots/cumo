@@ -3,6 +3,7 @@
 set name:                "uint8"
 set type_name:           "uint8"
 set full_class_name:     "Cumo::UInt8"
+set description:         "8-bit unsigned integer N-dimensional array class."
 set class_name:          "UInt8"
 set class_var:           "cT"
 set ctype:               "u_int8_t"

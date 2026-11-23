@@ -2,6 +2,14 @@
 void cumo_<%=type_name%>_new_dim0_kernel_launch(dtype *ptr, dtype x);
 <% end %>
 
+/*
+  Allocates the memory of an array made by new, which has none until then.
+  <% if is_object %>Each element is nil.<% else %>The elements are not initialized.<% end %>
+  On a view it allocates the array the view looks into. An array that has
+  its memory already keeps it and its elements.
+
+  @return [Cumo::<%=class_name%>] self
+*/
 static VALUE
 <%=c_func(0)%>(VALUE self)
 {

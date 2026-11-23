@@ -76,23 +76,28 @@ end
 
 # Constants
 
+cn = get(:class_name)
 if is_bit
-  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(1)"
-  def_const "ELEMENT_BYTE_SIZE", "rb_float_new(1.0/8)"
-  def_const "CONTIGUOUS_STRIDE", "INT2FIX(1)"
+  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(1)", desc: "Element size of #{cn} in bits."
+  def_const "ELEMENT_BYTE_SIZE", "rb_float_new(1.0/8)", desc: "Element size of #{cn} in bytes, 1/8 as a Float."
+  def_const "CONTIGUOUS_STRIDE", "INT2FIX(1)", desc: "Stride of a contiguous #{cn} array, in bits."
 else
-  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(sizeof(dtype)*8)"
-  def_const "ELEMENT_BYTE_SIZE", "INT2FIX(sizeof(dtype))"
-  def_const "CONTIGUOUS_STRIDE", "INT2FIX(sizeof(dtype))"
+  def_const "ELEMENT_BIT_SIZE",  "INT2FIX(sizeof(dtype)*8)", desc: "Element size of #{cn} in bits."
+  def_const "ELEMENT_BYTE_SIZE", "INT2FIX(sizeof(dtype))", desc: "Element size of #{cn} in bytes."
+  def_const "CONTIGUOUS_STRIDE", "INT2FIX(sizeof(dtype))", desc: "Stride of a contiguous #{cn} array, in bytes."
 end
 
 if !is_object
+  part = is_complex ? "a real or imaginary part of #{cn}" : cn
   if is_float
-    def_const "EPSILON", "M_EPSILON"
+    def_const "EPSILON", "M_EPSILON", desc: "Machine epsilon of #{part}, the difference between 1 and the next larger number it holds."
   end
-  if is_float || is_int
-    def_const "MAX", "M_MAX"
-    def_const "MIN", "M_MIN"
+  if is_float
+    def_const "MAX", "M_MAX", desc: "The largest finite number #{part} holds."
+    def_const "MIN", "M_MIN", desc: "The smallest positive normalized number #{part} holds, as MIN of Float is. The most negative finite one is -MAX."
+  elsif is_int
+    def_const "MAX", "M_MAX", desc: "The largest value #{cn} holds."
+    def_const "MIN", "M_MIN", desc: "The smallest value #{cn} holds."
   end
 end
 
@@ -448,8 +453,9 @@ def_module do
   set ns_var: "cT"
   set class_name: cn
   set name: "#{nm}_math"
-  set full_module_name: fn + "::NMath"
+  set full_module_name: fn + "::Math"
   set module_name: "Math"
+  set description: "Element-wise mathematical functions of #{cn}, such as sqrt, exp and sin."
   set module_var: "mTM"
 
   math "sqrt"

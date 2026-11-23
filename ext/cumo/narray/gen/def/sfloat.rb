@@ -3,6 +3,7 @@
 set name:                "sfloat"
 set type_name:           "sfloat"
 set full_class_name:     "Cumo::SFloat"
+set description:         "Single precision floating point number (32-bit float) N-dimensional array class."
 set class_name:          "SFloat"
 set class_alias:         "Float32"
 set class_var:           "cT"

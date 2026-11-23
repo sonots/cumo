@@ -3,6 +3,7 @@
 set name:                "bit"
 set type_name:           "bit"
 set full_class_name:     "Cumo::Bit"
+set description:         "Binary digit (bit) N-dimensional array class."
 set class_name:          "Bit"
 set class_alias:         nil
 set class_var:           "cT"
