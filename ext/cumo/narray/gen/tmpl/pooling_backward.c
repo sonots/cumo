@@ -21,8 +21,8 @@ static VALUE
     @param [Cumo::<%=class_name%>] gy  The gradient of y.
     @param [Integer,Array<Integer>] kernel_size  The kernel_size given to pooling_forward.
     @param [Integer,Array<Integer>] stride  The stride, for every spatial axis or one per axis.
-    @param [Integer,Array<Integer>] pad  The zero padding on both sides, for every spatial axis or one per axis.
-    @param [Cumo::<%=class_name%>] gx  An array to write the result into and return.
+    @param [Integer,Array<Integer>] pad  The padding on both sides, for every spatial axis or one per axis. Max pooling and the average that excludes padding leave padded positions out, and the average that includes padding counts them as zeros.
+    @param [Cumo::<%=class_name%>] gx  A contiguous array of the shape of self to write the result into and return.
     @return [Cumo::<%=class_name%>] the gradient, shaped like self.
 */
 static VALUE

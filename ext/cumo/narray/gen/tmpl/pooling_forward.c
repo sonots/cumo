@@ -14,16 +14,16 @@ static VALUE
 /*
   Pooling over windows of kernel_size, on cuDNN. mode is one of the
   CUDNN_POOLING_* constants of Cumo::CUDA::CUDNN, which max_pool and avg_pool
-  of that module pick. self is (batch, channels, d1, ..., dN), and the result
-  is (batch, channels, o1, ..., oN), where each o is
+  of that module pick. self is (batch, channels, d1, ..., dN) with N of 2 or
+  3, and the result is (batch, channels, o1, ..., oN), where each o is
   (d + 2 * pad - kernel_size) / stride + 1 rounded down.
 
   @overload pooling_forward(mode, kernel_size, stride: kernel_size, pad: 0, y: nil)
     @param [Integer] mode  A CUDNN_POOLING_* constant.
     @param [Integer,Array<Integer>] kernel_size  The window, for every spatial axis or one per axis.
     @param [Integer,Array<Integer>] stride  The stride, for every spatial axis or one per axis.
-    @param [Integer,Array<Integer>] pad  The zero padding on both sides, for every spatial axis or one per axis.
-    @param [Cumo::<%=class_name%>] y  An array to write the result into and return.
+    @param [Integer,Array<Integer>] pad  The padding on both sides, for every spatial axis or one per axis. Max pooling and the average that excludes padding leave padded positions out, and the average that includes padding counts them as zeros.
+    @param [Cumo::<%=class_name%>] y  A contiguous array of the shape of the result to write the result into and return.
     @return [Cumo::<%=class_name%>]
 */
 static VALUE

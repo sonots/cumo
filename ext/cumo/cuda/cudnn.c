@@ -91,11 +91,6 @@ cumo_cuda_cudnn_handle()
 
 #endif // CUDNN_FOUND
 
-/*
-  Returns availability of cuDNN.
-
-  @return [Boolean] Returns true if cuDNN is available
- */
 #ifdef CUDNN_FOUND
 /*
   Returns the ceiling cuDNN may use when it searches for a convolution
@@ -110,6 +105,11 @@ rb_cudnn_max_workspace_size(VALUE self)
 }
 #endif // CUDNN_FOUND
 
+/*
+  Returns whether Cumo was built with cuDNN.
+
+  @return [Boolean]
+ */
 static VALUE
 rb_cudnn_available_p(VALUE self)
 {
@@ -129,10 +129,13 @@ Init_cumo_cuda_cudnn(void)
     /*
       Document-module: Cumo::CUDA::CUDNN
 
-      cuDNN functions for neural networks. Each function takes the array as
-      its first argument and calls the method of the same name on it, so
-      conv(x, w) is x.conv(w). The methods are those of DFloat, SFloat, HFloat
-      and BFloat. available? tells whether Cumo was built with cuDNN.
+      cuDNN functions for neural networks. Each function other than available?
+      and max_workspace_size takes the array as its first argument and calls
+      the method of the same name on it, so conv(x, w) is x.conv(w). The
+      methods are those of DFloat, SFloat, HFloat and BFloat, of which
+      max_pool, avg_pool, their backwards, conv_backward_data and
+      conv_backward_filter are defined in Ruby and missing from the class
+      pages. available? tells whether Cumo was built with cuDNN.
     */
     mCUDNN = rb_define_module_under(mCUDA, "CUDNN");
     rb_define_const(mCUDA, "Cudnn", mCUDNN); // alias
