@@ -1480,7 +1480,6 @@ Style/RedundantReturn:
 Style/RedundantSelf:
   Exclude:
     - 'ext/cumo/narray/gen/erbln.rb'
-    - 'lib/cumo/cuda/cudnn.rb'
     - 'lib/cumo/narray/extra.rb'
 
 # Offense count: 2

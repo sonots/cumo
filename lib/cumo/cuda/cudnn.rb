@@ -1,44 +1,96 @@
 # frozen_string_literal: true
 
 module Cumo
-  [BFloat, HFloat, SFloat, DFloat].each do |klass|
-    klass.class_eval do
-      alias_method :conv_backward_data, :conv_transpose
-      alias_method :conv_backward_filter, :conv_grad_w
-
-      def max_pool(*args, **kwargs)
-        self.pooling_forward(Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX, *args, **kwargs)
-      end
-
-      def max_pool_backward(*args, **kwargs)
-        self.pooling_backward(Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX, *args, **kwargs)
-      end
-
-      def avg_pool(*args, **kwargs)
-        pad_value = kwargs.delete(:pad_value)
-        if pad_value == 0
-          mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
-        elsif pad_value.nil?
-          mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
-        else
-          raise "pad_value: #{pad_value} is not supported"
+  module CUDA
+    module CUDNN
+      # The cuDNN methods Cumo writes in Ruby rather than in C. They are
+      # included in Cumo::BFloat, Cumo::HFloat, Cumo::SFloat and Cumo::DFloat,
+      # and each one calls a cuDNN method of that class, so a build without
+      # cuDNN raises Cumo::CUDA::CUDNNError from them.
+      module NArrayMethods
+        # @overload conv_backward_data(w, b: nil, stride: 1, pad: 0, out_size: nil, y: nil)
+        #   The same as conv_transpose, under the name of the cuDNN function it
+        #   reaches, cudnnConvolutionBackwardData.
+        #   @return [Cumo::NArray]
+        # @see Cumo::DFloat#conv_transpose
+        def conv_backward_data(*args, **kwargs)
+          conv_transpose(*args, **kwargs)
         end
-        self.pooling_forward(mode, *args, **kwargs)
-      end
 
-      def avg_pool_backward(*args, **kwargs)
-        pad_value = kwargs.delete(:pad_value)
-        if pad_value == 0
-          mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
-        elsif pad_value.nil?
-          mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
-        else
-          raise "pad_value: #{pad_value} is not supported"
+        # @overload conv_backward_filter(gy, w_shape, stride: 1, pad: 0, gw: nil)
+        #   The same as conv_grad_w, under the name of the cuDNN function it
+        #   reaches, cudnnConvolutionBackwardFilter.
+        #   @return [Cumo::NArray]
+        # @see Cumo::DFloat#conv_grad_w
+        def conv_backward_filter(*args, **kwargs)
+          conv_grad_w(*args, **kwargs)
         end
-        self.pooling_backward(mode, *args, **kwargs)
+
+        # @overload max_pool(kernel_size, stride: kernel_size, pad: 0, y: nil)
+        #   Max pooling, which returns
+        #   pooling_forward(CUDNN_POOLING_MAX, kernel_size, ...).
+        #   @return [Cumo::NArray]
+        # @see Cumo::DFloat#pooling_forward
+        def max_pool(*args, **kwargs)
+          pooling_forward(Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX, *args, **kwargs)
+        end
+
+        # @overload max_pool_backward(y, gy, kernel_size, stride: kernel_size, pad: 0, gx: nil)
+        #   The gradient of max_pool, which returns
+        #   pooling_backward(CUDNN_POOLING_MAX, y, gy, kernel_size, ...).
+        #   @return [Cumo::NArray]
+        # @see Cumo::DFloat#pooling_backward
+        def max_pool_backward(*args, **kwargs)
+          pooling_backward(Cumo::CUDA::CUDNN::CUDNN_POOLING_MAX, *args, **kwargs)
+        end
+
+        # @overload avg_pool(kernel_size, stride: kernel_size, pad: 0, pad_value: nil, y: nil)
+        #   Average pooling, which returns pooling_forward with an average
+        #   mode. pad_value: nil, the default, leaves the padding out of the
+        #   average, and pad_value: 0 counts it as zeros.
+        #   @return [Cumo::NArray]
+        #   @raise [::RuntimeError] when pad_value is neither nil nor 0.
+        # @see Cumo::DFloat#pooling_forward
+        def avg_pool(*args, **kwargs)
+          pad_value = kwargs.delete(:pad_value)
+          if pad_value == 0
+            mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
+          elsif pad_value.nil?
+            mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
+          else
+            raise "pad_value: #{pad_value} is not supported"
+          end
+          pooling_forward(mode, *args, **kwargs)
+        end
+
+        # @overload avg_pool_backward(y, gy, kernel_size, stride: kernel_size, pad: 0, pad_value: nil, gx: nil)
+        #   The gradient of avg_pool, with the same pad_value:.
+        #   @return [Cumo::NArray]
+        #   @raise [::RuntimeError] when pad_value is neither nil nor 0.
+        # @see Cumo::DFloat#pooling_backward
+        def avg_pool_backward(*args, **kwargs)
+          pad_value = kwargs.delete(:pad_value)
+          if pad_value == 0
+            mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
+          elsif pad_value.nil?
+            mode = Cumo::CUDA::CUDNN::CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
+          else
+            raise "pad_value: #{pad_value} is not supported"
+          end
+          pooling_backward(mode, *args, **kwargs)
+        end
       end
     end
   end
+end
+
+module Cumo
+  # @!parse
+  #   class BFloat; include CUDA::CUDNN::NArrayMethods; end
+  #   class HFloat; include CUDA::CUDNN::NArrayMethods; end
+  #   class SFloat; include CUDA::CUDNN::NArrayMethods; end
+  #   class DFloat; include CUDA::CUDNN::NArrayMethods; end
+  [BFloat, HFloat, SFloat, DFloat].each { |klass| klass.include(CUDA::CUDNN::NArrayMethods) }
 end
 
 module Cumo

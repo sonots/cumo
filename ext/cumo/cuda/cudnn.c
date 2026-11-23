@@ -133,11 +133,10 @@ Init_cumo_cuda_cudnn(void)
       and max_workspace_size takes the array as its first argument and calls
       the method of the same name on it, so conv(x, w) is x.conv(w). The
       methods are those of DFloat, SFloat, HFloat and BFloat, of which
-      max_pool, avg_pool, their backwards, conv_backward_data and
-      conv_backward_filter are defined in Ruby and missing from the class
-      pages. available? tells whether Cumo was built with cuDNN, and
-      max_workspace_size and the CUDNN_POOLING_* constants are defined only in
-      a build that was.
+      max_pool, avg_pool and their backwards come from
+      Cumo::CUDA::CUDNN::NArrayMethods. available? tells whether Cumo was
+      built with cuDNN, and max_workspace_size and the CUDNN_POOLING_*
+      constants are defined only in a build that was.
     */
     mCUDNN = rb_define_module_under(mCUDA, "CUDNN");
     /* Cumo\:\:CUDA\:\:CUDNN: The same module as CUDNN, under another name. */
