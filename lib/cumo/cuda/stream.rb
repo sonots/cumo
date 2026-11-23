@@ -14,6 +14,7 @@ module Cumo::CUDA
 
     attr_reader :ptr
 
+    # The null stream, the default stream of CUDA.
     def self.null
       @null ||= allocate.tap { |s| s.instance_variable_set(:@ptr, 0) }
     end
@@ -81,6 +82,7 @@ module Cumo::CUDA
       end
     end
 
+    # Waits for everything queued on the stream, and returns self.
     def synchronize
       Runtime.cudaStreamSynchronize(handle)
       self

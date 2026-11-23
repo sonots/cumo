@@ -380,6 +380,11 @@ Init_cumo_cuda_nvrtc()
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     mNVRTC = rb_define_module_under(mCUDA, "NVRTC");
+    /*
+      Document-class: Cumo::CUDA::NVRTCError
+
+      Raised when a call to NVRTC fails. A failed compile raises CompileError instead.
+    */
     eNVRTCError = rb_define_class_under(mCUDA, "NVRTCError", rb_eStandardError);
 
     cumo_cuda_handle_set_init(&programs);

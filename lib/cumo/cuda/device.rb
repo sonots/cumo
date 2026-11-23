@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Cumo::CUDA
+  # A CUDA device, by its id.
   class Device
     attr_reader :id
 
@@ -9,6 +10,7 @@ module Cumo::CUDA
       Runtime.cudaGetDevice
     end
 
+    # The device of that id, or the current one of the calling thread.
     def initialize(device_id = nil)
       if device_id
         @id = device_id
@@ -18,10 +20,14 @@ module Cumo::CUDA
       @_device_stack = []
     end
 
+    # Makes this the current device of the calling thread.
     def use
       Runtime.cudaSetDevice(@id)
     end
 
+    # Runs the block with this as the current device of the calling thread,
+    # restores the previous one after, and returns the value of the block.
+    # @raise [RuntimeError] without a block.
     def with
       raise unless block_given?
       prev_id = Runtime.cudaGetDevice
@@ -35,10 +41,14 @@ module Cumo::CUDA
       end
     end
 
+    # Waits for everything queued on the current device of the calling
+    # thread, which is this device only after use or inside with.
     def synchronize
       Runtime.cudaDeviceSynchronize
     end
 
+    # The compute capability as a String of the major and the minor numbers,
+    # such as "86" for 8.6.
     def compute_capability
       major = Runtime.cudaDeviceGetAttributes(75, @id)
       minor = Runtime.cudaDeviceGetAttributes(76, @id)

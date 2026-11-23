@@ -69,6 +69,8 @@ module Cumo::CUDA
       self
     end
 
+    # Waits for the copy in flight, if any, and frees the buffer. Calling it
+    # again does nothing.
     def free
       return if @ptr.nil?
       synchronize

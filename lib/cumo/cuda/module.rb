@@ -14,6 +14,7 @@ module Cumo::CUDA
       end
     end
 
+    # Unloads the module. Calling it again does nothing.
     def unload
       return unless @ptr
       ObjectSpace.undefine_finalizer(self)
@@ -22,10 +23,14 @@ module Cumo::CUDA
       @ptr = nil
     end
 
+    # Loads a module from a file, such as a cubin or a PTX file, in place of
+    # the one loaded before.
     def load_file(fname)
       loaded(Driver.cuModuleLoad(fname))
     end
 
+    # Loads a module from a cubin or PTX image held in a String, in place of
+    # the one loaded before.
     def load(cubin)
       loaded(Driver.cuModuleLoadData(cubin))
     end
@@ -49,6 +54,8 @@ module Cumo::CUDA
     end
     private :loaded
 
+    # Returns the bytes of the global variable of that name as a String, read
+    # from the device.
     def get_global_var(name)
       Driver.cuModuleGetGlobal(@ptr, name)
     end

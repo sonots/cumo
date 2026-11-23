@@ -1369,8 +1369,15 @@ Init_cumo_cuda_cusolver(void)
 
     /*
       Document-module: Cumo::CUDA::Cusolver
+
+      cuSOLVER, which Cumo::Linalg runs on.
     */
     mCusolver = rb_define_module_under(mCUDA, "Cusolver");
+    /*
+      Document-class: Cumo::CUDA::CusolverError
+
+      Raised when a call to cuSOLVER fails.
+    */
     eCusolverError = rb_define_class_under(mCUDA, "CusolverError", rb_eStandardError);
 
     rb_define_singleton_method(mCusolver, "available?", rb_cusolver_available_p, 0);

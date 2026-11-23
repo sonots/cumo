@@ -959,6 +959,11 @@ Init_cumo_cuda_runtime()
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     rb_define_const(mCumo, "Cuda", mCUDA); // alias
     mRuntime = rb_define_module_under(mCUDA, "Runtime");
+    /*
+      Document-class: Cumo::CUDA::RuntimeError
+
+      Raised when a call to the CUDA runtime fails.
+    */
     eRuntimeError = rb_define_class_under(mCUDA, "RuntimeError", rb_eStandardError);
 
     rb_define_singleton_method(mRuntime, "cudaDriverGetVersion", rb_cudaDriverGetVersion, 0);

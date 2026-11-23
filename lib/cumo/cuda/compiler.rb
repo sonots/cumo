@@ -7,9 +7,14 @@ require 'digest/md5'
 require 'json'
 
 module Cumo::CUDA
+  # Compiles CUDA source with NVRTC. compile_with_cache returns a Module and
+  # keeps it on disk under the cache directory and in memory for the rest of
+  # the process.
   class Compiler
     VALID_KERNEL_NAME = /\A[a-zA-Z_][a-zA-Z_0-9]*\z/
     private_constant :VALID_KERNEL_NAME
+    # Where compile_with_cache keeps compiled kernels, unless CUMO_CACHE_DIR
+    # or cache_dir: gives another directory.
     DEFAULT_CACHE_DIR = File.expand_path('~/.cumo/kernel_cache')
 
     @@empty_file_preprocess_cache ||= {}

@@ -631,6 +631,11 @@ Init_cumo_cuda_driver()
     VALUE mCumo = rb_define_module("Cumo");
     VALUE mCUDA = rb_define_module_under(mCumo, "CUDA");
     mDriver = rb_define_module_under(mCUDA, "Driver");
+    /*
+      Document-class: Cumo::CUDA::DriverError
+
+      Raised when a call to the CUDA driver fails.
+    */
     eDriverError = rb_define_class_under(mCUDA, "DriverError", rb_eStandardError);
 
     cumo_cuda_handle_set_init(&link_states);
