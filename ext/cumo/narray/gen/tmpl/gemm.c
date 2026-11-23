@@ -346,6 +346,7 @@ static void
   @overload <%=name%>(<%=args_v%>)
     <%=params%>
     @return [Cumo::<%=class_name%>] returns alpha \* self \* b + beta \* c, the matrix product of self and b over their last two axes. An inplace c receives the result, and any other c is left as it is.
+    @raise [ArgumentError] when beta is not zero and c is not given, since there is no c for it to scale.
 <%=description%>
 */
 static VALUE
@@ -366,6 +367,13 @@ static VALUE
     g.alpha = RTEST(alpha) ? <%=num_to_scalar%>(alpha) : <%=scalar_one%>;
     beta = cumo_cuda_cublas_option_value(opts[1],Qnil);
     g.beta = RTEST(beta) ? <%=num_to_scalar%>(beta) : <%=scalar_zero%>;
+
+    // cuBLAS reads c where beta is not zero, and a c that was not given is
+    // allocated below without being filled, so beta would scale whatever the
+    // memory pool left there.
+    if (c == Qnil && RTEST(beta) && !rb_equal(beta, INT2FIX(0))) {
+        rb_raise(rb_eArgError, "beta scales c, which is not given");
+    }
 
     // b is handed to cuBLAS as a raw pointer of this dtype, so another dtype would be
     // reinterpreted, and a narrower one read past its end.
