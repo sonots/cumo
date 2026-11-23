@@ -43,18 +43,19 @@ static void
 
 /*
   Element-wise <%=name%> of two arrays, cast to <%=class_name%>.
-<% if is_float %>
-  Where one of the two is NaN, it answers the other, unless nan: is true.
+<% if is_float && !is_object %>
+  Where one of the two is NaN, it answers the other, unless nan: is given.
 
   @overload <%=name%>(a1, a2, nan:false)
-    @param [Cumo::NArray,Numeric] a1  The array to be compared.
-    @param [Cumo::NArray,Numeric] a2  The array to be compared.
+    @param [Cumo::NArray,Numeric,Array] a1  The array to be compared.
+    @param [Cumo::NArray,Numeric,Array] a2  The array to be compared.
     @param [Boolean] nan  If true, answers NaN where either of the two is NaN.
+    @note Passing nan: false does the same as nan: true, unlike the nan: of max.
 <% else %>
 
   @overload <%=name%>(a1, a2)
-    @param [Cumo::NArray,Numeric] a1  The array to be compared.
-    @param [Cumo::NArray,Numeric] a2  The array to be compared.
+    @param [Cumo::NArray,Numeric,Array] a1  The array to be compared.
+    @param [Cumo::NArray,Numeric,Array] a2  The array to be compared.
 <% end %>
     @return [Cumo::<%=class_name%>]
 */

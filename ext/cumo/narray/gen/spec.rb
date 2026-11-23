@@ -91,8 +91,6 @@ if !is_object
   part = is_complex ? "a real or imaginary part of #{cn}" : cn
   if is_float
     def_const "EPSILON", "M_EPSILON", desc: "Machine epsilon of #{part}, the difference between 1 and the next larger number it holds."
-  end
-  if is_float
     def_const "MAX", "M_MAX", desc: "The largest finite number #{part} holds."
     def_const "MIN", "M_MIN", desc: "The smallest positive normalized number #{part} holds, as MIN of Float is. The most negative finite one is -MAX."
   elsif is_int
@@ -444,7 +442,6 @@ end
 
 if has_math
 fn = get(:full_class_name)
-cn = get(:class_name)
 nm = get(:name)
 is_c = is_complex
 
