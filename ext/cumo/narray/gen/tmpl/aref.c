@@ -2,10 +2,10 @@ static VALUE
 <%=c_func(-1)%>_cpu(int argc, VALUE *argv, VALUE self);
 
 /*
-  Array element referenece or slice view.
+  Array element reference or slice view.
   @overload [](dim0,...,dimL)
     @param [Numeric,Range,etc] dim0,...,dimL  Multi-dimensional Index.
-    @return [NArray::<%=class_name%>] NArray view.
+    @return [Cumo::<%=class_name%>] NArray view. An integer index array of two or more dimensions gives a copy.
 
   --- Returns the element at +dim0+, +dim1+, ... are Numeric indices
   for each dimension, or returns a NArray View as a sliced subarray if
@@ -16,7 +16,7 @@ static VALUE
   Ruby numeric object as Numo::NArray does to avoid synchronization
   between GPU and CPU for performance.
 
-  Call Cumo.enable_compatible_mode to make ths method behave compatibly
+  Call Cumo.enable_compatible_mode to make this method behave compatibly
   with Numo, or you can use `aref_cpu(*idx)` method instead.
 
   @example
@@ -28,19 +28,19 @@ static VALUE
       #  [15, 16, 17, 18, 19]]
 
       a[7]
-      # => Cumo::DFloat#shape=[]
-      # 6.0
+      # => Cumo::DFloat(view)#shape=[]
+      # 7
 
       a[1,1]
-      # => Cumo::DFloat#shape=[]
-      # 6.0
+      # => Cumo::DFloat(view)#shape=[]
+      # 6
 
       a[1..3,1]
-      # => Cumo::DFloat#shape=[3]
+      # => Cumo::DFloat(view)#shape=[3]
       # [6, 11, 16]
 
       a[1,[1,3,4]]
-      # => Cumo::DFloat#shape=[3]
+      # => Cumo::DFloat(view)#shape=[3]
       # [6, 8, 9]
 
       a[true,2].fill(99)

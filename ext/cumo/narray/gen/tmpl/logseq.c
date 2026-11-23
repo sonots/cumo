@@ -84,7 +84,7 @@ static void
 
     Cumo::DComplex.new(5).logseq(0,1i*Math::PI/3,Math::E)
     # => Cumo::DComplex#shape=[5]
-    #   [1+7.26156e-310i, 0.5+0.866025i, -0.5+0.866025i, -1+1.22465e-16i, ...]
+    #   [1+0i, 0.5+0.866025i, -0.5+0.866025i, -1+1.22465e-16i, -0.5-0.866025i]
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *args, VALUE self)

@@ -143,9 +143,18 @@ static void
 
 /*
   Generate uniformly distributed random numbers on self narray.
+<% if is_int && !is_object %>
+  @overload rand(high)
+    @param [Numeric] high  upper exclusive boundary of random numbers.
+    @return [Cumo::<%=class_name%>] self.
+  @overload rand(low, high)
+    @param [Numeric] low  lower inclusive boundary of random numbers.
+    @param [Numeric] high  upper exclusive boundary of random numbers.
+<% else %>
   @overload rand([[low],high])
     @param [Numeric] low  lower inclusive boundary of random numbers. (default=0)
     @param [Numeric] high  upper exclusive boundary of random numbers. (default=1 or 1+1i for complex types)
+<% end %>
     @return [Cumo::<%=class_name%>] self.
   @example
     Cumo::DFloat.new(6).rand

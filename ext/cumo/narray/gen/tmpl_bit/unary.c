@@ -30,7 +30,7 @@ static void
 
 /*
   Unary <%=name%>.
-  @overload <%=name%>
+  @overload <%=op_map%>
     @return [Cumo::<%=class_name%>] <%=name%> of self.
 */
 static VALUE

@@ -58,7 +58,7 @@ static void
 <% end %>
     @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
     @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
-    @return [Cumo::<%=class_name%>] returns result of <%=name%>.
+    @return [Cumo::<%= {'cT' => class_name, 'cRT' => real_class_name}.fetch(result_class) { result_class.delete_prefix('cumo_c') } %>] returns result of <%=name%>.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

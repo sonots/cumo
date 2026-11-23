@@ -72,7 +72,7 @@ static VALUE
   Binary <%=name%>.
   @overload <%=op_map%> other
     @param [Cumo::NArray,Numeric] other
-    @return [Cumo::NArray] <%=name%> of self and other.
+    @return [Array(Cumo::NArray, Cumo::NArray)] the quotient and the remainder of self divided by other.
 */
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE other)

@@ -5,9 +5,11 @@ static VALUE
   Array indexing.
   @overload [](dim0,...,dimL)
     @param [Numeric,Range,Array,Cumo::Bit,Cumo::Int32,Cumo::Int64] dim0,...,dimL  Multi-dimensional Index.
-    @return [Cumo::Bit,Numeric] Element value or NArray view.
+    @return [Cumo::Bit,Integer] NArray view, or an Integer for an element under compatible mode.
 
-  --- Returns an element at `dim0`, `dim1`, ... are Numeric indices for each dimension, or returns a NArray View as a sliced array if `dim0`, `dim1`, ... includes other than Numeric index, e.g., Range or Array or true.
+  --- Returns a 0-dimensional view of the element at `dim0`, `dim1`, ... if they are Numeric indices for each dimension, or a NArray View as a sliced array if `dim0`, `dim1`, ... includes other than Numeric index, e.g., Range or Array or true.
+
+  Note that Cumo::NArray always returns NArray and does not return a Ruby numeric object as Numo::NArray does to avoid synchronization between GPU and CPU for performance. Call Cumo.enable_compatible_mode to make this method behave compatibly with Numo, or you can use `aref_cpu(*idx)` method instead.
 
   @see #[]=
 
@@ -31,7 +33,8 @@ static VALUE
       #  [1, 1]]
 
       b[1,1]
-      # => 0
+      # => Cumo::Bit(view)#shape=[]
+      # 0
  */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

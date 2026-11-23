@@ -39,8 +39,9 @@ static void
 /*
   Fill elements with other.
   @overload <%=name%> other
-    @param [Numeric] other
+    @param [Integer,Boolean] other  0, 1, false or true.
     @return [Cumo::<%=class_name%>] self.
+    @raise [ArgumentError] if other is any other value and self is not empty.
 */
 static VALUE
 <%=c_func(1)%>(VALUE self, VALUE val)

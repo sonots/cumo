@@ -14,7 +14,7 @@ static void
 /*
   <%=name%> of self.
   @overload <%=name%>
-    @return [Cumo::<%=real_class_name%>] <%=name%> of self.
+    @return [Array(Cumo::<%=real_class_name%>, Cumo::<%=real_class_name%>)] the fractional and the integral parts of self, each with the sign of self.
 */
 static VALUE
 <%=c_func(0)%>(VALUE self)

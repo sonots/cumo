@@ -4,11 +4,11 @@
 <% end %>
 /*
   Cast object to Cumo::<%=class_name%>.
-  @overload [](elements)
-    @param [Numeric,Array] elements
+  @overload [](*elements)
+    @param [Numeric,Array,Range,Cumo::NArray] elements  the elements of a 1-dimensional array, with a Range expanded, or the rows of a multi-dimensional one.
     @return [Cumo::<%=class_name%>]
-  @overload <%=name%>(array)
-    @param [Array] array
+  @overload <%=name%>(obj)
+    @param [Numeric,Array,Range,Cumo::NArray] obj  a Numeric gives a 0-dimensional array, and an NArray of this class is returned as it is.
     @return [Cumo::<%=class_name%>]
   @return [Cumo::<%=class_name%>]
 */

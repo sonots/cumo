@@ -95,7 +95,7 @@ static void
   Inplace option is allowed, i.e., `nary.inplace.map` overwrites `nary`.
   @overload <%=name%>
   For a block `{|x,i,j,...| ... }`,
-  @yieldparam [Numeric] x  an element
+  @yieldparam [<%= is_object ? 'Object' : 'Numeric' %>] x  an element
   @yieldparam [Integer] i,j,...  multitimensional indices
   @return [Cumo::NArray] mapped array
   @see #map

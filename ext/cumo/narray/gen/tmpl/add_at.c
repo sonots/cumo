@@ -117,7 +117,11 @@ static void
     a = Cumo::<%=class_name%>.zeros(5)
     a.add_at(Cumo::Int32[1, 3, 1], 1)
     # => Cumo::<%=class_name%>#shape=[5]
+<% if is_complex %>
+    #    [0+0i, 2+0i, 0+0i, 1+0i, 0+0i]
+<% else %>
     #    [0, 2, 0, 1, 0]
+<% end %>
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)

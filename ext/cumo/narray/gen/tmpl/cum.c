@@ -87,9 +87,18 @@ static void
 
 /*
   <%=name%> of self.
+<% if is_float && !is_object %>
   @overload <%=name%>(axis:nil, nan:false)
     @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
     @param [TrueClass] nan  If true, apply NaN-aware algorithm (avoid NaN if exists).
+<% elsif is_object %>
+  @overload <%=name%>(axis:nil, nan:false)
+    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
+    @param [Boolean] nan  Accepted, and does not change the result.
+<% else %>
+  @overload <%=name%>(axis:nil)
+    @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis.
+<% end %>
     @return [Cumo::<%=class_name%>] <%=name%> of self.
 */
 static VALUE

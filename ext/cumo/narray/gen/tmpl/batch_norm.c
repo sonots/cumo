@@ -17,10 +17,14 @@ static VALUE
   cuDNN normalizes each channel, the elements that share an index on axis 1,
   over all the other axes. axis has to name those other axes, as [0] for
   [N, C], [0, 2, 3] for [N, C, H, W] and [0, 2, 3, 4] for five dimensions.
-  Other values, such as the default [0] for four dimensions, also normalize
-  per channel, and expect gamma and the rest to have more elements than they
-  use. gamma, beta and the statistics have C elements in any shape, such as
+  gamma, beta and the statistics then have C elements in any shape, such as
   [C] or [1, C, 1, 1]<% if param_class != class_name %>, and are Cumo::SFloat for Cumo::<%=class_name%><% end %>.
+  Another axis of one or two entries, such as the default [0] for four
+  dimensions, also normalizes per channel. gamma and the rest then have as
+  many elements as the axis leaves, and an axis that leaves fewer than C
+  raises ShapeError. Any other axis of three or more entries raises
+  RuntimeError. An axis out of order, repeated or out of range raises
+  ArgumentError.
 
   @overload batch_norm(gamma, beta, running_mean: nil, running_var: nil, mean: nil, inv_std: nil, eps: 2e-5, decay: 0.9, axis: [0], y: nil)
     @param [Cumo::<%=param_class%>] gamma  The scale.
