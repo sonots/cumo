@@ -23,6 +23,17 @@ current_stream_id(void)
     return id_current_stream;
 }
 
+static ID id_current_stream_serial;
+
+static ID
+current_stream_serial_id(void)
+{
+    if (!id_current_stream_serial) {
+        id_current_stream_serial = rb_intern("__cumo_current_stream_serial__");
+    }
+    return id_current_stream_serial;
+}
+
 static cumo_cuda_handle_set_t streams;
 static cumo_cuda_handle_set_t events;
 // Pinned host buffers this process allocated, each with its size as the value.
@@ -32,13 +43,16 @@ static cumo_cuda_handle_set_t pinned;
 // all Thread.list answers for. Scanning it needs nothing kept at thread exit,
 // which counting the holders would, to not refuse a stream a dead one held.
 static int
-stream_in_use_p(cudaStream_t stream)
+stream_in_use_p(cudaStream_t stream, size_t serial)
 {
     VALUE threads = rb_funcall(rb_cThread, rb_intern("list"), 0);
     long i;
     for (i = 0; i < RARRAY_LEN(threads); ++i) {
-        VALUE v = rb_ivar_get(RARRAY_AREF(threads, i), current_stream_id());
-        if (!NIL_P(v) && (cudaStream_t)NUM2SIZET(v) == stream) { return 1; }
+        VALUE t = RARRAY_AREF(threads, i);
+        VALUE v = rb_ivar_get(t, current_stream_id());
+        VALUE n = rb_ivar_get(t, current_stream_serial_id());
+        if (NIL_P(v) || (cudaStream_t)NUM2SIZET(v) != stream) { continue; }
+        if (!NIL_P(n) && NUM2SIZET(n) == serial) { return 1; }
     }
     return 0;
 }
@@ -46,8 +60,11 @@ stream_in_use_p(cudaStream_t stream)
 // A destroy reaches the live set, but not the threads of another Ractor that
 // have the handle current, and the driver reads freed memory from a launch on
 // it. Asking the set on every launch would take its lock, so a launch asks
-// only when a stream it has not seen live since the last destroy comes up.
-static size_t stream_destroy_epoch = 0;
+// only when a destroy or a bind has happened since the answer it has. The
+// answer is held per native thread, so a Ruby thread that moves between them
+// under M:N scheduling cannot take one given for another thread's binding:
+// every bind counts, and so retires what any thread was told.
+static size_t stream_bind_epoch = 0;
 static __thread cudaStream_t stream_seen_live = 0;
 static __thread size_t stream_seen_live_epoch = 0;
 
@@ -58,6 +75,17 @@ current_stream_raw(void)
     return NIL_P(v) ? 0 : (cudaStream_t)NUM2SIZET(v);
 }
 
+// Whether the thread's stream is the one it bound, rather than another that
+// the driver gave the same address after a destroy.
+static int
+current_stream_live_p(cudaStream_t stream)
+{
+    VALUE n = rb_ivar_get(rb_thread_current(), current_stream_serial_id());
+    size_t serial = cumo_cuda_handle_set_serial(&streams, (size_t)stream);
+
+    return serial != 0 && !NIL_P(n) && NUM2SIZET(n) == serial;
+}
+
 cudaStream_t
 cumo_cuda_stream(void)
 {
@@ -65,9 +93,9 @@ cumo_cuda_stream(void)
     size_t epoch;
 
     if (stream == 0) { return 0; }
-    epoch = cumo_atomic_size_load(&stream_destroy_epoch);
+    epoch = cumo_atomic_size_load(&stream_bind_epoch);
     if (stream != stream_seen_live || epoch != stream_seen_live_epoch) {
-        if (!cumo_cuda_handle_set_live_p(&streams, (size_t)stream)) {
+        if (!current_stream_live_p(stream)) {
             rb_raise(rb_eArgError, "the current stream has been destroyed");
         }
         stream_seen_live = stream;
@@ -76,10 +104,33 @@ cumo_cuda_stream(void)
     return stream;
 }
 
+// The thread's stream for a wait or a copy, which a handler that is unwinding
+// asks for as well: raising there would replace the exception it carries and
+// leave the frees below it unrun. A stream that is gone can be neither waited
+// on nor recorded into, so the device is brought to rest instead, which covers
+// what was queued on it, and the null stream stands in for the rest.
+cudaStream_t
+cumo_cuda_stream_no_raise(void)
+{
+    cudaStream_t stream = current_stream_raw();
+
+    if (stream != 0 && !current_stream_live_p(stream)) {
+        cudaDeviceSynchronize();
+        cudaGetLastError();
+        return 0;
+    }
+    return stream;
+}
+
 void
 cumo_cuda_stream_set(cudaStream_t stream)
 {
-    rb_ivar_set(rb_thread_current(), current_stream_id(), stream ? SIZET2NUM((size_t)stream) : Qnil);
+    VALUE thread = rb_thread_current();
+    size_t serial = stream ? cumo_cuda_handle_set_serial(&streams, (size_t)stream) : 0;
+
+    rb_ivar_set(thread, current_stream_serial_id(), SIZET2NUM(serial));
+    rb_ivar_set(thread, current_stream_id(), stream ? SIZET2NUM((size_t)stream) : Qnil);
+    cumo_atomic_size_fetch_add(&stream_bind_epoch, 1);
 }
 #define eRuntimeError cumo_cuda_eRuntimeError
 #define mRuntime cumo_cuda_mRuntime
@@ -256,7 +307,7 @@ void
 cumo_cuda_runtime_return_scratch(char *ptr, int wait_for_stream, cudaError_t *status)
 {
     if (wait_for_stream) {
-        cudaError_t wait = cudaStreamSynchronize(cumo_cuda_stream());
+        cudaError_t wait = cudaStreamSynchronize(cumo_cuda_stream_no_raise());
         if (status != NULL && *status == cudaSuccess) { *status = wait; }
     }
     if (ptr != NULL) { cumo_cuda_runtime_free_no_raise(ptr); }
@@ -467,8 +518,8 @@ rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
 /*
   Destroys a stream. A stream that is current in a live thread of the calling
   Ractor cannot be destroyed. A thread of another Ractor is out of reach,
-  since a Ractor sees its own threads only, and destroying a stream such a
-  thread has current takes the process down on its next launch.
+  since a Ractor sees its own threads only, and a launch from such a thread
+  raises ArgumentError once the stream it has current is destroyed.
 
   @param [Integer] stream
   @raise [ArgumentError] if the stream is current in a live thread of the
@@ -479,13 +530,15 @@ rb_cudaStreamCreateWithFlags(VALUE self, VALUE flags)
 static VALUE
 rb_cudaStreamDestroy(VALUE self, VALUE stream)
 {
-    if (stream_in_use_p((cudaStream_t)NUM2SIZET(stream))) {
+    size_t serial = cumo_cuda_handle_set_serial(&streams, NUM2SIZET(stream));
+
+    if (serial != 0 && stream_in_use_p((cudaStream_t)NUM2SIZET(stream), serial)) {
         rb_raise(rb_eArgError, "a stream that is current in a thread of this Ractor cannot be destroyed");
     }
     cudaStream_t handle = (cudaStream_t)cumo_cuda_handle_take(&streams, stream, "cudaStream_t");
 
     // Every thread asks the live set for its current stream again from here.
-    cumo_atomic_size_fetch_add(&stream_destroy_epoch, 1);
+    cumo_atomic_size_fetch_add(&stream_bind_epoch, 1);
     cumo_cuda_runtime_check_status(cudaStreamDestroy(handle));
     return Qnil;
 }

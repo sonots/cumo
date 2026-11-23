@@ -21,6 +21,10 @@ extern "C" {
 typedef struct {
     st_table *table;
     rb_nativethread_lock_t lock;
+    // The driver hands an address out again soon after a destroy, so what a
+    // handle is numbered on the way in is what tells it from the one that
+    // held the same address before it.
+    size_t serials;
 } cumo_cuda_handle_set_t;
 
 static inline void
@@ -28,13 +32,14 @@ cumo_cuda_handle_set_init(cumo_cuda_handle_set_t *set)
 {
     set->table = st_init_numtable();
     rb_nativethread_lock_initialize(&set->lock);
+    set->serials = 0;
 }
 
 static inline void
 cumo_cuda_handle_set_add(cumo_cuda_handle_set_t *set, size_t handle)
 {
     rb_nativethread_lock_lock(&set->lock);
-    st_insert(set->table, (st_data_t)handle, (st_data_t)1);
+    st_insert(set->table, (st_data_t)handle, (st_data_t)++set->serials);
     rb_nativethread_lock_unlock(&set->lock);
 }
 
@@ -48,6 +53,18 @@ cumo_cuda_handle_set_live_p(cumo_cuda_handle_set_t *set, size_t handle)
     found = st_lookup(set->table, (st_data_t)handle, 0);
     rb_nativethread_lock_unlock(&set->lock);
     return found;
+}
+
+// What the handle was numbered when it joined, and 0 for one that is not live.
+static inline size_t
+cumo_cuda_handle_set_serial(cumo_cuda_handle_set_t *set, size_t handle)
+{
+    st_data_t serial = 0;
+
+    rb_nativethread_lock_lock(&set->lock);
+    st_lookup(set->table, (st_data_t)handle, &serial);
+    rb_nativethread_lock_unlock(&set->lock);
+    return (size_t)serial;
 }
 
 // Raises unless the Integer names a handle this process created and has not
