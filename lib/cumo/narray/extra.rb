@@ -38,7 +38,7 @@ module Cumo
       end
     end
 
-    # Answers an unallocated array of the same class and shape as self.
+    # Returns an unallocated array of the same class and shape as self.
     def new_narray
       self.class.new(*shape)
     end
@@ -115,6 +115,7 @@ module Cumo
     end
 
     # Converts an array of one element to an Integer.
+    # @return [Integer]
     # @raise [TypeError] unless self has exactly one element.
     def to_i
       if size == 1
@@ -126,6 +127,7 @@ module Cumo
     end
 
     # Converts an array of one element to a Float.
+    # @return [Float]
     # @raise [TypeError] unless self has exactly one element.
     def to_f
       if size == 1
@@ -137,6 +139,7 @@ module Cumo
     end
 
     # Converts an array of one element to a Complex.
+    # @return [Complex]
     # @raise [TypeError] unless self has exactly one element.
     def to_c
       if size == 1
@@ -164,10 +167,10 @@ module Cumo
       end
     end
 
-    # Converts a to an NArray. An NArray is answered as it is, except that a
-    # 0-dimensional one becomes a 1-dimensional view. A number or a Range
-    # becomes the 1-dimensional array that self[a] makes, and anything else
-    # is cast.
+    # Converts a to an NArray. An NArray is returned as it is, except that a
+    # 0-dimensional one becomes a 1-dimensional view. A number or a finite
+    # numeric Range becomes the 1-dimensional array that self[a] makes, and
+    # anything else is cast.
     def self.asarray(a)
       case a
       when NArray
@@ -1499,9 +1502,9 @@ module Cumo
 
     # Percentile
     #
-    # @param q [Numeric]
+    # @param q [Integer, Float] from 0 to 100
     # @param axis [Integer] applied axis
-    # @return [Cumo::NArray]  return percentile
+    # @return [Cumo::NArray, Float]  return percentile, a Float when compatible_mode makes the result a Ruby number
     def percentile(q, axis: nil)
       raise ArgumentError, "q is out of range" if q < 0 || q > 100
 

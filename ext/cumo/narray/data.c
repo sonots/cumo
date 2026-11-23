@@ -102,6 +102,12 @@ iter_copy_bytes_indexer(cumo_na_loop_t *const lp)
     }
 }
 
+/*
+  Returns a copy of self that shares no memory with it, as dup does.
+
+  @return [Cumo::NArray]
+  @deprecated Use dup.
+*/
 VALUE
 cumo_na_copy(VALUE self)
 {
@@ -149,13 +155,14 @@ iter_swap_byte_indexer(cumo_na_loop_t *const lp)
 }
 
 /*
-  Answers a copy with the bytes of each element reversed, and flags it as
-  byte-swapped. Elements are still read in the host's order, so the copy
-  holds other numbers until it is swapped back. It makes binary data in the
-  other byte order for to_binary.
+  Returns a copy with the bytes of each element reversed, or self with its
+  own bytes reversed when self is inplace. The byte order flag of the result
+  is flipped, so swapping twice returns to the host's order. Elements are
+  still read in the host's order, so ones wider than a byte read as other
+  numbers until they are swapped back. It makes binary data in the other
+  byte order for to_binary. Cumo::RObject does not have it.
 
   @return [Cumo::NArray]
-  @raise [TypeError] for Cumo::RObject.
 */
 static VALUE
 cumo_na_swap_byte(VALUE self)
@@ -188,8 +195,8 @@ cumo_na_swap_byte(VALUE self)
 
 
 /*
-  Answers self if its bytes are in network order (big-endian), and a copy made by
-  swap_byte otherwise.
+  Returns self if its bytes are in network order (big-endian), and swap_byte of self
+  otherwise.
 
   @return [Cumo::NArray]
 */
@@ -203,8 +210,8 @@ cumo_na_to_network(VALUE self)
 }
 
 /*
-  Answers self if its bytes are in VAX order (little-endian), and a copy made by
-  swap_byte otherwise.
+  Returns self if its bytes are in VAX order (little-endian), and swap_byte of self
+  otherwise.
 
   @return [Cumo::NArray]
 */
@@ -218,8 +225,8 @@ cumo_na_to_vacs(VALUE self)
 }
 
 /*
-  Answers self if its bytes are in the host's order, and a copy made by
-  swap_byte otherwise.
+  Returns self if its bytes are in the host's order, and swap_byte of self
+  otherwise.
 
   @return [Cumo::NArray]
 */
@@ -233,8 +240,8 @@ cumo_na_to_host(VALUE self)
 }
 
 /*
-  Answers self if its bytes are swapped from the host's order, and a copy
-  made by swap_byte otherwise.
+  Returns self if its bytes are swapped from the host's order, and
+  swap_byte of self otherwise.
 
   @return [Cumo::NArray]
 */
@@ -351,10 +358,11 @@ cumo_na_transpose_map(VALUE self, int *map)
 #define SWAP(a,b,tmp) {tmp=a;a=b;b=tmp;}
 
 /*
-  Answers a view with the axes in another order. Without arguments it
-  reverses every axis. Non-negative axes reorder the first axes, so
-  transpose(1, 0) swaps the first two, and negative ones reorder the last
-  axes, so transpose(-1, -2) swaps the last two.
+  Returns a view with the axes in another order. Without arguments it
+  reverses the order of the axes. k arguments reorder the first k axes when
+  they are all non-negative, so transpose(1, 0) swaps the first two, and the
+  last k axes when they are all negative, so transpose(-1, -2) swaps the
+  last two.
 
   @overload transpose(*axes)
     @param [Integer] axes  The new order of the first or the last axes.
@@ -705,6 +713,12 @@ cumo_na_flatten_dim(VALUE self, int sd)
     return view;
 }
 
+/*
+  Returns a 1-dimensional view of the elements of self in their order, which
+  shares memory with self.
+
+  @return [Cumo::NArray] a view of self.
+*/
 VALUE
 cumo_na_flatten(VALUE self)
 {
@@ -1070,7 +1084,7 @@ cumo_na_zero_above_diagonal(VALUE self, VALUE vk)
 void
 Init_cumo_na_data(void)
 {
-    rb_define_method(cNArray, "copy", cumo_na_copy, 0); // deprecated
+    rb_define_method(cNArray, "copy", cumo_na_copy, 0);
 
     rb_define_method(cNArray, "flatten", cumo_na_flatten, 0);
     rb_define_private_method(cNArray, "concatenate_parts", cumo_na_concat_parts, 2);

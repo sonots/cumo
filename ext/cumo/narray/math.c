@@ -143,17 +143,18 @@ Init_cumo_na_math()
     /*
       Document-module: Cumo::NMath
 
-      Element-wise mathematical functions for any array or number, such as
-      Cumo::NMath.sqrt(x). A call goes to the Math module of the type its
+      Element-wise mathematical functions for numeric arrays and numbers, such
+      as Cumo::NMath.sqrt(x). A call goes to the Math module of the type its
       arguments upcast to, which DISPATCH gives, and integer types go to
-      Cumo::DFloat::Math. A Ruby number gives a 0-dimensional array.
+      Cumo::DFloat::Math, so Cumo::NMath.sqrt(4) returns a 0-dimensional
+      Cumo::DFloat. Bit and RObject arrays raise TypeError.
     */
     cumo_mNMath = rb_define_module_under(mCumo, "NMath");
     rb_define_singleton_method(cumo_mNMath, "method_missing", cumo_na_math_method_missing, -1);
     rb_define_singleton_method(cumo_mNMath, "respond_to_missing?", cumo_na_math_respond_to_missing_p, 2);
 
     hCast = rb_hash_new();
-    /* The Math module that NMath uses for each NArray class, a Hash from the class to the module. */
+    /* The Math module that NMath uses for each numeric NArray class, a Hash from the class to the module. */
     rb_define_const(cumo_mNMath, "DISPATCH", hCast);
     rb_hash_aset(hCast, cumo_cInt64,    cumo_mDFloatMath);
     rb_hash_aset(hCast, cumo_cInt32,    cumo_mDFloatMath);

@@ -1262,7 +1262,17 @@ cumo_na_at_main(int nidx, VALUE *idx, VALUE self, int keep_dim, int result_nd, s
 }
 
 
-/* method: slice(idx1,idx2,...,idxN) */
+/*
+  Returns a view selected as [] selects it, except that an Integer index
+  keeps its axis with length 1, unless every index is an Integer.
+
+  @overload slice(*indices)
+  @return [Cumo::NArray] a view of self.
+  @example
+    a = Cumo::DFloat.new(2, 3).seq
+    a.slice(1, true).shape  # => [1, 3]
+    a[1, true].shape        # => [3]
+*/
 static VALUE cumo_na_slice(int argc, VALUE *argv, VALUE self)
 {
     int result_nd;

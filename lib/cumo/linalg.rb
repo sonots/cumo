@@ -4,7 +4,8 @@ require 'cumo'
 
 # Provide compatibility layers with numo/linalg
 module Cumo
-  # The Blas.gemm of numo-linalg, for code written against it.
+  # Blas.gemm for code that calls it, defined by requiring cumo/linalg. Its
+  # options are those of NArray#gemm, not those of Numo::Linalg::Blas.
   module Blas
     class << self
       # Calls a.gemm with the rest of the arguments.

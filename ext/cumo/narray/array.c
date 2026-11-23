@@ -425,10 +425,10 @@ cumo_na_composition3(VALUE obj, VALUE *ptype, VALUE *pshape, VALUE *pnary)
 
 /*
   The shape of the NArray that cast would make from a nested Array.
-  An NArray or a number gives [].
+  Anything else, such as an NArray or a number, gives [].
 
   @overload array_shape(ary)
-    @param [Array] ary
+    @param [Object] ary
     @return [Array<Integer>]
   @example
     Cumo::NArray.array_shape([[1, 2, 3], [4, 5, 6]])  # => [2, 3]
@@ -485,11 +485,13 @@ cumo_na_ary_composition_dtype(VALUE ary)
 }
 
 /*
-  The class of the NArray that cast would make from obj.
+  The class that fits the elements of obj, which NArray.cast uses for an
+  Array. An Array of nils gives nil.
 
   @overload array_type(obj)
-    @param [Object] obj
-    @return [Class]
+    @param [Array,Numeric,Cumo::NArray] obj
+    @return [Class,nil]
+    @raise [TypeError] for any other object.
   @example
     Cumo::NArray.array_type([1, 2, 3])            # => Cumo::Int32
     Cumo::NArray.array_type([1.5])                # => Cumo::DFloat

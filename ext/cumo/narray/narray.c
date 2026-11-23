@@ -1627,11 +1627,11 @@ cumo_na_expand_dims(VALUE self, VALUE vdim)
 void cumo_na_index_reverse_kernel_launch(size_t *idx, size_t *idx1, uint64_t n);
 
 /*
-  Answers a view that reverses the order along the given axes, or along
-  every axis when none is given.
+  Returns a view that reverses the order of the elements along the given
+  axes, or along every axis when none is given.
 
   @overload reverse(*axes)
-  @overload reverse(axis: axes)
+  @overload reverse(axis:)
   @return [Cumo::NArray] a view of self.
   @example
     y = Cumo::DFloat.new(2, 3).seq  # [[0, 1, 2], [3, 4, 5]]
@@ -2770,13 +2770,14 @@ Init_cumo_narray()
     /*
       Document-class: Cumo::NArray::CastError
 
-      Raised when an object cannot be converted to an NArray or cast to a type.
+      Raised when a typed class cannot cast or store an object, as
+      Cumo::DFloat.cast("abc") does. Cumo::NArray.cast raises TypeError instead.
     */
     cumo_na_eCastError = rb_define_class_under(cNArray, "CastError", rb_eStandardError);
     /*
       Document-class: Cumo::NArray::ShapeError
 
-      Raised when the shape of an array does not fit an operation.
+      Raised when the shape or the layout of an array does not fit an operation.
     */
     cumo_na_eShapeError = rb_define_class_under(cNArray, "ShapeError", rb_eStandardError);
     /*
@@ -2788,7 +2789,8 @@ Init_cumo_narray()
     /*
       Document-class: Cumo::NArray::DimensionError
 
-      Raised when an axis or a number of dimensions is out of range.
+      Raised when an axis or a number of dimensions is out of range, of a
+      wrong type, or does not match another array's.
     */
     cumo_na_eDimensionError = rb_define_class_under(cNArray, "DimensionError", rb_eStandardError);
     /*
