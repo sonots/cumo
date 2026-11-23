@@ -76,9 +76,10 @@ static VALUE cumo_na_mathcast(int argc, VALUE *argv)
 /*
   Dispatches method to Math module of upcasted type,
   eg, Cumo::DFloat::Math.
-  @overload method_missing(name, *args)
+  @overload method_missing(name, arg, *rest)
     @param [Symbol] name  method name.
-    @param [NArray,Numeric] args  input arrays.
+    @param [NArray,Numeric,Array] arg  input array.
+    @param [NArray,Numeric,Array] rest  further input arrays.
     @return [NArray] result.
 */
 static VALUE cumo_na_math_method_missing(int argc, VALUE *argv, VALUE mod)

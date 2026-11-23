@@ -44,8 +44,8 @@ static void
 <% else %>
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
-    @param [Numeric,Array,Range] axis  Finds min-max along the axis. One or more Integers can also be given as positional arguments, where an Array is not accepted.
-    @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
+    @param [Numeric,Array,Range] axis  Finds min-max along the axis. Integers and Ranges can also be given as positional arguments, where an Array is not accepted.
+    @param [Boolean] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
     @return [Array] min and max of self, each a Cumo::<%=class_name%>, or <%= is_object ? 'the stored object' : 'a Ruby number' %> when the result is 0-dimensional under compatible mode.
 */
 static VALUE

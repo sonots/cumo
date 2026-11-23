@@ -5,7 +5,7 @@
     @param [Numeric,Cumo::NArray,etc] val  Value(s) to be set to self.
     @return [Numeric,Cumo::NArray,Array] returns `val` (last argument) as given.
 
-  Replaces element(s) at `dim0`, `dim1`, ... . Broadcasting mechanism is applied.
+  Replaces the element(s) the indices select. Broadcasting mechanism is applied.
 
   @see #[]
 

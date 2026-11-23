@@ -743,7 +743,9 @@ void cumo_na_diagonal_stride_index_kernel_launch(size_t *idx, ssize_t s0, size_t
       and k<0 for diagonals below the main diagonal.
     @param [Array] axes  Array of axes to be used as the 2-d sub-arrays
       from which the diagonals should be taken. Defaults to last-two
-      axes ([-2,-1]).
+      axes ([-2,-1]). Each argument is taken for offset or axes by its own
+      type, so diagonal(axes) and diagonal(axes, offset) work too, and any
+      other type is ignored.
     @return [Cumo::NArray]  diagonal view of NArray.
   @example
     a = Cumo::DFloat.new(4,5).seq

@@ -19,8 +19,8 @@ static void
   receiver, returns the Bit it reduced to, or true or false where the mark
   leaves no axis. An empty list names no axis.
   @overload <%=op_map%>(axis:nil, keepdims:false)
-    @param [Integer,Array,Range] axis  axes to be reduced. One or more Integers can also be given as positional arguments, where an Array is not accepted.
-    @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
+    @param [Integer,Array,Range] axis  axes to be reduced. Integers and Ranges can also be given as positional arguments, where an Array is not accepted.
+    @param [Boolean] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
     @return [TrueClass,FalseClass,Cumo::Bit] .
 */
 static VALUE

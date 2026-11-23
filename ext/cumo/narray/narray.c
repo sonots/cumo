@@ -615,7 +615,8 @@ cumo_na_s_logspace(int argc, VALUE *argv, VALUE klass)
 /*
   Returns a NArray whose last two axes hold 1 on the diagonal and 0 elsewhere.
   With one size n, its shape is (n,n). A last dimension of 0 raises
-  ArgumentError, and Cumo::Bit has no eye.
+  ArgumentError. Cumo::Bit answers to this method but has no instance eye to
+  reach, so it raises NoMethodError.
   @overload  eye(n)
     @param [Integer] n  Size of NArray. Creates 2-D NArray with shape=(n,n)
     @return [Cumo::NArray]  created NArray.

@@ -1460,7 +1460,8 @@ module Cumo
 
     # Inner product of two arrays.
     # Same as `mulsum(b, axis: axis)`, which accumulates in the dtype of the
-    # product, where `(a*b).sum(axis: axis)` widens an integer dtype first.
+    # product. `(a*b).sum(axis: axis)` differs, since sum of an integer dtype
+    # accumulates in Int64 or UInt64. Both let the product itself overflow.
     # @param b [Cumo::NArray]
     # @param axis [Integer] applied axis
     # @return [Cumo::NArray, Numeric]  return mulsum(b, axis: axis), a Ruby number when the result is 0-dimensional under compatible mode
@@ -1585,7 +1586,8 @@ module Cumo
     # @param y [Cumo::NArray] (optional) If not nil, the covariance matrix of `self` and `y` is computed.
     # @param ddof [Integer] (optional) Delta degrees of freedom, 0 or 1. Without weights the divisor is `N - ddof`,
     #   where `N` represents the number of observations. Weights change the
-    #   divisor, and an integer weight keeps the division integer.
+    #   divisor, and an integer self then centres in its own dtype, where
+    #   without weights it answers in DFloat.
     # @param fweights [Cumo::NArray] (optional) 1-D array of integer frequency weights.
     # @param aweights [Cumo::NArray] (optional) 1-D array of observation vector weights.
     # @return [Cumo::NArray, Float]  return covariance matrix, a Float under

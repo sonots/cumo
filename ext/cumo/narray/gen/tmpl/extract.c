@@ -2,7 +2,7 @@ static VALUE
 <%=c_func(0)%>_cpu(VALUE self);
 
 /*
-  Returns self.
+  Returns self, which holds the element of a 0-dimensional array.
   @overload extract
     @return [Cumo::NArray, <%= is_object ? 'Object' : 'Numeric' %>] self, or its element as <%= is_object ? 'the stored object' : 'a Ruby number' %> for a 0-dimensional self under compatible mode.
   --- Note that Cumo::NArray always returns NArray and does not

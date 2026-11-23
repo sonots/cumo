@@ -43,7 +43,7 @@ static void
   @overload <%=name%>(axis:nil)
 <% end %>
     @param [Numeric,Array,Range] axis  Performs <%=name%> along the axis. A
-      [:sum, true] mark on the receiver names the axes the same way. One or more Integers can also be given as positional arguments, where an Array is not accepted.
+      [:sum, true] mark on the receiver names the axes the same way. Integers and Ranges can also be given as positional arguments, where an Array is not accepted.
     @return [Cumo::<%=class_name%>] returns result of <%=name%>.
   @example
       Cumo::DFloat[3,4,1,2].sort # => Cumo::DFloat[1,2,3,4]

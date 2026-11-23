@@ -5,8 +5,8 @@
     @param [Numeric,Cumo::NArray,etc] val  Value(s) to be set to self.
     @return [Numeric,Cumo::NArray,Array] returns val (last argument) as given.
 
-  --- Replace element(s) at +dim0+, +dim1+, ... (index/range/array/true
-  for each dimension). Broadcasting mechanism is applied.
+  --- Replaces the element(s) the indices select, one index, range, array or
+  true for each dimension. Broadcasting mechanism is applied.
 
   @example
       a = Cumo::DFloat.new(3,4).seq

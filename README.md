@@ -354,7 +354,7 @@ Cumo differs from numo-linalg-alt in a few places on purpose:
 * `expm` scales and squares the way scipy does, after Al-Mohy and Higham, which stays accurate where the norm of the matrix is large. Passing the order of the Pade approximant, as in `expm(a, 3)`, keeps numo-linalg-alt's algorithm.
 * `norm` takes the 2-norm and the nuclear norm of matrices stacked along other axes, which numo-linalg-alt refuses.
 * `cond` checks `ord` before it inverts the matrix, so an invalid `ord` raises `ArgumentError` even for a singular matrix, where numo-linalg-alt raises `LapackError`.
-* `lu_solve` uses `trans:`, which numo-linalg-alt checks and then drops, and raises `ArgumentError` for an `ipiv` longer than the matrix, which numo-linalg-alt accepts.
+* `lu_solve` uses `trans:`, which numo-linalg-alt checks and then drops. It and `lu_inv` ask `ipiv` for exactly as many entries as the matrix has rows, where numo-linalg-alt accepts a longer one.
 * `eigh` leaves the eigenvalues it pre-filled with NaN where cuSOLVER could not factor B, which it casts to the type of A first, where numo-linalg-alt returns what LAPACK left in its own buffer.
 * `lu` answers for an empty matrix and for a `Bit` matrix, where numo-linalg-alt raises. P keeps the shape and the class it has for any other matrix: an m x m identity for an m x 0 matrix, where scipy answers a 0 x 0 one, and a `Bit` for a `Bit` matrix. `matrix_power(a, 0)` of a `Bit` matrix likewise answers a `Bit` identity.
 

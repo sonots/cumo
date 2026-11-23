@@ -3,10 +3,9 @@
   @overload aref_cpu(*indices)
     @param [Numeric,Range,Array,true,false,Cumo::NArray] indices  Multi-dimensional Index.
     @return [<%= is_object ? 'Object' : 'Numeric' %>,Cumo::<%=class_name%>] Element object or NArray view.
-  --- Returns the element at +dim0+, +dim1+, ... are Numeric indices
-  for each dimension, or returns a NArray View as a sliced subarray if
-  +dim0+, +dim1+, ... includes other than Numeric index, e.g., Range
-  or Array or true.
+  --- With one Numeric index for each dimension, it returns the element
+  there. With anything else among the indices, e.g., a Range or an Array
+  or true, it returns a NArray View as a sliced subarray.
   This method is compatible with Numo NArray's [] method.
   @example
       a = Cumo::DFloat.new(4,5).seq

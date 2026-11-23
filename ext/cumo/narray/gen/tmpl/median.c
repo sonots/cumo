@@ -33,8 +33,8 @@ static void
   @overload <%=name%>(axis:nil, keepdims:false)
 <% end %>
     @param [Numeric,Array,Range] axis  Finds <%=name%> along the axis. A
-      [:sum, true] mark on the receiver names the axes the same way. One or more Integers can also be given as positional arguments, where an Array is not accepted.
-    @param [TrueClass] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
+      [:sum, true] mark on the receiver names the axes the same way. Integers and Ranges can also be given as positional arguments, where an Array is not accepted.
+    @param [Boolean] keepdims  If true, the reduced axes are left in the result array as dimensions with size one.
     @return [Cumo::<%=class_name%>, Numeric] returns <%=name%> of self, a Ruby number when the result is 0-dimensional under compatible mode.
 */
 
