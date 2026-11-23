@@ -2,7 +2,7 @@
   Array element reference or slice view.
   @overload aref_cpu(dim0,...,dimL)
     @param [Numeric,Range,etc] dim0,...,dimL  Multi-dimensional Index.
-    @return [Numeric,Cumo::<%=class_name%>] Element object or NArray view.
+    @return [<%= is_object ? 'Object' : 'Numeric' %>,Cumo::<%=class_name%>] Element object or NArray view.
   --- Returns the element at +dim0+, +dim1+, ... are Numeric indices
   for each dimension, or returns a NArray View as a sliced subarray if
   +dim0+, +dim1+, ... includes other than Numeric index, e.g., Range

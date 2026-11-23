@@ -316,7 +316,7 @@ static void
   # ext/numo/linalg/blas/gen/decl.rb
 
   def mat(v,*a,**h)
-    tp = h[:type] || class_name
+    tp = h[:type] || "Cumo::#{class_name}"
     a.map!{|x| x==:inplace ? "inplace allowed" : x}
     a.unshift ">=2-dimensional NArray"
     "@param #{v} [#{tp}]  matrix (#{a.join(', ')})."
@@ -326,9 +326,9 @@ static void
     tp ||= "String or Symbol"
     case v
     when "alpha"
-      "@param #{v} [Float]  (default=1.0)"
+      "@param #{v} [Numeric]  (default=1)"
     when "beta"
-      "@param #{v} [Float]  (default=0.0)"
+      "@param #{v} [Numeric]  (default=0)"
     else
       "@param #{v} [#{tp}]  #{a[0]}"
     end
@@ -345,7 +345,7 @@ static void
 %>
   @overload <%=name%>(<%=args_v%>)
     <%=params%>
-    @return [Cumo::<%=class_name%>] returns c = alpha \* self \* b + beta \* c, the matrix product of self and b over their last two axes.
+    @return [Cumo::<%=class_name%>] returns alpha \* self \* b + beta \* c, the matrix product of self and b over their last two axes. An inplace c receives the result, and any other c is left as it is.
 <%=description%>
 */
 static VALUE

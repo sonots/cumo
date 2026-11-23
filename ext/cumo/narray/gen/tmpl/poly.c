@@ -42,7 +42,7 @@ static void
     `x.poly(a0,a1,a2,...,an) = a0 + a1*x + a2*x**2 + ... + an*x**n`
   @overload <%=name%> a0, a1, ..., an
     @param [Cumo::NArray,Numeric] a0,a1,...,an
-    @return [Cumo::<%=class_name%>,Numeric] a Ruby number for a 0-dimensional self under compatible mode.
+    @return [Cumo::<%=class_name%>,Numeric] a Ruby number when the result is 0-dimensional under compatible mode.
 */
 static VALUE
 <%=c_func(-2)%>(VALUE self, VALUE args)

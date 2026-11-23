@@ -5,7 +5,7 @@
 /*
   Cast object to Cumo::<%=class_name%>.
   @overload [](*elements)
-    @param [Numeric,Array,Cumo::NArray] elements  the elements of a 1-dimensional array, or the rows of a multi-dimensional one.
+    @param [Numeric,Array,Range,Cumo::NArray] elements  the elements of a 1-dimensional array, with a Range expanded, or the rows of a multi-dimensional one.
     @return [Cumo::<%=class_name%>]
   @overload <%=name%>(obj)
     @param [Numeric,Array,Range,Cumo::NArray] obj  a Numeric gives a 0-dimensional array, and an NArray of this class is returned as it is.

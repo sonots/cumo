@@ -44,7 +44,7 @@ static void
   @overload <%=name%>(axis:nil)
 <% end %>
     @param [Numeric,Array,Range] axis  Affected dimensions.
-    @return [Cumo::Int32,Cumo::Int64] returns result index of <%=name%>, an Int64 if self has 2**32 or more elements.
+    @return [Cumo::Int32,Cumo::Int64,Integer] returns result index of <%=name%>, an Int64 if self has 2**32 or more elements<% if is_object %>, and 0 for a 0-dimensional self<% end %>.
   @example
       Cumo::NArray[3,4,1,2].<%=name%>
       # => Cumo::Int32#shape=[]

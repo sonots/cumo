@@ -3,8 +3,8 @@
   For a one-dimensional NArray, the same as [] with an index array or a Range.
   Similar to numpy's tuple indexing, i.e., `a[[1,2,..],[3,4,..]]`
   @overload at(*indices)
-    @param [Array,Range,true] indices  Multi-dimensional Index Arrays. A Numeric index raises IndexError.
-    @return [Cumo::<%=class_name%>] one-dimensional NArray view.
+    @param [Array,Range,Enumerator::ArithmeticSequence,Cumo::NArray,true] indices  Multi-dimensional Index Arrays. A Numeric index raises IndexError.
+    @return [Cumo::<%=class_name%>] one-dimensional NArray view, or a copy for index arrays of two or more dimensions.
 
   @example
       x = Cumo::DFloat.new(3,3,3).seq

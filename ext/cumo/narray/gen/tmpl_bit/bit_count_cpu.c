@@ -72,7 +72,7 @@ static void
   @overload <%=op_map%>(axis:nil, keepdims:false)
     @param [Integer,Array,Range] axis (keyword) axes to be counted.
     @param [TrueClass] keepdims (keyword) If true, the reduced axes are left in the result array as dimensions with size one.
-    @return [Integer,Cumo::Int64] an Integer for the count of all the bits, and for an empty self.
+    @return [Integer,Cumo::Int64] an Integer when the result is 0-dimensional, and for an empty self.
 */
 static VALUE
 <%=c_func(-1)%>(int argc, VALUE *argv, VALUE self)
