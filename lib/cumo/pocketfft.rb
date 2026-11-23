@@ -6,11 +6,13 @@ module Cumo
   # The functions of Numo::Pocketfft from numo-pocketfft, computed on the GPU
   # by Cumo::FFT. As there, each takes one array and nothing else, except
   # fftconvolve, which takes two. The 1- and 2-dimensional ones take only 1-
-  # and 2-dimensional arrays, the input is cast to double precision, and what
-  # numo-pocketfft refuses raises the same ArgumentError. A 0-dimensional
-  # array raises that ArgumentError in the 1- and 2-dimensional functions and
-  # DimensionError in fftn, ifftn, rfftn and irfftn, where numo-pocketfft
-  # raises NoMemoryError in fftn and rfftn.
+  # and 2-dimensional arrays. The input is cast to double precision, except
+  # that fftconvolve returns a * b as it is when every axis of both has one
+  # element. What numo-pocketfft refuses raises the same error.
+  #
+  # A 0-dimensional array raises that ArgumentError in the 1- and
+  # 2-dimensional functions. It raises DimensionError in fftn, ifftn, rfftn
+  # and irfftn. numo-pocketfft fails on it in other ways in fftn and rfftn.
   module Pocketfft
     DIMENSIONS = { 1 => 'one', 2 => 'two' }.freeze
     private_constant :DIMENSIONS

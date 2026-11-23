@@ -127,6 +127,7 @@ check_call(cufftResult status)
   Returns the version of the cuFFT library cumo loads on its first use.
 
   @return [Integer] the version cufftGetVersion reports
+  @raise [Cumo::CUDA::CufftError] if the library cannot be loaded
  */
 static VALUE
 rb_cufft_version(VALUE self)

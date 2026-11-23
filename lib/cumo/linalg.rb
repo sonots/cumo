@@ -16,8 +16,8 @@ module Cumo
   end
 
   # Linear algebra on the GPU, with 32 of the functions of Numo::Linalg from
-  # numo-linalg-alt under the same names, arguments and errors, apart from
-  # the differences the README lists.
+  # numo-linalg-alt under the same names and arguments. The README lists the
+  # main differences.
   module Linalg
     # Raised where Numo::Linalg raises Numo::Linalg::LapackError.
     class LapackError < StandardError; end
@@ -431,14 +431,15 @@ module Cumo
     # Computes the eigenvalues and eigenvectors of a Hermitian matrix, or of
     # the generalized problem A x = lambda B x with B positive definite. The
     # upper triangles are read. uplo: is accepted and ignored, as
-    # numo-linalg-alt does, and so is turbo:, since cuSOLVER always divides and
-    # conquers.
+    # numo-linalg-alt does. turbo: is ignored too, since syevd and sygvd of
+    # cuSOLVER are used either way.
     #
     # @param a [Cumo::NArray] the square matrix
     # @param b [Cumo::NArray, nil] the square matrix B, or nil
     # @param vals_only [Boolean] whether to leave the eigenvectors out
-    # @param vals_range [Range, Array, nil] the indices of the eigenvalues to
-    #   return, 0-based, in ascending order of the eigenvalues
+    # @param vals_range [Range, Array, nil] the first and the last index of the
+    #   eigenvalues to return, 0-based, in ascending order of the eigenvalues.
+    #   Only the first and the last element of an Array are read.
     # @return [Array] the eigenvalues in ascending order, and the eigenvectors
     #   in the columns of a matrix, or nil
     def eigh(a, b = nil, vals_only: false, vals_range: nil, uplo: 'U', turbo: false)

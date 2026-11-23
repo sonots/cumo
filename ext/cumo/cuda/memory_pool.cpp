@@ -174,7 +174,8 @@ rb_memory_pool_enabled_p(VALUE self)
 }
 
 /*
-  Free all **non-split** chunks in all arenas, or in the arena of one stream.
+  Free all **non-split** free chunks of the current device, in all its arenas
+  or in the arena of one stream.
 
   @overload free_all_blocks
   @overload free_all_blocks(stream)
@@ -247,8 +248,10 @@ rb_memory_pool_free_bytes(VALUE self)
 
   It counts the free blocks the pool keeps as well as the ones handed out, so
   it tells how much the program took rather than how much is alive. It falls
-  only when free_all_blocks returns free blocks to CUDA, as the finalizer of a
-  collected Stream does for the blocks of that stream.
+  when free blocks go back to CUDA. free_all_blocks does that, as the
+  finalizer of a collected Stream does for that stream, and so does an
+  allocation that runs out of memory. It counts the pool of the current
+  device.
 
   @return [Integer] The total number of bytes acquired in the pool.
  */
