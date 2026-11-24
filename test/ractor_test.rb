@@ -24,6 +24,77 @@ class NArrayRactorTest < CumoTestBase
       assert_equal([[1], [2]], Timeout.timeout(60) { r.respond_to?(:take) ? r.take : r.value })
     end
 
+    # A destroy reaches the live set, but not the threads of another Ractor
+    # that have the handle current, and a launch on the released stream took
+    # the process down with it.
+    def test_launch_on_a_stream_another_ractor_destroyed
+      a = Cumo::SFloat.new(16)
+      stream = Cumo::CUDA::Stream.new(non_blocking: true)
+      handle = stream.handle
+      stream.use
+      a.seq # so that this thread has been told the stream is live
+      r = Ractor.new(handle) do |h|
+        Cumo::CUDA::Runtime.cudaStreamDestroy(h)
+        :destroyed
+      end
+      assert_equal(:destroyed, Timeout.timeout(60) { r.respond_to?(:take) ? r.take : r.value })
+      assert_raise(ArgumentError) { a.seq }
+      # the pool asks for the stream of its own, before any launch
+      assert_raise(ArgumentError) { Cumo::SFloat.new(16).allocate }
+      assert_equal(handle, Cumo::CUDA::Runtime.current_stream)
+      Cumo::CUDA::Runtime.current_stream = 0
+      assert_equal(120.0, a.seq.sum.to_f)
+    ensure
+      Cumo::CUDA::Runtime.current_stream = 0
+      release_destroyed_stream(stream, handle)
+    end
+
+    # The driver hands a stream's address out again soon after a destroy, so
+    # the address alone does not say whether the stream a thread bound is the
+    # one that holds it now.
+    def test_launch_on_a_stream_whose_address_was_reused
+      a = Cumo::SFloat.new(16)
+      stream = Cumo::CUDA::Stream.new(non_blocking: true)
+      handle = stream.handle
+      stream.use
+      a.seq
+      r = Ractor.new(handle) do |h|
+        flags = Cumo::CUDA::Runtime::CUDA_STREAM_NON_BLOCKING
+        Cumo::CUDA::Runtime.cudaStreamDestroy(h)
+        # Which address a create answers with is the driver's to pick, so it
+        # is asked until it picks the one that was let go.
+        found = nil
+        64.times do
+          again = Cumo::CUDA::Runtime.cudaStreamCreateWithFlags(flags)
+          if again == h
+            found = again
+            break
+          end
+          Cumo::CUDA::Runtime.cudaStreamDestroy(again)
+        end
+        found
+      end
+      reused = Timeout.timeout(60) { r.respond_to?(:take) ? r.take : r.value }
+      omit("the driver did not hand the address out again") if reused.nil?
+      assert_raise(ArgumentError) { a.seq }
+      Cumo::CUDA::Runtime.current_stream = 0
+      # and the binding left on the address does not stand in the way of the
+      # stream that holds it now
+      assert_nil(Cumo::CUDA::Runtime.cudaStreamDestroy(reused))
+      reused = nil
+    ensure
+      Cumo::CUDA::Runtime.current_stream = 0
+      Cumo::CUDA::Runtime.cudaStreamDestroy(reused) if reused.is_a?(Integer)
+      release_destroyed_stream(stream, handle)
+    end
+
+    # The handle is gone, so the finalizer of the Stream would raise where it
+    # reads it, in whichever Ractor the sweep that runs it lands in.
+    def release_destroyed_stream(stream, handle)
+      ObjectSpace.undefine_finalizer(stream) if stream
+      Cumo::CUDA::MemoryPool.free_all_blocks(handle) if handle
+    end
+
     data(:dtype, TYPES, keep: true)
     def test_non_frozen(data)
       dtype = data.fetch(:dtype)
